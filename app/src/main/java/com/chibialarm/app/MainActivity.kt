@@ -5,6 +5,7 @@ import android.content.*
 import android.os.*
 import android.provider.Settings
 import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
 import android.speech.tts.TextToSpeech
 import android.view.*
 import android.widget.*
@@ -34,20 +35,56 @@ class MainActivity : Activity() {
         this.text=text; textSize=size; setTextColor(Color.rgb(113,59,108))
         setPadding(0,16,0,12)
     }
+    private fun actionCard(icon: String, name: String, detail: String, tint: Int, action: () -> Unit): LinearLayout {
+        val card = LinearLayout(this).apply {
+            orientation=LinearLayout.HORIZONTAL; gravity=Gravity.CENTER_VERTICAL
+            setPadding(22,19,18,19)
+            background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
+                intArrayOf(tint, Color.WHITE)).apply { cornerRadius=29f }
+            elevation=5f
+            layoutParams=LinearLayout.LayoutParams(-1,-2).apply { bottomMargin=15 }
+            setOnClickListener { action() }
+        }
+        card.addView(TextView(this).apply {
+            text=icon; textSize=31f; gravity=Gravity.CENTER
+            layoutParams=LinearLayout.LayoutParams(64,72)
+        })
+        val labels=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; setPadding(12,0,4,0) }
+        labels.addView(TextView(this).apply { text=name; textSize=18f; setTextColor(Color.rgb(77,47,79)); setTypeface(null,1) })
+        labels.addView(TextView(this).apply { text=detail; textSize=12f; setTextColor(Color.rgb(116,91,116)); maxLines=2 })
+        card.addView(labels,LinearLayout.LayoutParams(0,-2,1f))
+        card.addView(TextView(this).apply { text="›"; textSize=30f; setTextColor(Color.rgb(145,95,143)) })
+        return card
+    }
     private fun render() {
-        val root=LinearLayout(this).apply { orientation=1; setPadding(28,35,28,25); setBackgroundColor(Color.rgb(255,237,248)) }
-        root.addView(title("🐰 Chibi Alarm 🌸",30f))
-        root.addView(title("Dậy thôi, thế giới đáng yêu đang chờ! ☀️",15f))
-        root.addView(Button(this).apply { text="🌱 Trợ lý luyện tập & phát triển bản thân"; setOnClickListener { startActivity(Intent(this@MainActivity,GrowthActivity::class.java)) } })
-        root.addView(Button(this).apply { text="＋ Thêm báo thức"; setOnClickListener { createAlarm() } })
-        root.addView(Button(this).apply { text="🎙️ Thư viện giọng nói"; setOnClickListener { voiceDialog() } })
-        root.addView(Button(this).apply { text="✨ Gemini AI - Lời đánh thức"; setOnClickListener { geminiDialog() } })
-        root.addView(Button(this).apply { text="🎭 12 phong cách giọng"; setOnClickListener { styleDialog() } })
-        root.addView(Button(this).apply { text="💬 Sửa lời đánh thức"; setOnClickListener { messageDialog() } })
-        root.addView(Button(this).apply { text="😴 Thời gian ngủ thêm"; setOnClickListener { snoozeDialog() } })
-        root.addView(Button(this).apply {
-            text="🔔 Cấp quyền báo thức chính xác"
-            setOnClickListener { if (Build.VERSION.SDK_INT >= 31) startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)) }
+        window.statusBarColor=Color.rgb(252,221,239)
+        window.navigationBarColor=Color.rgb(255,238,248)
+        val root=LinearLayout(this).apply { orientation=1; setPadding(24,34,24,25); setBackgroundColor(Color.rgb(255,242,249)) }
+        val hero=LinearLayout(this).apply {
+            orientation=1; gravity=Gravity.CENTER; setPadding(20,27,20,26)
+            background=GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(255,195,223),Color.rgb(222,210,255),Color.rgb(255,232,192))).apply { cornerRadius=40f }
+            elevation=6f
+        }
+        hero.addView(TextView(this).apply { text="🐰 🌸 ✨"; textSize=52f; gravity=Gravity.CENTER })
+        hero.addView(TextView(this).apply {
+            text="CHIBI LIFE"; textSize=30f; gravity=Gravity.CENTER; setTypeface(null,1); setTextColor(Color.rgb(100,54,106))
+        })
+        hero.addView(TextView(this).apply {
+            text="Trợ lý nhỏ • Mục tiêu lớn"; textSize=15f; gravity=Gravity.CENTER; setTextColor(Color.rgb(107,74,114))
+        })
+        root.addView(hero,LinearLayout.LayoutParams(-1,-2).apply { bottomMargin=23 })
+        root.addView(actionCard("🌱","Growth Coach","Thói quen, lịch luyện tập & thống kê 7 ngày",Color.rgb(218,247,222)) {
+            startActivity(Intent(this,GrowthActivity::class.java))
+        })
+        root.addView(actionCard("⏰","Thêm báo thức","Đánh thức thông minh • Lặp theo ngày",Color.rgb(255,222,233)) { createAlarm() })
+        root.addView(actionCard("✨","Gemini AI Studio","Nhập API key • Sáng tạo lời đánh thức",Color.rgb(232,220,255)) { geminiDialog() })
+        root.addView(actionCard("🎙️","Thư viện giọng nói","Chọn và nghe thử giọng tiếng Việt",Color.rgb(218,238,255)) { voiceDialog() })
+        root.addView(actionCard("🎭","12 phong cách giọng","Chibi, robot, trầm ấm, hài hước...",Color.rgb(255,239,202)) { styleDialog() })
+        root.addView(actionCard("💬","Lời đánh thức","Tự viết nội dung báo thức",Color.rgb(255,228,235)) { messageDialog() })
+        root.addView(actionCard("😴","Ngủ thêm","Điều chỉnh thời gian snooze",Color.rgb(224,238,255)) { snoozeDialog() })
+        root.addView(actionCard("🔔","Quyền báo thức","Cấp quyền để báo thức đúng giờ",Color.rgb(232,243,228)) {
+            if(Build.VERSION.SDK_INT>=31) startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM))
         })
         root.addView(title("⏰ Báo thức của bạn"))
         list=LinearLayout(this).apply { orientation=1 }

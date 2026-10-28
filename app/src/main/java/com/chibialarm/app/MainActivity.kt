@@ -37,6 +37,7 @@ class MainActivity : Activity() {
         root.addView(title("Dậy thôi, thế giới đáng yêu đang chờ! ☀️",15f))
         root.addView(Button(this).apply { text="＋ Thêm báo thức"; setOnClickListener { createAlarm() } })
         root.addView(Button(this).apply { text="🎙️ Thư viện giọng nói"; setOnClickListener { voiceDialog() } })
+        root.addView(Button(this).apply { text="🎭 12 phong cách giọng"; setOnClickListener { styleDialog() } })
         root.addView(Button(this).apply { text="💬 Sửa lời đánh thức"; setOnClickListener { messageDialog() } })
         root.addView(Button(this).apply { text="😴 Thời gian ngủ thêm"; setOnClickListener { snoozeDialog() } })
         root.addView(Button(this).apply {
@@ -73,11 +74,27 @@ class MainActivity : Activity() {
                 if(voices.isNotEmpty()) {
                     val voice=voices[which]; prefs.edit().putString("voice",voice.name).apply()
                     tts?.voice=voice
+                    tts?.setPitch(prefs.getFloat("pitch",1f)); tts?.setSpeechRate(prefs.getFloat("rate",1f))
                     tts?.speak(prefs.getString("message","Dậy thôi bạn ơi, chibi đang chờ bạn!")!!,TextToSpeech.QUEUE_FLUSH,null,"preview")
                 }
                 dialog.dismiss()
             }.setPositiveButton("Nghe thử"){_,_->
                 tts?.speak(prefs.getString("message","Dậy thôi bạn ơi!")!!,TextToSpeech.QUEUE_FLUSH,null,"preview")
+            }.setNegativeButton("Đóng",null).show()
+    }
+    private fun styleDialog() {
+        val names = arrayOf("Tự nhiên", "Chibi dễ thương", "Em bé", "Nữ dịu dàng",
+            "Nữ năng động", "Nữ nghiêm khắc", "Nam trầm", "Nam ấm áp",
+            "Nam hài hước", "Robot", "Siêu nhanh", "Thì thầm chậm")
+        val pitch = floatArrayOf(1f,1.4f,1.7f,1.2f,1.25f,1.05f,.75f,.85f,.95f,.8f,1.1f,.9f)
+        val rate = floatArrayOf(1f,1.15f,1.2f,.9f,1.3f,1.1f,.9f,.95f,1.2f,1.1f,1.65f,.7f)
+        val selected=prefs.getInt("voiceStyle",0).coerceIn(0,names.lastIndex)
+        AlertDialog.Builder(this).setTitle("🎭 Phong cách giọng nói")
+            .setSingleChoiceItems(names,selected){ dialog,i ->
+                prefs.edit().putInt("voiceStyle",i).putFloat("pitch",pitch[i]).putFloat("rate",rate[i]).apply()
+                tts?.setPitch(pitch[i]); tts?.setSpeechRate(rate[i])
+                tts?.speak(prefs.getString("message","Dậy thôi bạn ơi!")!!,TextToSpeech.QUEUE_FLUSH,null,"style-preview")
+                dialog.dismiss()
             }.setNegativeButton("Đóng",null).show()
     }
     private fun messageDialog() {

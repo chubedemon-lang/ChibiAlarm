@@ -25,9 +25,35 @@ class VoiceStudioActivity:Activity() {
         root.addView(status)
         val sample=EditText(this).apply { setText("Dậy thôi bạn ơi! Hôm nay sẽ là một ngày thật tuyệt vời!"); hint="Câu nghe thử" }
         root.addView(sample)
+        root.addView(TextView(this).apply { text="🎚 Cao độ (pitch)";textSize=15f })
+        root.addView(SeekBar(this).apply {
+            max=150;progress=(prefs.getFloat("pitch",1f)*100).toInt().coerceIn(50,200)-50
+            setOnSeekBarChangeListener(object:SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(bar:SeekBar?,value:Int,fromUser:Boolean) {
+                    if(fromUser) { val p=(value+50)/100f; prefs.edit().putFloat("pitch",p).apply();tts?.setPitch(p) }
+                }
+                override fun onStartTrackingTouch(bar:SeekBar?) {}
+                override fun onStopTrackingTouch(bar:SeekBar?) {}
+            })
+        })
+        root.addView(TextView(this).apply { text="🎚 Tốc độ nói";textSize=15f })
+        root.addView(SeekBar(this).apply {
+            max=150;progress=(prefs.getFloat("rate",1f)*100).toInt().coerceIn(50,200)-50
+            setOnSeekBarChangeListener(object:SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(bar:SeekBar?,value:Int,fromUser:Boolean) {
+                    if(fromUser) { val r=(value+50)/100f; prefs.edit().putFloat("rate",r).apply();tts?.setSpeechRate(r) }
+                }
+                override fun onStartTrackingTouch(bar:SeekBar?) {}
+                override fun onStopTrackingTouch(bar:SeekBar?) {}
+            })
+        })
         val controls=LinearLayout(this).apply { orientation=0;gravity=Gravity.CENTER_VERTICAL }
         controls.addView(Button(this).apply { text="■ Dừng";setOnClickListener { tts?.stop();status.text="Đã dừng phát thử" } })
         controls.addView(Button(this).apply { text="↻ Tải lại";setOnClickListener { populate(sample.text.toString()) } })
+        controls.addView(Button(this).apply { text="⬇ Giọng mới";setOnClickListener {
+            try { startActivity(android.content.Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA)) }
+            catch(_:Exception){ status.text="Hãy vào Cài đặt Android > Văn bản thành giọng nói để tải giọng tiếng Việt." }
+        } })
         root.addView(controls)
         list=LinearLayout(this).apply { orientation=1 }
         root.addView(ScrollView(this).apply { addView(list) },LinearLayout.LayoutParams(-1,0,1f))

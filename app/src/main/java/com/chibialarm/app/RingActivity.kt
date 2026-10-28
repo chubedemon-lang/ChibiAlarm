@@ -13,6 +13,16 @@ class RingActivity : Activity() {
     private var player: MediaPlayer? = null
     private var speech: TextToSpeech? = null
     private var correct = 0
+    private val fadeHandler=Handler(Looper.getMainLooper())
+    private val fadeTask=object:Runnable {
+        var level=0
+        override fun run() {
+            level=(level+1).coerceAtMost(20)
+            val volume=0.15f+0.85f*(level/20f)
+            player?.setVolume(volume,volume)
+            if(level<20 && player!=null) fadeHandler.postDelayed(this,1000)
+        }
+    }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setShowWhenLocked(true); setTurnScreenOn(true)
@@ -56,21 +66,30 @@ class RingActivity : Activity() {
             }
         }
         try {
-            player=if(useAI) MediaPlayer().apply {
+            val ringtone=settings.getString("ringtone","").orEmpty()
+            val uri=if(ringtone.isBlank()) android.provider.Settings.System.DEFAULT_ALARM_ALERT_URI
+                else android.net.Uri.parse(ringtone)
+            player=MediaPlayer().apply {
                 setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
-                setDataSource(aiFile.absolutePath);isLooping=true;prepare();start()
-            } else MediaPlayer.create(this,android.provider.Settings.System.DEFAULT_ALARM_ALERT_URI)?.apply {
-                isLooping=true;start()
+                if(useAI) setDataSource(aiFile.absolutePath)
+                else setDataSource(this@RingActivity,uri)
+                isLooping=true;prepare();start()
             }
-        } catch (_:Exception) {
-            try {
-                player?.release()
-                player=MediaPlayer.create(this,android.provider.Settings.System.DEFAULT_ALARM_ALERT_URI)?.apply { isLooping=true;start() }
-            } catch (_:Exception) {}
+        }catch(_:Exception) {
+            try { player?.release() }catch(_:Exception){}
+            player=try { MediaPlayer.create(this,android.provider.Settings.System.DEFAULT_ALARM_ALERT_URI)?.apply {
+                isLooping=true;start()
+            } }catch(_:Exception){ null }
+        }
+        if(settings.getBoolean("fade_in",true) && player!=null) {
+            player?.setVolume(0.15f,0.15f)
+            fadeTask.level=0
+            fadeHandler.postDelayed(fadeTask,1000)
         }
     }
     private fun stop() {
+        fadeHandler.removeCallbacks(fadeTask)
         speech?.stop(); speech?.shutdown(); speech=null
         try { player?.stop() } catch (_:Exception) {}
         try { player?.release() } catch (_:Exception) {}

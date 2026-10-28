@@ -14,6 +14,7 @@ object Scheduler {
             set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
             val data = ctx.getSharedPreferences("alarms", 0).getString(id.toString(), null)?.split(",")
             val mask = data?.getOrNull(2)?.toIntOrNull() ?: 127
+            if (mask == 0) return
             var count = 0
             while ((timeInMillis <= System.currentTimeMillis() || (mask and (1 shl (get(Calendar.DAY_OF_WEEK)-1))) == 0) && count < 8) {
                 add(Calendar.DAY_OF_YEAR, 1); count++
@@ -28,7 +29,21 @@ object Scheduler {
         am.setAlarmClock(AlarmManager.AlarmClockInfo(cal.timeInMillis, show), pending(ctx, id))
     }
 
+    fun snooze(ctx: Context, id: Int, minutes: Int) {
+        val requestId = id xor 0x40000000
+        val pi = PendingIntent.getBroadcast(ctx, requestId,
+            Intent(ctx, AlarmReceiver::class.java).putExtra("id", id).putExtra("snooze", true),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        ctx.getSystemService(AlarmManager::class.java).setAndAllowWhileIdle(
+            AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + minutes.coerceIn(1,60)*60000L, pi)
+    }
+
     fun cancel(ctx: Context, id: Int) {
+        val requestId = id xor 0x40000000
+        val snoozePi = PendingIntent.getBroadcast(ctx, requestId,
+            Intent(ctx, AlarmReceiver::class.java).putExtra("id", id).putExtra("snooze", true),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        ctx.getSystemService(AlarmManager::class.java).cancel(snoozePi)
         ctx.getSystemService(AlarmManager::class.java).cancel(pending(ctx, id))
     }
 }

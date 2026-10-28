@@ -112,7 +112,20 @@ class MainActivity : Activity() {
             setText(prefs.getString("gemini_topic","Chào buổi sáng theo phong cách chibi vui vẻ"))
         }
         panel.addView(title("🔐 Máy chủ Gemini HTTPS (không nhập API key)",15f))
-        panel.addView(endpoint); panel.addView(title("💡 Ý tưởng lời đánh thức",15f)); panel.addView(topic)
+        panel.addView(endpoint)
+        val token=EditText(this).apply {
+            hint="Mã truy cập máy chủ"; setSingleLine(true)
+            inputType=android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
+            setText(prefs.getString("gemini_token",""))
+        }
+        panel.addView(title("🔒 Mã truy cập backend",15f)); panel.addView(token)
+        val profile=Spinner(this).apply {
+            adapter=ArrayAdapter(this@MainActivity,android.R.layout.simple_spinner_dropdown_item,
+                arrayOf("Gemini 1","Gemini 2","Gemini 3","Gemini 4","Gemini 5"))
+            setSelection(prefs.getInt("gemini_profile",1).coerceIn(1,5)-1)
+        }
+        panel.addView(title("👤 Hồ sơ Gemini",15f)); panel.addView(profile)
+        panel.addView(title("💡 Ý tưởng lời đánh thức",15f)); panel.addView(topic)
         AlertDialog.Builder(this).setTitle("✨ Gemini AI Studio").setView(panel)
             .setPositiveButton("Tạo lời đánh thức"){_,_->
                 val url=endpoint.text.toString().trim()
@@ -120,14 +133,17 @@ class MainActivity : Activity() {
                 if (!url.startsWith("https://") || idea.isEmpty()) {
                     Toast.makeText(this,"Cần HTTPS backend và nội dung hợp lệ",Toast.LENGTH_LONG).show()
                 } else {
-                    prefs.edit().putString("gemini_endpoint",url).putString("gemini_topic",idea).apply()
+                    prefs.edit().putString("gemini_endpoint",url).putString("gemini_topic",idea)
+                        .putString("gemini_token",token.text.toString())
+                        .putInt("gemini_profile",profile.selectedItemPosition+1).apply()
                     Thread {
                         try {
                             val conn=(URL(url).openConnection() as HttpsURLConnection).apply {
                                 requestMethod="POST"; connectTimeout=12000; readTimeout=30000
                                 doOutput=true; setRequestProperty("Content-Type","application/json")
+                                setRequestProperty("Authorization","Bearer "+token.text.toString())
                             }
-                            conn.outputStream.use { it.write(JSONObject().put("topic",idea).toString().toByteArray(Charsets.UTF_8)) }
+                            conn.outputStream.use { it.write(JSONObject().put("topic",idea).put("profile",profile.selectedItemPosition+1).toString().toByteArray(Charsets.UTF_8)) }
                             if(conn.responseCode !in 200..299) throw Exception("HTTP "+conn.responseCode)
                             val response=conn.inputStream.bufferedReader().use { it.readText() }
                             conn.disconnect()

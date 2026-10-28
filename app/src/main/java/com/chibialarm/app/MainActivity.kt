@@ -103,46 +103,40 @@ class MainActivity : Activity() {
     }
     private fun geminiDialog() {
         val panel=LinearLayout(this).apply { orientation=1; setPadding(24,12,24,12) }
-        val profile=Spinner(this).apply {
-            adapter=ArrayAdapter(this@MainActivity,android.R.layout.simple_spinner_dropdown_item,
-                arrayOf("Gemini 1","Gemini 2","Gemini 3","Gemini 4","Gemini 5"))
-            setSelection(prefs.getInt("gemini_profile",1).coerceIn(1,5)-1)
-        }
-        panel.addView(title("👤 Hồ sơ Gemini",15f)); panel.addView(profile)
-        val apiKey=EditText(this).apply {
-            hint="Nhập API key (lưu mã hóa trong Android Keystore)"
-            setSingleLine(true)
+        panel.addView(title("🔑 API key Gemini của bạn",16f))
+        val keyField=EditText(this).apply {
+            hint=if (GeminiSecrets.load(this@MainActivity)!=null) "Đã lưu an toàn • nhập để thay khóa" else "Dán API key từ Google AI Studio"
             inputType=android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
+            setSingleLine(true)
         }
-        panel.addView(title("🔐 Gemini API key",15f)); panel.addView(apiKey)
+        panel.addView(keyField)
+        panel.addView(TextView(this).apply {
+            text="Mỗi người dùng tự nhập khóa riêng. Khóa được mã hóa bằng Android Keystore trên thiết bị, không gửi về máy chủ của ứng dụng."
+            textSize=13f
+        })
         val topic=EditText(this).apply {
-            hint="Lời đánh thức chibi hài hước, dễ thương..."
-            setText(prefs.getString("gemini_topic","Chào buổi sáng theo phong cách chibi vui vẻ"))
+            hint="Ví dụ: Gọi dậy hài hước như nhân vật chibi"
+            setText(prefs.getString("gemini_topic","Chào buổi sáng vui vẻ bằng tiếng Việt"))
         }
-        panel.addView(title("💡 Ý tưởng lời đánh thức",15f)); panel.addView(topic)
-        profile.onItemSelectedListener=object:android.widget.AdapterView.OnItemSelectedListener {
-            override fun onNothingSelected(parent:android.widget.AdapterView<*>?) {}
-            override fun onItemSelected(parent:android.widget.AdapterView<*>?,view:View?,position:Int,id:Long) {
-                apiKey.setText("")
-                apiKey.hint=if(GeminiKeyVault.read(this@MainActivity,position+1)!=null)
-                    "Đã lưu key an toàn • để trống để dùng key cũ" else "Nhập Gemini API key"
+        panel.addView(title("✨ Ý tưởng lời đánh thức",16f)); panel.addView(topic)
+        panel.addView(Button(this).apply {
+            text="🗑️ Xóa API key khỏi máy"
+            setOnClickListener {
+                GeminiSecrets.clear(this@MainActivity)
+                Toast.makeText(this@MainActivity,"Đã xóa khóa đã lưu",Toast.LENGTH_SHORT).show()
+                keyField.hint="Dán API key mới"
             }
-        }
-        AlertDialog.Builder(this).setTitle("✨ Gemini AI trực tiếp").setView(panel)
-            .setNeutralButton("Xóa key"){_,_->
-                GeminiKeyVault.save(this,profile.selectedItemPosition+1,"")
-                Toast.makeText(this,"Đã xóa key của hồ sơ",Toast.LENGTH_SHORT).show()
-            }
-            .setPositiveButton("Tạo lời đánh thức"){_,_->
-                val selected=profile.selectedItemPosition+1
-                val entered=apiKey.text.toString().trim()
-                if(entered.isNotEmpty()) GeminiKeyVault.save(this,selected,entered)
-                val key=GeminiKeyVault.read(this,selected)
+        })
+        AlertDialog.Builder(this).setTitle("🌸 Gemini AI Studio").setView(panel)
+            .setPositiveButton("✨ Tạo lời đánh thức"){_,_->
+                val newKey=keyField.text.toString().trim()
+                if(newKey.isNotEmpty()) GeminiSecrets.save(this,newKey)
+                val key=GeminiSecrets.load(this)
                 val idea=topic.text.toString().trim().take(400)
                 if(key.isNullOrBlank() || idea.isBlank()) {
-                    Toast.makeText(this,"Hãy nhập API key và ý tưởng",Toast.LENGTH_LONG).show()
+                    Toast.makeText(this,"Vui lòng nhập API key và ý tưởng",Toast.LENGTH_LONG).show()
                 } else {
-                    prefs.edit().putInt("gemini_profile",selected).putString("gemini_topic",idea).apply()
+                    prefs.edit().putString("gemini_topic",idea).apply()
                     Thread {
                         try {
                             val url=URL("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent")
@@ -152,31 +146,35 @@ class MainActivity : Activity() {
                                 setRequestProperty("Content-Type","application/json")
                                 setRequestProperty("x-goog-api-key",key)
                             }
-                            val prompt="Viết lời đánh thức tiếng Việt, vui vẻ kiểu chibi, 1-3 câu, không markdown. Chủ đề: "+idea
-                            val body=JSONObject().put("contents",org.json.JSONArray().put(
+                            val prompt="Viết lời đánh thức tiếng Việt vui nhộn, chibi, dài 1-3 câu, không markdown. Ý tưởng: "+idea
+                            val payload=JSONObject().put("contents",org.json.JSONArray().put(
                                 JSONObject().put("parts",org.json.JSONArray().put(JSONObject().put("text",prompt)))))
-                            conn.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
+                            conn.outputStream.use { it.write(payload.toString().toByteArray(Charsets.UTF_8)) }
                             val status=conn.responseCode
-                            if(status !in 200..299) throw Exception("Gemini HTTP $status (kiểm tra key, hạn mức hoặc thanh toán)")
+                            if(status !in 200..299) throw Exception("Gemini HTTP "+status+" (kiểm tra key/hạn mức)")
                             val result=JSONObject(conn.inputStream.bufferedReader().use { it.readText() })
                             conn.disconnect()
                             val message=result.getJSONArray("candidates").getJSONObject(0)
                                 .getJSONObject("content").getJSONArray("parts").getJSONObject(0)
                                 .getString("text").trim().take(500)
-                            if(message.isBlank()) throw Exception("Gemini trả về nội dung trống")
                             runOnUiThread {
-                                prefs.edit().putString("message",message).apply()
-                                AlertDialog.Builder(this).setTitle("🌸 Lời đánh thức AI")
-                                    .setMessage(message).setPositiveButton("Nghe thử"){_,_->
-                                        tts?.speak(message,TextToSpeech.QUEUE_FLUSH,null,"gemini-preview")
-                                    }.setNegativeButton("Đóng",null).show()
+                                AlertDialog.Builder(this).setTitle("🐰 Lời đánh thức Gemini")
+                                    .setMessage(message)
+                                    .setPositiveButton("💾 Dùng làm báo thức"){_,_->
+                                        prefs.edit().putString("message",message).apply()
+                                        Toast.makeText(this,"Đã lưu lời đánh thức",Toast.LENGTH_SHORT).show()
+                                    }.setNegativeButton("Bỏ qua",null).show()
                             }
                         } catch(e:Exception) {
-                            runOnUiThread { Toast.makeText(this,"Gemini: "+e.message,Toast.LENGTH_LONG).show() }
+                            runOnUiThread {
+                                AlertDialog.Builder(this).setTitle("Không tạo được lời AI")
+                                    .setMessage(e.message ?: "Kiểm tra mạng và API key")
+                                    .setPositiveButton("Đóng",null).show()
+                            }
                         }
                     }.start()
                 }
-            }.setNegativeButton("Hủy",null).show()
+            }.setNegativeButton("Đóng",null).show()
     }
     private fun messageDialog() {
         val input=EditText(this).apply { setSingleLine(false); setText(prefs.getString("message","Dậy thôi bạn ơi, chibi đang chờ bạn!")) }

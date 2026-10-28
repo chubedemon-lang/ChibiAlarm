@@ -32,7 +32,7 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: ChibiAlarm-v0.5-Growth-Coach-APK
+          name: ChibiAlarm-v0.6-Chibi-Life-APK
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30

@@ -38,6 +38,7 @@ class MainActivity : Activity() {
         val root=LinearLayout(this).apply { orientation=1; setPadding(28,35,28,25); setBackgroundColor(Color.rgb(255,237,248)) }
         root.addView(title("🐰 Chibi Alarm 🌸",30f))
         root.addView(title("Dậy thôi, thế giới đáng yêu đang chờ! ☀️",15f))
+        root.addView(Button(this).apply { text="🌱 Trợ lý luyện tập & phát triển bản thân"; setOnClickListener { startActivity(Intent(this@MainActivity,GrowthActivity::class.java)) } })
         root.addView(Button(this).apply { text="＋ Thêm báo thức"; setOnClickListener { createAlarm() } })
         root.addView(Button(this).apply { text="🎙️ Thư viện giọng nói"; setOnClickListener { voiceDialog() } })
         root.addView(Button(this).apply { text="✨ Gemini AI - Lời đánh thức"; setOnClickListener { geminiDialog() } })

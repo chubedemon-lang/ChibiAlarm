@@ -31,11 +31,10 @@ class RingActivity : Activity() {
             }
         })
         root.addView(Button(this).apply {
-            text = "Ngủ thêm 5 phút"
+            text = "😴 Ngủ thêm"
             setOnClickListener {
                 val id = intent.getIntExtra("id", 0)
-                val pi = Scheduler.pending(this@RingActivity, id)
-                getSystemService(AlarmManager::class.java).setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, System.currentTimeMillis()+getSharedPreferences("settings",0).getInt("snooze",5)*60000L, pi)
+                Scheduler.snooze(this@RingActivity, id, getSharedPreferences("settings",0).getInt("snooze",5))
                 stop(); finish()
             }
         })

@@ -43,6 +43,8 @@ class RingActivity : Activity() {
             if (status == TextToSpeech.SUCCESS) {
                 val settings = getSharedPreferences("settings",0)
                 speech?.setLanguage(Locale("vi","VN"))
+                speech?.setPitch(settings.getFloat("pitch",1f))
+                speech?.setSpeechRate(settings.getFloat("rate",1f))
                 val voiceName = settings.getString("voice",null)
                 speech?.voices?.firstOrNull { it.name == voiceName }?.let { speech?.voice = it }
                 speech?.speak(settings.getString("message","Dậy thôi bạn ơi!") ?: "Dậy thôi!", TextToSpeech.QUEUE_FLUSH, null, "wake")

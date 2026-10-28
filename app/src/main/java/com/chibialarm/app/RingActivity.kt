@@ -3,12 +3,15 @@ import android.app.*
 import android.os.*
 import android.graphics.Color
 import android.media.*
+import android.speech.tts.TextToSpeech
+import java.util.Locale
 import android.view.*
 import android.widget.*
 import kotlin.random.Random
 
 class RingActivity : Activity() {
     private var player: MediaPlayer? = null
+    private var speech: TextToSpeech? = null
     private var correct = 0
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -32,16 +35,26 @@ class RingActivity : Activity() {
             setOnClickListener {
                 val id = intent.getIntExtra("id", 0)
                 val pi = Scheduler.pending(this@RingActivity, id)
-                getSystemService(AlarmManager::class.java).setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, System.currentTimeMillis()+300000, pi)
+                getSystemService(AlarmManager::class.java).setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, System.currentTimeMillis()+getSharedPreferences("settings",0).getInt("snooze",5)*60000L, pi)
                 stop(); finish()
             }
         })
         setContentView(root)
+        speech = TextToSpeech(this) { status ->
+            if (status == TextToSpeech.SUCCESS) {
+                val settings = getSharedPreferences("settings",0)
+                speech?.setLanguage(Locale("vi","VN"))
+                val voiceName = settings.getString("voice",null)
+                speech?.voices?.firstOrNull { it.name == voiceName }?.let { speech?.voice = it }
+                speech?.speak(settings.getString("message","Dậy thôi bạn ơi!") ?: "Dậy thôi!", TextToSpeech.QUEUE_FLUSH, null, "wake")
+            }
+        }
         try {
             player = MediaPlayer.create(this, android.provider.Settings.System.DEFAULT_ALARM_ALERT_URI)?.apply { isLooping = true; start() }
         } catch (_: Exception) {}
     }
     private fun stop() {
+        speech?.stop(); speech?.shutdown(); speech=null
         player?.stop(); player?.release(); player = null
         getSystemService(NotificationManager::class.java).cancel(intent.getIntExtra("id", 0))
     }

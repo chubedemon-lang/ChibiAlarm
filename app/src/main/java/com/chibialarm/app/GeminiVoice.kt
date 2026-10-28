@@ -19,12 +19,24 @@ object GeminiVoice {
         "soft, gentle and peaceful","energetic morning wake-up","natural, friendly",
         "confident and motivational","slow and reassuring","excited, lively")
     fun create(ctx:Context,key:String,words:String,voice:String,style:String):File {
+        var last:Exception?=null
+        for(model in listOf("gemini-3.8-flash-tts","gemini-3.8-flash-lite-tts")) {
+            try { return createWithModel(ctx,key,words,voice,style,model) }
+            catch(e:Exception) {
+                last=e
+                val msg=e.message.orEmpty()
+                if(!msg.contains("HTTP 404") && !msg.contains("HTTP 429")) throw e
+            }
+        }
+        throw last ?: IllegalStateException("Không tìm được model TTS tương thích.")
+    }
+    private fun createWithModel(ctx:Context,key:String,words:String,voice:String,style:String,model:String):File {
         require(key.isNotBlank()) { "Hãy nhập API key trong Gemini AI Studio." }
         val input=JSONArray().put(JSONObject().put("type","user_input").put("content",
             JSONArray().put(JSONObject().put("type","text").put("text",words.take(400))
                 .put("annotations",JSONArray().put(JSONObject().put("type","speech_metadata").put("style",style))))))
         val payload=JSONObject()
-            .put("model","gemini-3.8-flash-tts")
+            .put("model",model)
             .put("input",input)
             .put("response_format",JSONObject().put("type","audio"))
             .put("generation_config",JSONObject().put("speech_config",

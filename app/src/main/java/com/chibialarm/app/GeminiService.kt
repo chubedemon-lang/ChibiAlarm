@@ -35,10 +35,12 @@ object GeminiService {
             return JSONObject(text)
         } finally { conn.disconnect() }
     }
-    fun generate(key:String,idea:String):Pair<String,String> {
+    fun generate(key:String,idea:String):Pair<String,String> = generatePrompt(key,
+        "Hãy viết lời đánh thức bằng tiếng Việt, chibi, vui vẻ, dài 1-3 câu, không markdown. Chủ đề: "+idea)
+    fun generatePrompt(key:String,prompt:String):Pair<String,String> {
         val models=mutableListOf<String>()
         var page:String?=null
-        repeat(4) {
+        for(pageIndex in 0 until 4) {
             val response=request("models?pageSize=100"+(if(page.isNullOrBlank()) "" else "&pageToken="+java.net.URLEncoder.encode(page,"UTF-8")),key)
             val arr=response.optJSONArray("models") ?: JSONArray()
             for(i in 0 until arr.length()) {
@@ -46,10 +48,11 @@ object GeminiService {
                 val methods=model.optJSONArray("supportedGenerationMethods") ?: JSONArray()
                 val supported=(0 until methods.length()).any { methods.optString(it)=="generateContent" }
                 val name=model.optString("name")
-                if(supported && name.startsWith("models/gemini-") && !name.contains("embedding")) models.add(name)
+                if(supported && name.startsWith("models/gemini-") &&
+                    listOf("embedding","tts","image","audio","live","robotics","computer-use").none { name.contains(it) }) models.add(name)
             }
             page=response.optString("nextPageToken").takeIf { it.isNotBlank() }
-            if(page==null) return@repeat
+            if(page==null) break
         }
         if(models.isEmpty()) throw IllegalStateException("API key này không có model Gemini hỗ trợ generateContent.")
         val ordered=models.distinct().sortedWith(compareBy<String> {
@@ -60,7 +63,6 @@ object GeminiService {
                 else -> 3
             }
         }.thenByDescending { it })
-        val prompt="Hãy viết lời đánh thức bằng tiếng Việt, chibi, vui vẻ, dài 1-3 câu, không markdown. Chủ đề: "+idea
         val payload=JSONObject().put("contents",JSONArray().put(
             JSONObject().put("parts",JSONArray().put(JSONObject().put("text",prompt))))).toString()
         var lastError:Exception?=null
@@ -74,7 +76,7 @@ object GeminiService {
                         if(isNotEmpty()) append("\n")
                         append(parts.optJSONObject(i)?.optString("text","") ?: "")
                     }
-                }.trim().take(500)
+                }.trim().take(12000)
                 if(text.isNotBlank()) return text to model.removePrefix("models/")
                 lastError=IllegalStateException("Model không trả về văn bản. Có thể phản hồi bị chặn.")
             } catch(e:Exception) {

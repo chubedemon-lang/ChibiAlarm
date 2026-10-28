@@ -12,7 +12,12 @@ object Scheduler {
         val cal = Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, h); set(Calendar.MINUTE, m)
             set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
-            if (timeInMillis <= System.currentTimeMillis()) add(Calendar.DAY_OF_YEAR, 1)
+            val data = ctx.getSharedPreferences("alarms", 0).getString(id.toString(), null)?.split(",")
+            val mask = data?.getOrNull(2)?.toIntOrNull() ?: 127
+            var count = 0
+            while ((timeInMillis <= System.currentTimeMillis() || (mask and (1 shl (get(Calendar.DAY_OF_WEEK)-1))) == 0) && count < 8) {
+                add(Calendar.DAY_OF_YEAR, 1); count++
+            }
         }
         val am = ctx.getSystemService(AlarmManager::class.java)
         if (Build.VERSION.SDK_INT >= 31 && !am.canScheduleExactAlarms()) {

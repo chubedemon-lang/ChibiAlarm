@@ -73,8 +73,32 @@ class MainActivity : Activity() {
         hero.addView(TextView(this).apply {
             text="Trợ lý nhỏ • Mục tiêu lớn"; textSize=15f; gravity=Gravity.CENTER; setTextColor(Color.rgb(107,74,114))
         })
-        root.addView(hero,LinearLayout.LayoutParams(-1,-2).apply { bottomMargin=23 })
-        root.addView(actionCard("🌱","Growth Coach","Thói quen, lịch luyện tập & thống kê 7 ngày",Color.rgb(218,247,222)) {
+        root.addView(hero,LinearLayout.LayoutParams(-1,-2).apply { bottomMargin=18 })
+        val info=title("🌟 Hôm nay: "+LifeData.count(this)+"/"+LifeData.routines(this).size+
+            " hoạt động   •   ⭐ "+LifeData.points(this)+" XP   •   🔥 "+LifeData.streak(this)+" ngày",15f)
+        root.addView(info)
+        val tabs=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
+        listOf(Triple("📆 Lịch",RoutineActivity::class.java,0),Triple("🎯 Mục tiêu",GoalsActivity::class.java,0),
+            Triple("✨ AI Coach",CoachActivity::class.java,0)).forEach { tab ->
+            tabs.addView(Button(this).apply {
+                text=tab.first;textSize=12f;isAllCaps=false
+                setOnClickListener { startActivity(Intent(this@MainActivity,tab.second)) }
+            },LinearLayout.LayoutParams(0,-2,1f))
+        }
+        root.addView(tabs)
+        root.addView(actionCard("📅","Lịch trình thông minh","Từng giờ trong ngày • nhắc đúng giờ • check-in",Color.rgb(224,249,231)) {
+            startActivity(Intent(this,RoutineActivity::class.java))
+        })
+        root.addView(actionCard("🎯","Thử thách 30/90 ngày","Mục tiêu • điểm XP • tiến độ mỗi ngày",Color.rgb(255,239,207)) {
+            startActivity(Intent(this,GoalsActivity::class.java))
+        })
+        root.addView(actionCard("🤖","Gemini Life Coach","Chat AI • lập kế hoạch • duyệt lịch trước khi lưu",Color.rgb(225,218,255)) {
+            startActivity(Intent(this,CoachActivity::class.java))
+        })
+        root.addView(actionCard("🎧","Gemini Voice PRO","30 giọng AI mẫu • tạo file giọng báo thức",Color.rgb(255,223,246)) {
+            startActivity(Intent(this,AIVoiceActivity::class.java))
+        })
+        root.addView(actionCard("🌱","Thói quen hằng ngày","Thói quen, lịch luyện tập & thống kê 7 ngày",Color.rgb(218,247,222)) {
             startActivity(Intent(this,GrowthActivity::class.java))
         })
         root.addView(actionCard("⏰","Thêm báo thức","Đánh thức thông minh • Lặp theo ngày",Color.rgb(255,222,233)) { createAlarm() })
@@ -225,6 +249,10 @@ class MainActivity : Activity() {
             row.addView(Button(this).apply { text="Xóa"; setOnClickListener { Scheduler.cancel(this@MainActivity,id); alarms.edit().remove(key).apply(); refresh() } })
             list.addView(row)
         }
+    }
+    override fun onResume() {
+        super.onResume()
+        if(::list.isInitialized) render()
     }
     override fun onDestroy() { tts?.stop(); tts?.shutdown(); super.onDestroy() }
 }

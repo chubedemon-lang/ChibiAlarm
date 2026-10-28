@@ -9,6 +9,9 @@ import android.speech.tts.TextToSpeech
 import android.view.*
 import android.widget.*
 import java.util.*
+import java.net.URL
+import javax.net.ssl.HttpsURLConnection
+import org.json.JSONObject
 
 class MainActivity : Activity() {
     private lateinit var list: LinearLayout
@@ -37,6 +40,7 @@ class MainActivity : Activity() {
         root.addView(title("Dậy thôi, thế giới đáng yêu đang chờ! ☀️",15f))
         root.addView(Button(this).apply { text="＋ Thêm báo thức"; setOnClickListener { createAlarm() } })
         root.addView(Button(this).apply { text="🎙️ Thư viện giọng nói"; setOnClickListener { voiceDialog() } })
+        root.addView(Button(this).apply { text="✨ Gemini AI - Lời đánh thức"; setOnClickListener { geminiDialog() } })
         root.addView(Button(this).apply { text="🎭 12 phong cách giọng"; setOnClickListener { styleDialog() } })
         root.addView(Button(this).apply { text="💬 Sửa lời đánh thức"; setOnClickListener { messageDialog() } })
         root.addView(Button(this).apply { text="😴 Thời gian ngủ thêm"; setOnClickListener { snoozeDialog() } })
@@ -96,6 +100,49 @@ class MainActivity : Activity() {
                 tts?.speak(prefs.getString("message","Dậy thôi bạn ơi!")!!,TextToSpeech.QUEUE_FLUSH,null,"style-preview")
                 dialog.dismiss()
             }.setNegativeButton("Đóng",null).show()
+    }
+    private fun geminiDialog() {
+        val panel=LinearLayout(this).apply { orientation=1; setPadding(24,12,24,12) }
+        val endpoint=EditText(this).apply {
+            hint="https://your-secure-backend.example/generate"
+            setSingleLine(true); setText(prefs.getString("gemini_endpoint",""))
+        }
+        val topic=EditText(this).apply {
+            hint="Ví dụ: Gọi dậy kiểu hài hước, động viên đi làm"
+            setText(prefs.getString("gemini_topic","Chào buổi sáng theo phong cách chibi vui vẻ"))
+        }
+        panel.addView(title("🔐 Máy chủ Gemini HTTPS (không nhập API key)",15f))
+        panel.addView(endpoint); panel.addView(title("💡 Ý tưởng lời đánh thức",15f)); panel.addView(topic)
+        AlertDialog.Builder(this).setTitle("✨ Gemini AI Studio").setView(panel)
+            .setPositiveButton("Tạo lời đánh thức"){_,_->
+                val url=endpoint.text.toString().trim()
+                val idea=topic.text.toString().trim().take(400)
+                if (!url.startsWith("https://") || idea.isEmpty()) {
+                    Toast.makeText(this,"Cần HTTPS backend và nội dung hợp lệ",Toast.LENGTH_LONG).show()
+                } else {
+                    prefs.edit().putString("gemini_endpoint",url).putString("gemini_topic",idea).apply()
+                    Thread {
+                        try {
+                            val conn=(URL(url).openConnection() as HttpsURLConnection).apply {
+                                requestMethod="POST"; connectTimeout=12000; readTimeout=30000
+                                doOutput=true; setRequestProperty("Content-Type","application/json")
+                            }
+                            conn.outputStream.use { it.write(JSONObject().put("topic",idea).toString().toByteArray(Charsets.UTF_8)) }
+                            if(conn.responseCode !in 200..299) throw Exception("HTTP "+conn.responseCode)
+                            val response=conn.inputStream.bufferedReader().use { it.readText() }
+                            conn.disconnect()
+                            val message=JSONObject(response).getString("message").take(500)
+                            runOnUiThread {
+                                prefs.edit().putString("message",message).apply()
+                                AlertDialog.Builder(this).setTitle("🌸 Gemini đã tạo lời đánh thức")
+                                    .setMessage(message).setPositiveButton("Lưu",null).show()
+                            }
+                        } catch(e:Exception) {
+                            runOnUiThread { Toast.makeText(this,"Không kết nối được Gemini backend: "+e.message,Toast.LENGTH_LONG).show() }
+                        }
+                    }.start()
+                }
+            }.setNegativeButton("Hủy",null).show()
     }
     private fun messageDialog() {
         val input=EditText(this).apply { setSingleLine(false); setText(prefs.getString("message","Dậy thôi bạn ơi, chibi đang chờ bạn!")) }

@@ -71,7 +71,7 @@ class RoutineActivity:Activity() {
             hour=existing?.hour ?: Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
             minute=existing?.minute ?: 0
         }
-        box.addView(picker,LinearLayout.LayoutParams(-1,280))
+        box.addView(picker)
         val category=Spinner(this).apply { adapter=ArrayAdapter(this@RoutineActivity,android.R.layout.simple_spinner_dropdown_item,categories) }
         category.setSelection(categories.indexOf(existing?.category).coerceAtLeast(0));box.addView(category)
         box.addView(text("Thời lượng (phút)",14f))

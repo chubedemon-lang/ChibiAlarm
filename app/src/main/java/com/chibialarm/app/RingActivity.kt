@@ -39,24 +39,42 @@ class RingActivity : Activity() {
             }
         })
         setContentView(root)
-        speech = TextToSpeech(this) { status ->
-            if (status == TextToSpeech.SUCCESS) {
-                val settings = getSharedPreferences("settings",0)
-                speech?.setLanguage(Locale("vi","VN"))
-                speech?.setPitch(settings.getFloat("pitch",1f))
-                speech?.setSpeechRate(settings.getFloat("rate",1f))
-                val voiceName = settings.getString("voice",null)
-                speech?.voices?.firstOrNull { it.name == voiceName }?.let { speech?.voice = it }
-                speech?.speak(settings.getString("message","Dậy thôi bạn ơi!") ?: "Dậy thôi!", TextToSpeech.QUEUE_FLUSH, null, "wake")
+        val settings=getSharedPreferences("settings",0)
+        val aiFile=java.io.File(filesDir,"chibi_voice_alarm.wav")
+        val useAI=settings.getBoolean("aiVoiceEnabled",false) && aiFile.exists()
+        if(!useAI) {
+            speech = TextToSpeech(this) { status ->
+                if(status==TextToSpeech.SUCCESS) {
+                    speech?.setLanguage(Locale("vi","VN"))
+                    speech?.setPitch(settings.getFloat("pitch",1f))
+                    speech?.setSpeechRate(settings.getFloat("rate",1f))
+                    val voiceName=settings.getString("voice",null)
+                    speech?.voices?.firstOrNull { it.name==voiceName }?.let { speech?.voice=it }
+                    speech?.speak(settings.getString("message","Dậy thôi bạn ơi!") ?: "Dậy thôi!",
+                        TextToSpeech.QUEUE_FLUSH,null,"wake")
+                }
             }
         }
         try {
-            player = MediaPlayer.create(this, android.provider.Settings.System.DEFAULT_ALARM_ALERT_URI)?.apply { isLooping = true; start() }
-        } catch (_: Exception) {}
+            player=if(useAI) MediaPlayer().apply {
+                setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
+                setDataSource(aiFile.absolutePath);isLooping=true;prepare();start()
+            } else MediaPlayer.create(this,android.provider.Settings.System.DEFAULT_ALARM_ALERT_URI)?.apply {
+                isLooping=true;start()
+            }
+        } catch (_:Exception) {
+            try {
+                player?.release()
+                player=MediaPlayer.create(this,android.provider.Settings.System.DEFAULT_ALARM_ALERT_URI)?.apply { isLooping=true;start() }
+            } catch (_:Exception) {}
+        }
     }
     private fun stop() {
         speech?.stop(); speech?.shutdown(); speech=null
-        player?.stop(); player?.release(); player = null
+        try { player?.stop() } catch (_:Exception) {}
+        try { player?.release() } catch (_:Exception) {}
+        player=null
         getSystemService(NotificationManager::class.java).cancel(intent.getIntExtra("id", 0))
     }
     override fun onDestroy() { stop(); super.onDestroy() }

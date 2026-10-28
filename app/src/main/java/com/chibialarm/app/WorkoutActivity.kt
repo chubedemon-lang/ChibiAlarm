@@ -90,7 +90,7 @@ class WorkoutActivity:Activity() {
                 AlertDialog.Builder(this@WorkoutActivity).setTitle("Xóa buổi tập?")
                     .setPositiveButton("Xóa"){_,_->
                         val current=WorkoutData.history(this@WorkoutActivity).toMutableList()
-                        val original=all.indexOf(w)
+                        val original=all.size-1-index
                         if(original in current.indices)current.removeAt(original)
                         WorkoutData.save(this@WorkoutActivity,current);render()
                     }.setNegativeButton("Hủy",null).show()

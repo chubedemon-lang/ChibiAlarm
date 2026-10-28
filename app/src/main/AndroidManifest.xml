@@ -5,7 +5,7 @@
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/>
     <uses-permission android:name="android.permission.VIBRATE"/>
     <uses-permission android:name="android.permission.INTERNET"/>
-    <application android:theme="@android:style/Theme.Material.Light.NoActionBar" android:label="Chibi Alarm">
+    <application android:theme="@android:style/Theme.Material.Light.NoActionBar" android:label="Chibi Life" android:icon="@drawable/chibi_launcher">
         <activity android:name=".GrowthActivity" android:exported="false"/>
         <receiver android:name=".GrowthReminderReceiver" android:exported="false"/>
         <activity android:name=".RingActivity" android:exported="false" android:showWhenLocked="true" android:turnScreenOn="true"/>

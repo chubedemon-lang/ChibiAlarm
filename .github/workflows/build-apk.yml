@@ -19,10 +19,10 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: Android SDK
-        uses: android-actions/setup-android@v3
-      - name: Install SDK
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Install Android SDK components
+        run: |
+          echo "y" | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platforms;android-35" "build-tools;35.0.0"
       - name: Gradle 8.11.1
         uses: gradle/actions/setup-gradle@v4
         with:

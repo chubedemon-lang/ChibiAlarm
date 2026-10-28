@@ -108,8 +108,8 @@ class MainActivity : Activity() {
         root.addView(actionCard("🎭","12 phong cách giọng","Chibi, robot, trầm ấm, hài hước...",Color.rgb(255,239,202)) { styleDialog() })
         root.addView(actionCard("💬","Lời đánh thức","Tự viết nội dung báo thức",Color.rgb(255,228,235)) { messageDialog() })
         root.addView(actionCard("😴","Ngủ thêm","Điều chỉnh thời gian snooze",Color.rgb(224,238,255)) { snoozeDialog() })
-        root.addView(actionCard("🔔","Quyền báo thức","Cấp quyền để báo thức đúng giờ",Color.rgb(232,243,228)) {
-            if(Build.VERSION.SDK_INT>=31) startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM))
+        root.addView(actionCard("🔔","Thiết lập báo thức","Quyền Android 16 • nhạc chuông • âm lượng tăng dần • thử chuông",Color.rgb(232,243,228)) {
+            startActivity(Intent(this,AlarmSettingsActivity::class.java))
         })
         root.addView(title("⏰ Báo thức của bạn"))
         list=LinearLayout(this).apply { orientation=1 }

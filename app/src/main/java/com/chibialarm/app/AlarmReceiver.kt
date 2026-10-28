@@ -6,7 +6,7 @@ class AlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val id = intent.getIntExtra("id", 0)
         val fields = context.getSharedPreferences("alarms", 0).getString(id.toString(), null)?.split(",")
-        if (fields != null && fields.size >= 2) Scheduler.schedule(context, id, fields[0].toInt(), fields[1].toInt())
+        if (!intent.getBooleanExtra("snooze", false) && fields != null && fields.size >= 2) Scheduler.schedule(context, id, fields[0].toInt(), fields[1].toInt())
         val manager = context.getSystemService(NotificationManager::class.java)
         val channel = "alarms"
         manager.createNotificationChannel(NotificationChannel(channel, "Báo thức", NotificationManager.IMPORTANCE_HIGH).apply {

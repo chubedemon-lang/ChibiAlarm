@@ -27,10 +27,10 @@ object GeminiService {
                     400 -> "Yêu cầu không hợp lệ."
                     401,403 -> "API key không được chấp nhận hoặc thiếu quyền."
                     404 -> "Model hoặc endpoint không tồn tại."
-                    429 -> "Đã hết hạn mức hoặc vượt tốc độ gọi API."
+                    429 -> "Google đã giới hạn lượt gọi hoặc quota của dự án. Hãy kiểm tra hạn mức trong Google AI Studio, chờ thời điểm được đặt lại hoặc dùng API key thuộc dự án khác có quota. Gemini Pro không tự cấp quota API."
                     else -> "Lỗi kết nối Gemini."
                 }
-                throw IllegalStateException("HTTP $status: $hint "+(detail ?: "").take(260))
+                throw IllegalStateException("HTTP $status: $hint"+if(status==429) "" else " "+(detail ?: "").take(180))
             }
             return JSONObject(text)
         } finally { conn.disconnect() }
@@ -57,8 +57,8 @@ object GeminiService {
         if(models.isEmpty()) throw IllegalStateException("API key này không có model Gemini hỗ trợ generateContent.")
         val ordered=models.distinct().sortedWith(compareBy<String> {
             when {
-                it.contains("flash") && !it.contains("lite") -> 0
-                it.contains("flash-lite") -> 1
+                it.contains("flash-lite") -> 0
+                it.contains("flash") && !it.contains("lite") -> 1
                 it.contains("pro") -> 2
                 else -> 3
             }
@@ -66,7 +66,7 @@ object GeminiService {
         val payload=JSONObject().put("contents",JSONArray().put(
             JSONObject().put("parts",JSONArray().put(JSONObject().put("text",prompt))))).toString()
         var lastError:Exception?=null
-        for(model in ordered.take(6)) {
+        for(model in ordered.take(3)) {
             try {
                 val response=request("$model:generateContent",key,payload)
                 val candidates=response.optJSONArray("candidates")

@@ -30,6 +30,8 @@ class AlarmReceiver : BroadcastReceiver() {
 
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        val growth=context.getSharedPreferences("growth",Context.MODE_PRIVATE)
+        if(growth.contains("remindHour")) GrowthReminder.schedule(context,growth.getInt("remindHour",8),growth.getInt("remindMinute",0))
         for ((key, value) in context.getSharedPreferences("alarms", 0).all) {
             val id = key.toIntOrNull() ?: continue
             val p = (value as? String)?.split(",") ?: continue

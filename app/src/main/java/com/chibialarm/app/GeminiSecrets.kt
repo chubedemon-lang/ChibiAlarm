@@ -31,7 +31,7 @@ object GeminiSecrets {
         val encoded = Base64.encodeToString(cipher.iv + cipher.doFinal(value.toByteArray(Charsets.UTF_8)), Base64.NO_WRAP)
         context.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit().putString("key", encoded).apply()
     }
-    fun load(context: Context): String? = try {
+    fun load(context: Context): String? { return try {
         val saved = context.getSharedPreferences(PREF, Context.MODE_PRIVATE).getString("key", null) ?: return null
         val bytes = Base64.decode(saved, Base64.DEFAULT)
         if (bytes.size < 29) return null
@@ -39,6 +39,7 @@ object GeminiSecrets {
         cipher.init(Cipher.DECRYPT_MODE, key(), GCMParameterSpec(128, bytes.copyOfRange(0,12)))
         String(cipher.doFinal(bytes.copyOfRange(12,bytes.size)), Charsets.UTF_8)
     } catch (_: Exception) { null }
+    }
     fun clear(context: Context) {
         context.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit().remove("key").apply()
     }

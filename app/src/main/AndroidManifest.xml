@@ -5,7 +5,20 @@
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/>
     <uses-permission android:name="android.permission.VIBRATE"/>
     <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-feature android:name="android.software.app_widgets" android:required="false"/>
     <application android:theme="@android:style/Theme.Material.Light.NoActionBar" android:label="Chibi Life" android:icon="@drawable/chibi_launcher">
+        <activity android:name=".RoutineActivity" android:exported="false"/>
+        <activity android:name=".GoalsActivity" android:exported="false"/>
+        <activity android:name=".CoachActivity" android:exported="false"/>
+        <activity android:name=".AIVoiceActivity" android:exported="false"/>
+        <receiver android:name=".RoutineReminderReceiver" android:exported="false"/>
+        <receiver android:name=".FocusDoneReceiver" android:exported="false"/>
+        <receiver android:name=".ChibiWidget" android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/chibi_widget_info"/>
+        </receiver>
         <activity android:name=".VoiceStudioActivity" android:exported="false"/>
         <activity android:name=".FocusActivity" android:exported="false"/>
         <activity android:name=".GrowthActivity" android:exported="false"/>

@@ -177,26 +177,9 @@ class MainActivity : Activity() {
                     prefs.edit().putString("gemini_topic",idea).apply()
                     Thread {
                         try {
-                            val url=URL("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent")
-                            val conn=(url.openConnection() as HttpsURLConnection).apply {
-                                requestMethod="POST"; connectTimeout=12000; readTimeout=30000
-                                doOutput=true
-                                setRequestProperty("Content-Type","application/json")
-                                setRequestProperty("x-goog-api-key",key)
-                            }
-                            val prompt="Viết lời đánh thức tiếng Việt vui nhộn, chibi, dài 1-3 câu, không markdown. Ý tưởng: "+idea
-                            val payload=JSONObject().put("contents",org.json.JSONArray().put(
-                                JSONObject().put("parts",org.json.JSONArray().put(JSONObject().put("text",prompt)))))
-                            conn.outputStream.use { it.write(payload.toString().toByteArray(Charsets.UTF_8)) }
-                            val status=conn.responseCode
-                            if(status !in 200..299) throw Exception("Gemini HTTP "+status+" (kiểm tra key/hạn mức)")
-                            val result=JSONObject(conn.inputStream.bufferedReader().use { it.readText() })
-                            conn.disconnect()
-                            val message=result.getJSONArray("candidates").getJSONObject(0)
-                                .getJSONObject("content").getJSONArray("parts").getJSONObject(0)
-                                .getString("text").trim().take(500)
+                            val (message,model)=GeminiService.generate(key,idea)
                             runOnUiThread {
-                                AlertDialog.Builder(this).setTitle("🐰 Lời đánh thức Gemini")
+                                AlertDialog.Builder(this).setTitle("🐰 Lời đánh thức • "+model)
                                     .setMessage(message)
                                     .setPositiveButton("💾 Dùng làm báo thức"){_,_->
                                         prefs.edit().putString("message",message).apply()

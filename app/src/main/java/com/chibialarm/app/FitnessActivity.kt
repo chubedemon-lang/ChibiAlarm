@@ -48,6 +48,43 @@ class FitnessActivity:Activity() {
             setSelection(prefs.getInt("fitTime",2).coerceIn(0,mins.lastIndex))
         }
         root.addView(length)
+        root.addView(txt("🤖 Chibi gợi ý buổi tập hôm nay",20f))
+        val goals= arrayOf("Tăng sức mạnh","Tăng vận động tim mạch","Giãn cơ & linh hoạt","Giảm mỏi do ngồi nhiều","Mới bắt đầu","Thử thách mới")
+        val energyLevels=arrayOf("Hôm nay hơi mệt","Cảm thấy bình thường","Rất nhiều năng lượng")
+        val goalSpinner=Spinner(this).apply {
+            adapter=ArrayAdapter(this@FitnessActivity,android.R.layout.simple_spinner_dropdown_item,goals)
+            setSelection(prefs.getInt("recommendGoal",0).coerceIn(0,goals.lastIndex))
+        }
+        root.addView(goalSpinner)
+        val energySpinner=Spinner(this).apply {
+            adapter=ArrayAdapter(this@FitnessActivity,android.R.layout.simple_spinner_dropdown_item,energyLevels)
+            setSelection(prefs.getInt("recommendEnergy",1).coerceIn(0,2))
+        }
+        root.addView(energySpinner)
+        root.addView(Button(this).apply {
+            text="🐰 Gợi ý chương trình phù hợp"
+            setOnClickListener {
+                val goal=goalSpinner.selectedItemPosition
+                val energy=energySpinner.selectedItemPosition
+                prefs.edit().putInt("recommendGoal",goal).putInt("recommendEnergy",energy).apply()
+                val id=when {
+                    energy==0->"recovery"
+                    goal==0 && level.selectedItemPosition==2->"advanced"
+                    goal==0->"full"
+                    goal==1->"lowcardio"
+                    goal==2->"mobility"
+                    goal==3->"desk"
+                    goal==4->"starter"
+                    level.selectedItemPosition==0->"starter"
+                    else->"advanced"
+                }
+                val p=TrainingCatalog.byId(id)
+                AlertDialog.Builder(this@FitnessActivity).setTitle("🐰 Chibi đề xuất: "+p.name)
+                    .setMessage("Vì bạn chọn '${goals[goal]}' và '${energyLevels[energy]}', hãy thử ${p.subtitle.lowercase()}.\n\nĐây là gợi ý từ quy tắc trên máy, không phải AI chẩn đoán hay đánh giá sức khỏe.")
+                    .setPositiveButton("▶ Bắt đầu"){_,_->startProgram(p)}
+                    .setNegativeButton("Chọn bài khác",null).show()
+            }
+        })
         val actions=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
         actions.addView(Button(this).apply {
             text="🥗 Dinh dưỡng"

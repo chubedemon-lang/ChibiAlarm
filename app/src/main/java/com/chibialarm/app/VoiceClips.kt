@@ -48,7 +48,7 @@ object VoiceClips {
         target.delete()
         write(ctx,clips(ctx).filterNot { it.id==clip.id })
     }
-    fun import(ctx:Context,source:Uri,label:String,kind:String="Audio đã xuất"):ImportedClip {
+    fun importClip(ctx:Context,source:Uri,label:String,kind:String="Audio đã xuất"):ImportedClip {
         val current=clips(ctx)
         require(current.size<MAX_CLIPS) { "Tối đa $MAX_CLIPS file. Hãy xóa bớt để nhập thêm." }
         val resolver=ctx.contentResolver

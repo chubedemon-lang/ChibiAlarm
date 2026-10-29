@@ -76,10 +76,12 @@ object GeminiVoice {
     }
     fun useAsAlarm(ctx:Context,preview:File) {
         require(preview.exists()) { "Chưa tạo âm thanh AI." }
-        preview.copyTo(File(ctx.filesDir,"chibi_voice_alarm.wav"),overwrite=true)
-        ctx.getSharedPreferences("settings",0).edit().putBoolean("aiVoiceEnabled",true).apply()
+        val target=File(ctx.filesDir,"chibi_voice_alarm.wav")
+        preview.copyTo(target,overwrite=true)
+        ctx.getSharedPreferences("settings",0).edit()
+            .putBoolean("aiVoiceEnabled",true).putString("alarmAudioPath",target.absolutePath).apply()
     }
     fun disable(ctx:Context) {
-        ctx.getSharedPreferences("settings",0).edit().putBoolean("aiVoiceEnabled",false).apply()
+        ctx.getSharedPreferences("settings",0).edit().putBoolean("aiVoiceEnabled",false).remove("alarmAudioPath").apply()
     }
 }

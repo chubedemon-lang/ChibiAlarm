@@ -176,7 +176,7 @@ class VoiceImportActivity:Activity() {
                 .setView(input)
                 .setPositiveButton("Nhập & lưu"){_,_->
                     try {
-                        val clip=VoiceClips.import(this,uri,input.text.toString(),"File do người dùng chọn")
+                        val clip=VoiceClips.importClip(this,uri,input.text.toString(),"File do người dùng chọn")
                         status.text="✅ Đã lưu: "+clip.name;populate()
                     }catch(e:Exception){status.text="Không nhập được: "+e.message}
                 }.setNegativeButton("Hủy",null).show()
@@ -220,7 +220,7 @@ class VoiceImportActivity:Activity() {
             AlertDialog.Builder(this).setTitle("🎤 Lưu ghi âm")
                 .setView(input).setPositiveButton("Lưu"){_,_->
                     try {
-                        val clip=VoiceClips.import(this,Uri.fromFile(file),input.text.toString(),"Tự ghi âm")
+                        val clip=VoiceClips.importClip(this,Uri.fromFile(file),input.text.toString(),"Tự ghi âm")
                         status.text="✅ Đã lưu: "+clip.name;populate()
                     }catch(e:Exception){status.text=e.message ?: "Không lưu được"}
                     finally {file.delete()}

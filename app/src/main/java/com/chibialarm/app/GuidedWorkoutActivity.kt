@@ -2,6 +2,9 @@ package com.chibialarm.app
 
 import android.app.*
 import android.content.*
+import android.net.Uri
+import android.provider.Settings
+import android.view.WindowInsets
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.*
@@ -72,6 +75,13 @@ class GuidedWorkoutActivity:Activity() {
         root.addView(progress)
         guide=TextView(this).apply { textSize=16f;setPadding(10,22,10,20);setTextColor(Color.rgb(70,61,85)) }
         root.addView(ScrollView(this).apply { addView(guide) },LinearLayout.LayoutParams(-1,0,1f))
+        val online=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
+        online.addView(Button(this).apply { text="▶ YouTube";setOnClickListener { searchVideo("youtube") } },LinearLayout.LayoutParams(0,-2,1f))
+        online.addView(Button(this).apply { text="♫ TikTok";setOnClickListener { searchVideo("tiktok") } },LinearLayout.LayoutParams(0,-2,1f))
+        root.addView(online)
+        root.addView(TextView(this).apply {
+            text="🌐 Video được tìm theo động tác đang chọn. Mở nguồn chính thức, cần kết nối mạng.";textSize=12f
+        })
         control=Button(this).apply { text="▶ Bắt đầu";setOnClickListener { if(paused)resume() else pause() } }
         root.addView(control)
         val actions=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
@@ -92,6 +102,14 @@ class GuidedWorkoutActivity:Activity() {
             textSize=12f
         })
         setContentView(root)
+        if(Build.VERSION.SDK_INT>=35) {
+            root.setOnApplyWindowInsetsListener { view,insets ->
+                val bars=insets.getInsets(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout())
+                view.setPadding(24+bars.left,27+bars.top,24+bars.right,24+bars.bottom)
+                insets
+            }
+            root.requestApplyInsets()
+        }
         spoken=TextToSpeech(this){ state ->
             ready=state==TextToSpeech.SUCCESS
             if(ready) {
@@ -103,6 +121,14 @@ class GuidedWorkoutActivity:Activity() {
             }
         }
         displayStep()
+    }
+    private fun searchVideo(site:String) {
+        val move=moves.getOrNull(index) ?: return
+        val query=move.name.replace(Regex("[^\\p{L}\\p{N} ]")," ").trim()+" hướng dẫn tập đúng kỹ thuật"
+        val url=if(site=="youtube") "https://www.youtube.com/results?search_query="+Uri.encode(query)
+            else "https://www.tiktok.com/search?q="+Uri.encode(query)
+        try { startActivity(Intent(Intent.ACTION_VIEW,Uri.parse(url))) }
+        catch(_:Exception) { Toast.makeText(this,"Không tìm thấy ứng dụng mở liên kết",Toast.LENGTH_LONG).show() }
     }
     private fun displayStep() {
         paused=true;handler.removeCallbacks(tick)

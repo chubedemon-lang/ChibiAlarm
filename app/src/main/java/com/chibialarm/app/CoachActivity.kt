@@ -1,6 +1,9 @@
 package com.chibialarm.app
 
 import android.app.*
+import android.content.Intent
+import android.speech.RecognizerIntent
+import android.speech.tts.TextToSpeech
 import android.os.Bundle
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
@@ -17,6 +20,10 @@ class CoachActivity:Activity() {
     private lateinit var prompt:EditText
     private lateinit var send:Button
     private var history=JSONArray()
+    private var speaker:TextToSpeech?=null
+    private var speakerReady=false
+    private var autoSpeak=false
+    private val speechRequest=4401
     private fun text(s:String,size:Float=16f)=TextView(this).apply { text=s;textSize=size;setTextColor(Color.rgb(82,55,99));setPadding(7,7,7,7) }
     private fun key():String? {
         val k=GeminiSecrets.load(this)
@@ -29,14 +36,30 @@ class CoachActivity:Activity() {
         super.onCreate(savedInstanceState)
         history=try { JSONArray(memory.getString("messages","[]")) }catch(_:Exception){ JSONArray() }
         val root=LinearLayout(this).apply { orientation=1;setPadding(17,18,17,14);setBackgroundColor(Color.rgb(250,241,255)) }
-        root.addView(text("✨ Gemini Life Coach",26f))
-        root.addView(text("Trợ lý AI giúp lập kế hoạch. Lịch chỉ thay đổi sau khi bạn xác nhận.",13f))
+        root.addView(text("🐰 Chibi • Huấn luyện viên cá nhân",26f))
+        root.addView(text("Nói chuyện bằng giọng Việt hoặc nhập tin nhắn. Ngoại tuyến dùng hướng dẫn có quy tắc; Gemini tùy chọn.",13f))
         val buttons=LinearLayout(this).apply { orientation=0 }
         buttons.addView(Button(this).apply { text="🗓 Tạo lịch AI";setOnClickListener { askPlan() } },LinearLayout.LayoutParams(0,-2,1f))
         buttons.addView(Button(this).apply { text="🗑 Xóa chat";setOnClickListener {
             history=JSONArray();memory.edit().remove("messages").apply();redraw()
         } })
         root.addView(buttons)
+        val voiceTools=LinearLayout(this).apply { orientation=0 }
+        voiceTools.addView(Button(this).apply { text="🎤 Nói";setOnClickListener { listen() } },LinearLayout.LayoutParams(0,-2,1f))
+        voiceTools.addView(Button(this).apply { text="🔊 Bật đọc";setOnClickListener {
+            autoSpeak=!autoSpeak;text=if(autoSpeak)"🔇 Tắt đọc" else "🔊 Bật đọc"
+            if(!autoSpeak)speaker?.stop()
+        } },LinearLayout.LayoutParams(0,-2,1f))
+        voiceTools.addView(Button(this).apply { text="■ Dừng";setOnClickListener { speaker?.stop() } },LinearLayout.LayoutParams(0,-2,1f))
+        root.addView(voiceTools)
+        speaker=TextToSpeech(this) { result ->
+            speakerReady=result==TextToSpeech.SUCCESS
+            if(speakerReady) { speaker?.setLanguage(Locale("vi","VN"))
+                val pref=getSharedPreferences("settings",0)
+                speaker?.setSpeechRate(pref.getFloat("rate",1f));speaker?.setPitch(pref.getFloat("pitch",1f))
+                speaker?.voices?.firstOrNull { it.name==pref.getString("voice","") }?.let { speaker?.voice=it }
+            }
+        }
         messages=LinearLayout(this).apply { orientation=1 }
         root.addView(ScrollView(this).apply { addView(messages) },LinearLayout.LayoutParams(-1,0,1f))
         val composer=LinearLayout(this).apply { orientation=0;gravity=Gravity.CENTER_VERTICAL }
@@ -68,6 +91,7 @@ class CoachActivity:Activity() {
         history.put(JSONObject().put("role",role).put("text",value.take(2500)))
         while(history.length()>14) history.remove(0)
         memory.edit().putString("messages",history.toString()).apply();redraw()
+        if(role=="assistant" && autoSpeak && speakerReady) speaker?.speak(value.take(1100),TextToSpeech.QUEUE_FLUSH,null,"coach-reply")
     }
     private fun chat() {
         val k=GeminiSecrets.load(this)
@@ -76,7 +100,7 @@ class CoachActivity:Activity() {
         prompt.setText("")
         append("user",question)
         if(k.isNullOrBlank()) {
-            append("assistant",FreeCoach.chat(question)+" (Trợ lý miễn phí ngoại tuyến)")
+            append("assistant",CoachBrain.reply(this,question)+" (Huấn luyện viên ngoại tuyến)")
             return
         }
         send.isEnabled=false
@@ -93,11 +117,30 @@ class CoachActivity:Activity() {
                 send.isEnabled=true
                 AlertDialog.Builder(this).setTitle("Gemini không khả dụng")
                     .setMessage(e.message ?: "Kiểm tra mạng và API key")
-                    .setPositiveButton("Dùng miễn phí"){_,_->append("assistant",FreeCoach.chat(question)+" (Ngoại tuyến)")}
+                    .setPositiveButton("Dùng miễn phí"){_,_->append("assistant",CoachBrain.reply(this,question)+" (Ngoại tuyến)")}
                     .setNegativeButton("Đóng",null).show()
             } }
         }.start()
     }
+    private fun listen() {
+        try {
+            val i=Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE,"vi-VN")
+                putExtra(RecognizerIntent.EXTRA_PROMPT,"Nói với Chibi về mục tiêu của bạn")
+            }
+            startActivityForResult(i,speechRequest)
+        } catch(_:Exception) { Toast.makeText(this,"Máy chưa có dịch vụ nhận dạng tiếng Việt. Bạn vẫn có thể gõ tin nhắn.",Toast.LENGTH_LONG).show() }
+    }
+    @Deprecated("Deprecated in Android API")
+    override fun onActivityResult(requestCode:Int,resultCode:Int,data:Intent?) {
+        super.onActivityResult(requestCode,resultCode,data)
+        if(requestCode==speechRequest && resultCode==RESULT_OK) {
+            val recognized=data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
+            if(!recognized.isNullOrBlank()) { prompt.setText(recognized);chat() }
+        }
+    }
+    override fun onDestroy() { speaker?.stop();speaker?.shutdown();super.onDestroy() }
     private fun askPlan() {
         val k=GeminiSecrets.load(this)
         val field=EditText(this).apply { hint="Ví dụ: Mình làm việc 8h–17h, muốn học tiếng Anh và chạy bộ";minLines=3;maxLines=6 }

@@ -100,7 +100,8 @@ class VoiceStudioActivity:Activity() {
             } })
             actions.addView(Button(this).apply { text="✓ Chọn";setOnClickListener {
                 prefs.edit().putString("voice",voice.name).apply()
-                status.text="Đã chọn giọng: "+voice.name
+                VoiceClips.systemVoice(this@VoiceStudioActivity)
+                status.text="Đã chọn giọng Android TTS: "+voice.name
                 populate(sample)
             } })
             row.addView(actions);list.addView(row)

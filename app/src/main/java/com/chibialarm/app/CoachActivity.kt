@@ -12,6 +12,9 @@ import android.widget.*
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.Locale
+import android.content.Intent
+import android.speech.RecognizerIntent
+import android.speech.tts.TextToSpeech
 
 /** Direct Gemini BYOK coach. AI only proposes schedules; user explicitly approves changes. */
 class CoachActivity:Activity() {
@@ -20,6 +23,9 @@ class CoachActivity:Activity() {
     private lateinit var prompt:EditText
     private lateinit var send:Button
     private var history=JSONArray()
+    private var voice:TextToSpeech?=null
+    private var voiceReady=false
+    private var autoSpeak=true
     private var speaker:TextToSpeech?=null
     private var speakerReady=false
     private var autoSpeak=false
@@ -34,6 +40,10 @@ class CoachActivity:Activity() {
     }
     override fun onCreate(savedInstanceState:Bundle?) {
         super.onCreate(savedInstanceState)
+        voice=TextToSpeech(this) { status ->
+            voiceReady=status==TextToSpeech.SUCCESS
+            if(voiceReady) voice?.setLanguage(Locale("vi","VN"))
+        }
         history=try { JSONArray(memory.getString("messages","[]")) }catch(_:Exception){ JSONArray() }
         val root=LinearLayout(this).apply { orientation=1;setPadding(17,18,17,14);setBackgroundColor(Color.rgb(250,241,255)) }
         root.addView(text("🐰 Chibi • Huấn luyện viên cá nhân",26f))
@@ -68,7 +78,10 @@ class CoachActivity:Activity() {
         }
         composer.addView(prompt,LinearLayout.LayoutParams(0,-2,1f))
         send=Button(this).apply { text="➤";setOnClickListener { chat() } }
-        composer.addView(send);root.addView(composer)
+        composer.addView(send)
+        composer.addView(Button(this).apply { text="🎙";setOnClickListener { listen() } })
+        root.addView(composer)
+        root.addView(CheckBox(this).apply { text="🔊 Đọc câu trả lời";isChecked=true;setOnCheckedChangeListener { _,v->autoSpeak=v;if(!v)voice?.stop() } })
         setContentView(root);redraw()
     }
     private fun redraw() {
@@ -91,7 +104,32 @@ class CoachActivity:Activity() {
         history.put(JSONObject().put("role",role).put("text",value.take(2500)))
         while(history.length()>14) history.remove(0)
         memory.edit().putString("messages",history.toString()).apply();redraw()
+        if(role=="assistant" && autoSpeak && voiceReady) voice?.speak(value.take(1200),TextToSpeech.QUEUE_FLUSH,null,"coach-reply")
         if(role=="assistant" && autoSpeak && speakerReady) speaker?.speak(value.take(1100),TextToSpeech.QUEUE_FLUSH,null,"coach-reply")
+    }
+    private fun listen() {
+        try {
+            val intent=Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+                .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                .putExtra(RecognizerIntent.EXTRA_LANGUAGE,"vi-VN")
+                .putExtra(RecognizerIntent.EXTRA_PROMPT,"Nói với huấn luyện viên Chibi")
+            startActivityForResult(intent,731)
+        }catch(e:Exception) {
+            AlertDialog.Builder(this).setTitle("Chưa có nhận dạng giọng nói")
+                .setMessage("Hãy bật dịch vụ nhận dạng tiếng Việt trên Android, hoặc nhập tin nhắn.")
+                .setPositiveButton("Đóng",null).show()
+        }
+    }
+    @Deprecated("Legacy speech result")
+    override fun onActivityResult(requestCode:Int,resultCode:Int,data:Intent?) {
+        super.onActivityResult(requestCode,resultCode,data)
+        if(requestCode==731 && resultCode==RESULT_OK) {
+            val heard=data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
+            if(!heard.isNullOrBlank()) { prompt.setText(heard);chat() }
+        }
+    }
+    override fun onDestroy() {
+        voice?.stop();voice?.shutdown();super.onDestroy()
     }
     private fun chat() {
         val k=GeminiSecrets.load(this)

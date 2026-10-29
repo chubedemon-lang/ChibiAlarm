@@ -105,6 +105,9 @@ class MainActivity : Activity() {
             startActivity(Intent(this,GrowthActivity::class.java))
         })
         root.addView(actionCard("⏰","Thêm báo thức","Đánh thức thông minh • Lặp theo ngày",Color.rgb(255,222,233)) { createAlarm() })
+        root.addView(actionCard("🐰","Trợ lý miễn phí OFFLINE","Không API key • không giới hạn • tạo lời đánh thức",Color.rgb(215,252,235)) {
+            freeVoiceDialog()
+        })
         root.addView(actionCard("✨","Gemini AI Studio","Nhập API key • Sáng tạo lời đánh thức",Color.rgb(232,220,255)) { geminiDialog() })
         root.addView(actionCard("🎙️","Thư viện giọng nói","Chọn và nghe thử giọng tiếng Việt",Color.rgb(218,238,255)) { startActivity(Intent(this,VoiceStudioActivity::class.java)) })
         root.addView(actionCard("🍅","Chibi Focus","Pomodoro 15/25/45/60 phút • luyện tập tập trung",Color.rgb(238,228,255)) { startActivity(Intent(this,FocusActivity::class.java)) })
@@ -167,6 +170,23 @@ class MainActivity : Activity() {
                 dialog.dismiss()
             }.setNegativeButton("Đóng",null).show()
     }
+    private fun freeVoiceDialog() {
+        val input=EditText(this).apply {
+            hint="Ví dụ: đánh thức hài hước, học tập, thể dục..."
+            setText(prefs.getString("gemini_topic","Vui vẻ, hài hước"))
+        }
+        AlertDialog.Builder(this).setTitle("🐰 Lời đánh thức miễn phí").setView(input)
+            .setPositiveButton("✨ Tạo"){_,_->
+                showFreeVoice(FreeCoach.wake(input.text.toString()))
+            }.setNegativeButton("Hủy",null).show()
+    }
+    private fun showFreeVoice(message:String) {
+        AlertDialog.Builder(this).setTitle("🐰 Chibi Offline • không tốn phí")
+            .setMessage(message).setPositiveButton("💾 Dùng làm báo thức"){_,_->
+                prefs.edit().putString("message",message).putBoolean("aiVoiceEnabled",false).apply()
+                Toast.makeText(this,"Đã lưu lời đánh thức miễn phí",Toast.LENGTH_LONG).show()
+            }.setNegativeButton("Bỏ qua",null).show()
+    }
     private fun geminiDialog() {
         val panel=LinearLayout(this).apply { orientation=1; setPadding(24,12,24,12) }
         panel.addView(title("🔑 API key Gemini của bạn",16f))
@@ -199,8 +219,10 @@ class MainActivity : Activity() {
                 if(newKey.isNotEmpty()) GeminiSecrets.save(this,newKey)
                 val key=GeminiSecrets.load(this)
                 val idea=topic.text.toString().trim().take(400)
-                if(key.isNullOrBlank() || idea.isBlank()) {
-                    Toast.makeText(this,"Vui lòng nhập API key và ý tưởng",Toast.LENGTH_LONG).show()
+                if(idea.isBlank()) {
+                    Toast.makeText(this,"Hãy nhập ý tưởng lời đánh thức",Toast.LENGTH_LONG).show()
+                } else if(key.isNullOrBlank()) {
+                    showFreeVoice(FreeCoach.wake(idea))
                 } else {
                     prefs.edit().putString("gemini_topic",idea).apply()
                     Thread {
@@ -216,9 +238,10 @@ class MainActivity : Activity() {
                             }
                         } catch(e:Exception) {
                             runOnUiThread {
-                                AlertDialog.Builder(this).setTitle("Không tạo được lời AI")
-                                    .setMessage(e.message ?: "Kiểm tra mạng và API key")
-                                    .setPositiveButton("Đóng",null).show()
+                                AlertDialog.Builder(this).setTitle("Gemini chưa khả dụng")
+                                    .setMessage("Có thể API đã hết quota hoặc gặp lỗi mạng. Bạn vẫn có thể tạo lời đánh thức miễn phí ngay trên máy.\\n\\n"+(e.message ?: ""))
+                                    .setPositiveButton("🐰 Dùng miễn phí"){_,_->showFreeVoice(FreeCoach.wake(idea))}
+                                    .setNegativeButton("Đóng",null).show()
                             }
                         }
                     }.start()

@@ -50,8 +50,12 @@ class RingActivity : Activity() {
         })
         setContentView(root)
         val settings=getSharedPreferences("settings",0)
-        val aiFile=java.io.File(filesDir,"chibi_voice_alarm.wav")
-        val useAI=settings.getBoolean("aiVoiceEnabled",false) && aiFile.exists()
+        val preferred=settings.getString("alarmAudioPath","").orEmpty()
+        val savedFile=java.io.File(filesDir,"chibi_voice_alarm.wav")
+        val aiFile=if(preferred.isNotBlank())java.io.File(preferred) else savedFile
+        val underApp=try { aiFile.canonicalPath.startsWith(filesDir.canonicalPath+java.io.File.separator) }
+            catch(_:Exception){ false }
+        val useAI=settings.getBoolean("aiVoiceEnabled",false) && underApp && aiFile.isFile
         if(!useAI) {
             speech = TextToSpeech(this) { status ->
                 if(status==TextToSpeech.SUCCESS) {

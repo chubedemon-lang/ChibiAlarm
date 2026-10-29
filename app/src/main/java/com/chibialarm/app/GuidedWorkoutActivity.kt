@@ -1,6 +1,7 @@
 package com.chibialarm.app
 
 import android.app.*
+import android.webkit.URLUtil
 import android.content.*
 import android.net.Uri
 import android.provider.Settings
@@ -31,6 +32,8 @@ class GuidedWorkoutActivity:Activity() {
     private var accumulated=0L
     private var spoken:TextToSpeech?=null
     private var ready=false
+    private val videoPrefs by lazy { getSharedPreferences("workout_videos",0) }
+    private val pickVideoRequest=889
     private val tick=object:Runnable {
         override fun run() {
             if(paused)return
@@ -79,6 +82,14 @@ class GuidedWorkoutActivity:Activity() {
         online.addView(Button(this).apply { text="▶ YouTube";setOnClickListener { searchVideo("youtube") } },LinearLayout.LayoutParams(0,-2,1f))
         online.addView(Button(this).apply { text="♫ TikTok";setOnClickListener { searchVideo("tiktok") } },LinearLayout.LayoutParams(0,-2,1f))
         root.addView(online)
+        val library=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
+        library.addView(Button(this).apply { text="⭐ Lưu link";setOnClickListener { saveVideoLink() } },LinearLayout.LayoutParams(0,-2,1f))
+        library.addView(Button(this).apply { text="📥 Lưu video";setOnClickListener { downloadVideo() } },LinearLayout.LayoutParams(0,-2,1f))
+        root.addView(library)
+        val offline=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
+        offline.addView(Button(this).apply { text="📂 Chọn từ máy";setOnClickListener { chooseLocalVideo() } },LinearLayout.LayoutParams(0,-2,1f))
+        offline.addView(Button(this).apply { text="▶ Video đã lưu";setOnClickListener { openSavedVideo() } },LinearLayout.LayoutParams(0,-2,1f))
+        root.addView(offline)
         root.addView(TextView(this).apply {
             text="🌐 Video được tìm theo động tác đang chọn. Mở nguồn chính thức, cần kết nối mạng.";textSize=12f
         })
@@ -121,6 +132,80 @@ class GuidedWorkoutActivity:Activity() {
             }
         }
         displayStep()
+    }
+    private fun videoKey():String=program.id+"_"+moves[index].name
+    private fun saveVideoLink() {
+        val field=EditText(this).apply { hint="Dán link YouTube, TikTok hoặc video HTTPS";inputType=android.text.InputType.TYPE_TEXT_VARIATION_URI }
+        AlertDialog.Builder(this).setTitle("Lưu liên kết cho: "+moves[index].name)
+            .setMessage("Liên kết YouTube/TikTok được lưu để mở lại trực tuyến, không tải tệp.")
+            .setView(field).setPositiveButton("Lưu"){_,_->
+                val link=field.text.toString().trim()
+                val uri=Uri.parse(link)
+                if(uri.scheme=="https" && !uri.host.isNullOrBlank()) {
+                    videoPrefs.edit().putString("link_"+videoKey(),link).apply()
+                    Toast.makeText(this,"Đã lưu liên kết",Toast.LENGTH_SHORT).show()
+                } else Toast.makeText(this,"Chỉ chấp nhận liên kết HTTPS hợp lệ",Toast.LENGTH_LONG).show()
+            }.setNegativeButton("Hủy",null).show()
+    }
+    private fun downloadVideo() {
+        val field=EditText(this).apply {
+            hint="https://example.org/exercise.mp4"
+            setText(videoPrefs.getString("link_"+videoKey(),""))
+        }
+        AlertDialog.Builder(this).setTitle("Tải video được phép sử dụng")
+            .setMessage("Chỉ nhập URL HTTPS trực tiếp tới tệp MP4 mà bạn có quyền tải. Không hỗ trợ tải luồng YouTube/TikTok.")
+            .setView(field).setPositiveButton("Tải về"){_,_->
+                val link=field.text.toString().trim()
+                val uri=Uri.parse(link)
+                if(uri.scheme!="https" || uri.host.isNullOrBlank() ||
+                    !uri.path.orEmpty().lowercase(Locale.ROOT).endsWith(".mp4")) {
+                    Toast.makeText(this,"Cần liên kết HTTPS trực tiếp kết thúc bằng .mp4",Toast.LENGTH_LONG).show()
+                } else try {
+                    val name="Chibi_"+System.currentTimeMillis()+".mp4"
+                    val request=DownloadManager.Request(uri)
+                        .setTitle(moves[index].name).setDescription("Video hướng dẫn Chibi Life")
+                        .setMimeType("video/mp4")
+                        .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                        .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS,name)
+                    val manager=getSystemService(DOWNLOAD_SERVICE) as DownloadManager
+                    manager.enqueue(request)
+                    Toast.makeText(this,"Đang tải vào Downloads. Sau khi tải, chọn video từ máy để gắn vào động tác.",Toast.LENGTH_LONG).show()
+                } catch(e:Exception) {
+                    Toast.makeText(this,"Không thể tải: "+e.message,Toast.LENGTH_LONG).show()
+                }
+            }.setNegativeButton("Hủy",null).show()
+    }
+    private fun chooseLocalVideo() {
+        val i=Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE);type="video/*"
+        }
+        startActivityForResult(i,pickVideoRequest)
+    }
+    @Deprecated("Android activity result compatibility")
+    override fun onActivityResult(requestCode:Int,resultCode:Int,data:Intent?) {
+        super.onActivityResult(requestCode,resultCode,data)
+        if(requestCode==pickVideoRequest && resultCode==RESULT_OK) {
+            val uri=data?.data ?: return
+            try {
+                contentResolver.takePersistableUriPermission(uri,Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                videoPrefs.edit().putString("local_"+videoKey(),uri.toString()).apply()
+                Toast.makeText(this,"Đã gắn video ngoại tuyến cho động tác",Toast.LENGTH_SHORT).show()
+            } catch(e:Exception) { Toast.makeText(this,"Không thể lưu quyền đọc video",Toast.LENGTH_LONG).show() }
+        }
+    }
+    private fun openSavedVideo() {
+        val local=videoPrefs.getString("local_"+videoKey(),null)
+        val remote=videoPrefs.getString("link_"+videoKey(),null)
+        val url=local ?: remote
+        if(url==null) {
+            Toast.makeText(this,"Chưa có video. Hãy lưu link hoặc chọn video từ máy.",Toast.LENGTH_LONG).show()
+            return
+        }
+        try {
+            val i=Intent(Intent.ACTION_VIEW,Uri.parse(url))
+            if(local!=null) { i.setDataAndType(Uri.parse(local),"video/*");i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+            startActivity(i)
+        } catch(_:Exception) { Toast.makeText(this,"Không mở được video, hãy chọn lại tệp hoặc kiểm tra mạng.",Toast.LENGTH_LONG).show() }
     }
     private fun searchVideo(site:String) {
         val move=moves.getOrNull(index) ?: return

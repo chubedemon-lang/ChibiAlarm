@@ -101,8 +101,11 @@ class MainActivity : Activity() {
         root.addView(actionCard("🌸","Hành trình thay đổi bản thân","Check-in năng lượng • tâm trạng • ngủ • thói quen • gợi ý mỗi ngày",Color.rgb(236,223,255)) {
             startActivity(Intent(this,TransformationActivity::class.java))
         })
-        root.addView(actionCard("🐰","Chibi Fitness AI Offline","Bài tập không dụng cụ • dinh dưỡng • lịch 7 ngày • miễn phí",Color.rgb(222,251,231)) {
+        root.addView(actionCard("🐰","Chibi Fitness PRO","12 chương trình • huấn luyện giọng Việt • offline",Color.rgb(222,251,231)) {
             startActivity(Intent(this,FitnessActivity::class.java))
+        })
+        root.addView(actionCard("🥗","Chibi Nutrition","Bữa ăn Việt • nhiều lựa chọn • nhật ký 7 ngày",Color.rgb(250,241,212)) {
+            startActivity(Intent(this,NutritionActivity::class.java))
         })
         root.addView(actionCard("🏃","Chibi Workout","Nhật ký tập luyện • biểu đồ 7 ngày • xuất CSV",Color.rgb(216,247,239)) {
             startActivity(Intent(this,WorkoutActivity::class.java))
@@ -116,8 +119,11 @@ class MainActivity : Activity() {
         })
         root.addView(actionCard("✨","Gemini AI Studio","Nhập API key • Sáng tạo lời đánh thức",Color.rgb(232,220,255)) { geminiDialog() })
         root.addView(actionCard("🎙️","Thư viện giọng nói","Chọn và nghe thử giọng tiếng Việt",Color.rgb(218,238,255)) { startActivity(Intent(this,VoiceStudioActivity::class.java)) })
+        root.addView(actionCard("🎧","Thư viện giọng CapCut & ghi âm","Nhập MP3/M4A/WAV của bạn • nghe thử • chọn làm chuông",Color.rgb(244,224,255)) {
+            startActivity(Intent(this,VoiceImportActivity::class.java))
+        })
         root.addView(actionCard("🍅","Chibi Focus","Pomodoro 15/25/45/60 phút • luyện tập tập trung",Color.rgb(238,228,255)) { startActivity(Intent(this,FocusActivity::class.java)) })
-        root.addView(actionCard("🎭","12 phong cách giọng","Chibi, robot, trầm ấm, hài hước...",Color.rgb(255,239,202)) { styleDialog() })
+        root.addView(actionCard("🎭","12 hiệu ứng giọng TTS","Thay đổi cao độ và tốc độ • không phải giọng mới",Color.rgb(255,239,202)) { styleDialog() })
         root.addView(actionCard("💬","Lời đánh thức","Tự viết nội dung báo thức",Color.rgb(255,228,235)) { messageDialog() })
         root.addView(actionCard("😴","Ngủ thêm","Điều chỉnh thời gian snooze",Color.rgb(224,238,255)) { snoozeDialog() })
         root.addView(actionCard("🔔","Thiết lập báo thức","Quyền Android 16 • nhạc chuông • âm lượng tăng dần • thử chuông",Color.rgb(232,243,228)) {

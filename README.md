@@ -1,8 +1,13 @@
-# 🐰 Chibi Life VIP PRO v1.2
+# 🐰 Chibi Life VIP PRO v1.3
 
 Android **native Kotlin** personal alarm + daily routine + AI assistant. Build on GitHub Actions; **no VPS or PC needed**.
 
 ## Main modules
+
+**NEW v1.3:** 12 offline workout programs with guided Vietnamese TTS and adjustable difficulty, 7-day meal journal and Vietnamese meal suggestions, 15 user-owned audio clips (MP3/M4A/WAV/OGG/FLAC), microphone recording and offline alarm playback. **CapCut proprietary voices are not bundled**; users import their own authorized audio exports. No API key required for those features.
+
+**Sources and license audit:** [VOICE_FITNESS_SOURCES_V13.md](docs/VOICE_FITNESS_SOURCES_V13.md).
+
 
 | Feature | v1.2 functionality |
 |---|---|
@@ -13,18 +18,18 @@ Android **native Kotlin** personal alarm + daily routine + AI assistant. Build o
 | 🎯 Challenges | Multiple 30/90-day goals, daily check-ins, progress and XP |
 | 🤖 Gemini Coach | Chat in Vietnamese and draft 30/90-day routines. **Explicit user approval** required to save AI proposals |
 | 🍅 Focus | 15/25/45/60-minute Pomodoro with persistent finish reminder |
-| 🏃 Workout | Manual workout diary, last-7-day chart and plain-text CSV export |
+| 🏃 Workout | Manual workout diary, last-7-day chart and plain-text CSV export |\n| 🐰 Chibi Fitness PRO | 12 offline programs (full-body, low-impact cardio, mobility, core, no-equipment, etc.), guided TTS, difficulty and weekly plan selection |\n| 🥗 Nutrition | Meal style choices, user-declared avoid ingredients, 7-day journal, practical Vietnamese meal ideas (not calorie prescription) |\n| 🎧 Voice Library | Import authorized CapCut/phone audio (MP3, M4A, WAV, AAC, OGG, FLAC), listen, select, delete, record own voice (permission required) |
 | 🌱 Habits | Daily habits checklist and 7-day history |
 | 🧩 Home widget | Today progress and next uncompleted routine |
 | 🔑 BYOK | Each user enters a Gemini API key locally, encrypted using Android Keystore |
 
-**Version status:** v1.2 development release; successful GitHub build is **not** equivalent to real-world Android 16 acceptance testing. Confirm exact alarms/full-screen permissions and test actual ringing.
+**Version status:** v1.3 development release; successful GitHub build is **not** equivalent to real-world Android 16 acceptance testing. Confirm exact alarms/full-screen permissions and test actual ringing.
 
 ## Build APK (phone only)
 
 1. Open [GitHub Actions](https://github.com/chubedemon-lang/ChibiAlarm/actions/workflows/build-apk.yml).
 2. Select most recent green **Success** run for the latest commit.
-3. Download artifact named `ChibiLife-v1.2-Full-APK`.
+3. Download artifact named `ChibiLife-v1.3-Fitness-Voice-APK`.
 4. Unzip, then install `app-debug.apk` on Android. This is a debug-signed testing package.
 
 ## Getting started
@@ -41,7 +46,7 @@ Android **native Kotlin** personal alarm + daily routine + AI assistant. Build o
 - Gemini text and TTS availability, model access, usage limits and billing are **per Google API key/project**. A Gemini Pro consumer subscription alone does not automatically provide API access.
 - Voice Studio uses local Android TTS; the 30 **Gemini voice names** require Google Gemini TTS API access and active internet for generation. This is not 30 installed offline voices.
 - Generated AI voice file plays a fixed recorded phrase. If you edit the alarm text, regenerate its audio.
-- Workout journal is manual. **Health Connect automatic data sync is not implemented** and should not be claimed as active.
+- CapCut TTS assets are not licensed for arbitrary redistribution. Users are responsible for rights to files they import, and imported audio is pre-recorded, NOT a general-purpose live CapCut TTS voice engine.\n- True on-device generative LLM is not bundled; offline coaching is rule-based using a curated exercise library. Optional research path: LiteRT-LM (requires model downloads, compatible hardware, and separate license review).\n- Workout journal is manual. **Health Connect automatic data sync is not implemented** and should not be claimed as active.
 - UI uses native Android controls with pastel styling and vector launcher/widget artwork; **not** a full Jetpack Compose Material 3 migration.
 - No third-party backend, login or VPS is required. Requests go directly from phone to Google's API, so a user-controlled API key remains a valuable credential even though encrypted at rest.
 - Local data has no cloud backup in this version. The app doesn't use or upload medical records.

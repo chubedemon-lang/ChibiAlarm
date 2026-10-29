@@ -82,6 +82,7 @@ class GuidedWorkoutActivity:Activity() {
         online.addView(Button(this).apply { text="▶ YouTube";setOnClickListener { searchVideo("youtube") } },LinearLayout.LayoutParams(0,-2,1f))
         online.addView(Button(this).apply { text="♫ TikTok";setOnClickListener { searchVideo("tiktok") } },LinearLayout.LayoutParams(0,-2,1f))
         root.addView(online)
+        root.addView(Button(this).apply { text="🧠 Chibi xem xét video & hình minh họa";setOnClickListener { startActivity(Intent(this@GuidedWorkoutActivity,ExerciseVideoReviewActivity::class.java).putExtra("move",moves[index].name).putExtra("videoKey",videoKey()).putExtra("url",videoPrefs.getString("link_"+videoKey(),""))) } })
         val library=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
         library.addView(Button(this).apply { text="⭐ Lưu link";setOnClickListener { saveVideoLink() } },LinearLayout.LayoutParams(0,-2,1f))
         library.addView(Button(this).apply { text="📥 Lưu video";setOnClickListener { downloadVideo() } },LinearLayout.LayoutParams(0,-2,1f))

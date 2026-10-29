@@ -1,107 +1,138 @@
 package com.chibialarm.app
 
 import android.app.*
-import android.os.Bundle
+import android.content.*
 import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
+import android.os.Bundle
+import android.view.Gravity
 import android.widget.*
-import java.util.Locale
 
-data class BodyMove(val name:String,val sets:String,val guide:String,val caution:String)
-object FitnessLibrary {
-    val beginner=listOf(
-        BodyMove("Khởi động tại chỗ","3–5 phút","Đi bộ tại chỗ, xoay khớp nhẹ, nâng gối chậm. Tăng nhịp từ từ.","Không xoay giật khớp."),
-        BodyMove("Squat ghế","2 × 8–10 lần","Đứng trước ghế chắc chắn, chân rộng bằng vai. Đẩy hông ra sau như ngồi xuống, chạm nhẹ ghế rồi đứng lên. Gối hướng theo mũi chân.","Giảm biên độ nếu đau gối; không cố chịu đau."),
-        BodyMove("Chống đẩy tường","2 × 8–12 lần","Đặt tay lên tường ngang vai, lùi chân. Giữ thân thẳng, gập khuỷu đưa ngực gần tường rồi đẩy ra.","Không võng lưng; giảm độ khó bằng cách đứng gần tường."),
-        BodyMove("Glute bridge","2 × 10–12 lần","Nằm ngửa, gập gối, bàn chân trên sàn. Siết mông nâng hông vừa đủ thành đường thẳng vai–hông–gối, hạ chậm.","Không ưỡn lưng quá mức."),
-        BodyMove("Bird-dog","2 × 6 lần mỗi bên","Chống tay và gối trên sàn, duỗi tay phải và chân trái, giữ 2 giây rồi đổi bên. Giữ lưng trung lập.","Nếu mất thăng bằng chỉ duỗi một chi."),
-        BodyMove("Thả lỏng","3–5 phút","Đi bộ chậm và giãn cơ nhẹ không nảy. Hít thở bình thường.","Không ép kéo căng tới mức đau.")
-    )
-    val medium=listOf(
-        BodyMove("Khởi động","5 phút","Đi bộ nhanh tại chỗ, nâng gối thấp và xoay khớp nhẹ.","Tăng cường độ dần."),
-        BodyMove("Squat trọng lượng cơ thể","3 × 10–15 lần","Hạ hông ra sau, giữ gót chân chạm sàn, gối cùng hướng bàn chân; đứng lên có kiểm soát.","Giảm độ sâu nếu khó chịu."),
-        BodyMove("Chống đẩy gối hoặc sàn","3 × 6–12 lần","Tay dưới vai, thân thành đường thẳng; hạ ngực có kiểm soát rồi đẩy lên.","Dừng nếu đau cổ tay hoặc vai."),
-        BodyMove("Lunge lùi","2 × 8 lần mỗi chân","Bước một chân về sau, hạ trọng tâm nhẹ rồi đứng về vị trí ban đầu.","Có thể vịn tường để giữ thăng bằng."),
-        BodyMove("Plank","3 × 20–35 giây","Chống khuỷu, siết bụng vừa phải, giữ đầu–lưng–hông thẳng và tiếp tục thở.","Dừng nếu đau lưng hoặc chóng mặt."),
-        BodyMove("Thả lỏng","5 phút","Đi bộ chậm và giãn nhẹ các nhóm cơ vừa tập.","Không nín thở.")
-    )
-    val advanced=listOf(
-        BodyMove("Khởi động","6–8 phút","Đi bộ nhanh tại chỗ, squat nông, bước ngang, làm nóng vai và hông.","Không bỏ qua khởi động."),
-        BodyMove("Squat tempo","3 × 12–15 lần","Hạ người trong 3 giây, dừng ngắn rồi đứng lên, giữ thân ổn định.","Giảm số lần nếu mất kỹ thuật."),
-        BodyMove("Chống đẩy","3 × 8–15 lần","Giữ thân thẳng, hạ có kiểm soát, đẩy lên không khóa khuỷu quá mạnh.","Có thể chuyển sang chống đẩy gối."),
-        BodyMove("Split squat","3 × 8–12 lần mỗi chân","Đứng chân trước chân sau, hạ trọng tâm theo phương thẳng đứng, đẩy lên bằng chân trước.","Dùng tường hỗ trợ nếu cần."),
-        BodyMove("Mountain climber chậm","3 × 25 giây","Tư thế plank tay, đưa từng gối về phía ngực với nhịp có kiểm soát.","Giữ lưng trung lập; dừng nếu đau vai."),
-        BodyMove("Side plank gối","2 × 20–30 giây mỗi bên","Chống khuỷu, gối gập, nâng hông và giữ thân thẳng.","Giảm thời gian nếu không giữ được tư thế."),
-        BodyMove("Thả lỏng","5 phút","Hạ nhịp tim bằng đi bộ chậm và giãn nhẹ.","Không dừng đột ngột sau vận động mạnh.")
-    )
-    fun mealTips(goal:Int):String {
-        val intro=when(goal) {
-            1->"Mục tiêu tăng sức mạnh: ăn đủ bữa, bổ sung nguồn đạm ở mỗi bữa và tăng lượng ăn vừa phải nếu cần."
-            2->"Mục tiêu kiểm soát cân nặng: ưu tiên thực phẩm ít chế biến, ăn chậm, theo dõi cảm giác đói no; không nhịn ăn cực đoan."
-            else->"Mục tiêu sức khỏe: ăn đa dạng, cân bằng giữa rau củ, ngũ cốc, chất đạm và chất béo lành mạnh."
-        }
-        return intro+"\n\n🍳 SÁNG: trứng hoặc đậu phụ + bánh mì nguyên cám/yến mạch + trái cây.\n\n🍚 TRƯA: cơm vừa nhu cầu + cá/thịt nạc/đậu + nhiều rau.\n\n🥗 TỐI: rau + đạm + khoai/cơm tùy mức vận động.\n\n🍌 BỮA PHỤ (nếu đói): sữa chua không đường, trái cây hoặc các loại hạt phù hợp.\n\n💧 Uống nước đều trong ngày, tăng khi trời nóng hoặc ra mồ hôi. Nhu cầu nước và năng lượng khác nhau theo từng người.\n\n⚠️ Đây là ví dụ bữa ăn, không phải thực đơn tính calo hay điều trị bệnh. Điều chỉnh theo dị ứng, ngân sách, văn hóa ăn uống và nhu cầu cá nhân."
-    }
-}
+/** Catalog-driven free coach: selectable tracks, difficulty, guided session, weekly reminder. */
 class FitnessActivity:Activity() {
     private val prefs by lazy { getSharedPreferences("chibi_fitness_offline",0) }
-    private val levels=arrayOf("Mới bắt đầu","Đã tập một thời gian","Có kinh nghiệm")
-    private val goals=arrayOf("Khỏe mạnh","Tăng sức mạnh","Kiểm soát cân nặng")
     private lateinit var root:LinearLayout
-    private fun t(value:String,size:Float=16f)=TextView(this).apply { text=value;textSize=size;setTextColor(Color.rgb(67,56,77));setPadding(5,9,5,9) }
+    private lateinit var level:Spinner
+    private lateinit var length:Spinner
+    private lateinit var filter:Spinner
+    private val levels=arrayOf("🌱 Mới bắt đầu","🌿 Đang tập đều","🔥 Có kinh nghiệm")
+    private val lengths=arrayOf("10 phút","15 phút","20 phút","30 phút","40 phút")
+    private val mins=intArrayOf(10,15,20,30,40)
+    private val categories=arrayOf("Tất cả","Toàn thân","Sức mạnh","Cardio","Linh hoạt","Vận động nhẹ","Phục hồi nhẹ","Thử thách")
+    private fun txt(s:String,size:Float=16f)=TextView(this).apply {
+        text=s;textSize=size;setTextColor(Color.rgb(73,59,88));setPadding(7,6,7,7)
+    }
+    private fun panel(bg:Int)=GradientDrawable().apply { setColor(bg);cornerRadius=33f }
     override fun onCreate(savedInstanceState:Bundle?) { super.onCreate(savedInstanceState);render() }
     private fun render() {
-        root=LinearLayout(this).apply { orientation=1;setPadding(22,26,22,28);setBackgroundColor(Color.rgb(244,252,248)) }
-        root.addView(t("🐰 Chibi Fitness Offline",27f))
-        root.addView(t("Huấn luyện không dụng cụ • không API • không Internet • miễn phí",14f))
-        root.addView(t("Chọn trình độ",18f))
-        val level=Spinner(this).apply {
+        root=LinearLayout(this).apply {
+            orientation=1;setPadding(22,26,22,28);setBackgroundColor(Color.rgb(246,250,249))
+        }
+        val hero=LinearLayout(this).apply {
+            orientation=1;gravity=Gravity.CENTER;setPadding(22,24,22,24)
+            background=GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(215,248,226),Color.rgb(230,223,255))).apply { cornerRadius=35f }
+        }
+        hero.addView(txt("🐰 CHIBI FITNESS PRO",27f))
+        hero.addView(txt("12 chương trình • miễn phí • offline • không cần phòng gym",14f))
+        root.addView(hero)
+        root.addView(txt("🎚 Trình độ của bạn",19f))
+        level=Spinner(this).apply {
             adapter=ArrayAdapter(this@FitnessActivity,android.R.layout.simple_spinner_dropdown_item,levels)
-            setSelection(prefs.getInt("level",0))
+            setSelection(prefs.getInt("fitLevel",0).coerceIn(0,2))
         }
         root.addView(level)
-        root.addView(t("Mục tiêu",18f))
-        val goal=Spinner(this).apply {
-            adapter=ArrayAdapter(this@FitnessActivity,android.R.layout.simple_spinner_dropdown_item,goals)
-            setSelection(prefs.getInt("goal",0))
+        root.addView(txt("⏱ Thời lượng bạn muốn",19f))
+        length=Spinner(this).apply {
+            adapter=ArrayAdapter(this@FitnessActivity,android.R.layout.simple_spinner_dropdown_item,lengths)
+            setSelection(prefs.getInt("fitTime",2).coerceIn(0,mins.lastIndex))
         }
-        root.addView(goal)
-        root.addView(Button(this).apply { text="✨ Tạo lịch tập phù hợp";setOnClickListener {
-            prefs.edit().putInt("level",level.selectedItemPosition).putInt("goal",goal.selectedItemPosition).apply()
-            showPlan(level.selectedItemPosition,goal.selectedItemPosition)
+        root.addView(length)
+        val actions=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
+        actions.addView(Button(this).apply {
+            text="🥗 Dinh dưỡng"
+            isAllCaps=false
+            setOnClickListener { startActivity(Intent(this@FitnessActivity,NutritionActivity::class.java)) }
+        },LinearLayout.LayoutParams(0,-2,1f))
+        actions.addView(Button(this).apply {
+            text="📊 Nhật ký tập"
+            isAllCaps=false
+            setOnClickListener { startActivity(Intent(this@FitnessActivity,WorkoutActivity::class.java)) }
+        },LinearLayout.LayoutParams(0,-2,1f))
+        root.addView(actions)
+        root.addView(txt("📚 Bộ môn & chương trình",23f))
+        root.addView(txt("Chọn chương trình, xem từng động tác và dùng huấn luyện bằng giọng nói.",14f))
+        filter=Spinner(this).apply {
+            adapter=ArrayAdapter(this@FitnessActivity,android.R.layout.simple_spinner_dropdown_item,categories)
+            setSelection(prefs.getInt("fitCategory",0).coerceIn(0,categories.lastIndex))
+        }
+        root.addView(filter)
+        val container=LinearLayout(this).apply { orientation=1 }
+        root.addView(container)
+        filter.onItemSelectedListener=object:android.widget.AdapterView.OnItemSelectedListener {
+            override fun onNothingSelected(parent:android.widget.AdapterView<*>?) {}
+            override fun onItemSelected(parent:android.widget.AdapterView<*>?,view:android.view.View?,position:Int,id:Long) {
+                prefs.edit().putInt("fitCategory",position).apply()
+                drawPrograms(container,categories[position])
+            }
+        }
+        root.addView(txt("🛡 Hướng dẫn an toàn",20f))
+        root.addView(txt("Mục tiêu sức khỏe chung cho người trưởng thành: tăng dần hoạt động vừa sức và tập sức mạnh từ 2 ngày/tuần. Dùng bài nhẹ khi mới bắt đầu. Dừng tập nếu đau ngực, khó thở khác thường, chóng mặt hoặc đau tăng dần. Người có bệnh nền/chấn thương/mang thai nên hỏi chuyên gia trước khi áp dụng.",14f))
+        root.addView(Button(this).apply { text="📖 Nguồn WHO • CDC • NHS";setOnClickListener {
+            AlertDialog.Builder(this@FitnessActivity).setTitle("📚 Nguồn tham khảo")
+                .setMessage("WHO: who.int/publications/i/item/9789240015128\nCDC: cdc.gov/physical-activity-basics/adding-adults/what-counts.html\nNHS: nhs.uk/live-well/exercise/strength-exercises/\n\nĐây là giáo trình mẫu dựa trên nguyên tắc cơ bản, không phải chẩn đoán hay trị liệu.")
+                .setPositiveButton("Đóng",null).show()
         } })
-        root.addView(Button(this).apply { text="🍽 Hướng dẫn ăn uống trong ngày";setOnClickListener {
-            AlertDialog.Builder(this@FitnessActivity).setTitle("🥗 Dinh dưỡng cơ bản")
-                .setMessage(FitnessLibrary.mealTips(goal.selectedItemPosition))
-                .setPositiveButton("Đã hiểu",null).show()
-        } })
-        root.addView(t("📚 Nguyên tắc tập luyện",21f))
-        root.addView(t("• 3 ngày tập sức mạnh/tuần là điểm bắt đầu hợp lý cho nhiều người; xen kẽ ngày nghỉ hoặc vận động nhẹ.\n• Tăng số lần từ từ khi đã giữ được kỹ thuật.\n• Thở đều, không nín thở; dừng nếu đau ngực, choáng hoặc khó thở bất thường.\n• Người có bệnh nền, chấn thương hoặc đang mang thai nên tham khảo chuyên gia trước khi bắt đầu.",15f))
-        root.addView(t("🗓 Lịch mẫu 7 ngày",20f))
-        root.addView(t("T2: Buổi tập A\nT3: Đi bộ 15–30 phút tùy sức\nT4: Nghỉ hoặc giãn cơ nhẹ\nT5: Buổi tập A\nT6: Đi bộ hoặc vận động yêu thích\nT7: Buổi tập A (nếu hồi phục tốt)\nCN: Nghỉ ngơi",15f))
-        root.addView(Button(this).apply { text="📝 Mở nhật ký tập luyện";setOnClickListener {
-            startActivity(android.content.Intent(this@FitnessActivity,WorkoutActivity::class.java))
-        } })
-        root.addView(t("Chibi Fitness hiện dùng quy tắc và thư viện bài tập trên máy, không phải AI sinh ngôn ngữ. Không thay thế chuyên gia y tế hay dinh dưỡng.",12f))
         setContentView(ScrollView(this).apply { addView(root) })
     }
-    private fun showPlan(level:Int,goal:Int) {
-        val moves=when(level) { 1->FitnessLibrary.medium;2->FitnessLibrary.advanced;else->FitnessLibrary.beginner }
-        val content=buildString {
-            append("🎯 "+goals[goal]+" • "+levels[level]+"\n\n")
-            moves.forEachIndexed { i,m->
-                append("${i+1}. ${m.name} — ${m.sets}\n")
-                append("Cách tập: ${m.guide}\n")
-                append("Lưu ý: ${m.caution}\n\n")
+    private fun drawPrograms(container:LinearLayout,category:String) {
+        container.removeAllViews()
+        TrainingCatalog.programs.filter { category=="Tất cả" || it.category==category }.forEach { program ->
+            val card=LinearLayout(this).apply {
+                orientation=1;setPadding(17,14,17,14);background=panel(Color.WHITE)
+                elevation=2f
             }
-            append("Nghỉ 45–90 giây giữa các hiệp nếu cần. Bắt đầu nhẹ và ưu tiên kỹ thuật.\n")
+            card.addView(txt(program.name,19f))
+            card.addView(txt(program.subtitle+" • "+program.moves.size+" bước",13f))
+            val buttons=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
+            buttons.addView(Button(this).apply { text="📖 Xem bài";isAllCaps=false;setOnClickListener {
+                val guide=TrainingCatalog.adjusted(program,level.selectedItemPosition,mins[length.selectedItemPosition])
+                    .mapIndexed { i,m->"${i+1}. ${m.name} — ${m.dose}\nCách tập: ${m.steps}\nDễ hơn: ${m.easier}\nLưu ý: ${m.avoid}" }
+                    .joinToString("\n\n")
+                AlertDialog.Builder(this@FitnessActivity)
+                    .setTitle(program.name).setMessage(guide)
+                    .setPositiveButton("🎙 Bắt đầu"){_,_->startProgram(program)}
+                    .setNegativeButton("Đóng",null).show()
+            } },LinearLayout.LayoutParams(0,-2,1f))
+            buttons.addView(Button(this).apply { text="▶ Tập ngay";isAllCaps=false;setOnClickListener {
+                startProgram(program)
+            } },LinearLayout.LayoutParams(0,-2,1f))
+            card.addView(buttons)
+            card.addView(Button(this).apply { text="📆 Thêm lịch tuần";isAllCaps=false;setOnClickListener {
+                addRoutine(program)
+            } })
+            container.addView(card,LinearLayout.LayoutParams(-1,-2).apply { bottomMargin=15 })
         }
-        AlertDialog.Builder(this).setTitle("🏋️ Buổi tập không dụng cụ")
-            .setMessage(content).setPositiveButton("📆 Thêm lịch tập"){_,_->
-                val current=LifeData.routines(this)
-                val id=LifeData.nextId()
-                val r=Routine(id,"Chibi Fitness • "+goals[goal],"🏃 Sức khỏe",18,0,25, (1 shl 1) or (1 shl 4) or (1 shl 6))
+    }
+    private fun startProgram(p:TrainingProgram) {
+        val l=level.selectedItemPosition
+        val m=mins[length.selectedItemPosition]
+        prefs.edit().putInt("fitLevel",l).putInt("fitTime",length.selectedItemPosition).apply()
+        startActivity(Intent(this,GuidedWorkoutActivity::class.java)
+            .putExtra("program",p.id).putExtra("level",l).putExtra("minutes",m))
+    }
+    private fun addRoutine(p:TrainingProgram) {
+        val current=LifeData.routines(this)
+        val trainingDays=if(level.selectedItemPosition==0) ((1 shl 2) or (1 shl 5))
+            else ((1 shl 1) or (1 shl 4) or (1 shl 6))
+        val r=Routine(LifeData.nextId(),p.name,"🏃 Sức khỏe",18,0,
+            mins[length.selectedItemPosition],trainingDays)
+        AlertDialog.Builder(this).setTitle("📅 Thêm lịch định kỳ?")
+            .setMessage("18:00 • "+(if(level.selectedItemPosition==0) "T3 và T6" else "T2, T5 và T7")+
+                "\n${p.name}\nCó thể chỉnh giờ và ngày trong Lịch trình.")
+            .setPositiveButton("Thêm lịch"){_,_->
                 LifeData.save(this,current+r)
-                Toast.makeText(this,"Đã thêm lịch tập T2, T5, T7 lúc 18:00. Có thể sửa trong Lịch.",Toast.LENGTH_LONG).show()
-            }.setNegativeButton("Đóng",null).show()
+                Toast.makeText(this,"Đã thêm lịch tập.",Toast.LENGTH_SHORT).show()
+            }.setNegativeButton("Hủy",null).show()
     }
 }

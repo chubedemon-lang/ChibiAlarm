@@ -98,6 +98,9 @@ class MainActivity : Activity() {
         root.addView(actionCard("🎧","Gemini Voice PRO","30 giọng AI mẫu • tạo file giọng báo thức",Color.rgb(255,223,246)) {
             startActivity(Intent(this,AIVoiceActivity::class.java))
         })
+        root.addView(actionCard("🌸","Hành trình thay đổi bản thân","Check-in năng lượng • tâm trạng • ngủ • thói quen • gợi ý mỗi ngày",Color.rgb(236,223,255)) {
+            startActivity(Intent(this,TransformationActivity::class.java))
+        })
         root.addView(actionCard("🐰","Chibi Fitness AI Offline","Bài tập không dụng cụ • dinh dưỡng • lịch 7 ngày • miễn phí",Color.rgb(222,251,231)) {
             startActivity(Intent(this,FitnessActivity::class.java))
         })

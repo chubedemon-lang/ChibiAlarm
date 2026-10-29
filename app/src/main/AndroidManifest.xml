@@ -7,6 +7,7 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-feature android:name="android.software.app_widgets" android:required="false"/>
     <application android:theme="@android:style/Theme.Material.Light.NoActionBar" android:label="Chibi Life" android:icon="@drawable/chibi_launcher">
+        <activity android:name=".TransformationActivity" android:exported="false"/>
         <activity android:name=".FitnessActivity" android:exported="false"/>
         <activity android:name=".WorkoutActivity" android:exported="false"/>
         <activity android:name=".AlarmSettingsActivity" android:exported="false"/>

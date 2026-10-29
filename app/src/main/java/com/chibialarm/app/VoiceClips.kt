@@ -54,7 +54,7 @@ object VoiceClips {
         val resolver=ctx.contentResolver
         val mime=resolver.getType(source).orEmpty().lowercase()
         var display=""
-        resolver.query(source,arrayOf(OpenableColumns.DISPLAY_NAME,OpenableColumns.SIZE),null,null,null)?.use {
+        try { resolver.query(source,arrayOf(OpenableColumns.DISPLAY_NAME,OpenableColumns.SIZE),null,null,null)?.use {
             if(it.moveToFirst()) {
                 val name=it.getColumnIndex(OpenableColumns.DISPLAY_NAME)
                 if(name>=0)display=it.getString(name).orEmpty()
@@ -63,7 +63,8 @@ object VoiceClips {
                     "File quá lớn (giới hạn 20 MB)."
                 }
             }
-        }
+        } }catch(_:UnsupportedOperationException) {}
+        if(display.isBlank()) display=source.lastPathSegment.orEmpty()
         val ext=display.substringAfterLast('.',"").lowercase()
         val allowed=setOf("mp3","m4a","wav","aac","ogg","flac")
         require(ext in allowed || mime.startsWith("audio/")) {

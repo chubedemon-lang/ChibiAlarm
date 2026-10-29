@@ -70,11 +70,15 @@ class CoachActivity:Activity() {
         memory.edit().putString("messages",history.toString()).apply();redraw()
     }
     private fun chat() {
-        val k=key() ?: return
+        val k=GeminiSecrets.load(this)
         val question=prompt.text.toString().trim().take(900)
         if(question.isEmpty())return
         prompt.setText("")
         append("user",question)
+        if(k.isNullOrBlank()) {
+            append("assistant",FreeCoach.chat(question)+" (Trợ lý miễn phí ngoại tuyến)")
+            return
+        }
         send.isEnabled=false
         val context=(0 until history.length()).joinToString("\n") { i ->
             val item=history.getJSONObject(i)
@@ -87,14 +91,15 @@ class CoachActivity:Activity() {
                 runOnUiThread { append("assistant",answer);send.isEnabled=true }
             } catch(e:Exception) { runOnUiThread {
                 send.isEnabled=true
-                AlertDialog.Builder(this).setTitle("Chưa kết nối được Gemini")
+                AlertDialog.Builder(this).setTitle("Gemini không khả dụng")
                     .setMessage(e.message ?: "Kiểm tra mạng và API key")
-                    .setPositiveButton("Đóng",null).show()
+                    .setPositiveButton("Dùng miễn phí"){_,_->append("assistant",FreeCoach.chat(question)+" (Ngoại tuyến)")}
+                    .setNegativeButton("Đóng",null).show()
             } }
         }.start()
     }
     private fun askPlan() {
-        val k=key() ?: return
+        val k=GeminiSecrets.load(this)
         val field=EditText(this).apply { hint="Ví dụ: Mình làm việc 8h–17h, muốn học tiếng Anh và chạy bộ";minLines=3;maxLines=6 }
         val box=LinearLayout(this).apply { orientation=1;setPadding(22,12,22,12) }
         box.addView(text("Mô tả lịch hiện tại, mục tiêu và thời gian rảnh. Không nhập thông tin nhạy cảm.",14f))
@@ -115,6 +120,12 @@ class CoachActivity:Activity() {
                 dialog.dismiss()
                 val progress=ProgressDialog.show(this,"🐰 Chibi đang nghĩ…","Đang chuẩn bị bản nháp để bạn duyệt",true,false)
                 val span=days
+                if(k.isNullOrBlank()) {
+                    progress.dismiss()
+                    val (title,draft)=FreeCoach.plan(detail,span)
+                    showFreePlan(title,draft,span)
+                    return@setOnClickListener
+                }
                 Thread {
                     try {
                         val instruction="""Bạn là AI lập lịch cá nhân lành mạnh cho người trưởng thành.
@@ -152,12 +163,28 @@ Thông tin người dùng: $detail"""
                                 }.setNegativeButton("Bỏ qua",null).show()
                         }
                     }catch(e:Exception){runOnUiThread {
-                        progress.dismiss();AlertDialog.Builder(this).setTitle("Chưa tạo được kế hoạch")
-                            .setMessage(e.message ?: "Hãy thử lại").setPositiveButton("Đóng",null).show()
+                        progress.dismiss()
+                        AlertDialog.Builder(this).setTitle("Gemini không khả dụng")
+                            .setMessage("Bạn có thể tạo lịch mẫu miễn phí ngoại tuyến.")
+                            .setPositiveButton("Tạo miễn phí"){_,_->
+                                val (title,draft)=FreeCoach.plan(detail,span)
+                                showFreePlan(title,draft,span)
+                            }.setNegativeButton("Đóng",null).show()
                     }}
                 }.start()
             }
         }
         dialog.show()
     }
+    private fun showFreePlan(title:String,draft:List<Routine>,span:Int) {
+        val preview=draft.joinToString("\n") { it.label()+" • "+it.title+" ("+it.duration+" phút)" }
+        AlertDialog.Builder(this).setTitle("🐰 Lịch mẫu miễn phí $span ngày")
+            .setMessage(title+"\n\n"+preview+"\n\nĐây là lịch mẫu, không phải kế hoạch do AI tạo.")
+            .setPositiveButton("Lưu lịch"){_,_->
+                LifeData.save(this,LifeData.routines(this)+draft)
+                GoalData.save(this,GoalData.goals(this)+LifeGoal(LifeData.nextId()+99,title,span,System.currentTimeMillis(),emptySet()))
+                append("assistant","Đã lưu lịch mẫu ngoại tuyến gồm "+draft.size+" hoạt động.")
+            }.setNegativeButton("Hủy",null).show()
+    }
+
 }

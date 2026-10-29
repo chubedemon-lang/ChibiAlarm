@@ -86,6 +86,10 @@ class GuidedWorkoutActivity:Activity() {
         library.addView(Button(this).apply { text="⭐ Lưu link";setOnClickListener { saveVideoLink() } },LinearLayout.LayoutParams(0,-2,1f))
         library.addView(Button(this).apply { text="📥 Lưu video";setOnClickListener { downloadVideo() } },LinearLayout.LayoutParams(0,-2,1f))
         root.addView(library)
+        root.addView(Button(this).apply {
+            text="🧠 Kiểm tra độ phù hợp của video"
+            setOnClickListener { assessVideo() }
+        })
         val offline=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
         offline.addView(Button(this).apply { text="📂 Chọn từ máy";setOnClickListener { chooseLocalVideo() } },LinearLayout.LayoutParams(0,-2,1f))
         offline.addView(Button(this).apply { text="▶ Video đã lưu";setOnClickListener { openSavedVideo() } },LinearLayout.LayoutParams(0,-2,1f))
@@ -145,6 +149,42 @@ class GuidedWorkoutActivity:Activity() {
                     videoPrefs.edit().putString("link_"+videoKey(),link).apply()
                     Toast.makeText(this,"Đã lưu liên kết",Toast.LENGTH_SHORT).show()
                 } else Toast.makeText(this,"Chỉ chấp nhận liên kết HTTPS hợp lệ",Toast.LENGTH_LONG).show()
+            }.setNegativeButton("Hủy",null).show()
+    }
+    private fun assessVideo() {
+        val move=moves[index]
+        val name=EditText(this).apply { hint="Tên hoặc mô tả video";setSingleLine(false);minLines=2 }
+        val choices=arrayOf(
+            "Hướng dẫn đúng động tác và tư thế",
+            "Có khởi động / hướng dẫn giảm độ khó",
+            "Nhắc thở đều và không cố tập khi đau",
+            "Phù hợp trình độ của tôi",
+            "Không hứa giảm mỡ một vùng / kết quả phi thực tế"
+        )
+        val checked=BooleanArray(choices.size)
+        val holder=LinearLayout(this).apply { orientation=1;setPadding(20,10,20,10) }
+        holder.addView(TextView(this).apply {
+            text="Đánh giá sơ bộ theo thông tin bạn cung cấp, KHÔNG phải AI đã xem và phân tích nội dung video."
+            textSize=14f
+        })
+        holder.addView(name)
+        val boxes=choices.mapIndexed { i,label ->
+            CheckBox(this).apply { text=label;setOnCheckedChangeListener { _,yes->checked[i]=yes } ;holder.addView(this) }
+        }
+        AlertDialog.Builder(this).setTitle("🧠 Đánh giá video: "+move.name)
+            .setView(ScrollView(this).apply { addView(holder) })
+            .setPositiveButton("Xem nhận xét"){_,_->
+                val score=checked.count { it }
+                val comment=when {
+                    score>=4->"Có nhiều dấu hiệu phù hợp theo mô tả. Vẫn cần tự kiểm tra kỹ thuật và độ tin cậy của người hướng dẫn."
+                    score>=2->"Cần xem kỹ hơn kỹ thuật, mức độ và hướng dẫn an toàn trước khi tập."
+                    else->"Chưa đủ dấu hiệu để khuyến nghị. Ưu tiên video có hướng dẫn rõ ràng, giảm độ khó và cảnh báo an toàn."
+                }
+                val text="Video: "+name.text.toString().ifBlank { "(chưa nhập tên)" }+
+                    "\nĐộng tác: "+move.name+"\nTiêu chí đạt: "+score+"/"+choices.size+
+                    "\n\n"+comment+"\n\nĐây là bảng kiểm dựa trên lựa chọn của bạn; chưa tự xem video hoặc xác thực chuyên môn."
+                AlertDialog.Builder(this).setTitle("Kết quả kiểm tra sơ bộ")
+                    .setMessage(text).setPositiveButton("Đã hiểu",null).show()
             }.setNegativeButton("Hủy",null).show()
     }
     private fun downloadVideo() {

@@ -37,7 +37,10 @@ object FocusTimer {
     fun complete(ctx:Context):Boolean {
         val current=endTime(ctx)
         if(current==0L || current>System.currentTimeMillis())return false
-        prefs(ctx).edit().remove("endTime").putInt("sessions",sessions(ctx)+1).apply()
+        val dayKey = "sessions:" + LifeData.today()
+        val currentDay = prefs(ctx).getInt(dayKey, 0)
+        prefs(ctx).edit().remove("endTime").putInt("sessions",sessions(ctx)+1)
+            .putInt(dayKey, currentDay + 1).apply()
         ctx.getSystemService(AlarmManager::class.java).cancel(pi(ctx))
         return true
     }

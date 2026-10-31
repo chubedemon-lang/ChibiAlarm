@@ -14,8 +14,6 @@
         <activity android:name=".NutritionActivity" android:exported="false"/>
         <activity android:name=".TransformationActivity" android:exported="false"/>
         <activity android:name=".VoiceImportActivity" android:exported="false"/>
-        <activity android:name=".NutritionActivity" android:exported="false"/>
-        <activity android:name=".GuidedWorkoutActivity" android:exported="false"/>
         <activity android:name=".FitnessActivity" android:exported="false"/>
         <activity android:name=".WorkoutActivity" android:exported="false"/>
         <activity android:name=".AlarmSettingsActivity" android:exported="false"/>

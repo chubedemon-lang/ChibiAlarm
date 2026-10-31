@@ -28,6 +28,12 @@ object RpgRules {
             .coerceAtMost(target.toLong()).toInt()
     }
 
+    fun progressObserved(current: Int, target: Int, observed: Int): Int {
+        require(target > 0 && observed >= 0)
+        return maxOf(current.coerceAtLeast(0), observed.coerceAtMost(target))
+            .coerceAtMost(target)
+    }
+
     fun streak(days: List<StreakDay>, today: LocalDate): Int {
         val byDate = days.associateBy { it.localDate }
         var date = today
@@ -97,6 +103,19 @@ class RpgEngine(private val db: RpgDatabase) {
         val quest = dao.quest(questId) ?: return@withTransaction false
         if (quest.state != "ACTIVE" || quest.target <= 0) return@withTransaction false
         val next = RpgRules.progressNext(quest.progress, quest.target, amount)
+        if (next == quest.progress) return@withTransaction false
+        dao.updateQuest(quest.copy(progress = next,
+            state = if (next >= quest.target) "COMPLETED" else "ACTIVE"))
+        true
+    }
+
+    /** Sync real-world progress as an absolute count; repeated reads cannot duplicate credit. */
+    suspend fun syncProgress(questId: String, observed: Int): Boolean = db.withTransaction {
+        require(observed >= 0)
+        val dao = db.dao()
+        val quest = dao.quest(questId) ?: return@withTransaction false
+        if (quest.state != "ACTIVE" || quest.target <= 0) return@withTransaction false
+        val next = RpgRules.progressObserved(quest.progress, quest.target, observed)
         if (next == quest.progress) return@withTransaction false
         dao.updateQuest(quest.copy(progress = next,
             state = if (next >= quest.target) "COMPLETED" else "ACTIVE"))

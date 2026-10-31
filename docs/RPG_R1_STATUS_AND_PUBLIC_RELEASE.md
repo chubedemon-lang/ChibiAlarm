@@ -9,7 +9,7 @@
 - Growth check-in state is synchronized when the RPG dashboard opens/resumes, not continuously in the background. Legacy XP on Home is still a rolling 90-day metric, whereas RPG EXP is a persistent separate balance; they must be labeled distinctly.
 - Imported XP immediately unlocks the level-5 achievement if the threshold is met. The RPG dashboard displays permanent XP progress to the next level and the current Growth streak.
 - Android Auto Backup and Android 12+ device-transfer rules exclude `gemini_secure`, `coach_history` and `settings` SharedPreferences. This protects encrypted user API keys and local coach chat from backup/transfer, while leaving other existing data eligible for Android backup. Users must re-enter their personal Gemini key after moving devices.
-- Android unit tests cover deterministic level/streak/progress rules. GitHub Actions compile and unit tests do not prove alarm reliability or production readiness.
+- JVM unit tests cover deterministic level/streak/progress rules. Robolectric/Room integration tests now exercise one-time XP import, atomic claim idempotence and Growth uncheck synchronization. These still do not replace on-device alarm and migration testing. GitHub Actions compile and unit tests do not prove alarm reliability or production readiness.
 
 ## Multi-user architecture (planned, NOT shipped)
 1. Offline-first: keep personal alarm/routine/fitness data in local app storage, one Android application sandbox per installation.
@@ -23,7 +23,8 @@
 - [ ] CI passes on latest commit (tests + assembleDebug).
 - [ ] Device tests: Android 16 locked-screen alarms, exact alarm permission, Doze, reboot, time-zone changes, notification permission, OEM battery restrictions.
 - [ ] Verify migration from actual v1.3 installs with populated and empty Growth/Goals/Routine data; uninstall must not be required.
-- [ ] Add Room migration tests before any schema version bump. Do not use destructive migrations.
+- [x] Add Room/SQLite integration tests for core R1 transactions (pending CI verification).
+- [ ] Add Room schema migration tests before any schema version bump. Do not use destructive migrations.
 - [x] Integrate Focus daily completion counts and Fitness workout journal entries with quests (local-only).
 - [x] Synchronize Growth check/uncheck state on RPG refresh, expose the streak in the UI and add a daily Growth quest.
 - [ ] Validate workouts beyond self-reported journal entries, if necessary for future competitive rewards.

@@ -94,9 +94,17 @@ object RoutineReminder {
             val offset=c.get(Calendar.DAY_OF_WEEK)-1
             if(c.timeInMillis>System.currentTimeMillis() && (r.repeatMask and (1 shl offset))!=0) {
                 val am=ctx.getSystemService(AlarmManager::class.java)
-                if(Build.VERSION.SDK_INT>=31 && !am.canScheduleExactAlarms()) {
-                    am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,c.timeInMillis,pending(ctx,r))
-                } else am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,c.timeInMillis,pending(ctx,r))
+                val alarm = pending(ctx, r)
+                if (Build.VERSION.SDK_INT >= 31 && !am.canScheduleExactAlarms()) {
+                    am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, c.timeInMillis, alarm)
+                } else {
+                    try {
+                        am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, c.timeInMillis, alarm)
+                    } catch (_: SecurityException) {
+                        // Exact-alarm permission can be revoked between the check and scheduling.
+                        am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, c.timeInMillis, alarm)
+                    }
+                }
                 return
             }
             c.add(Calendar.DATE,1)

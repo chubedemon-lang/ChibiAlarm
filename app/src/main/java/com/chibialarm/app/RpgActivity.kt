@@ -1,12 +1,15 @@
 package com.chibialarm.app
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.text.InputFilter
 import android.view.Gravity
 import android.widget.Button
+import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.ScrollView
@@ -109,6 +112,40 @@ class RpgActivity : Activity() {
         }
     }
 
+    private fun editCharacterName(current: String) {
+        val input = EditText(this).apply {
+            setText(current)
+            setSelection(text.length)
+            filters = arrayOf(InputFilter.LengthFilter(24))
+            hint = "Tên nhân vật"
+        }
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("✏️ Đặt tên Chibi")
+            .setView(input)
+            .setPositiveButton("Lưu", null)
+            .setNegativeButton("Hủy", null)
+            .create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val proposed = input.text.toString().trim()
+                if (proposed.length !in 2..24 || proposed.any { Character.isISOControl(it) }) {
+                    input.error = "Tên cần 2–24 ký tự hợp lệ"
+                } else {
+                    scope.launch {
+                        try {
+                            withContext(Dispatchers.IO) { engine.renameCharacter(proposed) }
+                            dialog.dismiss()
+                            refresh()
+                        } catch (_: Exception) {
+                            input.error = "Không thể lưu tên, hãy thử lại"
+                        }
+                    }
+                }
+            }
+        }
+        dialog.show()
+    }
+
     /** Android Storage Access Framework: user chooses the destination, no storage permission. */
     private fun exportRpgData() {
         val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
@@ -174,6 +211,10 @@ class RpgActivity : Activity() {
         val xpRequired = RpgRules.xpToNext(level)
         val xpInLevel = (character.totalXp - xpSpent).coerceIn(0L, xpRequired)
         hero.addView(label("🌟 ${character.name} • Cấp $level", 23f))
+        hero.addView(Button(this).apply {
+            text = "✏️ Đổi tên Chibi"
+            setOnClickListener { editCharacterName(character.name) }
+        })
         hero.addView(label("⭐ ${character.totalXp} EXP    🪙 ${character.coins} xu", 17f))
         hero.addView(label("Tiến độ cấp tiếp theo: $xpInLevel / $xpRequired EXP", 14f))
         hero.addView(ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {

@@ -50,6 +50,19 @@ object RpgRules {
 }
 
 class RpgEngine(private val db: RpgDatabase) {
+    /** User-editable local character name; never changes character identity or rewards. */
+    suspend fun renameCharacter(name: String): Boolean = db.withTransaction {
+        val normalized = name.trim().replace(Regex("\\s+"), " ")
+        require(normalized.length in 2..24 && normalized.none { Character.isISOControl(it) }) {
+            "Tên nhân vật phải có 2–24 ký tự hợp lệ"
+        }
+        val dao = db.dao()
+        val character = dao.character() ?: return@withTransaction false
+        if (character.name == normalized) return@withTransaction false
+        dao.updateCharacter(character.copy(name = normalized))
+        true
+    }
+
     /**
      * Copies the legacy 90-day XP snapshot exactly once. Existing preferences remain untouched.
      * This is a one-time starting balance, NOT a live sync with LifeData's rolling XP counter.

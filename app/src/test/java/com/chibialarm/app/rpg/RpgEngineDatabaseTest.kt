@@ -73,6 +73,21 @@ class RpgEngineDatabaseTest {
             .first { it.localDate == today }.completed)
         assertEquals(1, database.dao().achievements().first { it.id == "streak_3" }.progress)
     }
+    @Test fun characterNameCanBeChangedWithoutResettingXp() = runBlocking {
+        val engine = RpgEngine(database)
+        engine.initialize(620, day)
+        assertTrue(engine.renameCharacter("  Chibi   Nam  "))
+        assertEquals("Chibi Nam", database.dao().character()!!.name)
+        assertEquals(620L, database.dao().character()!!.totalXp)
+        assertFalse(engine.renameCharacter("Chibi Nam"))
+        try {
+            engine.renameCharacter(" ")
+            fail("Blank name must be rejected")
+        } catch (_: IllegalArgumentException) {
+            assertEquals("Chibi Nam", database.dao().character()!!.name)
+        }
+    }
+
     @Test fun checkboxUncheckRevokesUnclaimedQuestButNotPaidReward() = runBlocking {
         val engine = RpgEngine(database)
         engine.initialize(0, day)

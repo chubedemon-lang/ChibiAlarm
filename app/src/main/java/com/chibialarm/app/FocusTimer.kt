@@ -13,13 +13,14 @@ object FocusTimer {
     private fun prefs(ctx:Context)=ctx.getSharedPreferences("focus",Context.MODE_PRIVATE)
     fun endTime(ctx:Context):Long=prefs(ctx).getLong("endTime",0L)
     fun sessions(ctx:Context):Int=prefs(ctx).getInt("sessions",0)
-    fun start(ctx:Context,minutes:Int) {
+    @Synchronized fun start(ctx:Context,minutes:Int) {
         stop(ctx)
         val end=System.currentTimeMillis()+minutes.coerceIn(1,180)*60000L
-        prefs(ctx).edit().putLong("endTime",end).apply()
+        // Persist before scheduling so a killed process can restore the pending session.
+        check(prefs(ctx).edit().putLong("endTime",end).commit()) { "Cannot save Focus timer" }
         schedule(ctx,end)
     }
-    fun restore(ctx:Context) {
+    @Synchronized fun restore(ctx:Context) {
         val end=endTime(ctx)
         if(end==0L)return
         if(end<=System.currentTimeMillis()) complete(ctx) else schedule(ctx,end)
@@ -38,17 +39,22 @@ object FocusTimer {
             }
         }
     }
-    fun stop(ctx:Context) {
+    @Synchronized fun stop(ctx:Context) {
         ctx.getSystemService(AlarmManager::class.java).cancel(pi(ctx))
-        prefs(ctx).edit().remove("endTime").apply()
+        prefs(ctx).edit().remove("endTime").commit()
     }
-    fun complete(ctx:Context):Boolean {
+    /** Serialize receiver and Activity completions; never award one session twice. */
+    @Synchronized fun complete(ctx:Context):Boolean {
         val current=endTime(ctx)
         if(current==0L || current>System.currentTimeMillis())return false
         val dayKey = "sessions:" + LifeData.today()
         val currentDay = prefs(ctx).getInt(dayKey, 0)
-        prefs(ctx).edit().remove("endTime").putInt("sessions",sessions(ctx)+1)
-            .putInt(dayKey, currentDay + 1).apply()
+        // commit() is intentional: durable reward state before notifying the user.
+        val saved = prefs(ctx).edit().remove("endTime")
+            .putInt("sessions", if (sessions(ctx) == Int.MAX_VALUE) Int.MAX_VALUE else sessions(ctx) + 1)
+            .putInt(dayKey, if (currentDay == Int.MAX_VALUE) Int.MAX_VALUE else currentDay + 1)
+            .commit()
+        if (!saved) return false
         ctx.getSystemService(AlarmManager::class.java).cancel(pi(ctx))
         return true
     }

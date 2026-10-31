@@ -98,8 +98,11 @@ class RpgEngine(private val db: RpgDatabase) {
             dao.insertLedger(XpLedger(dedupeKey = "migration:growth:v1",
                 questId = "legacy-growth", amount = 0))
             days.distinctBy { it.habitId to it.localDate }.forEach { dao.recordStreak(it) }
-            val longestCurrent = days.map { it.habitId }.distinct()
-                .maxOfOrNull { habitId -> RpgRules.streak(dao.streakDays(habitId), today) } ?: 0
+            var longestCurrent = 0
+            for (habitId in days.map { it.habitId }.distinct()) {
+                val current = RpgRules.streak(dao.streakDays(habitId), today)
+                if (current > longestCurrent) longestCurrent = current
+            }
             dao.achievements().firstOrNull { it.id == "streak_3" }?.let { achievement ->
                 if (achievement.unlockedAt == null) {
                     dao.updateAchievement(achievement.copy(

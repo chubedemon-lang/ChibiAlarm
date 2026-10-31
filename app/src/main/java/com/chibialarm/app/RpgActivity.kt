@@ -18,6 +18,8 @@ import com.chibialarm.app.rpg.RpgDatabase
 import com.chibialarm.app.rpg.RpgEngine
 import com.chibialarm.app.rpg.RpgQuest
 import com.chibialarm.app.rpg.RpgRules
+import com.chibialarm.app.rpg.StreakDay
+import java.time.LocalDate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -63,6 +65,17 @@ class RpgActivity : Activity() {
             try {
                 val data = withContext(Dispatchers.IO) {
                     engine.initialize(LifeData.points(applicationContext))
+                    val legacyDays = getSharedPreferences("growth", MODE_PRIVATE).all
+                        .mapNotNull { (key, value) ->
+                            if (value != true || !key.startsWith("done:") ||
+                                key.length <= 16 || key[15] != ':') null
+                            else {
+                                val date = key.substring(5, 15)
+                                if (runCatching { LocalDate.parse(date) }.isFailure) null
+                                else StreakDay("growth:" + key.substring(16), date, completed = true)
+                            }
+                        }
+                    engine.migrateGrowth(legacyDays)
                     val dao = database.dao()
                     Triple(dao.character() ?: RpgCharacter(), dao.quests(), dao.achievements())
                 }

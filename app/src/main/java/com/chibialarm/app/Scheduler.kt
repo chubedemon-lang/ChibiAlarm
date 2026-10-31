@@ -21,12 +21,19 @@ object Scheduler {
             }
         }
         val am = ctx.getSystemService(AlarmManager::class.java)
+        val alarmIntent = pending(ctx, id)
         if (Build.VERSION.SDK_INT >= 31 && !am.canScheduleExactAlarms()) {
-            am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, cal.timeInMillis, pending(ctx, id))
+            am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, cal.timeInMillis, alarmIntent)
             return
         }
         val show = PendingIntent.getActivity(ctx, id, Intent(ctx, MainActivity::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-        am.setAlarmClock(AlarmManager.AlarmClockInfo(cal.timeInMillis, show), pending(ctx, id))
+        try {
+            am.setAlarmClock(AlarmManager.AlarmClockInfo(cal.timeInMillis, show), alarmIntent)
+        } catch (_: SecurityException) {
+            // Exact-alarm permission can be revoked between checking and scheduling.
+            // Keep the alarm registered as an inexact fallback rather than crashing.
+            am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, cal.timeInMillis, alarmIntent)
+        }
     }
 
     fun snooze(ctx: Context, id: Int, minutes: Int) {

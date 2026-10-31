@@ -73,6 +73,23 @@ class RpgEngineDatabaseTest {
             .first { it.localDate == today }.completed)
         assertEquals(1, database.dao().achievements().first { it.id == "streak_3" }.progress)
     }
+    @Test fun checkboxUncheckRevokesUnclaimedQuestButNotPaidReward() = runBlocking {
+        val engine = RpgEngine(database)
+        engine.initialize(0, day)
+        val id = "growth:$day"
+        assertTrue(engine.syncCheckableProgress(id, 1))
+        assertEquals("COMPLETED", database.dao().quest(id)!!.state)
+        assertTrue(engine.syncCheckableProgress(id, 0))
+        assertEquals("ACTIVE", database.dao().quest(id)!!.state)
+        assertEquals(0, database.dao().quest(id)!!.progress)
+        assertFalse(engine.claimQuest(id))
+        assertTrue(engine.syncCheckableProgress(id, 1))
+        assertTrue(engine.claimQuest(id))
+        assertFalse(engine.syncCheckableProgress(id, 0))
+        assertEquals("CLAIMED", database.dao().quest(id)!!.state)
+        assertEquals(25L, database.dao().character()!!.totalXp)
+    }
+
     @Test fun exportIncludesRpgHistoryButNotPrivateGeminiData() = runBlocking {
         val engine = RpgEngine(database)
         engine.initialize(200, day)

@@ -129,7 +129,23 @@ class RpgEngine(private val db: RpgDatabase) {
         true
     }
 
-    /** Sync real-world progress as an absolute count; repeated reads cannot duplicate credit. */
+    /**
+     * Checkbox-driven observations can be undone before claiming the reward.
+     * Claimed quests remain immutable: a later uncheck never withdraws paid XP.
+     */
+    suspend fun syncCheckableProgress(questId: String, observed: Int): Boolean = db.withTransaction {
+        require(observed >= 0)
+        val dao = db.dao()
+        val quest = dao.quest(questId) ?: return@withTransaction false
+        if (quest.state == "CLAIMED" || quest.target <= 0) return@withTransaction false
+        val next = observed.coerceAtMost(quest.target)
+        val nextState = if (next >= quest.target) "COMPLETED" else "ACTIVE"
+        if (next == quest.progress && nextState == quest.state) return@withTransaction false
+        dao.updateQuest(quest.copy(progress = next, state = nextState))
+        true
+    }
+
+    /** Sync cumulative progress as an absolute count; repeated reads cannot duplicate credit. */
     suspend fun syncProgress(questId: String, observed: Int): Boolean = db.withTransaction {
         require(observed >= 0)
         val dao = db.dao()

@@ -89,13 +89,13 @@ class RpgActivity : Activity() {
                         }
                     val growthStreak = engine.syncGrowth(legacyDays)
                     val today = LifeData.today()
-                    engine.syncProgress("routine:" + today,
+                    engine.syncCheckableProgress("routine:" + today,
                         if (LifeData.count(applicationContext) > 0) 1 else 0)
                     engine.syncProgress("focus:" + today,
                         getSharedPreferences("focus", MODE_PRIVATE).getInt("sessions:" + today, 0))
                     engine.syncProgress("fitness:" + today,
                         WorkoutData.history(applicationContext).count { it.date == today })
-                    engine.syncProgress("growth:" + today,
+                    engine.syncCheckableProgress("growth:" + today,
                         legacyDays.count { it.localDate == today && it.completed })
                     val dao = database.dao()
                     Dashboard(dao.character() ?: RpgCharacter(), dao.quests(),

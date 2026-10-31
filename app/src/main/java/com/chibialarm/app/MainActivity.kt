@@ -86,6 +86,9 @@ class MainActivity : Activity() {
             },LinearLayout.LayoutParams(0,-2,1f))
         }
         root.addView(tabs)
+        root.addView(actionCard("🎮","Chibi RPG • Hành trình của bạn","Nhân vật • EXP • nhiệm vụ hằng ngày • thành tựu",Color.rgb(237,218,255)) {
+            startActivity(Intent(this,RpgActivity::class.java))
+        })
         root.addView(actionCard("📅","Lịch trình thông minh","Từng giờ trong ngày • nhắc đúng giờ • check-in",Color.rgb(224,249,231)) {
             startActivity(Intent(this,RoutineActivity::class.java))
         })

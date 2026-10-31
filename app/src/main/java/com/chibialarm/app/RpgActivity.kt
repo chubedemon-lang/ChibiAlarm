@@ -71,15 +71,15 @@ class RpgActivity : Activity() {
                     engine.initialize(LifeData.points(applicationContext))
                     val legacyDays = getSharedPreferences("growth", MODE_PRIVATE).all
                         .mapNotNull { (key, value) ->
-                            if (value != true || !key.startsWith("done:") ||
+                            if (value !is Boolean || !key.startsWith("done:") ||
                                 key.length <= 16 || key[15] != ':') null
                             else {
                                 val date = key.substring(5, 15)
                                 if (runCatching { LocalDate.parse(date) }.isFailure) null
-                                else StreakDay("growth:" + key.substring(16), date, completed = true)
+                                else StreakDay("growth:" + key.substring(16), date, completed = value)
                             }
                         }
-                    engine.migrateGrowth(legacyDays)
+                    engine.syncGrowth(legacyDays)
                     val today = LifeData.today()
                     engine.syncProgress("routine:" + today,
                         if (LifeData.count(applicationContext) > 0) 1 else 0)

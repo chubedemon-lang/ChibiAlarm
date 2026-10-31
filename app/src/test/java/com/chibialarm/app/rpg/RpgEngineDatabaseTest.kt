@@ -144,6 +144,38 @@ class RpgEngineDatabaseTest {
         assertFalse(snapshot.toString().contains("coach_history"))
     }
 
+    @Test fun reopeningDiskDatabasePreservesProgressAndDoesNotReimportLegacyXp() = runBlocking {
+        val context = RuntimeEnvironment.getApplication()
+        val fileName = "rpg-reopen-regression.db"
+        context.deleteDatabase(fileName)
+        try {
+            val first = Room.databaseBuilder(context, RpgDatabase::class.java, fileName).build()
+            try {
+                val engine = RpgEngine(first)
+                engine.initialize(620, day)
+                assertTrue(engine.syncCheckableProgress("routine:$day", 1))
+                assertTrue(engine.claimQuest("routine:$day"))
+                assertEquals(650L, first.dao().character()!!.totalXp)
+            } finally {
+                first.close()
+            }
+            val reopened = Room.databaseBuilder(context, RpgDatabase::class.java, fileName).build()
+            try {
+                val engine = RpgEngine(reopened)
+                engine.initialize(620, day)
+                assertEquals(650L, reopened.dao().character()!!.totalXp)
+                assertEquals("CLAIMED", reopened.dao().quest("routine:$day")!!.state)
+                assertFalse(engine.claimQuest("routine:$day"))
+                assertEquals(1, reopened.dao().ledgerEntries()
+                    .count { it.dedupeKey == "migration:life_v12:xp90:v1" })
+            } finally {
+                reopened.close()
+            }
+        } finally {
+            context.deleteDatabase(fileName)
+        }
+    }
+
     @Test fun dashboardQueriesOnlyReturnCurrentPeriodWithoutDeletingHistory() = runBlocking {
         val engine = RpgEngine(database)
         engine.initialize(0, day)

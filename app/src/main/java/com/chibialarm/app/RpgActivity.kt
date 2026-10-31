@@ -28,6 +28,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -115,6 +116,7 @@ class RpgActivity : Activity() {
                 render(data.character, data.quests, data.achievements,
                     data.growthStreak, data.dailyClaimed)
             } catch (error: Exception) {
+                if (error is CancellationException) throw error
                 Toast.makeText(this@RpgActivity,
                     "Không tải được RPG: ${error.localizedMessage}", Toast.LENGTH_LONG).show()
             }

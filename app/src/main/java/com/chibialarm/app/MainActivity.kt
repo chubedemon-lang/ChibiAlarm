@@ -75,7 +75,7 @@ class MainActivity : Activity() {
         })
         root.addView(hero,LinearLayout.LayoutParams(-1,-2).apply { bottomMargin=18 })
         val info=title("🌟 Hôm nay: "+LifeData.count(this)+"/"+LifeData.routines(this).size+
-            " hoạt động   •   ⭐ "+LifeData.points(this)+" XP   •   🔥 "+LifeData.streak(this)+" ngày",15f)
+            " hoạt động   •   ⭐ "+LifeData.points(this)+ " XP lịch (90 ngày)   •   🔥 "+LifeData.streak(this)+" ngày",15f)
         root.addView(info)
         val tabs=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
         listOf(Triple("📆 Lịch",RoutineActivity::class.java,0),Triple("🎯 Mục tiêu",GoalsActivity::class.java,0),

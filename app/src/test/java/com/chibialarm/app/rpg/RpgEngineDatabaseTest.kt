@@ -105,6 +105,28 @@ class RpgEngineDatabaseTest {
         assertEquals(25L, database.dao().character()!!.totalXp)
     }
 
+    @Test fun deletedWorkoutCannotBeClaimedUntilJournalHasAnEntryAgain() = runBlocking {
+        val engine = RpgEngine(database)
+        engine.initialize(0, day)
+        val id = "fitness:$day"
+        assertTrue(engine.syncCheckableProgress(id, 1))
+        assertEquals("COMPLETED", database.dao().quest(id)!!.state)
+        // Deleting a manually entered workout must invalidate an unpaid reward.
+        assertTrue(engine.syncCheckableProgress(id, 0))
+        assertEquals("ACTIVE", database.dao().quest(id)!!.state)
+        assertEquals(0, database.dao().quest(id)!!.progress)
+        assertFalse(engine.claimQuest(id))
+        assertEquals(0L, database.dao().character()!!.totalXp)
+        assertTrue(engine.syncCheckableProgress(id, 1))
+        assertTrue(engine.claimQuest(id))
+        assertFalse(engine.claimQuest(id))
+        assertEquals(40L, database.dao().character()!!.totalXp)
+        assertEquals(5L, database.dao().character()!!.coins)
+        // Historical paid rewards stay immutable after a later journal deletion.
+        assertFalse(engine.syncCheckableProgress(id, 0))
+        assertEquals("CLAIMED", database.dao().quest(id)!!.state)
+    }
+
     @Test fun exportIncludesRpgHistoryButNotPrivateGeminiData() = runBlocking {
         val engine = RpgEngine(database)
         engine.initialize(200, day)

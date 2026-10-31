@@ -26,9 +26,17 @@ object FocusTimer {
     }
     private fun schedule(ctx:Context,end:Long) {
         val am=ctx.getSystemService(AlarmManager::class.java)
-        if(Build.VERSION.SDK_INT>=31 && !am.canScheduleExactAlarms())
-            am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,end,pi(ctx))
-        else am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,end,pi(ctx))
+        val pending = pi(ctx)
+        if(Build.VERSION.SDK_INT>=31 && !am.canScheduleExactAlarms()) {
+            am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,end,pending)
+        } else {
+            try {
+                am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,end,pending)
+            } catch (_: SecurityException) {
+                // The permission can change while a Focus session is being scheduled.
+                am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,end,pending)
+            }
+        }
     }
     fun stop(ctx:Context) {
         ctx.getSystemService(AlarmManager::class.java).cancel(pi(ctx))

@@ -7,7 +7,9 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-feature android:name="android.software.app_widgets" android:required="false"/>
-    <application android:theme="@android:style/Theme.Material.Light.NoActionBar" android:label="Chibi Life" android:icon="@drawable/chibi_launcher">
+    <application android:theme="@android:style/Theme.Material.Light.NoActionBar" android:label="Chibi Life" android:icon="@drawable/chibi_launcher"
+        android:fullBackupContent="@xml/backup_rules"
+        android:dataExtractionRules="@xml/data_extraction_rules">
         <activity android:name=".RpgActivity" android:exported="false"/>
         <activity android:name=".WorkoutVideoActivity" android:exported="false"/>
         <activity android:name=".ExerciseVideoReviewActivity" android:exported="false"/>

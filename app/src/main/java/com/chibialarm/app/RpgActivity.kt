@@ -93,6 +93,8 @@ class RpgActivity : Activity() {
                         getSharedPreferences("focus", MODE_PRIVATE).getInt("sessions:" + today, 0))
                     engine.syncProgress("fitness:" + today,
                         WorkoutData.history(applicationContext).count { it.date == today })
+                    engine.syncProgress("growth:" + today,
+                        legacyDays.count { it.localDate == today && it.completed })
                     val dao = database.dao()
                     Dashboard(dao.character() ?: RpgCharacter(), dao.quests(),
                         dao.achievements(), growthStreak)
@@ -164,6 +166,7 @@ class RpgActivity : Activity() {
                     else -> when (quest.category) {
                         "ROUTINE" -> "📆 Mở lịch sinh hoạt"
                         "FOCUS" -> "🍅 Mở Focus"
+                        "GROWTH" -> "🌱 Mở thói quen"
                         else -> "🏃 Mở nhật ký tập luyện"
                     }
                 }
@@ -174,6 +177,7 @@ class RpgActivity : Activity() {
                         val destination = when (quest.category) {
                             "ROUTINE" -> RoutineActivity::class.java
                             "FOCUS" -> FocusActivity::class.java
+                            "GROWTH" -> GrowthActivity::class.java
                             else -> WorkoutActivity::class.java
                         }
                         startActivity(Intent(this@RpgActivity, destination))
@@ -197,7 +201,7 @@ class RpgActivity : Activity() {
             text = "🏃 Mở Chibi Fitness"
             setOnClickListener { startActivity(Intent(this@RpgActivity, FitnessActivity::class.java)) }
         })
-        root.addView(label("Bản RPG thử nghiệm: nhiệm vụ lấy tiến độ từ lịch, số phiên Focus và nhật ký tập. Buổi tập được ghi thủ công vẫn được tính; chưa có xác minh từ thiết bị đeo.", 12f))
+        root.addView(label("Bản RPG thử nghiệm: nhiệm vụ lấy tiến độ từ lịch, Focus, thói quen và nhật ký tập. Buổi tập được ghi thủ công vẫn được tính; chưa có xác minh từ thiết bị đeo.", 12f))
         setContentView(ScrollView(this).apply {
             isFillViewport = true
             addView(root)

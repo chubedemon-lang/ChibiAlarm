@@ -70,11 +70,19 @@ interface RpgDao {
 
     @Update suspend fun updateQuest(quest: RpgQuest)
 
+    @Query("SELECT * FROM rpg_quest ORDER BY periodKey DESC, title ASC")
+    suspend fun quests(): List<RpgQuest>
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertLedger(entry: XpLedger): Long
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertAchievement(achievement: RpgAchievement): Long
+
+    @Query("SELECT * FROM rpg_achievement ORDER BY id ASC")
+    suspend fun achievements(): List<RpgAchievement>
+
+    @Update suspend fun updateAchievement(achievement: RpgAchievement)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun recordStreak(day: StreakDay)

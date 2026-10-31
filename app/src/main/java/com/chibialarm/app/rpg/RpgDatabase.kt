@@ -73,8 +73,20 @@ interface RpgDao {
     @Query("SELECT * FROM rpg_quest ORDER BY periodKey DESC, title ASC")
     suspend fun quests(): List<RpgQuest>
 
+    /** Dashboard query: do not materialize every historical daily quest on each launch. */
+    @Query("SELECT * FROM rpg_quest WHERE periodKey = :periodKey ORDER BY title ASC")
+    suspend fun questsForPeriod(periodKey: String): List<RpgQuest>
+
     @Query("SELECT * FROM rpg_xp_ledger ORDER BY id ASC")
     suspend fun ledgerEntries(): List<XpLedger>
+
+    /** Avoid reading the full ledger merely to check a daily claim. */
+    @Query("SELECT EXISTS(SELECT 1 FROM rpg_xp_ledger WHERE dedupeKey = :dedupeKey)")
+    suspend fun hasLedgerEntry(dedupeKey: String): Boolean
+
+    /** Count claims in SQLite instead of materializing unbounded history. */
+    @Query("SELECT COUNT(*) FROM rpg_xp_ledger WHERE dedupeKey LIKE 'quest:%'")
+    suspend fun questClaimCount(): Int
 
     @Query("SELECT * FROM rpg_streak_day ORDER BY localDate ASC, habitId ASC")
     suspend fun allStreakDays(): List<StreakDay>

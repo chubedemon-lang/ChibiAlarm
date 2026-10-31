@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+: encrypted BYOK data cannot be decrypted on another device. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="gemini_secure.xml" />
+        <exclude domain="sharedpref" path="coach_history.xml" />
+        <exclude domain="sharedpref" path="settings.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="gemini_secure.xml" />
+        <exclude domain="sharedpref" path="coach_history.xml" />
+        <exclude domain="sharedpref" path="settings.xml" />
+    </device-transfer>
+</data-extraction-rules>

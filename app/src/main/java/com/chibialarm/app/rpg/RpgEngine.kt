@@ -65,9 +65,30 @@ class RpgEngine(private val db: RpgDatabase) {
         ).forEach { dao.insertQuest(it) }
         listOf(
             RpgAchievement("first_quest", "Bước chân đầu tiên", target = 1),
-            RpgAchievement("level_5", "Chibi cấp 5", target = 5)
+            RpgAchievement("level_5", "Chibi cấp 5", target = 5),
+            RpgAchievement("streak_3", "Kiên trì 3 ngày", target = 3)
         ).forEach { dao.insertAchievement(it) }
     }
+
+    /** One-time, non-destructive import of historical Growth check-ins. */
+    suspend fun migrateGrowth(days: List<StreakDay>, today: LocalDate = LocalDate.now()) =
+        db.withTransaction {
+            val dao = db.dao()
+            if (dao.insertLedger(XpLedger(dedupeKey = "migration:growth:v1",
+                    questId = "legacy-growth", amount = 0)) == -1L) return@withTransaction
+            days.distinctBy { it.habitId to it.localDate }.forEach { dao.recordStreak(it) }
+            val longestCurrent = days.groupBy { it.habitId }
+                .values.maxOfOrNull { RpgRules.streak(it, today) } ?: 0
+            dao.achievements().firstOrNull { it.id == "streak_3" }?.let { achievement ->
+                if (achievement.unlockedAt == null) {
+                    dao.updateAchievement(achievement.copy(
+                        progress = longestCurrent.coerceAtMost(achievement.target),
+                        unlockedAt = if (longestCurrent >= achievement.target)
+                            System.currentTimeMillis() else null
+                    ))
+                }
+            }
+        }
 
     /** Advance an active quest; reaching its target does not auto-award XP. */
     suspend fun recordProgress(questId: String, amount: Int = 1): Boolean = db.withTransaction {

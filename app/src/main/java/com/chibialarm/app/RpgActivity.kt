@@ -76,6 +76,9 @@ class RpgActivity : Activity() {
                             }
                         }
                     engine.migrateGrowth(legacyDays)
+                    if (LifeData.count(applicationContext) > 0) {
+                        engine.recordProgress("routine:" + LifeData.today())
+                    }
                     val dao = database.dao()
                     Triple(dao.character() ?: RpgCharacter(), dao.quests(), dao.achievements())
                 }
@@ -133,10 +136,14 @@ class RpgActivity : Activity() {
                 text = when (quest.state) {
                     "CLAIMED" -> "✓ Đã nhận thưởng"
                     "COMPLETED" -> "🎁 Nhận thưởng"
-                    else -> "✓ Xác nhận hoàn thành"
+                    else -> if (quest.category == "ROUTINE") "📆 Hoàn thành lịch để mở thưởng" else "✓ Xác nhận hoàn thành"
                 }
                 isEnabled = quest.state != "CLAIMED"
-                setOnClickListener { action(quest, quest.state == "COMPLETED") }
+                setOnClickListener {
+                    if (quest.state == "ACTIVE" && quest.category == "ROUTINE")
+                        startActivity(Intent(this@RpgActivity, RoutineActivity::class.java))
+                    else action(quest, quest.state == "COMPLETED")
+                }
             }
             panel.addView(button)
             root.addView(panel, LinearLayout.LayoutParams(-1, -2).apply { topMargin = 12 })

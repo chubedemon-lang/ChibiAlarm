@@ -74,17 +74,32 @@ class RpgEngine(private val db: RpgDatabase) {
             RpgAchievement("level_5", "Chibi cấp 5", target = 5),
             RpgAchievement("streak_3", "Kiên trì 3 ngày", target = 3)
         ).forEach { dao.insertAchievement(it) }
+        // Imported XP may already qualify for level achievements before any quest is claimed.
+        val level = RpgRules.level((dao.character() ?: RpgCharacter()).totalXp)
+        dao.achievements().firstOrNull { it.id == "level_5" }?.let { achievement ->
+            if (achievement.unlockedAt == null) {
+                dao.updateAchievement(achievement.copy(
+                    progress = level.coerceAtMost(achievement.target),
+                    unlockedAt = if (level >= achievement.target) System.currentTimeMillis() else null
+                ))
+            }
+        }
     }
 
-    /** One-time, non-destructive import of historical Growth check-ins. */
-    suspend fun migrateGrowth(days: List<StreakDay>, today: LocalDate = LocalDate.now()) =
+    /**
+     * Non-destructive Growth import and incremental sync.
+     * Existing preferences are never modified. Sync both checked and unchecked entries so
+     * changing a habit back to unchecked cannot leave a phantom streak in the RPG database.
+     * The migration ledger is a historical marker, not a gate on later check-ins.
+     */
+    suspend fun syncGrowth(days: List<StreakDay>, today: LocalDate = LocalDate.now()) =
         db.withTransaction {
             val dao = db.dao()
-            if (dao.insertLedger(XpLedger(dedupeKey = "migration:growth:v1",
-                    questId = "legacy-growth", amount = 0)) == -1L) return@withTransaction
+            dao.insertLedger(XpLedger(dedupeKey = "migration:growth:v1",
+                questId = "legacy-growth", amount = 0))
             days.distinctBy { it.habitId to it.localDate }.forEach { dao.recordStreak(it) }
-            val longestCurrent = days.groupBy { it.habitId }
-                .values.maxOfOrNull { RpgRules.streak(it, today) } ?: 0
+            val longestCurrent = days.map { it.habitId }.distinct()
+                .maxOfOrNull { habitId -> RpgRules.streak(dao.streakDays(habitId), today) } ?: 0
             dao.achievements().firstOrNull { it.id == "streak_3" }?.let { achievement ->
                 if (achievement.unlockedAt == null) {
                     dao.updateAchievement(achievement.copy(

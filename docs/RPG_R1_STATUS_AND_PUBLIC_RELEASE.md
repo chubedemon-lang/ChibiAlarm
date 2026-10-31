@@ -2,7 +2,7 @@
 
 ## Shipped on the R1 feature branch (not merged)
 - Room database stores local character, daily quests, reward ledger, achievements and streak history.
-- Offline RPG screen is reachable from Home. Daily routine quest requires an actual legacy routine check-in; Focus quests use newly persisted daily completed-session counters; Fitness quests use local workout journal entries (which users may enter manually).
+- Offline RPG screen is reachable from Home. Daily routine quest requires an actual legacy routine check-in; Focus quests use persisted daily completed-session counters; Fitness quests use local workout journal entries (which users may enter manually); Growth quests use completed habit check-ins.
 - XP rewards are claimed separately and are protected by a unique ledger key and a Room transaction.
 - On first RPG entry, a snapshot of the existing 90-day routine XP is copied into RPG EXP once. Existing SharedPreferences are never cleared or rewritten by this migration.
 - Growth check-ins are imported without modifying legacy preferences and re-synchronized on each RPG dashboard refresh, including unchecked entries. This avoids stale streaks after a user unchecks a habit. The migration ledger marker remains idempotent.
@@ -25,7 +25,7 @@
 - [ ] Verify migration from actual v1.3 installs with populated and empty Growth/Goals/Routine data; uninstall must not be required.
 - [ ] Add Room migration tests before any schema version bump. Do not use destructive migrations.
 - [x] Integrate Focus daily completion counts and Fitness workout journal entries with quests (local-only).
-- [x] Synchronize Growth check/uncheck state on RPG refresh and expose the streak in the UI.
+- [x] Synchronize Growth check/uncheck state on RPG refresh, expose the streak in the UI and add a daily Growth quest.
 - [ ] Validate workouts beyond self-reported journal entries, if necessary for future competitive rewards.
 - [x] Distinguish legacy rolling XP from permanent RPG EXP in the RPG UI; one-time import uses a unique ledger key.
 - [ ] Audit cross-screen XP wording and migrate any future live XP sources without double counting.

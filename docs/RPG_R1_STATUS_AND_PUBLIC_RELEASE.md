@@ -13,6 +13,13 @@
 - Android Auto Backup and Android 12+ cloud/device-transfer rules exclude both encrypted key stores (`gemini_secure` and `gemini_vault`), `coach_history` and `settings` SharedPreferences. This protects encrypted user API keys and local coach chat from backup/transfer, while leaving other existing data eligible for Android backup. Users must re-enter their personal Gemini key after moving devices.
 - JVM unit tests cover deterministic level/streak/progress rules. Robolectric/Room integration tests now exercise one-time XP import, atomic claim idempotence and Growth uncheck synchronization. These still do not replace on-device alarm and migration testing. GitHub Actions compile and unit tests do not prove alarm reliability or production readiness.
 
+## R1 reliability and history scalability (pending latest CI)
+- RPG dashboard queries only the current local-date quest period and checks daily login by unique ledger key. Historical quests and reward ledger remain stored and exportable; the dashboard no longer loads every historical quest and ledger entry on each refresh.
+- Achievement quest-claim counts use an aggregate SQLite query rather than reading the entire ledger. Robolectric tests cover period filtering and exclusion of legacy imports/daily check-ins from claimed-quest totals.
+- Alarm and Focus scheduling now catch a race where Android revokes exact-alarm permission between the permission check and scheduling call. They fall back to inexact scheduling rather than crashing. This fallback **can fire late** and does not establish Android 16 device reliability.
+- The existing Room schema remains version 1; these are DAO-only queries, not a database schema migration. Do not change the entity schema without an explicit migration.
+- Latest edits require a fresh green CI run before distributing their APK. Hardware testing remains outstanding.
+
 ## Multi-user architecture (planned, NOT shipped)
 1. Offline-first: keep personal alarm/routine/fitness data in local app storage, one Android application sandbox per installation.
 2. Account sync is optional and opt-in; when implemented, require authenticated user IDs and server-side authorization for every record. Never accept a user ID alone as authorization.

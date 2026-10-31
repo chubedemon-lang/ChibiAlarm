@@ -102,9 +102,9 @@ class RpgActivity : Activity() {
                     engine.syncCheckableProgress("growth:" + today,
                         legacyDays.count { it.localDate == today && it.completed })
                     val dao = database.dao()
-                    Dashboard(dao.character() ?: RpgCharacter(), dao.quests(),
+                    Dashboard(dao.character() ?: RpgCharacter(), dao.questsForPeriod(today),
                         dao.achievements(), growthStreak,
-                        dao.ledgerEntries().any { it.dedupeKey == "daily_login:" + today })
+                        dao.hasLedgerEntry("daily_login:" + today))
                 }
                 render(data.character, data.quests, data.achievements,
                     data.growthStreak, data.dailyClaimed)
@@ -254,10 +254,8 @@ class RpgActivity : Activity() {
         hero.addView(label("EXP từ lịch cũ đã được nhập một lần; dữ liệu cũ vẫn được giữ nguyên.", 12f))
         root.addView(hero)
         root.addView(label("📜 Nhiệm vụ hôm nay", 22f))
-        val today = com.chibialarm.app.LifeData.today()
-        val current = quests.filter { it.periodKey == today }
-        if (current.isEmpty()) root.addView(label("Chưa có nhiệm vụ hôm nay."))
-        current.forEach { quest ->
+        if (quests.isEmpty()) root.addView(label("Chưa có nhiệm vụ hôm nay."))
+        quests.forEach { quest ->
             val panel = card()
             panel.addView(label(quest.title, 18f))
             panel.addView(label("${quest.progress}/${quest.target} • +${quest.rewardXp} EXP • +${quest.rewardCoins} xu", 14f))

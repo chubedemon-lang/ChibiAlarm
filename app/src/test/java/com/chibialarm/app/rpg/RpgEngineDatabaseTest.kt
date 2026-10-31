@@ -73,6 +73,26 @@ class RpgEngineDatabaseTest {
             .first { it.localDate == today }.completed)
         assertEquals(1, database.dao().achievements().first { it.id == "streak_3" }.progress)
     }
+    @Test fun multipleHabitsUseLongestCurrentStreakAndRespectCorrections() = runBlocking {
+        val engine = RpgEngine(database)
+        engine.initialize(0, day)
+        val history = (0L..4L).map {
+            StreakDay("growth:reading", day.minusDays(it).toString(), true)
+        } + (0L..1L).map {
+            StreakDay("growth:exercise", day.minusDays(it).toString(), true)
+        }
+        assertEquals(5, engine.syncGrowth(history, day))
+        val corrected = history.map {
+            if (it.habitId == "growth:reading" && it.localDate == day.toString())
+                it.copy(completed = false) else it
+        }
+        assertEquals(4, engine.syncGrowth(corrected, day))
+        assertEquals(3, database.dao().achievements()
+            .first { it.id == "streak_3" }.progress)
+        assertEquals(4, database.dao().achievements()
+            .first { it.id == "streak_7" }.progress)
+    }
+
     @Test fun characterNameCanBeChangedWithoutResettingXp() = runBlocking {
         val engine = RpgEngine(database)
         engine.initialize(620, day)

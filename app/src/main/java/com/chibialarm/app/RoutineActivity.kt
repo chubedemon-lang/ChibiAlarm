@@ -29,7 +29,7 @@ class RoutineActivity:Activity() {
         panel.addView(ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal).apply {
             max=routines.size.coerceAtLeast(1);progress=done
         })
-        panel.addView(text("⭐ ${LifeData.points(this)} XP       🔥 ${LifeData.streak(this)} ngày liên tục",15f))
+        panel.addView(text("⭐ ${LifeData.points(this)} XP lịch       🔥 ${LifeData.streak(this)} ngày liên tục",15f))
         root.addView(panel)
         root.addView(Button(this).apply { text="＋ Thêm hoạt động theo giờ";setOnClickListener { editor(null) } })
         root.addView(Button(this).apply { text="🎯 Mục tiêu 30/90 ngày";setOnClickListener { startActivity(android.content.Intent(this@RoutineActivity,GoalsActivity::class.java)) } })

@@ -97,7 +97,9 @@ class RpgActivity : Activity() {
                         if (LifeData.count(applicationContext) > 0) 1 else 0)
                     engine.syncProgress("focus:" + today,
                         getSharedPreferences("focus", MODE_PRIVATE).getInt("sessions:" + today, 0))
-                    engine.syncProgress("fitness:" + today,
+                    // Workout journal entries are user-editable. Reconcile deletions before
+                    // claiming, just like reversible Routine/Growth check-ins.
+                    engine.syncCheckableProgress("fitness:" + today,
                         WorkoutData.history(applicationContext).count { it.date == today })
                     engine.syncCheckableProgress("growth:" + today,
                         legacyDays.count { it.localDate == today && it.completed })

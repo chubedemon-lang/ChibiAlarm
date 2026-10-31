@@ -41,7 +41,8 @@ class RpgActivity : Activity() {
         val character: RpgCharacter,
         val quests: List<RpgQuest>,
         val achievements: List<RpgAchievement>,
-        val growthStreak: Int
+        val growthStreak: Int,
+        val dailyClaimed: Boolean
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -102,9 +103,11 @@ class RpgActivity : Activity() {
                         legacyDays.count { it.localDate == today && it.completed })
                     val dao = database.dao()
                     Dashboard(dao.character() ?: RpgCharacter(), dao.quests(),
-                        dao.achievements(), growthStreak)
+                        dao.achievements(), growthStreak,
+                        dao.ledgerEntries().any { it.dedupeKey == "daily_login:" + today })
                 }
-                render(data.character, data.quests, data.achievements, data.growthStreak)
+                render(data.character, data.quests, data.achievements,
+                    data.growthStreak, data.dailyClaimed)
             } catch (error: Exception) {
                 Toast.makeText(this@RpgActivity,
                     "Không tải được RPG: ${error.localizedMessage}", Toast.LENGTH_LONG).show()
@@ -180,6 +183,23 @@ class RpgActivity : Activity() {
         }
     }
 
+    private fun claimDailyLogin() {
+        scope.launch {
+            try {
+                val claimed = withContext(Dispatchers.IO) {
+                    engine.claimDailyLogin(LocalDate.parse(LifeData.today()))
+                }
+                Toast.makeText(this@RpgActivity,
+                    if (claimed) "Điểm danh thành công! +15 EXP, +3 xu"
+                    else "Bạn đã điểm danh hôm nay rồi", Toast.LENGTH_SHORT).show()
+                refresh()
+            } catch (_: Exception) {
+                Toast.makeText(this@RpgActivity,
+                    "Không thể lưu điểm danh, hãy thử lại", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
     private fun claim(quest: RpgQuest) {
         scope.launch {
             try {
@@ -197,7 +217,8 @@ class RpgActivity : Activity() {
     }
 
     private fun render(character: RpgCharacter, quests: List<RpgQuest>,
-                       achievements: List<RpgAchievement>, growthStreak: Int) {
+                       achievements: List<RpgAchievement>, growthStreak: Int,
+                       dailyClaimed: Boolean) {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(24, 26, 24, 30)
@@ -222,6 +243,14 @@ class RpgActivity : Activity() {
             progress = xpInLevel.toInt()
         })
         hero.addView(label("🔥 Chuỗi thói quen hiện tại: $growthStreak ngày", 15f))
+        hero.addView(Button(this).apply {
+            text = if (dailyClaimed) "✓ Đã điểm danh hôm nay"
+                else "🎁 Điểm danh (+15 EXP, +3 xu)"
+            isEnabled = !dailyClaimed
+            contentDescription = if (dailyClaimed) "Đã nhận thưởng điểm danh hôm nay"
+                else "Nhận thưởng điểm danh hằng ngày: 15 kinh nghiệm và 3 xu"
+            setOnClickListener { claimDailyLogin() }
+        })
         hero.addView(label("EXP từ lịch cũ đã được nhập một lần; dữ liệu cũ vẫn được giữ nguyên.", 12f))
         root.addView(hero)
         root.addView(label("📜 Nhiệm vụ hôm nay", 22f))

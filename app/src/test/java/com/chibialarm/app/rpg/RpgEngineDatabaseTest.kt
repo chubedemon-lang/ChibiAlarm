@@ -122,6 +122,34 @@ class RpgEngineDatabaseTest {
         assertFalse(snapshot.toString().contains("coach_history"))
     }
 
+    @Test fun dashboardQueriesOnlyReturnCurrentPeriodWithoutDeletingHistory() = runBlocking {
+        val engine = RpgEngine(database)
+        engine.initialize(0, day)
+        engine.initialize(0, day.plusDays(1))
+        val dao = database.dao()
+        assertEquals(8, dao.quests().size)
+        assertEquals(4, dao.questsForPeriod(day.toString()).size)
+        assertEquals(4, dao.questsForPeriod(day.plusDays(1).toString()).size)
+        assertTrue(dao.questsForPeriod(day.minusDays(1).toString()).isEmpty())
+        assertTrue(dao.quests().any { it.periodKey == day.toString() })
+    }
+
+    @Test fun ledgerAggregateExcludesDailyCheckInsAndLegacyImport() = runBlocking {
+        val engine = RpgEngine(database)
+        engine.initialize(100, day)
+        val dao = database.dao()
+        assertEquals(0, dao.questClaimCount())
+        assertFalse(dao.hasLedgerEntry("daily_login:$day"))
+        assertTrue(engine.claimDailyLogin(day))
+        assertTrue(dao.hasLedgerEntry("daily_login:$day"))
+        assertEquals(0, dao.questClaimCount())
+        assertTrue(engine.syncCheckableProgress("routine:$day", 1))
+        assertTrue(engine.claimQuest("routine:$day"))
+        assertEquals(1, dao.questClaimCount())
+        assertFalse(engine.claimQuest("routine:$day"))
+        assertEquals(1, dao.questClaimCount())
+    }
+
     @Test fun dailyCheckInRewardsOncePerDateAndDoesNotCountAsQuest() = runBlocking {
         val engine = RpgEngine(database)
         engine.initialize(0, day)

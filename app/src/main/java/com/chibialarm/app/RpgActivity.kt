@@ -32,6 +32,12 @@ class RpgActivity : Activity() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val database by lazy { RpgDatabase.get(applicationContext) }
     private val engine by lazy { RpgEngine(database) }
+    private data class Dashboard(
+        val character: RpgCharacter,
+        val quests: List<RpgQuest>,
+        val achievements: List<RpgAchievement>,
+        val growthStreak: Int
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -79,7 +85,7 @@ class RpgActivity : Activity() {
                                 else StreakDay("growth:" + key.substring(16), date, completed = value)
                             }
                         }
-                    engine.syncGrowth(legacyDays)
+                    val growthStreak = engine.syncGrowth(legacyDays)
                     val today = LifeData.today()
                     engine.syncProgress("routine:" + today,
                         if (LifeData.count(applicationContext) > 0) 1 else 0)
@@ -88,9 +94,10 @@ class RpgActivity : Activity() {
                     engine.syncProgress("fitness:" + today,
                         WorkoutData.history(applicationContext).count { it.date == today })
                     val dao = database.dao()
-                    Triple(dao.character() ?: RpgCharacter(), dao.quests(), dao.achievements())
+                    Dashboard(dao.character() ?: RpgCharacter(), dao.quests(),
+                        dao.achievements(), growthStreak)
                 }
-                render(data.first, data.second, data.third)
+                render(data.character, data.quests, data.achievements, data.growthStreak)
             } catch (error: Exception) {
                 Toast.makeText(this@RpgActivity,
                     "Không tải được RPG: ${error.localizedMessage}", Toast.LENGTH_LONG).show()
@@ -115,7 +122,7 @@ class RpgActivity : Activity() {
     }
 
     private fun render(character: RpgCharacter, quests: List<RpgQuest>,
-                       achievements: List<RpgAchievement>) {
+                       achievements: List<RpgAchievement>, growthStreak: Int) {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(24, 26, 24, 30)
@@ -124,8 +131,18 @@ class RpgActivity : Activity() {
         root.addView(label("🐰 CHIBI LIFE • RPG", 27f))
         root.addView(label("Hành trình trưởng thành của bạn • chơi ngoại tuyến", 14f))
         val hero = card()
-        hero.addView(label("🌟 ${character.name} • Cấp ${RpgRules.level(character.totalXp)}", 23f))
+        val level = RpgRules.level(character.totalXp)
+        val xpSpent = (1 until level).sumOf { RpgRules.xpToNext(it) }
+        val xpRequired = RpgRules.xpToNext(level)
+        val xpInLevel = (character.totalXp - xpSpent).coerceIn(0L, xpRequired)
+        hero.addView(label("🌟 ${character.name} • Cấp $level", 23f))
         hero.addView(label("⭐ ${character.totalXp} EXP    🪙 ${character.coins} xu", 17f))
+        hero.addView(label("Tiến độ cấp tiếp theo: $xpInLevel / $xpRequired EXP", 14f))
+        hero.addView(ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
+            max = xpRequired.toInt().coerceAtLeast(1)
+            progress = xpInLevel.toInt()
+        })
+        hero.addView(label("🔥 Chuỗi thói quen hiện tại: $growthStreak ngày", 15f))
         hero.addView(label("EXP từ lịch cũ đã được nhập một lần; dữ liệu cũ vẫn được giữ nguyên.", 12f))
         root.addView(hero)
         root.addView(label("📜 Nhiệm vụ hôm nay", 22f))

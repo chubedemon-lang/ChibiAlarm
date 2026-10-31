@@ -109,6 +109,7 @@ class RpgEngine(private val db: RpgDatabase) {
                     ))
                 }
             }
+            longestCurrent
         }
 
     /** Advance an active quest; reaching its target does not auto-award XP. */

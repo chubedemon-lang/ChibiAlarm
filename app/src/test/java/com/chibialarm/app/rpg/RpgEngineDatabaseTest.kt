@@ -121,4 +121,58 @@ class RpgEngineDatabaseTest {
         assertFalse(snapshot.toString().contains("gemini_secure"))
         assertFalse(snapshot.toString().contains("coach_history"))
     }
+
+    @Test fun dailyCheckInRewardsOncePerDateAndDoesNotCountAsQuest() = runBlocking {
+        val engine = RpgEngine(database)
+        engine.initialize(0, day)
+        assertTrue(engine.claimDailyLogin(day))
+        assertFalse(engine.claimDailyLogin(day))
+        assertTrue(engine.claimDailyLogin(day.plusDays(1)))
+        val character = database.dao().character()!!
+        assertEquals(30L, character.totalXp)
+        assertEquals(6L, character.coins)
+        assertEquals(2, database.dao().ledgerEntries()
+            .count { it.dedupeKey.startsWith("daily_login:") })
+        assertNull(database.dao().achievements().first { it.id == "first_quest" }.unlockedAt)
+    }
+
+    @Test fun newLevelMilestoneBackfillsFromLegacyXpWithoutReimport() = runBlocking {
+        val engine = RpgEngine(database)
+        val xpForLevelTen = (1..9).sumOf { RpgRules.xpToNext(it) }.toInt()
+        engine.initialize(xpForLevelTen, day)
+        engine.initialize(xpForLevelTen, day)
+        val milestone = database.dao().achievements().first { it.id == "level_10" }
+        assertEquals(10, milestone.progress)
+        assertNotNull(milestone.unlockedAt)
+        assertEquals(xpForLevelTen.toLong(), database.dao().character()!!.totalXp)
+    }
+
+    @Test fun sevenDayStreakUnlocksMilestone() = runBlocking {
+        val engine = RpgEngine(database)
+        engine.initialize(0, day)
+        val days = (0L..6L).map {
+            StreakDay("growth:reading", day.minusDays(it).toString(), completed = true)
+        }
+        assertEquals(7, engine.syncGrowth(days, day))
+        val milestone = database.dao().achievements().first { it.id == "streak_7" }
+        assertEquals(7, milestone.progress)
+        assertNotNull(milestone.unlockedAt)
+    }
+
+    @Test fun tenDistinctQuestClaimsUnlockMilestoneAndDuplicateClaimsDoNotCount() = runBlocking {
+        val engine = RpgEngine(database)
+        repeat(10) { index ->
+            val date = day.plusDays(index.toLong())
+            engine.initialize(0, date)
+            val id = "routine:$date"
+            assertTrue(engine.syncCheckableProgress(id, 1))
+            assertTrue(engine.claimQuest(id))
+            assertFalse(engine.claimQuest(id))
+        }
+        val milestone = database.dao().achievements().first { it.id == "quest_10" }
+        assertEquals(10, milestone.progress)
+        assertNotNull(milestone.unlockedAt)
+        assertEquals(10, database.dao().ledgerEntries()
+            .count { it.dedupeKey.startsWith("quest:") })
+    }
 }

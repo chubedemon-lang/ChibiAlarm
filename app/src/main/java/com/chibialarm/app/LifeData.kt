@@ -35,6 +35,11 @@ object LifeData {
         } catch(_:Exception) { emptyList() }
     }
     fun save(ctx:Context,routines:List<Routine>) {
+        // Cancel alarms for removed IDs before replacing the stored routine list.
+        // Rescheduling only the new list otherwise leaves orphan reminders behind.
+        val retainedIds = routines.map { it.id }.toSet()
+        this.routines(ctx).filterNot { it.id in retainedIds }
+            .forEach { RoutineReminder.cancel(ctx, it) }
         val array=JSONArray()
         routines.forEach { r ->
             array.put(JSONObject().put("id",r.id).put("title",r.title).put("category",r.category)

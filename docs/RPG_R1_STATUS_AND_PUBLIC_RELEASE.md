@@ -37,3 +37,8 @@
 - [ ] Beta testing and signed release artifact.
 
 This document records implementation truth, not a claim of 100% completion.
+
+
+### RPG data portability (R1)
+
+The RPG screen now offers a **user-initiated JSON export** through Android's system document picker. It includes character, quests, achievements, streak days and XP ledger, but excludes legacy alarm preferences, Gemini credentials and coach conversations. Exported JSON can contain sensitive habit information; users choose where to save it. Import, account sync, full data deletion and production privacy policy remain separate review gates. Both encrypted Gemini key preference stores (`gemini_secure` and `gemini_vault`) are excluded from Android backup and device transfer.

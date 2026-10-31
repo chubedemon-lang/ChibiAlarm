@@ -73,6 +73,12 @@ interface RpgDao {
     @Query("SELECT * FROM rpg_quest ORDER BY periodKey DESC, title ASC")
     suspend fun quests(): List<RpgQuest>
 
+    @Query("SELECT * FROM rpg_xp_ledger ORDER BY id ASC")
+    suspend fun ledgerEntries(): List<XpLedger>
+
+    @Query("SELECT * FROM rpg_streak_day ORDER BY localDate ASC, habitId ASC")
+    suspend fun allStreakDays(): List<StreakDay>
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertLedger(entry: XpLedger): Long
 

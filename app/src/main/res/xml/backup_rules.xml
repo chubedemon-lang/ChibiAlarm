@@ -2,6 +2,7 @@
 <!-- Android 6–11: do not cloud-backup encrypted BYOK data or private AI chat. -->
 <full-backup-content>
     <exclude domain="sharedpref" path="gemini_secure.xml" />
+        <exclude domain="sharedpref" path="gemini_vault.xml" />
     <exclude domain="sharedpref" path="coach_history.xml" />
     <exclude domain="sharedpref" path="settings.xml" />
 </full-backup-content>

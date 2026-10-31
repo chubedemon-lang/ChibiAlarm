@@ -15,6 +15,7 @@ import android.widget.Toast
 import com.chibialarm.app.rpg.RpgAchievement
 import com.chibialarm.app.rpg.RpgCharacter
 import com.chibialarm.app.rpg.RpgDatabase
+import com.chibialarm.app.rpg.RpgDataExport
 import com.chibialarm.app.rpg.RpgEngine
 import com.chibialarm.app.rpg.RpgQuest
 import com.chibialarm.app.rpg.RpgRules
@@ -29,6 +30,7 @@ import kotlinx.coroutines.withContext
 
 /** Offline-first RPG dashboard. No account or network access is required. */
 class RpgActivity : Activity() {
+    private val exportRequestCode = 5203
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val database by lazy { RpgDatabase.get(applicationContext) }
     private val engine by lazy { RpgEngine(database) }
@@ -103,6 +105,40 @@ class RpgActivity : Activity() {
             } catch (error: Exception) {
                 Toast.makeText(this@RpgActivity,
                     "Không tải được RPG: ${error.localizedMessage}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    /** Android Storage Access Framework: user chooses the destination, no storage permission. */
+    private fun exportRpgData() {
+        val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "application/json"
+            putExtra(Intent.EXTRA_TITLE, "chibi-life-rpg-${LocalDate.now()}.json")
+        }
+        try {
+            startActivityForResult(intent, exportRequestCode)
+        } catch (_: Exception) {
+            Toast.makeText(this, "Không mở được trình chọn nơi lưu tệp", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    @Deprecated("Android activity result callback remains supported without AndroidX Activity.")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != exportRequestCode || resultCode != RESULT_OK) return
+        val uri = data?.data ?: return
+        scope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    val json = RpgDataExport.create(database)
+                    contentResolver.openOutputStream(uri, "w")?.bufferedWriter(Charsets.UTF_8)?.use {
+                        it.write(json)
+                    } ?: error("Không thể ghi tệp đã chọn")
+                }
+                Toast.makeText(this@RpgActivity, "Đã xuất dữ liệu RPG", Toast.LENGTH_LONG).show()
+            } catch (_: Exception) {
+                Toast.makeText(this@RpgActivity, "Xuất dữ liệu thất bại, vui lòng thử lại", Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -201,6 +237,12 @@ class RpgActivity : Activity() {
             text = "🏃 Mở Chibi Fitness"
             setOnClickListener { startActivity(Intent(this@RpgActivity, FitnessActivity::class.java)) }
         })
+        root.addView(Button(this).apply {
+            text = "📤 Xuất dữ liệu RPG ra JSON"
+            contentDescription = "Xuất nhân vật, nhiệm vụ, thành tựu và lịch sử RPG vào tệp riêng"
+            setOnClickListener { exportRpgData() }
+        })
+        root.addView(label("Tệp xuất có thể chứa thông tin thói quen cá nhân. Hãy lưu ở nơi an toàn. Không bao gồm khóa Gemini, lịch sử chat hay dữ liệu báo thức.", 12f))
         root.addView(label("Bản RPG thử nghiệm: nhiệm vụ lấy tiến độ từ lịch, Focus, thói quen và nhật ký tập. Buổi tập được ghi thủ công vẫn được tính; chưa có xác minh từ thiết bị đeo.", 12f))
         setContentView(ScrollView(this).apply {
             isFillViewport = true

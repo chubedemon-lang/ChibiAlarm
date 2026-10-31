@@ -145,9 +145,12 @@ class RpgEngine(private val db: RpgDatabase) {
             dao.insertLedger(XpLedger(dedupeKey = "migration:growth:v1",
                 questId = "legacy-growth", amount = 0))
             days.distinctBy { it.habitId to it.localDate }.forEach { dao.recordStreak(it) }
+            // Read the persisted streak history once, rather than issuing one SQL
+            // query per habit on every dashboard resume.
+            val byHabit = dao.allStreakDays().groupBy { it.habitId }
             var longestCurrent = 0
             for (habitId in days.map { it.habitId }.distinct()) {
-                val current = RpgRules.streak(dao.streakDays(habitId), today)
+                val current = RpgRules.streak(byHabit[habitId].orEmpty(), today)
                 if (current > longestCurrent) longestCurrent = current
             }
             dao.achievements().filter { it.id == "streak_3" || it.id == "streak_7" }

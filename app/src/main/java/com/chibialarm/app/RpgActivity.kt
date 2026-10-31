@@ -80,9 +80,13 @@ class RpgActivity : Activity() {
                             }
                         }
                     engine.migrateGrowth(legacyDays)
-                    if (LifeData.count(applicationContext) > 0) {
-                        engine.recordProgress("routine:" + LifeData.today())
-                    }
+                    val today = LifeData.today()
+                    engine.syncProgress("routine:" + today,
+                        if (LifeData.count(applicationContext) > 0) 1 else 0)
+                    engine.syncProgress("focus:" + today,
+                        getSharedPreferences("focus", MODE_PRIVATE).getInt("sessions:" + today, 0))
+                    engine.syncProgress("fitness:" + today,
+                        WorkoutData.history(applicationContext).count { it.date == today })
                     val dao = database.dao()
                     Triple(dao.character() ?: RpgCharacter(), dao.quests(), dao.achievements())
                 }
@@ -94,11 +98,11 @@ class RpgActivity : Activity() {
         }
     }
 
-    private fun action(quest: RpgQuest, claim: Boolean) {
+    private fun claim(quest: RpgQuest) {
         scope.launch {
             try {
                 val changed = withContext(Dispatchers.IO) {
-                    if (claim) engine.claimQuest(quest.id) else engine.recordProgress(quest.id)
+                    engine.claimQuest(quest.id)
                 }
                 if (!changed) Toast.makeText(this@RpgActivity,
                     "Nhiệm vụ đã được cập nhật hoặc không còn khả dụng", Toast.LENGTH_SHORT).show()
@@ -140,13 +144,23 @@ class RpgActivity : Activity() {
                 text = when (quest.state) {
                     "CLAIMED" -> "✓ Đã nhận thưởng"
                     "COMPLETED" -> "🎁 Nhận thưởng"
-                    else -> if (quest.category == "ROUTINE") "📆 Hoàn thành lịch để mở thưởng" else "✓ Xác nhận hoàn thành"
+                    else -> when (quest.category) {
+                        "ROUTINE" -> "📆 Mở lịch sinh hoạt"
+                        "FOCUS" -> "🍅 Mở Focus"
+                        else -> "🏃 Mở nhật ký tập luyện"
+                    }
                 }
                 isEnabled = quest.state != "CLAIMED"
                 setOnClickListener {
-                    if (quest.state == "ACTIVE" && quest.category == "ROUTINE")
-                        startActivity(Intent(this@RpgActivity, RoutineActivity::class.java))
-                    else action(quest, quest.state == "COMPLETED")
+                    if (quest.state == "COMPLETED") claim(quest)
+                    else if (quest.state == "ACTIVE") {
+                        val destination = when (quest.category) {
+                            "ROUTINE" -> RoutineActivity::class.java
+                            "FOCUS" -> FocusActivity::class.java
+                            else -> WorkoutActivity::class.java
+                        }
+                        startActivity(Intent(this@RpgActivity, destination))
+                    }
                 }
             }
             panel.addView(button)
@@ -166,7 +180,7 @@ class RpgActivity : Activity() {
             text = "🏃 Mở Chibi Fitness"
             setOnClickListener { startActivity(Intent(this@RpgActivity, FitnessActivity::class.java)) }
         })
-        root.addView(label("Bản RPG thử nghiệm: check-in nhiệm vụ hiện do người dùng xác nhận. Chưa tự đồng bộ kết quả Fitness/Focus.", 12f))
+        root.addView(label("Bản RPG thử nghiệm: nhiệm vụ lấy tiến độ từ lịch, số phiên Focus và nhật ký tập. Buổi tập được ghi thủ công vẫn được tính; chưa có xác minh từ thiết bị đeo.", 12f))
         setContentView(ScrollView(this).apply {
             isFillViewport = true
             addView(root)

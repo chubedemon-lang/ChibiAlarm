@@ -20,6 +20,18 @@ class RpgRulesTest {
         assertEquals(1, RpgRules.progressNext(-5, 3, 1))
     }
 
+    @Test fun observedProgressIsIdempotent() {
+        assertEquals(1, RpgRules.progressObserved(0, 2, 1))
+        assertEquals(1, RpgRules.progressObserved(1, 2, 1))
+        assertEquals(2, RpgRules.progressObserved(1, 2, 20))
+        assertEquals(2, RpgRules.progressObserved(2, 2, 0))
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun observedProgressRejectsNegativeInput() {
+        RpgRules.progressObserved(0, 2, -1)
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun progressRejectsZeroAmount() {
         RpgRules.progressNext(0, 3, 0)

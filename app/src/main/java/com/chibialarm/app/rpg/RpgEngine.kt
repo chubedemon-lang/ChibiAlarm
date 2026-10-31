@@ -65,7 +65,7 @@ class RpgEngine(private val db: RpgDatabase) {
         }
         val day = today.toString()
         listOf(
-            RpgQuest("routine:$day", "daily_routine", day, "Hoàn thành lịch sinh hoạt", "ROUTINE", 1, 0, 30, 5),
+            RpgQuest("routine:$day", "daily_routine", day, "Hoàn thành 1 hoạt động trong lịch", "ROUTINE", 1, 0, 30, 5),
             RpgQuest("focus:$day", "daily_focus", day, "Tập trung 2 phiên", "FOCUS", 2, 0, 50, 10),
             RpgQuest("fitness:$day", "daily_fitness", day, "Vận động 1 lần", "FITNESS", 1, 0, 40, 5)
         ).forEach { dao.insertQuest(it) }

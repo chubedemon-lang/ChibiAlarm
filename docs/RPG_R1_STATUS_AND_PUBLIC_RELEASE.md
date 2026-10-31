@@ -2,7 +2,7 @@
 
 ## Shipped on the R1 feature branch (not merged)
 - Room database stores local character, daily quests, reward ledger, achievements and streak history.
-- Offline RPG screen is reachable from Home. Daily routine quest requires an actual legacy routine check-in; Focus/Fitness quests currently accept self-reported completion.
+- Offline RPG screen is reachable from Home. Daily routine quest requires an actual legacy routine check-in; Focus quests use newly persisted daily completed-session counters; Fitness quests use local workout journal entries (which users may enter manually).
 - XP rewards are claimed separately and are protected by a unique ledger key and a Room transaction.
 - On first RPG entry, a snapshot of the existing 90-day routine XP is copied into RPG EXP once. Existing SharedPreferences are never cleared or rewritten by this migration.
 - Historical completed Growth check-ins are imported once to RPG streak history; Growth preferences remain intact.
@@ -22,7 +22,7 @@
 - [ ] Device tests: Android 16 locked-screen alarms, exact alarm permission, Doze, reboot, time-zone changes, notification permission, OEM battery restrictions.
 - [ ] Verify migration from actual v1.3 installs with populated and empty Growth/Goals/Routine data; uninstall must not be required.
 - [ ] Add Room migration tests before any schema version bump. Do not use destructive migrations.
-- [ ] Integrate actual Focus and Fitness completion events with quests; remove manual trust where possible.
+- [x] Integrate Focus daily completion counts and Fitness workout journal entries with quests (local-only).\n- [ ] Validate workouts beyond self-reported journal entries, if necessary for future competitive rewards.
 - [ ] Avoid XP double counting and reconcile legacy rolling XP vs RPG permanent EXP in the UI.
 - [ ] Add account and secure backend before claiming cross-device sync or shared-user service.
 - [ ] Security/privacy review for existing direct Gemini BYOK and voice recording features.

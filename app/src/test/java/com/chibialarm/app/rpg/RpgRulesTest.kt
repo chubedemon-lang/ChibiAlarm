@@ -68,4 +68,34 @@ class RpgRulesTest {
         )
         assertEquals(1, RpgRules.streak(days, today))
     }
+
+    @Test fun importedXpCanAlreadyReachAchievementLevel() {
+        // Thresholds for levels 1 -> 5: 100 + 130 + 170 + 220 = 620.
+        assertEquals(4, RpgRules.level(619))
+        assertEquals(5, RpgRules.level(620))
+    }
+
+    @Test fun uncheckedTodayDoesNotCountButYesterdayStillDoes() {
+        val today = LocalDate.of(2026, 11, 1)
+        val days = listOf(
+            StreakDay("growth:read", "2026-11-01", false),
+            StreakDay("growth:read", "2026-10-31", true),
+            StreakDay("growth:read", "2026-10-30", true)
+        )
+        assertEquals(2, RpgRules.streak(days, today))
+    }
+
+    @Test fun uncheckedYesterdayBreaksStreakEvenIfEarlierDayCompleted() {
+        val today = LocalDate.of(2026, 11, 1)
+        val days = listOf(
+            StreakDay("growth:read", "2026-11-01", false),
+            StreakDay("growth:read", "2026-10-31", false),
+            StreakDay("growth:read", "2026-10-30", true)
+        )
+        assertEquals(0, RpgRules.streak(days, today))
+    }
+
+    @Test fun emptyGrowthHistoryHasNoStreak() {
+        assertEquals(0, RpgRules.streak(emptyList(), LocalDate.of(2026, 11, 1)))
+    }
 }

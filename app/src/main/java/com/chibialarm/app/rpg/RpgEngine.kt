@@ -38,6 +38,21 @@ object RpgRules {
 }
 
 class RpgEngine(private val db: RpgDatabase) {
+    /** Advance an active quest, capped at its target. Rewards require a separate claim. */
+    suspend fun recordProgress(questId: String, amount: Int = 1): Boolean = db.withTransaction {
+        require(amount > 0)
+        val dao = db.dao()
+        val quest = dao.quest(questId) ?: return@withTransaction false
+        if (quest.state != "ACTIVE" || quest.target <= 0) return@withTransaction false
+        val next = (quest.progress.toLong() + amount).coerceAtMost(quest.target.toLong()).toInt()
+        if (next == quest.progress) return@withTransaction false
+        dao.updateQuest(quest.copy(
+            progress = next,
+            state = if (next >= quest.target) "COMPLETED" else "ACTIVE"
+        ))
+        true
+    }
+
     /** A single transaction prevents duplicate rewards and partial balance writes. */
     suspend fun claimQuest(questId: String): Boolean = db.withTransaction {
         val dao = db.dao()

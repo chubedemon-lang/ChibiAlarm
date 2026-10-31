@@ -67,7 +67,8 @@ class RpgEngine(private val db: RpgDatabase) {
         listOf(
             RpgQuest("routine:$day", "daily_routine", day, "Hoàn thành 1 hoạt động trong lịch", "ROUTINE", 1, 0, 30, 5),
             RpgQuest("focus:$day", "daily_focus", day, "Tập trung 2 phiên", "FOCUS", 2, 0, 50, 10),
-            RpgQuest("fitness:$day", "daily_fitness", day, "Vận động 1 lần", "FITNESS", 1, 0, 40, 5)
+            RpgQuest("fitness:$day", "daily_fitness", day, "Vận động 1 lần", "FITNESS", 1, 0, 40, 5),
+            RpgQuest("growth:$day", "daily_growth", day, "Hoàn thành 1 thói quen", "GROWTH", 1, 0, 25, 5)
         ).forEach { dao.insertQuest(it) }
         listOf(
             RpgAchievement("first_quest", "Bước chân đầu tiên", target = 1),

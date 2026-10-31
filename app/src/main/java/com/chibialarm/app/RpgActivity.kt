@@ -27,6 +27,7 @@ import java.time.LocalDate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -35,6 +36,7 @@ import kotlinx.coroutines.withContext
 class RpgActivity : Activity() {
     private val exportRequestCode = 5203
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private var refreshJob: Job? = null
     private val database by lazy { RpgDatabase.get(applicationContext) }
     private val engine by lazy { RpgEngine(database) }
     private data class Dashboard(
@@ -77,7 +79,9 @@ class RpgActivity : Activity() {
     }
 
     private fun refresh() {
-        scope.launch {
+        // Avoid a stale, slower refresh overwriting a newer reward/quest state.
+        refreshJob?.cancel()
+        refreshJob = scope.launch {
             try {
                 val data = withContext(Dispatchers.IO) {
                     engine.initialize(LifeData.points(applicationContext))

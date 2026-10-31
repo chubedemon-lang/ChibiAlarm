@@ -5,8 +5,9 @@
 - Offline RPG screen is reachable from Home. Daily routine quest requires an actual legacy routine check-in; Focus quests use newly persisted daily completed-session counters; Fitness quests use local workout journal entries (which users may enter manually).
 - XP rewards are claimed separately and are protected by a unique ledger key and a Room transaction.
 - On first RPG entry, a snapshot of the existing 90-day routine XP is copied into RPG EXP once. Existing SharedPreferences are never cleared or rewritten by this migration.
-- Historical completed Growth check-ins are imported once to RPG streak history; Growth preferences remain intact.
-- The migration is **not** live bidirectional sync: subsequent Growth changes are not yet mirrored, and legacy XP on Home is still a rolling 90-day metric. RPG EXP is a persistent separate balance.
+- Growth check-ins are imported without modifying legacy preferences and re-synchronized on each RPG dashboard refresh, including unchecked entries. This avoids stale streaks after a user unchecks a habit. The migration ledger marker remains idempotent.
+- Growth check-in state is synchronized when the RPG dashboard opens/resumes, not continuously in the background. Legacy XP on Home is still a rolling 90-day metric, whereas RPG EXP is a persistent separate balance; they must be labeled distinctly.
+- Imported XP immediately unlocks the level-5 achievement if the threshold is met. The RPG dashboard displays permanent XP progress to the next level and the current Growth streak.
 - Android unit tests cover deterministic level/streak/progress rules. GitHub Actions compile and unit tests do not prove alarm reliability or production readiness.
 
 ## Multi-user architecture (planned, NOT shipped)
@@ -22,8 +23,11 @@
 - [ ] Device tests: Android 16 locked-screen alarms, exact alarm permission, Doze, reboot, time-zone changes, notification permission, OEM battery restrictions.
 - [ ] Verify migration from actual v1.3 installs with populated and empty Growth/Goals/Routine data; uninstall must not be required.
 - [ ] Add Room migration tests before any schema version bump. Do not use destructive migrations.
-- [x] Integrate Focus daily completion counts and Fitness workout journal entries with quests (local-only).\n- [ ] Validate workouts beyond self-reported journal entries, if necessary for future competitive rewards.
-- [ ] Avoid XP double counting and reconcile legacy rolling XP vs RPG permanent EXP in the UI.
+- [x] Integrate Focus daily completion counts and Fitness workout journal entries with quests (local-only).
+- [x] Synchronize Growth check/uncheck state on RPG refresh and expose the streak in the UI.
+- [ ] Validate workouts beyond self-reported journal entries, if necessary for future competitive rewards.
+- [x] Distinguish legacy rolling XP from permanent RPG EXP in the RPG UI; one-time import uses a unique ledger key.
+- [ ] Audit cross-screen XP wording and migrate any future live XP sources without double counting.
 - [ ] Add account and secure backend before claiming cross-device sync or shared-user service.
 - [ ] Security/privacy review for existing direct Gemini BYOK and voice recording features.
 - [ ] Accessibility, localization, offline UX, battery usage, crash reporting with privacy controls.

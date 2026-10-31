@@ -50,6 +50,44 @@ object RpgRules {
 }
 
 class RpgEngine(private val db: RpgDatabase) {
+    /** Reconcile existing and newly added milestones from durable ledger state. */
+    private suspend fun updateMilestones(dao: RpgDao) {
+        val level = RpgRules.level((dao.character() ?: RpgCharacter()).totalXp)
+        val questClaims = dao.ledgerEntries().count { it.dedupeKey.startsWith("quest:") }
+        val now = System.currentTimeMillis()
+        dao.achievements().forEach { achievement ->
+            if (achievement.unlockedAt != null) return@forEach
+            val observed = when (achievement.id) {
+                "first_quest", "quest_10" -> questClaims
+                "level_5", "level_10" -> level
+                else -> return@forEach
+            }
+            val progress = observed.coerceAtMost(achievement.target)
+            if (progress != achievement.progress || observed >= achievement.target) {
+                dao.updateAchievement(achievement.copy(
+                    progress = progress,
+                    unlockedAt = if (observed >= achievement.target) now else null
+                ))
+            }
+        }
+    }
+
+    /** Optional offline daily check-in. Deduplicated per local calendar day. */
+    suspend fun claimDailyLogin(today: LocalDate = LocalDate.now()): Boolean = db.withTransaction {
+        val dao = db.dao()
+        val xpReward = 15
+        val coinReward = 3
+        if (dao.insertLedger(XpLedger(dedupeKey = "daily_login:$today",
+                questId = "daily-login", amount = xpReward)) == -1L) return@withTransaction false
+        val character = dao.character() ?: RpgCharacter().also { dao.insertCharacter(it) }
+        val nextXp = character.totalXp + xpReward
+        val nextCoins = character.coins + coinReward
+        require(nextXp >= character.totalXp && nextCoins >= character.coins) { "Reward overflow" }
+        dao.updateCharacter(character.copy(totalXp = nextXp, coins = nextCoins))
+        updateMilestones(dao)
+        true
+    }
+
     /** User-editable local character name; never changes character identity or rewards. */
     suspend fun renameCharacter(name: String): Boolean = db.withTransaction {
         val normalized = name.trim().replace(Regex("\\s+"), " ")
@@ -86,18 +124,13 @@ class RpgEngine(private val db: RpgDatabase) {
         listOf(
             RpgAchievement("first_quest", "Bước chân đầu tiên", target = 1),
             RpgAchievement("level_5", "Chibi cấp 5", target = 5),
-            RpgAchievement("streak_3", "Kiên trì 3 ngày", target = 3)
+            RpgAchievement("streak_3", "Kiên trì 3 ngày", target = 3),
+            RpgAchievement("streak_7", "Kiên trì 7 ngày", target = 7),
+            RpgAchievement("quest_10", "Hoàn thành 10 nhiệm vụ", target = 10),
+            RpgAchievement("level_10", "Chibi cấp 10", target = 10)
         ).forEach { dao.insertAchievement(it) }
-        // Imported XP may already qualify for level achievements before any quest is claimed.
-        val level = RpgRules.level((dao.character() ?: RpgCharacter()).totalXp)
-        dao.achievements().firstOrNull { it.id == "level_5" }?.let { achievement ->
-            if (achievement.unlockedAt == null) {
-                dao.updateAchievement(achievement.copy(
-                    progress = level.coerceAtMost(achievement.target),
-                    unlockedAt = if (level >= achievement.target) System.currentTimeMillis() else null
-                ))
-            }
-        }
+        // Backfill achievements on upgrade without resetting any previously unlocked milestone.
+        updateMilestones(dao)
     }
 
     /**
@@ -117,15 +150,16 @@ class RpgEngine(private val db: RpgDatabase) {
                 val current = RpgRules.streak(dao.streakDays(habitId), today)
                 if (current > longestCurrent) longestCurrent = current
             }
-            dao.achievements().firstOrNull { it.id == "streak_3" }?.let { achievement ->
-                if (achievement.unlockedAt == null) {
-                    dao.updateAchievement(achievement.copy(
-                        progress = longestCurrent.coerceAtMost(achievement.target),
-                        unlockedAt = if (longestCurrent >= achievement.target)
-                            System.currentTimeMillis() else null
-                    ))
+            dao.achievements().filter { it.id == "streak_3" || it.id == "streak_7" }
+                .forEach { achievement ->
+                    if (achievement.unlockedAt == null) {
+                        dao.updateAchievement(achievement.copy(
+                            progress = longestCurrent.coerceAtMost(achievement.target),
+                            unlockedAt = if (longestCurrent >= achievement.target)
+                                System.currentTimeMillis() else null
+                        ))
+                    }
                 }
-            }
             longestCurrent
         }
 
@@ -187,18 +221,7 @@ class RpgEngine(private val db: RpgDatabase) {
         require(xp >= character.totalXp && coins >= character.coins) { "Reward overflow" }
         dao.updateCharacter(character.copy(totalXp = xp, coins = coins))
         dao.updateQuest(quest.copy(state = "CLAIMED"))
-        val now = System.currentTimeMillis()
-        dao.achievements().forEach { a ->
-            if (a.unlockedAt == null) {
-                val progress = when (a.id) {
-                    "first_quest" -> 1
-                    "level_5" -> RpgRules.level(xp)
-                    else -> a.progress
-                }
-                dao.updateAchievement(a.copy(progress = progress.coerceAtMost(a.target),
-                    unlockedAt = if (progress >= a.target) now else null))
-            }
-        }
+        updateMilestones(dao)
         true
     }
 }

@@ -53,7 +53,7 @@ class RpgEngine(private val db: RpgDatabase) {
     /** Reconcile existing and newly added milestones from durable ledger state. */
     private suspend fun updateMilestones(dao: RpgDao) {
         val level = RpgRules.level((dao.character() ?: RpgCharacter()).totalXp)
-        val questClaims = dao.ledgerEntries().count { it.dedupeKey.startsWith("quest:") }
+        val questClaims = dao.questClaimCount()
         val now = System.currentTimeMillis()
         dao.achievements().forEach { achievement ->
             if (achievement.unlockedAt != null) return@forEach

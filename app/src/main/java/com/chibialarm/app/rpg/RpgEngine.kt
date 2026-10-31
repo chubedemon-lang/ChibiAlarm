@@ -3,7 +3,7 @@ package com.chibialarm.app.rpg
 import androidx.room.withTransaction
 import java.time.LocalDate
 
-/** Pure RPG rules: deterministic, independent of Gemini and Android UI. */
+/** Deterministic, offline RPG rules. */
 object RpgRules {
     fun xpToNext(level: Int): Long {
         require(level >= 1)
@@ -22,6 +22,12 @@ object RpgRules {
         return level
     }
 
+    fun progressNext(current: Int, target: Int, amount: Int): Int {
+        require(target > 0 && amount > 0)
+        return (current.toLong().coerceAtLeast(0L) + amount)
+            .coerceAtMost(target.toLong()).toInt()
+    }
+
     fun streak(days: List<StreakDay>, today: LocalDate): Int {
         val byDate = days.associateBy { it.localDate }
         var date = today
@@ -38,36 +44,72 @@ object RpgRules {
 }
 
 class RpgEngine(private val db: RpgDatabase) {
-    /** Advance an active quest, capped at its target. Rewards require a separate claim. */
+    /**
+     * Copies the legacy 90-day XP snapshot exactly once. Existing preferences remain untouched.
+     * This is a one-time starting balance, NOT a live sync with LifeData's rolling XP counter.
+     */
+    suspend fun initialize(legacyXp: Int, today: LocalDate = LocalDate.now()) = db.withTransaction {
+        val dao = db.dao()
+        if (dao.character() == null) dao.insertCharacter(RpgCharacter())
+        val amount = legacyXp.coerceAtLeast(0)
+        if (dao.insertLedger(XpLedger(dedupeKey = "migration:life_v12:xp90:v1",
+                questId = "legacy", amount = amount)) != -1L) {
+            val character = dao.character() ?: error("Character not created")
+            dao.updateCharacter(character.copy(totalXp = character.totalXp + amount.toLong()))
+        }
+        val day = today.toString()
+        listOf(
+            RpgQuest("routine:$day", "daily_routine", day, "Hoàn thành lịch sinh hoạt", "ROUTINE", 1, 0, 30, 5),
+            RpgQuest("focus:$day", "daily_focus", day, "Tập trung 2 phiên", "FOCUS", 2, 0, 50, 10),
+            RpgQuest("fitness:$day", "daily_fitness", day, "Vận động 1 lần", "FITNESS", 1, 0, 40, 5)
+        ).forEach { dao.insertQuest(it) }
+        listOf(
+            RpgAchievement("first_quest", "Bước chân đầu tiên", target = 1),
+            RpgAchievement("level_5", "Chibi cấp 5", target = 5)
+        ).forEach { dao.insertAchievement(it) }
+    }
+
+    /** Advance an active quest; reaching its target does not auto-award XP. */
     suspend fun recordProgress(questId: String, amount: Int = 1): Boolean = db.withTransaction {
         require(amount > 0)
         val dao = db.dao()
         val quest = dao.quest(questId) ?: return@withTransaction false
         if (quest.state != "ACTIVE" || quest.target <= 0) return@withTransaction false
-        val next = (quest.progress.toLong() + amount).coerceAtMost(quest.target.toLong()).toInt()
+        val next = RpgRules.progressNext(quest.progress, quest.target, amount)
         if (next == quest.progress) return@withTransaction false
-        dao.updateQuest(quest.copy(
-            progress = next,
-            state = if (next >= quest.target) "COMPLETED" else "ACTIVE"
-        ))
+        dao.updateQuest(quest.copy(progress = next,
+            state = if (next >= quest.target) "COMPLETED" else "ACTIVE"))
         true
     }
 
-    /** A single transaction prevents duplicate rewards and partial balance writes. */
+    /** Atomic and idempotent quest claim, including achievements. */
     suspend fun claimQuest(questId: String): Boolean = db.withTransaction {
         val dao = db.dao()
         val quest = dao.quest(questId) ?: return@withTransaction false
-        if (quest.state != "COMPLETED" || quest.progress < quest.target) return@withTransaction false
-        val key = "quest:${quest.id}:${quest.periodKey}"
-        if (dao.insertLedger(XpLedger(dedupeKey = key, questId = quest.id, amount = quest.rewardXp)) == -1L) {
+        if (quest.state != "COMPLETED" || quest.target <= 0 ||
+            quest.progress < quest.target || quest.rewardXp < 0 || quest.rewardCoins < 0)
             return@withTransaction false
-        }
+        val key = "quest:${quest.id}:${quest.periodKey}"
+        if (dao.insertLedger(XpLedger(dedupeKey = key, questId = quest.id,
+                amount = quest.rewardXp)) == -1L) return@withTransaction false
         val character = dao.character() ?: RpgCharacter().also { dao.insertCharacter(it) }
-        dao.updateCharacter(character.copy(
-            totalXp = character.totalXp + quest.rewardXp.coerceAtLeast(0),
-            coins = character.coins + quest.rewardCoins.coerceAtLeast(0)
-        ))
+        val xp = character.totalXp + quest.rewardXp.toLong()
+        val coins = character.coins + quest.rewardCoins.toLong()
+        require(xp >= character.totalXp && coins >= character.coins) { "Reward overflow" }
+        dao.updateCharacter(character.copy(totalXp = xp, coins = coins))
         dao.updateQuest(quest.copy(state = "CLAIMED"))
+        val now = System.currentTimeMillis()
+        dao.achievements().forEach { a ->
+            if (a.unlockedAt == null) {
+                val progress = when (a.id) {
+                    "first_quest" -> 1
+                    "level_5" -> RpgRules.level(xp)
+                    else -> a.progress
+                }
+                dao.updateAchievement(a.copy(progress = progress.coerceAtMost(a.target),
+                    unlockedAt = if (progress >= a.target) now else null))
+            }
+        }
         true
     }
 }

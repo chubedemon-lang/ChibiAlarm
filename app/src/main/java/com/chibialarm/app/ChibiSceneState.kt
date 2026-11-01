@@ -72,6 +72,12 @@ class ChibiSceneState {
         return heroX
     }
 
+    /** Accessibility: finish movement immediately when Android animations are disabled. */
+    fun finishWalk(): Float {
+        heroX = destinationX
+        return heroX
+    }
+
     val isWalking: Boolean
         get() = abs(destinationX - heroX) > 0.5f
 }

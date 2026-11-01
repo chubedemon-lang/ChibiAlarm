@@ -12,6 +12,10 @@ import java.util.Calendar
 internal object AlarmTimeCodec {
     data class Entry(val hour: Int, val minute: Int, val weekdayMask: Int)
 
+    /** Version marker for a scheduled broadcast; never contains account data. */
+    fun signature(entry: Entry): String =
+        "${entry.hour}:${entry.minute}:${entry.weekdayMask}"
+
     fun parse(raw: String?): Entry? {
         val fields = raw?.split(",") ?: return null
         if (fields.size !in 2..3) return null
@@ -25,8 +29,12 @@ internal object AlarmTimeCodec {
 }
 
 object Scheduler {
-    fun pending(ctx: Context, id: Int): PendingIntent =
-        PendingIntent.getBroadcast(ctx, id, Intent(ctx, AlarmReceiver::class.java).putExtra("id", id), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+    fun pending(ctx: Context, id: Int, record: AlarmTimeCodec.Entry? = null): PendingIntent {
+        val intent = Intent(ctx, AlarmReceiver::class.java).putExtra("id", id)
+        if (record != null) intent.putExtra("alarm_signature", AlarmTimeCodec.signature(record))
+        return PendingIntent.getBroadcast(ctx, id, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+    }
 
     fun schedule(ctx: Context, id: Int, h: Int, m: Int) {
         // Use the latest persisted values even when a delayed caller supplies
@@ -49,7 +57,7 @@ object Scheduler {
             }
         }
         val am = ctx.getSystemService(AlarmManager::class.java)
-        val alarmIntent = pending(ctx, id)
+        val alarmIntent = pending(ctx, id, record)
         if (Build.VERSION.SDK_INT >= 31 && !am.canScheduleExactAlarms()) {
             am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, cal.timeInMillis, alarmIntent)
             return
@@ -65,9 +73,15 @@ object Scheduler {
     }
 
     fun snooze(ctx: Context, id: Int, minutes: Int) {
+        val record = AlarmTimeCodec.parse(
+            ctx.getSharedPreferences("alarms", 0).all[id.toString()] as? String)
+            ?: return
+        if (record.weekdayMask == 0) return
         val requestId = id xor 0x40000000
         val pi = PendingIntent.getBroadcast(ctx, requestId,
-            Intent(ctx, AlarmReceiver::class.java).putExtra("id", id).putExtra("snooze", true),
+            Intent(ctx, AlarmReceiver::class.java).putExtra("id", id)
+                .putExtra("snooze", true)
+                .putExtra("alarm_signature", AlarmTimeCodec.signature(record)),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         ctx.getSystemService(AlarmManager::class.java).setAndAllowWhileIdle(
             AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + minutes.coerceIn(1,60)*60000L, pi)

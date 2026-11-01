@@ -156,6 +156,35 @@ class RpgInventoryDatabaseTest {
         assertEquals(0L, db.dao().itemStack("star_fragment")!!.quantity)
     }
 
+    @Test fun grantOverflowRollsBackReceiptAndPreservesBalance() = runBlocking {
+        val inventory = RpgInventoryEngine(db)
+        val dao = db.dao()
+        dao.insertItemStack(RpgItemStack("herb", Long.MAX_VALUE, 1L))
+        try {
+            inventory.grant("herb", 1L, "test:overflow:grant")
+            fail("Expected quantity overflow")
+        } catch (_: ArithmeticException) { }
+        assertEquals(Long.MAX_VALUE, dao.itemStack("herb")!!.quantity)
+        assertEquals(0, dao.itemReceiptCount("test:overflow:grant"))
+    }
+
+    @Test fun craftOverflowDoesNotSpendIngredientsOrReserveReceipt() = runBlocking {
+        val inventory = RpgInventoryEngine(db)
+        val dao = db.dao()
+        dao.insertItemStack(RpgItemStack("garden_charm", Long.MAX_VALUE, 1L))
+        assertTrue(inventory.grant("herb", 1L, "test:craft:herb"))
+        assertTrue(inventory.grant("star_fragment", 1L, "test:craft:star"))
+        val receipt = "craft:garden_charm:overflow"
+        try {
+            inventory.craftGardenCharm(receipt)
+            fail("Expected crafted stack overflow")
+        } catch (_: ArithmeticException) { }
+        assertEquals(1L, dao.itemStack("herb")!!.quantity)
+        assertEquals(1L, dao.itemStack("star_fragment")!!.quantity)
+        assertEquals(Long.MAX_VALUE, dao.itemStack("garden_charm")!!.quantity)
+        assertEquals(0, dao.itemReceiptCount(receipt))
+    }
+
     @Test fun invalidCraftKeyCannotConsumeIngredients() = runBlocking {
         val inventory = RpgInventoryEngine(db)
         assertTrue(inventory.grant("herb", 1L, "test:herb"))

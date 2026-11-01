@@ -6,12 +6,39 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import android.view.View
+import android.view.MotionEvent
 import kotlin.math.sin
 
 /** Lightweight offline 2D mascot scene; no downloaded assets or permissions. */
 class ChibiHeroView(context: Context) : View(context) {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val startedAt = android.os.SystemClock.uptimeMillis()
+    private var happyUntil = 0L
+    var onPet: (() -> Unit)? = null
+
+    init {
+        isClickable = true
+        contentDescription = "Chạm để vuốt ve nhân vật Chibi"
+    }
+
+    override fun performClick(): Boolean {
+        super.performClick()
+        happyUntil = android.os.SystemClock.uptimeMillis() + 1100L
+        onPet?.invoke()
+        invalidate()
+        return true
+    }
+
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        if (event.action == MotionEvent.ACTION_UP) {
+            val scale = minOf(width / 320f, height / 240f)
+            if (scale <= 0f) return false
+            val x = (event.x - (width - 320f * scale) / 2f) / scale
+            val y = (event.y - (height - 240f * scale) / 2f) / scale
+            if (x in 88f..230f && y in 15f..218f) return performClick()
+        }
+        return true
+    }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val height = (240 * resources.displayMetrics.density).toInt()
@@ -71,6 +98,13 @@ class ChibiHeroView(context: Context) : View(context) {
         canvas.drawPath(smile, paint)
         paint.style = Paint.Style.FILL
         canvas.restore()
+        if (android.os.SystemClock.uptimeMillis() < happyUntil) {
+            paint.color = Color.rgb(231, 79, 140)
+            paint.textSize = 30f
+            canvas.drawText("♥", 219f, 70f, paint)
+            paint.textSize = 22f
+            canvas.drawText("♥", 91f, 86f, paint)
+        }
         canvas.restoreToCount(save)
         if (isAttachedToWindow && visibility == VISIBLE) postInvalidateDelayed(50)
     }

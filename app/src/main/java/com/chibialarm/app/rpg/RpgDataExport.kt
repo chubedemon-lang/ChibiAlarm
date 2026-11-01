@@ -1,6 +1,7 @@
 package com.chibialarm.app.rpg
 
 import androidx.room.withTransaction
+import com.chibialarm.app.ChibiCosmetics
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.Instant
@@ -10,7 +11,7 @@ import java.time.Instant
  * or Gemini credentials are read. Caller writes JSON via Android's document picker.
  */
 object RpgDataExport {
-    suspend fun create(db: RpgDatabase): String = db.withTransaction {
+    suspend fun create(db: RpgDatabase, equippedOutfit: ChibiCosmetics.Outfit? = null): String = db.withTransaction {
         val dao = db.dao()
         val character = dao.character()
         val result = JSONObject()
@@ -24,6 +25,11 @@ object RpgDataExport {
                 .put("totalXp", character.totalXp)
                 .put("coins", character.coins)
                 .put("createdAt", character.createdAt))
+        // Additive v1 field: only the already-unlocked, caller-resolved outfit.
+        // Never export raw SharedPreferences or authentication identity.
+        if (equippedOutfit != null) {
+            result.put("cosmetics", JSONObject().put("equippedOutfit", equippedOutfit.name))
+        }
         result.put("quests", JSONArray().apply {
             dao.quests().forEach { quest ->
                 put(JSONObject().put("id", quest.id)

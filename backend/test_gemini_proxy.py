@@ -82,7 +82,7 @@ class ProxyTests(unittest.TestCase):
 
     def test_empty_and_control_character_topics_rejected_without_upstream(self):
         with patch.object(proxy, "open_gemini") as upstream:
-            for topic in ("", "   ", "\\n", "hello\\nignore instructions", "hi\\x7f"):
+            for topic in ("", "   ", "\n", "hello\nignore instructions", "hi\x7f"):
                 with self.subTest(topic=repr(topic)):
                     self.assertEqual(self.request({"topic": topic})[0], 400)
             upstream.assert_not_called()
@@ -101,7 +101,7 @@ class ProxyTests(unittest.TestCase):
             self.assertEqual(builder.return_value.open.call_args.kwargs["timeout"], 25)
 
     def test_invalid_upstream_utf8_fails_closed(self):
-        with patch.object(proxy, "open_gemini", return_value=FakeResponse(b"\\xff\\xfe")):
+        with patch.object(proxy, "open_gemini", return_value=FakeResponse(b"\xff\xfe")):
             status, data = self.request()
         self.assertEqual(status, 502)
         self.assertEqual(data, {"error": "upstream_unavailable"})

@@ -169,5 +169,64 @@ class ProxyTests(unittest.TestCase):
             self.assertEqual(upstream.call_count, 2)
 
 
+    def test_budget_reservation_is_atomic_across_profiles_and_threads(self):
+        db = os.path.join(self.tmp.name, "budget.sqlite3")
+        def reserve(profile):
+            return proxy.reserve_daily_attempt(db, "2026-11-01", 50, profile, 50,
+                                               cost_limit=150_000, cost_reserve=50_000)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=12) as executor:
+            accepted = list(executor.map(reserve, [1, 2] * 10))
+        self.assertEqual(sum(accepted), 3)
+        with sqlite3.connect(db) as conn:
+            self.assertEqual(conn.execute("SELECT attempts FROM quota").fetchone()[0], 3)
+            self.assertEqual(conn.execute(
+                "SELECT reserved_microusd FROM reserved_budget").fetchone()[0], 150_000)
+            self.assertEqual(conn.execute(
+                "SELECT SUM(attempts) FROM profile_quota").fetchone()[0], 3)
+
+    def test_budget_persists_and_resets_by_utc_day(self):
+        db = os.path.join(self.tmp.name, "budget-persist.sqlite3")
+        args = (db, "2026-11-01", 20, 1, 20, 60_000, 30_000)
+        self.assertTrue(proxy.reserve_daily_attempt(*args))
+        self.assertTrue(proxy.reserve_daily_attempt(*args))
+        self.assertFalse(proxy.reserve_daily_attempt(*args))
+        self.assertTrue(proxy.reserve_daily_attempt(
+            db, "2026-11-02", 20, 1, 20, 60_000, 30_000))
+
+    def test_rejected_profile_quota_does_not_spend_budget(self):
+        db = os.path.join(self.tmp.name, "budget-profile.sqlite3")
+        self.assertTrue(proxy.reserve_daily_attempt(db, "2026-11-01", 10, 1, 1, 100_000, 50_000))
+        self.assertFalse(proxy.reserve_daily_attempt(db, "2026-11-01", 10, 1, 1, 100_000, 50_000))
+        self.assertTrue(proxy.reserve_daily_attempt(db, "2026-11-01", 10, 2, 1, 100_000, 50_000))
+        with sqlite3.connect(db) as conn:
+            self.assertEqual(conn.execute(
+                "SELECT reserved_microusd FROM reserved_budget").fetchone()[0], 100_000)
+
+    def test_invalid_budget_configuration_fails_closed(self):
+        for reserve, budget in ((0, 100), (101, 100), (1, 0), (1, 1_000_000_001)):
+            with (self.subTest(reserve=reserve, budget=budget),
+                  patch.object(proxy, "REQUEST_RESERVE_MICROUSD", reserve),
+                  patch.object(proxy, "DAILY_BUDGET_MICROUSD", budget)):
+                with self.assertRaises(ValueError):
+                    proxy.validate_config()
+        with self.assertRaises(ValueError):
+            proxy.reserve_daily_attempt("unused.db", "2026-11-01", 5,
+                                        cost_limit=100, cost_reserve=None)
+
+    def test_http_budget_ceiling_blocks_upstream_and_keeps_quota_consistent(self):
+        fake = FakeResponse(b'{"candidates":[{"content":{"parts":[{"text":"OK"}]}}]}')
+        with (patch.object(proxy, "DAILY_LIMIT", 10),
+              patch.object(proxy, "DAILY_BUDGET_MICROUSD", 50_000),
+              patch.object(proxy, "REQUEST_RESERVE_MICROUSD", 50_000),
+              patch.object(proxy.urllib.request, "urlopen", return_value=fake) as upstream):
+            self.assertEqual(self.request()[0], 200)
+            self.assertEqual(self.request()[0], 429)
+            self.assertEqual(upstream.call_count, 1)
+            with sqlite3.connect(proxy.QUOTA_DB) as conn:
+                self.assertEqual(conn.execute("SELECT attempts FROM quota").fetchone()[0], 1)
+                self.assertEqual(conn.execute(
+                    "SELECT reserved_microusd FROM reserved_budget").fetchone()[0], 50_000)
+
+
 if __name__ == "__main__":
     unittest.main()

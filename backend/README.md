@@ -12,6 +12,7 @@ Set environment variables on your own machine (never commit or paste secrets int
 - APP_ACCESS_TOKEN: random private token at least 24 characters long. The proxy refuses to start without it.
 - GEMINI_MODEL: optional, default gemini-2.5-flash; allowlisted gemini-2.5-flash or gemini-2.5-pro.
 - GEMINI_DAILY_REQUEST_LIMIT: optional global attempt ceiling (default 50 per UTC day, 1–10000). Failed upstream calls also count.
+- GEMINI_DAILY_PROFILE_LIMIT: optional per-configured-key-profile attempt ceiling (default 20 per UTC day, 1–10000). Global quota still applies across profiles. Profiles are **not users**.
 - GEMINI_MAX_CONCURRENT: optional concurrent upstream call ceiling (default 2, 1–16).
 - GEMINI_QUOTA_DB: optional persistent SQLite quota path; default backend/gemini_quota.sqlite3 (excluded from Git). Keep this file private.
 
@@ -30,7 +31,7 @@ The server binds to 127.0.0.1:8765 only. Remote testing requires an HTTPS revers
 
 POST /generate with Content-Type: application/json, Authorization: Bearer <APP_ACCESS_TOKEN>, and JSON {"topic":"...","profile":1}. Topic is at most 400 characters; profile must be a configured number 1–5. Success: {"message":"..."} (up to 500 characters). Errors return {"error":"..."} with HTTP error status. GET /healthz is an unauthenticated liveness check with no user data.
 
-The server uses constant-time token comparison, fails closed without credentials, bounds JSON requests and Gemini responses, allowlists models, applies a 25-second upstream timeout, avoids prompt/token logging, limits concurrent requests, and persists a **global request-attempt quota** in SQLite across restarts. HTTP 429 indicates a busy or exhausted proxy. This quota is **not** a monetary spend cap; configure billing safeguards and provider alerts separately.
+The server uses constant-time token comparison, fails closed without credentials, bounds JSON requests and Gemini responses, allowlists models, applies a 25-second upstream timeout, avoids prompt/token logging, limits concurrent requests, and atomically persists **global and per-profile request-attempt quotas** in SQLite across restarts. Rejected requests consume neither quota. HTTP 429 indicates a busy or exhausted proxy. This quota is **not** a monetary spend cap; configure billing safeguards and provider alerts separately.
 
 ## Offline tests
 

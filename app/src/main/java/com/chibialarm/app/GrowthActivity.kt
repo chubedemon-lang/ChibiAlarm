@@ -12,7 +12,7 @@ import java.util.*
 /** Offline habit and daily-routine dashboard; no account or server required. */
 class GrowthActivity : Activity() {
     private val store by lazy { getSharedPreferences("growth", MODE_PRIVATE) }
-    private val defaults = listOf("Uống nước", "Tập thể dục", "Đọc sách", "Học kỹ năng", "Ngủ đúng giờ")
+    private val defaults = GrowthHabits.defaultNames
     private fun today() = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
     private fun habits(): MutableList<String> {
         val saved = store.getString("habits", null)

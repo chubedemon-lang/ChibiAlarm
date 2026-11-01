@@ -47,7 +47,8 @@ class RpgActivity : Activity() {
         val achievements: List<RpgAchievement>,
         val growthStreak: Int,
         val dailyClaimed: Boolean,
-        val petGameClaimed: Boolean
+        val petGameClaimed: Boolean,
+        val inventory: List<ChibiInventory.Item>
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -127,10 +128,14 @@ class RpgActivity : Activity() {
                     Dashboard(dao.character() ?: RpgCharacter(), dao.questsForPeriod(today),
                         dao.achievements(), growthStreak,
                         dao.hasLedgerEntry("daily_login:" + today),
-                        dao.hasLedgerEntry("pet_game:" + today))
+                        dao.hasLedgerEntry("pet_game:" + today),
+                        ChibiInventory.fromClaims(
+                            dao.dailyLoginClaimCount(), dao.petGameClaimCount(),
+                            dao.questClaimCount().toLong()
+                        ))
                 }
                 render(data.character, data.quests, data.achievements,
-                    data.growthStreak, data.dailyClaimed, data.petGameClaimed)
+                    data.growthStreak, data.dailyClaimed, data.petGameClaimed, data.inventory)
             } catch (error: Exception) {
                 if (error is CancellationException) throw error
                 Toast.makeText(this@RpgActivity,
@@ -245,7 +250,8 @@ class RpgActivity : Activity() {
 
     private fun render(character: RpgCharacter, quests: List<RpgQuest>,
                        achievements: List<RpgAchievement>, growthStreak: Int,
-                       dailyClaimed: Boolean, petGameClaimed: Boolean) {
+                       dailyClaimed: Boolean, petGameClaimed: Boolean,
+                       inventory: List<ChibiInventory.Item>) {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(24, 26, 24, 30)
@@ -377,6 +383,20 @@ class RpgActivity : Activity() {
                         }
                     }
                     .setNegativeButton("Đóng", null)
+                    .show()
+            }
+        })
+        hero.addView(Button(this).apply {
+            text = "🎒 Ba lô kỷ vật • Xem vật phẩm"
+            contentDescription = "Xem các kỷ vật đã nhận từ nhiệm vụ, điểm danh và chơi cùng Chibi"
+            setOnClickListener {
+                val summary = inventory.joinToString("\\n") { item ->
+                    "${item.icon} ${item.title}: ${item.count}"
+                }
+                AlertDialog.Builder(this@RpgActivity)
+                    .setTitle("🎒 Ba lô kỷ vật")
+                    .setMessage(summary + "\\n\\nKỷ vật được tính từ lịch sử nhận thưởng, không thể sử dụng hoặc giao dịch.")
+                    .setPositiveButton("Đóng", null)
                     .show()
             }
         })

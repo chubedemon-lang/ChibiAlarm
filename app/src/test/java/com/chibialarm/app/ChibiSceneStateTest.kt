@@ -49,4 +49,36 @@ class ChibiSceneStateTest {
         assertEquals(ChibiSceneState.Scene.BEDROOM, state.scene)
         assertEquals(160f, state.heroX, 0f)
     }
+
+    @Test fun snapshotRestoresSceneAndInFlightWalkWithoutRewards() {
+        val original = ChibiSceneState()
+        original.switchScene()
+        assertEquals(ChibiSceneState.Action.WALK, original.tap(200f, 210f))
+        original.advance(0.05f)
+        val saved = original.snapshot()
+        val restored = ChibiSceneState()
+        assertTrue(restored.restore(saved))
+        assertEquals(ChibiSceneState.Scene.GARDEN, restored.scene)
+        assertEquals(saved.heroX, restored.heroX, 0.001f)
+        assertEquals(saved.destinationX, restored.destinationX, 0.001f)
+        assertTrue(restored.isWalking)
+        repeat(20) { restored.advance(0.05f) }
+        assertEquals(200f, restored.heroX, 0.001f)
+        assertFalse(restored.isWalking)
+    }
+
+    @Test fun corruptedSnapshotCannotEscapeWalkableFloorOrChangeScene() {
+        val state = ChibiSceneState()
+        assertFalse(state.restore(ChibiSceneState.Snapshot(
+            ChibiSceneState.Scene.GARDEN, Float.NaN, 160f)))
+        assertFalse(state.restore(ChibiSceneState.Snapshot(
+            ChibiSceneState.Scene.GARDEN, 160f, Float.POSITIVE_INFINITY)))
+        assertFalse(state.restore(ChibiSceneState.Snapshot(
+            ChibiSceneState.Scene.GARDEN, 999f, 160f)))
+        assertEquals(ChibiSceneState.Scene.BEDROOM, state.scene)
+        assertEquals(160f, state.heroX, 0f)
+        assertEquals(ChibiSceneState.Scene.GARDEN, state.switchScene())
+        assertEquals(ChibiSceneState.Scene.BEDROOM, state.switchScene())
+        assertEquals(160f, state.destinationX, 0f)
+    }
 }

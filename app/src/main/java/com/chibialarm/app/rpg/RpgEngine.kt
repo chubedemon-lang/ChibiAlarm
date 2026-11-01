@@ -88,6 +88,26 @@ class RpgEngine(private val db: RpgDatabase) {
         true
     }
 
+    /**
+     * One small offline mini-game reward per local calendar day.
+     * The UI requires three successful pet interactions; the durable ledger is
+     * the source of truth, so rotation/retries cannot duplicate a payout.
+     */
+    suspend fun claimDailyPetGame(today: LocalDate = LocalDate.now()): Boolean = db.withTransaction {
+        val dao = db.dao()
+        val rewardXp = 10
+        val rewardCoins = 2
+        if (dao.insertLedger(XpLedger(dedupeKey = "pet_game:$today",
+                questId = "pet-game", amount = rewardXp)) == -1L) return@withTransaction false
+        val character = dao.character() ?: RpgCharacter().also { dao.insertCharacter(it) }
+        val nextXp = character.totalXp + rewardXp.toLong()
+        val nextCoins = character.coins + rewardCoins.toLong()
+        require(nextXp >= character.totalXp && nextCoins >= character.coins) { "Reward overflow" }
+        dao.updateCharacter(character.copy(totalXp = nextXp, coins = nextCoins))
+        updateMilestones(dao)
+        true
+    }
+
     /** User-editable local character name; never changes character identity or rewards. */
     suspend fun renameCharacter(name: String): Boolean = db.withTransaction {
         val normalized = name.trim().replace(Regex("\\s+"), " ")

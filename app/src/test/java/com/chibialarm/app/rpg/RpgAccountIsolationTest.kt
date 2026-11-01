@@ -31,6 +31,21 @@ class RpgAccountIsolationTest {
         }
     }
 
+    @Test fun explicitAccountErasureDoesNotDeleteAnotherAccountsRpg() = runBlocking {
+        val context = RuntimeEnvironment.getApplication()
+        val prefix = UUID.randomUUID().toString()
+        val firstId = "test:$prefix:erase"
+        val secondId = "test:$prefix:keep"
+        val first = RpgDatabase.forVerifiedAccount(context, firstId)
+        val second = RpgDatabase.forVerifiedAccount(context, secondId)
+        first.dao().insertCharacter(RpgCharacter(name = "Erase Me", totalXp = 10L))
+        second.dao().insertCharacter(RpgCharacter(name = "Keep Me", totalXp = 20L))
+        assertTrue(RpgDatabase.deleteVerifiedAccount(context, firstId))
+        val reopened = RpgDatabase.forVerifiedAccount(context, firstId)
+        assertNull(reopened.dao().character())
+        assertEquals(20L, second.dao().character()?.totalXp)
+    }
+
     @Test fun differentAccountsDoNotShareRpgDataAndGuestDatabaseRemainsSeparate() = runBlocking {
         val context = RuntimeEnvironment.getApplication()
         val prefix = UUID.randomUUID().toString()

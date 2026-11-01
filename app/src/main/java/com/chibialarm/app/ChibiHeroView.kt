@@ -68,6 +68,15 @@ class ChibiHeroView(context: Context) : View(context) {
         showRoomChange()
     }
 
+    /** TalkBack/large-target equivalent of tapping a garden planter. */
+    fun waterGarden(): Boolean {
+        if (sceneState.scene != ChibiSceneState.Scene.GARDEN) return false
+        waterUntil = android.os.SystemClock.uptimeMillis() + 850L
+        onGardenAction?.invoke()
+        invalidate()
+        return true
+    }
+
     private fun showRoomChange() {
         transitionUntil = if (reducedMotion) 0L else android.os.SystemClock.uptimeMillis() + 350L
         onRoomChanged?.invoke(sceneState.scene == ChibiSceneState.Scene.GARDEN)
@@ -103,11 +112,7 @@ class ChibiHeroView(context: Context) : View(context) {
                         if (reducedMotion) sceneState.finishWalk()
                         invalidate()
                     }
-                    ChibiSceneState.Action.WATER -> {
-                        waterUntil = android.os.SystemClock.uptimeMillis() + 850L
-                        onGardenAction?.invoke()
-                        invalidate()
-                    }
+                    ChibiSceneState.Action.WATER -> { waterGarden() }
                     ChibiSceneState.Action.BED -> onSceneAction?.invoke(ChibiSceneActions.Target.BED)
                     ChibiSceneState.Action.DESK -> onSceneAction?.invoke(ChibiSceneActions.Target.DESK)
                     ChibiSceneState.Action.TRAINING -> onSceneAction?.invoke(ChibiSceneActions.Target.TRAINING)

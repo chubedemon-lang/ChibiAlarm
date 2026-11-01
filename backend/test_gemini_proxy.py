@@ -68,16 +68,16 @@ class ProxyTests(unittest.TestCase):
             with socket.create_connection(("127.0.0.1", self.server.server_port), timeout=4) as sock:
                 sock.settimeout(4)
                 sock.sendall((
-                    "POST /generate HTTP/1.1\\r\\n"
-                    "Host: localhost\\r\\n"
-                    "Authorization: Bearer " + self.token + "\\r\\n"
-                    "Content-Type: application/json\\r\\n"
-                    "Content-Length: 100\\r\\n"
-                    "Connection: close\\r\\n\\r\\n"
+                    "POST /generate HTTP/1.1\r\n"
+                    "Host: localhost\r\n"
+                    "Authorization: Bearer " + self.token + "\r\n"
+                    "Content-Type: application/json\r\n"
+                    "Content-Length: 100\r\n"
+                    "Connection: close\r\n\r\n"
                     '{"topic":"partial"}'
                 ).encode("ascii"))
                 response = sock.recv(4096)
-            self.assertIn(b" 408 ", response.split(b"\\r\\n", 1)[0])
+            self.assertIn(b" 408 ", response.split(b"\r\n", 1)[0])
             upstream.assert_not_called()
             self.assertEqual(self.request(token=False)[0], 401)
             self.assertFalse(os.path.exists(proxy.QUOTA_DB))

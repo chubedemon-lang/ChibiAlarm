@@ -390,12 +390,12 @@ class RpgActivity : Activity() {
             text = "🎒 Ba lô kỷ vật • Xem vật phẩm"
             contentDescription = "Xem các kỷ vật đã nhận từ nhiệm vụ, điểm danh và chơi cùng Chibi"
             setOnClickListener {
-                val summary = inventory.joinToString("\\n") { item ->
+                val summary = inventory.joinToString("\n") { item ->
                     "${item.icon} ${item.title}: ${item.count}"
                 }
                 AlertDialog.Builder(this@RpgActivity)
                     .setTitle("🎒 Ba lô kỷ vật")
-                    .setMessage(summary + "\\n\\nKỷ vật được tính từ lịch sử nhận thưởng, không thể sử dụng hoặc giao dịch.")
+                    .setMessage(summary + "\n\nKỷ vật được tính từ lịch sử nhận thưởng, không thể sử dụng hoặc giao dịch.")
                     .setPositiveButton("Đóng", null)
                     .show()
             }

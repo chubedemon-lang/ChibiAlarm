@@ -24,15 +24,24 @@ object LifeData {
     fun today():String=SimpleDateFormat("yyyy-MM-dd",Locale.US).format(Date())
     private fun prefs(ctx:Context)=ctx.getSharedPreferences(FILE,Context.MODE_PRIVATE)
     fun routines(ctx:Context):List<Routine> {
-        val raw=prefs(ctx).getString("routines","[]") ?: "[]"
+        // A single damaged legacy record must not hide every valid routine.
+        // Read-only recovery: never overwrite the original preference on parse failure.
         return try {
-            val data=JSONArray(raw)
-            (0 until data.length()).map { i ->
-                val o=data.getJSONObject(i)
-                Routine(o.getInt("id"),o.getString("title"),o.optString("category","📚 Học tập"),
-                    o.getInt("hour"),o.getInt("minute"),o.optInt("duration",30),o.optInt("repeatMask",127))
-            }.sortedWith(compareBy({it.hour},{it.minute}))
-        } catch(_:Exception) { emptyList() }
+            val data=JSONArray(prefs(ctx).getString("routines","[]") ?: "[]")
+            val recovered=mutableListOf<Routine>()
+            for (i in 0 until data.length()) {
+                val o=data.optJSONObject(i) ?: continue
+                try {
+                    recovered.add(Routine(o.getInt("id"),o.getString("title"),
+                        o.optString("category","📚 Học tập"),o.getInt("hour"),
+                        o.getInt("minute"),o.optInt("duration",30),
+                        o.optInt("repeatMask",127)))
+                } catch (_:Exception) {
+                    // Skip only this record; preserve its raw JSON for diagnostics.
+                }
+            }
+            recovered.sortedWith(compareBy({it.hour},{it.minute}))
+        } catch (_:Exception) { emptyList() }
     }
     fun save(ctx:Context,routines:List<Routine>) {
         // Cancel alarms for removed IDs before replacing the stored routine list.

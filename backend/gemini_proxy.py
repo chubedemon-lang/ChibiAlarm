@@ -25,6 +25,7 @@ TOKEN = os.environ.get("APP_ACCESS_TOKEN", "")
 MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 ALLOWED_MODELS = frozenset(("gemini-2.5-flash", "gemini-2.5-pro"))
 DAILY_LIMIT = int(os.environ.get("GEMINI_DAILY_REQUEST_LIMIT", "50"))
+PROFILE_DAILY_LIMIT = int(os.environ.get("GEMINI_DAILY_PROFILE_LIMIT", "20"))
 MAX_CONCURRENT = int(os.environ.get("GEMINI_MAX_CONCURRENT", "2"))
 QUOTA_DB = os.environ.get("GEMINI_QUOTA_DB", str(Path(__file__).with_name("gemini_quota.sqlite3")))
 SLOTS = threading.BoundedSemaphore(MAX_CONCURRENT if MAX_CONCURRENT > 0 else 1)
@@ -38,27 +39,47 @@ def validate_config():
         raise ValueError("At least one GEMINI_API_KEY(_1..5) must be configured")
     if MODEL not in ALLOWED_MODELS or not re.fullmatch(r"[a-zA-Z0-9._-]+", MODEL):
         raise ValueError("GEMINI_MODEL is not allowlisted")
-    if not (1 <= DAILY_LIMIT <= 10000) or not (1 <= MAX_CONCURRENT <= 16):
+    if not (1 <= DAILY_LIMIT <= 10000) or not (1 <= PROFILE_DAILY_LIMIT <= 10000) or not (1 <= MAX_CONCURRENT <= 16):
         raise ValueError("Invalid quota/concurrency limits")
 
 
-def reserve_daily_attempt(path, day, limit):
-    """Atomically reserve a global upstream attempt; persists across server restarts.
+def reserve_daily_attempt(path, day, limit, profile=None, profile_limit=None):
+    """Atomically reserve a global and (optionally) per-profile upstream attempt.
 
-    Failed upstream calls also count; this is NOT a monetary spend cap.
+    Both counters are checked and incremented in one SQLite write transaction.
+    Rejected requests never consume either quota. Upstream failures do count.
+    This is an attempt ceiling, NOT a monetary or token-based spend cap.
     """
+    if (profile is None) != (profile_limit is None):
+        raise ValueError("profile and profile_limit must be specified together")
+    if profile is not None and (profile not in range(1, 6) or profile_limit < 1):
+        raise ValueError("invalid profile quota")
     # sqlite3's connection context manager commits but does NOT close connections.
-    # Explicitly close per request to avoid leaking file handles under load.
     with closing(sqlite3.connect(path, timeout=5)) as conn:
         with conn:
-            conn.execute("CREATE TABLE IF NOT EXISTS quota (day TEXT PRIMARY KEY, attempts INTEGER NOT NULL)")
             conn.execute("BEGIN IMMEDIATE")
+            conn.execute("CREATE TABLE IF NOT EXISTS quota (day TEXT PRIMARY KEY, attempts INTEGER NOT NULL)")
+            conn.execute("CREATE TABLE IF NOT EXISTS profile_quota ("
+                         "day TEXT NOT NULL, profile INTEGER NOT NULL, attempts INTEGER NOT NULL, "
+                         "PRIMARY KEY(day, profile))")
             row = conn.execute("SELECT attempts FROM quota WHERE day=?", (day,)).fetchone()
             if row and row[0] >= limit:
                 return False
+            if profile is not None:
+                used = conn.execute(
+                    "SELECT attempts FROM profile_quota WHERE day=? AND profile=?",
+                    (day, profile)).fetchone()
+                if used and used[0] >= profile_limit:
+                    return False
             conn.execute("INSERT INTO quota(day, attempts) VALUES(?, 1) "
                          "ON CONFLICT(day) DO UPDATE SET attempts=attempts+1", (day,))
-            conn.execute("DELETE FROM quota WHERE day < ?", (day[:4] + "-01-01",))
+            if profile is not None:
+                conn.execute("INSERT INTO profile_quota(day, profile, attempts) VALUES(?, ?, 1) "
+                             "ON CONFLICT(day, profile) DO UPDATE SET attempts=attempts+1",
+                             (day, profile))
+            cutoff = day[:4] + "-01-01"
+            conn.execute("DELETE FROM quota WHERE day < ?", (cutoff,))
+            conn.execute("DELETE FROM profile_quota WHERE day < ?", (cutoff,))
             return True
 
 
@@ -122,7 +143,7 @@ class Handler(BaseHTTPRequestHandler):
         try:
             day = datetime.now(timezone.utc).date().isoformat()
             try:
-                allowed = reserve_daily_attempt(QUOTA_DB, day, DAILY_LIMIT)
+                allowed = reserve_daily_attempt(QUOTA_DB, day, DAILY_LIMIT, profile, PROFILE_DAILY_LIMIT)
             except (sqlite3.Error, OSError):
                 self.reply(503, {"error": "quota_storage_unavailable"})
                 return

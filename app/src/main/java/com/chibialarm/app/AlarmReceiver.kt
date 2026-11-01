@@ -12,6 +12,12 @@ class AlarmReceiver : BroadcastReceiver() {
             Scheduler.cancel(context, id)
             return
         }
+        // A broadcast already in flight may belong to a time/day setting the
+        // user has since changed. Ignore it without cancelling the new alarm.
+        // Legacy intents without a marker remain supported after app upgrade.
+        val scheduledSignature = intent.getStringExtra("alarm_signature")
+        if (scheduledSignature != null &&
+            scheduledSignature != AlarmTimeCodec.signature(record)) return
         if (!intent.getBooleanExtra("snooze", false))
             Scheduler.schedule(context, id, record.hour, record.minute)
         val manager = context.getSystemService(NotificationManager::class.java)

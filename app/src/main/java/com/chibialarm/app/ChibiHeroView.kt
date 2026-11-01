@@ -15,10 +15,11 @@ class ChibiHeroView(context: Context) : View(context) {
     private val startedAt = android.os.SystemClock.uptimeMillis()
     private var happyUntil = 0L
     var onPet: (() -> Unit)? = null
+    var onSceneAction: ((ChibiSceneActions.Target) -> Unit)? = null
 
     init {
         isClickable = true
-        contentDescription = "Chạm để vuốt ve nhân vật Chibi"
+        contentDescription = "Chạm nhân vật để vuốt ve, giường để mở báo thức, bàn để mở Focus, thảm để mở Fitness"
     }
 
     override fun performClick(): Boolean {
@@ -35,7 +36,14 @@ class ChibiHeroView(context: Context) : View(context) {
             if (scale <= 0f) return false
             val x = (event.x - (width - 320f * scale) / 2f) / scale
             val y = (event.y - (height - 240f * scale) / 2f) / scale
-            if (x in 88f..230f && y in 15f..218f) return performClick()
+            when (val target = ChibiSceneActions.hit(x, y)) {
+                ChibiSceneActions.Target.HERO -> return performClick()
+                ChibiSceneActions.Target.NONE -> return true
+                else -> {
+                    onSceneAction?.invoke(target)
+                    return true
+                }
+            }
         }
         return true
     }
@@ -71,6 +79,23 @@ class ChibiHeroView(context: Context) : View(context) {
         circle(canvas, Color.rgb(255, 255, 255), 270f, 59f, 16f)
         oval(canvas, Color.rgb(145, 199, 151), 0f, 195f, 320f, 265f)
         oval(canvas, Color.rgb(111, 163, 121), 95f, 209f, 225f, 227f)
+        // Hand-drawn interactive bedroom props: bed, focus desk and training mat.
+        paint.color = Color.rgb(164, 112, 178)
+        canvas.drawRoundRect(9f, 122f, 79f, 199f, 9f, 9f, paint)
+        paint.color = Color.rgb(255, 239, 246)
+        canvas.drawRoundRect(13f, 130f, 75f, 195f, 8f, 8f, paint)
+        paint.color = Color.WHITE
+        canvas.drawRoundRect(18f, 134f, 70f, 150f, 7f, 7f, paint)
+        paint.color = Color.rgb(169, 113, 75)
+        canvas.drawRoundRect(241f, 126f, 311f, 144f, 4f, 4f, paint)
+        canvas.drawRect(247f, 143f, 254f, 195f, paint)
+        canvas.drawRect(298f, 143f, 305f, 195f, paint)
+        paint.color = Color.rgb(95, 120, 180)
+        canvas.drawRoundRect(259f, 101f, 294f, 126f, 4f, 4f, paint)
+        paint.color = Color.rgb(208, 234, 249)
+        canvas.drawRoundRect(263f, 105f, 290f, 121f, 2f, 2f, paint)
+        paint.color = Color.rgb(112, 174, 190)
+        canvas.drawRoundRect(12f, 212f, 86f, 230f, 8f, 8f, paint)
         val bob = sin((android.os.SystemClock.uptimeMillis() - startedAt) / 420.0).toFloat() * 3f
         canvas.save()
         canvas.translate(0f, bob)

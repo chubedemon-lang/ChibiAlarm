@@ -34,6 +34,13 @@
   must not trust user-supplied balances or self-reported quest completion for purchases.
 - On logout, invalidate tokens and stop background sync; choose whether to retain or
   remove account-scoped local data with clear user consent.
+- The local RPG store now exposes `RpgDatabase.closeVerifiedAccount(subject)` for
+  logout/account switching. It closes and evicts the Room handle **without deleting**
+  the account's disk data. `deleteVerifiedAccount(context, subject)` remains a
+  separate explicit erasure operation. Cancel in-flight coroutines and observers
+  before either operation; never call erasure as an automatic logout side effect.
+  Robolectric tests cover re-login persistence and cross-account noninterference.
+  This API is not wired to an authenticated login screen yet.
 
 ## Gemini backend (future)
 

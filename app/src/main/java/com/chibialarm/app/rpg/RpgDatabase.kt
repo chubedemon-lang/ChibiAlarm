@@ -213,6 +213,21 @@ abstract class RpgDatabase : RoomDatabase() {
         }
 
         /**
+         * Logout/session switch: release the cached account database handle WITHOUT
+         * deleting its on-disk RPG progress. The next verified login opens the
+         * same file and preserves inventory, XP and quests.
+         *
+         * The caller must cancel outstanding DAO work before calling this.
+         * This is not account erasure and does not touch guest or other accounts.
+         */
+        fun closeVerifiedAccount(verifiedSubject: String) {
+            val file = accountDatabaseFile(verifiedSubject)
+            synchronized(this) {
+                accountInstances.remove(file)?.close()
+            }
+        }
+
+        /**
          * Explicit local RPG erasure for an authenticated account after logout.
          * Do not call while an account's screens or coroutines still use its DAO.
          * Never deletes the guest database or any other account's database.

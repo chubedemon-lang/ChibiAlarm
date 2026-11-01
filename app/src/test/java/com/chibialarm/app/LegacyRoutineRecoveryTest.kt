@@ -40,6 +40,32 @@ class LegacyRoutineRecoveryTest {
         assertEquals(recovered, LifeData.routines(context))
     }
 
+    @Test fun savingRecoveredRoutinesKeepsFirstDamagedOriginalAsBackup() {
+        val damaged = """[{"id":20,"title":"Valid","hour":9,"minute":0},{"title":"Missing id"}]"""
+        assertTrue(prefs.edit().putString("routines", damaged).commit())
+        val recovered = LifeData.routines(context)
+        assertEquals(1, recovered.size)
+
+        try {
+            LifeData.save(context, recovered)
+            assertEquals(damaged, prefs.getString("routines_corrupt_backup", null))
+            assertEquals(listOf(20), LifeData.routines(context).map { it.id })
+            LifeData.save(context, emptyList())
+            assertEquals(damaged, prefs.getString("routines_corrupt_backup", null))
+        } finally {
+            LifeData.save(context, emptyList())
+        }
+    }
+
+    @Test fun validRoutineSaveDoesNotCreateUnnecessaryRecoveryCopy() {
+        try {
+            LifeData.save(context, listOf(Routine(21, "Read", "Study", 8, 0, 15)))
+            assertFalse(prefs.contains("routines_corrupt_backup"))
+        } finally {
+            LifeData.save(context, emptyList())
+        }
+    }
+
     @Test fun invalidJsonAndWrongPreferenceTypeDoNotCrashOrMutateData() {
         assertTrue(prefs.edit().putString("routines", "{truncated").commit())
         assertTrue(LifeData.routines(context).isEmpty())

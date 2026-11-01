@@ -1,6 +1,7 @@
 package com.chibialarm.app.rpg
 
 import androidx.room.withTransaction
+import java.time.LocalDate
 
 /**
  * Offline-first, durable item stacks. Item receipts are unique per database,
@@ -39,6 +40,48 @@ class RpgInventoryEngine(private val db: RpgDatabase) {
         }
     }
 
+    /**
+     * One deterministic, offline garden find per local date. A single receipt
+     * makes retries, rotation and concurrent taps safe. This is a local toy
+     * economy; changing the device clock can change available days.
+     */
+    suspend fun forageGarden(today: LocalDate = LocalDate.now()): String? {
+        val itemId = RpgGardenRules.dailyFind(today)
+        val claimed = grant(itemId, 1L, "garden:forage:$today")
+        return if (claimed) itemId else null
+    }
+
+    /**
+     * Turn one herb and one star fragment into a non-tradeable garden charm.
+     * All debits, output and deduplication are in the same Room transaction.
+     * Failed crafts never consume ingredients or reserve a receipt.
+     */
+    suspend fun craftGardenCharm(dedupeKey: String): Boolean {
+        validateReceiptKey(dedupeKey)
+        require(dedupeKey.startsWith("craft:garden_charm:")) { "Invalid craft receipt" }
+        return db.withTransaction {
+            val dao = db.dao()
+            if (dao.itemReceiptCount(dedupeKey) != 0) return@withTransaction false
+            if ((dao.itemStack("herb")?.quantity ?: 0L) < 1L ||
+                (dao.itemStack("star_fragment")?.quantity ?: 0L) < 1L) {
+                return@withTransaction false
+            }
+            val now = System.currentTimeMillis()
+            if (dao.insertItemReceipt(RpgItemReceipt(
+                    dedupeKey, "garden_charm", 1L, now)) == -1L) return@withTransaction false
+            check(dao.consumeItem("herb", 1L, now) == 1)
+            check(dao.consumeItem("star_fragment", 1L, now) == 1)
+            val existing = dao.itemStack("garden_charm")
+            if (existing == null) {
+                check(dao.insertItemStack(RpgItemStack("garden_charm", 1L, now)) != -1L)
+            } else {
+                dao.updateItemStack(existing.copy(
+                    quantity = Math.addExact(existing.quantity, 1L), updatedAt = now))
+            }
+            true
+        }
+    }
+
     suspend fun stacks(): List<RpgItemStack> = db.dao().itemStacks()
 
     companion object {
@@ -55,12 +98,19 @@ class RpgInventoryEngine(private val db: RpgDatabase) {
 }
 
 /** Local labels only. Unknown future item IDs are displayed safely, never executed. */
+/** Deterministic offline drops; no server, random monetization or hidden purchases. */
+object RpgGardenRules {
+    fun dailyFind(today: LocalDate): String =
+        if (today.toEpochDay() % 2L == 0L) "herb" else "star_fragment"
+}
+
 object RpgItemCatalog {
     data class Definition(val title: String, val icon: String, val description: String)
     fun describe(itemId: String): Definition = when (itemId) {
         "camp_map" -> Definition("Bản đồ khu vườn", "🗺️", "Vật phẩm khởi đầu, lưu ngoại tuyến")
-        "star_fragment" -> Definition("Mảnh sao", "✨", "Nguyên liệu dành cho các hoạt động sau này")
-        "herb" -> Definition("Thảo mộc", "🌿", "Nguyên liệu dành cho các hoạt động sau này")
+        "star_fragment" -> Definition("Mảnh sao", "✨", "Nguyên liệu chế tạo bùa khu vườn")
+        "herb" -> Definition("Thảo mộc", "🌿", "Nguyên liệu chế tạo bùa khu vườn")
+        "garden_charm" -> Definition("Bùa khu vườn", "🍀", "Kỷ vật chế tạo từ thảo mộc và mảnh sao")
         else -> Definition("Vật phẩm", "🎒", "Vật phẩm chưa có mô tả")
     }
 }

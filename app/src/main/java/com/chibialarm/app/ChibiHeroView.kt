@@ -17,6 +17,7 @@ class ChibiHeroView(context: Context) : View(context) {
     var sceneState = ChibiSceneState()
     private var lastFrameMs = android.os.SystemClock.uptimeMillis()
     private var waterUntil = 0L
+    private var transitionUntil = 0L
     var onRoomChanged: ((Boolean) -> Unit)? = null
     var onGardenAction: (() -> Unit)? = null
     var onPet: (() -> Unit)? = null
@@ -44,6 +45,7 @@ class ChibiHeroView(context: Context) : View(context) {
             when (sceneState.tap(x, y)) {
                 ChibiSceneState.Action.PET -> performClick()
                 ChibiSceneState.Action.DOOR -> {
+                    transitionUntil = android.os.SystemClock.uptimeMillis() + 350L
                     onRoomChanged?.invoke(sceneState.scene == ChibiSceneState.Scene.GARDEN)
                     invalidate()
                 }
@@ -148,10 +150,20 @@ class ChibiHeroView(context: Context) : View(context) {
         oval(canvas, Color.rgb(78, 83, 165), 124f, 199f, 157f, 216f)
         oval(canvas, Color.rgb(78, 83, 165), 163f, 199f, 196f, 216f)
         circle(canvas, Color.rgb(251, 244, 255), 160f, 111f, 69f)
-        oval(canvas, Color.rgb(68, 62, 104), 127f, 104f, 140f, 122f)
-        oval(canvas, Color.rgb(68, 62, 104), 180f, 104f, 193f, 122f)
-        circle(canvas, Color.WHITE, 133f, 109f, 3.5f)
-        circle(canvas, Color.WHITE, 186f, 109f, 3.5f)
+        // Brief blink every few seconds, using only the existing vector primitives.
+        if ((now - startedAt) % 4200L < 160L) {
+            paint.color = Color.rgb(68, 62, 104)
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = 3f
+            canvas.drawLine(127f, 113f, 140f, 113f, paint)
+            canvas.drawLine(180f, 113f, 193f, 113f, paint)
+            paint.style = Paint.Style.FILL
+        } else {
+            oval(canvas, Color.rgb(68, 62, 104), 127f, 104f, 140f, 122f)
+            oval(canvas, Color.rgb(68, 62, 104), 180f, 104f, 193f, 122f)
+            circle(canvas, Color.WHITE, 133f, 109f, 3.5f)
+            circle(canvas, Color.WHITE, 186f, 109f, 3.5f)
+        }
         oval(canvas, Color.rgb(250, 176, 193), 107f, 123f, 130f, 136f)
         oval(canvas, Color.rgb(250, 176, 193), 190f, 123f, 213f, 136f)
         paint.color = Color.rgb(87, 67, 110)
@@ -167,6 +179,11 @@ class ChibiHeroView(context: Context) : View(context) {
             canvas.drawText("♥", 219f, 70f, paint)
             paint.textSize = 22f
             canvas.drawText("♥", 91f, 86f, paint)
+        }
+        if (now < transitionUntil) {
+            val remaining = ((transitionUntil - now).toFloat() / 350f).coerceIn(0f, 1f)
+            paint.color = Color.argb((remaining * 190).toInt(), 255, 255, 255)
+            canvas.drawRoundRect(0f, 0f, 320f, 240f, 24f, 24f, paint)
         }
         canvas.restoreToCount(save)
         if (isAttachedToWindow && visibility == VISIBLE) postInvalidateDelayed(33)

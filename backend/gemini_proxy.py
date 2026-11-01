@@ -31,6 +31,8 @@ PROFILE_DAILY_LIMIT = int(os.environ.get("GEMINI_DAILY_PROFILE_LIMIT", "20"))
 DAILY_BUDGET_MICROUSD = int(os.environ.get("GEMINI_DAILY_BUDGET_MICROUSD", "500000"))
 REQUEST_RESERVE_MICROUSD = int(os.environ.get("GEMINI_REQUEST_RESERVE_MICROUSD", "50000"))
 MAX_CONCURRENT = int(os.environ.get("GEMINI_MAX_CONCURRENT", "2"))
+# Bound unauthenticated clients that declare a body but never finish sending it.
+CLIENT_READ_TIMEOUT_SECONDS = int(os.environ.get("GEMINI_CLIENT_READ_TIMEOUT_SECONDS", "5"))
 QUOTA_DB = os.environ.get("GEMINI_QUOTA_DB", str(Path(__file__).with_name("gemini_quota.sqlite3")))
 SLOTS = threading.BoundedSemaphore(MAX_CONCURRENT if MAX_CONCURRENT > 0 else 1)
 
@@ -61,6 +63,8 @@ def validate_config():
         raise ValueError("GEMINI_MODEL is not allowlisted")
     if not (1 <= DAILY_LIMIT <= 10000) or not (1 <= PROFILE_DAILY_LIMIT <= 10000) or not (1 <= MAX_CONCURRENT <= 16):
         raise ValueError("Invalid quota/concurrency limits")
+    if not 1 <= CLIENT_READ_TIMEOUT_SECONDS <= 30:
+        raise ValueError("Invalid client read timeout")
     if not (1 <= REQUEST_RESERVE_MICROUSD <= DAILY_BUDGET_MICROUSD <= 1_000_000_000):
         raise ValueError("Invalid estimated spend reservation limits")
 
@@ -125,6 +129,12 @@ def reserve_daily_attempt(path, day, limit, profile=None, profile_limit=None,
 
 
 class Handler(BaseHTTPRequestHandler):
+    def setup(self):
+        # ThreadingHTTPServer otherwise allows a slow client to hold a thread
+        # indefinitely while rfile.read(Content-Length) waits for more bytes.
+        self.request.settimeout(CLIENT_READ_TIMEOUT_SECONDS)
+        super().setup()
+
     def log_message(self, format, *args):
         # Never log user-supplied topics, tokens or URL query strings.
         pass
@@ -179,6 +189,11 @@ class Handler(BaseHTTPRequestHandler):
             if profile not in KEYS or not KEYS[profile]:
                 self.reply(400, {"error": "profile_unavailable"})
                 return
+        except TimeoutError:
+            self.reply(408, {"error": "request_timeout"})
+            return
+        except ConnectionError:
+            return  # Peer disconnected while sending a bounded request body.
         except (ValueError, UnicodeDecodeError, json.JSONDecodeError):
             self.reply(400, {"error": "invalid_request"})
             return

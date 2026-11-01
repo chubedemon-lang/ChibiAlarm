@@ -7,8 +7,9 @@ import android.os.Build
 /** Persistent focus completion alarm: works after Activity closes, subject to Android scheduling permissions. */
 object FocusTimer {
     private const val CODE=47821
-    private fun pi(ctx:Context)=PendingIntent.getBroadcast(ctx,CODE,
-        Intent(ctx,FocusDoneReceiver::class.java),
+    private const val EXTRA_EXPECTED_END = "focus_expected_end"
+    private fun pi(ctx:Context,end:Long=0L)=PendingIntent.getBroadcast(ctx,CODE,
+        Intent(ctx,FocusDoneReceiver::class.java).putExtra(EXTRA_EXPECTED_END,end),
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     private fun prefs(ctx:Context)=ctx.getSharedPreferences("focus",Context.MODE_PRIVATE)
     fun endTime(ctx:Context):Long=prefs(ctx).getLong("endTime",0L)
@@ -17,17 +18,22 @@ object FocusTimer {
         stop(ctx)
         val end=System.currentTimeMillis()+minutes.coerceIn(1,180)*60000L
         // Persist before scheduling so a killed process can restore the pending session.
-        check(prefs(ctx).edit().putLong("endTime",end).commit()) { "Cannot save Focus timer" }
+        check(prefs(ctx).edit().putLong("endTime",end)
+            .putBoolean("signedAlarm",true).commit()) { "Cannot save Focus timer" }
         schedule(ctx,end)
     }
     @Synchronized fun restore(ctx:Context) {
         val end=endTime(ctx)
         if(end==0L)return
-        if(end<=System.currentTimeMillis()) complete(ctx) else schedule(ctx,end)
+        if(end<=System.currentTimeMillis()) complete(ctx) else {
+            schedule(ctx,end)
+            // Existing legacy sessions are upgraded without changing their end time.
+            prefs(ctx).edit().putBoolean("signedAlarm",true).commit()
+        }
     }
     private fun schedule(ctx:Context,end:Long) {
         val am=ctx.getSystemService(AlarmManager::class.java)
-        val pending = pi(ctx)
+        val pending = pi(ctx,end)
         if(Build.VERSION.SDK_INT>=31 && !am.canScheduleExactAlarms()) {
             am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,end,pending)
         } else {
@@ -43,6 +49,20 @@ object FocusTimer {
         ctx.getSystemService(AlarmManager::class.java).cancel(pi(ctx))
         prefs(ctx).edit().remove("endTime").commit()
     }
+    /**
+     * Ignore a delayed alarm from an earlier Focus session after the user restarted
+     * the timer. Old pre-upgrade PendingIntents lack a marker and are accepted only
+     * for an unchanged legacy session, never after a newly started session.
+     */
+    @Synchronized fun completeFromAlarm(ctx:Context,intent:Intent):Boolean {
+        val current = endTime(ctx)
+        if (current == 0L) return false
+        val expected = intent.getLongExtra(EXTRA_EXPECTED_END,0L)
+        if (expected != current &&
+            (expected != 0L || prefs(ctx).getBoolean("signedAlarm",false))) return false
+        return complete(ctx)
+    }
+
     /** Serialize receiver and Activity completions; never award one session twice. */
     @Synchronized fun complete(ctx:Context):Boolean {
         val current=endTime(ctx)
@@ -61,7 +81,7 @@ object FocusTimer {
 }
 class FocusDoneReceiver:BroadcastReceiver() {
     override fun onReceive(ctx:Context,intent:Intent) {
-        if(!FocusTimer.complete(ctx))return
+        if(!FocusTimer.completeFromAlarm(ctx,intent))return
         val nm=ctx.getSystemService(NotificationManager::class.java)
         val channel="chibi_focus"
         nm.createNotificationChannel(NotificationChannel(channel,"Hoàn thành tập trung",NotificationManager.IMPORTANCE_HIGH))

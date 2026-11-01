@@ -183,6 +183,11 @@ class RpgEngineDatabaseTest {
         assertEquals("rpg-only", snapshot.getString("scope"))
         assertEquals(225L, snapshot.getJSONObject("character").getLong("totalXp"))
         assertEquals(4, snapshot.getJSONArray("quests").length())
+        assertEquals(4, snapshot.getJSONArray("keepsakes").length())
+        assertEquals("quest_badge",
+            snapshot.getJSONArray("keepsakes").getJSONObject(3).getString("id"))
+        assertEquals(1L,
+            snapshot.getJSONArray("keepsakes").getJSONObject(3).getLong("count"))
         assertEquals(3, snapshot.getJSONArray("ledger").length())
         assertEquals(1, snapshot.getJSONArray("streakDays").length())
         assertFalse(snapshot.toString().contains("gemini_secure"))

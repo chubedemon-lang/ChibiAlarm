@@ -108,6 +108,11 @@ class ProxyTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 proxy.validate_config()
 
+    def test_duplicate_api_key_profiles_rejected_at_startup(self):
+        with patch.object(proxy, "KEYS", {1: "same-key", 2: "same-key"}):
+            with self.assertRaises(ValueError):
+                proxy.validate_config()
+
     def test_bad_profile_daily_limit_rejected_at_startup(self):
         for invalid in (0, 10001):
             with self.subTest(invalid=invalid), patch.object(proxy, "PROFILE_DAILY_LIMIT", invalid):

@@ -187,6 +187,12 @@ class RpgEngineDatabaseTest {
         assertEquals(225L, snapshot.getJSONObject("character").getLong("totalXp"))
         assertEquals(4, snapshot.getJSONArray("quests").length())
         assertEquals(4, snapshot.getJSONArray("keepsakes").length())
+        assertEquals(1, snapshot.getJSONArray("itemStacks").length())
+        assertEquals("camp_map",
+            snapshot.getJSONArray("itemStacks").getJSONObject(0).getString("itemId"))
+        assertEquals(1L,
+            snapshot.getJSONArray("itemStacks").getJSONObject(0).getLong("quantity"))
+        assertFalse(snapshot.toString().contains("starter:camp_map:v1"))
         assertEquals("quest_badge",
             snapshot.getJSONArray("keepsakes").getJSONObject(3).getString("id"))
         assertEquals(1L,

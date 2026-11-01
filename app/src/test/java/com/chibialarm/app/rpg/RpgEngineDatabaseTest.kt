@@ -162,6 +162,14 @@ class RpgEngineDatabaseTest {
         assertEquals(1, snapshot.getJSONArray("streakDays").length())
         assertFalse(snapshot.toString().contains("gemini_secure"))
         assertFalse(snapshot.toString().contains("coach_history"))
+        assertFalse(snapshot.has("cosmetics"))
+        val withWardrobe = JSONObject(RpgDataExport.create(
+            database, com.chibialarm.app.ChibiCosmetics.Outfit.SCARF))
+        assertEquals("SCARF", withWardrobe.getJSONObject("cosmetics")
+            .getString("equippedOutfit"))
+        assertEquals(snapshot.getJSONObject("character").getLong("totalXp"),
+            withWardrobe.getJSONObject("character").getLong("totalXp"))
+        assertFalse(withWardrobe.toString().contains("gemini_vault"))
     }
 
     @Test fun reopeningDiskDatabasePreservesProgressAndDoesNotReimportLegacyXp() = runBlocking {

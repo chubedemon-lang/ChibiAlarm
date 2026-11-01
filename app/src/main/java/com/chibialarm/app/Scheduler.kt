@@ -32,7 +32,7 @@ object Scheduler {
         // Use the latest persisted values even when a delayed caller supplies
         // an older time. Keep the legacy h/m signature for existing call sites.
         val record = AlarmTimeCodec.parse(
-            ctx.getSharedPreferences("alarms", 0).getString(id.toString(), null))
+            ctx.getSharedPreferences("alarms", 0).all[id.toString()] as? String)
         if (record == null || record.weekdayMask == 0) {
             // Also cancel a previously scheduled alarm when the user unchecks
             // every day, or an old/corrupted preference cannot be restored.

@@ -6,7 +6,7 @@ class AlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val id = intent.getIntExtra("id", 0)
         val record = AlarmTimeCodec.parse(
-            context.getSharedPreferences("alarms", 0).getString(id.toString(), null))
+            context.getSharedPreferences("alarms", 0).all[id.toString()] as? String)
         if (record == null || record.weekdayMask == 0) {
             // A stale broadcast must not ring a deleted, disabled or corrupt alarm.
             Scheduler.cancel(context, id)

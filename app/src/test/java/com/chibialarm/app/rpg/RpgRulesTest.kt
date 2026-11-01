@@ -5,6 +5,11 @@ import org.junit.Test
 import java.time.LocalDate
 
 class RpgRulesTest {
+    @Test fun largeLegacyXpRemainsWithinSupportedLevelCap() {
+        assertEquals(1000, RpgRules.level(Long.MAX_VALUE))
+        assertEquals(1, RpgRules.level(0))
+    }
+
     @Test fun xpThresholds() {
         assertEquals(100L, RpgRules.xpToNext(1))
         assertEquals(280L, RpgRules.xpToNext(5))

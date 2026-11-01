@@ -32,6 +32,15 @@ class MobileSecretGuardTests(unittest.TestCase):
                     self.assertIsNone(pattern.search(source),
                         "Potential bundled secret: " + label + " in " + str(path.relative_to(ROOT)))
 
+    def test_legacy_byok_transport_rejects_redirects_and_large_responses(self):
+        # Source guard until Android integration tests can mock HTTPS connections.
+        # Legacy user-entered keys still need migration to the production proxy.
+        source = (SOURCES / "java" / "com" / "chibialarm" / "app" /
+                  "GeminiService.kt").read_text(encoding="utf-8")
+        self.assertIn("instanceFollowRedirects = false", source)
+        self.assertIn('output.length + read > 65536', source)
+        self.assertNotIn("reader.readText()", source)
+
     def test_no_android_google_services_credentials_file(self):
         self.assertFalse((MOBILE / "google-services.json").exists(),
             "Audit google-services.json before packaging; never bundle server Gemini keys")

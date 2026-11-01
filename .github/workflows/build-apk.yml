@@ -17,6 +17,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Backend security tests (no network or secrets)
+        run: python3 -m unittest discover -s backend -p 'test_*.py' -v
       - name: JDK 17
         uses: actions/setup-java@v4
         with:

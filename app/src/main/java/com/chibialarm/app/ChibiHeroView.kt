@@ -39,6 +39,9 @@ class ChibiHeroView(context: Context) : View(context) {
     private val reducedMotion = android.provider.Settings.Global.getFloat(
         context.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f
     ) == 0f
+    private val tapGesture = ChibiTapGesture(
+        android.view.ViewConfiguration.get(context).scaledTouchSlop.toFloat()
+    )
     private var waterUntil = 0L
     private var transitionUntil = 0L
     var onRoomChanged: ((Boolean) -> Unit)? = null
@@ -72,27 +75,45 @@ class ChibiHeroView(context: Context) : View(context) {
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (event.action == MotionEvent.ACTION_UP) {
-            val scale = minOf(width / 320f, height / 240f)
-            if (scale <= 0f) return false
-            val x = (event.x - (width - 320f * scale) / 2f) / scale
-            val y = (event.y - (height - 240f * scale) / 2f) / scale
-            when (sceneState.tap(x, y)) {
-                ChibiSceneState.Action.PET -> performClick()
-                ChibiSceneState.Action.DOOR -> showRoomChange()
-                ChibiSceneState.Action.WALK -> {
-                    if (reducedMotion) sceneState.finishWalk()
-                    invalidate()
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                tapGesture.begin(event.x, event.y)
+                return true
+            }
+            MotionEvent.ACTION_MOVE -> {
+                // A scroll or swipe must never pet, claim a reward or change rooms.
+                // Let the parent ScrollView intercept movement naturally.
+                tapGesture.move(event.x, event.y)
+                return true
+            }
+            MotionEvent.ACTION_POINTER_DOWN, MotionEvent.ACTION_CANCEL -> {
+                tapGesture.cancel()
+                return true
+            }
+            MotionEvent.ACTION_UP -> {
+                if (!tapGesture.end(event.x, event.y)) return true
+                val scale = minOf(width / 320f, height / 240f)
+                if (!scale.isFinite() || scale <= 0f) return true
+                val x = (event.x - (width - 320f * scale) / 2f) / scale
+                val y = (event.y - (height - 240f * scale) / 2f) / scale
+                when (sceneState.tap(x, y)) {
+                    ChibiSceneState.Action.PET -> performClick()
+                    ChibiSceneState.Action.DOOR -> showRoomChange()
+                    ChibiSceneState.Action.WALK -> {
+                        if (reducedMotion) sceneState.finishWalk()
+                        invalidate()
+                    }
+                    ChibiSceneState.Action.WATER -> {
+                        waterUntil = android.os.SystemClock.uptimeMillis() + 850L
+                        onGardenAction?.invoke()
+                        invalidate()
+                    }
+                    ChibiSceneState.Action.BED -> onSceneAction?.invoke(ChibiSceneActions.Target.BED)
+                    ChibiSceneState.Action.DESK -> onSceneAction?.invoke(ChibiSceneActions.Target.DESK)
+                    ChibiSceneState.Action.TRAINING -> onSceneAction?.invoke(ChibiSceneActions.Target.TRAINING)
+                    ChibiSceneState.Action.NONE -> Unit
                 }
-                ChibiSceneState.Action.WATER -> {
-                    waterUntil = android.os.SystemClock.uptimeMillis() + 850L
-                    onGardenAction?.invoke()
-                    invalidate()
-                }
-                ChibiSceneState.Action.BED -> onSceneAction?.invoke(ChibiSceneActions.Target.BED)
-                ChibiSceneState.Action.DESK -> onSceneAction?.invoke(ChibiSceneActions.Target.DESK)
-                ChibiSceneState.Action.TRAINING -> onSceneAction?.invoke(ChibiSceneActions.Target.TRAINING)
-                ChibiSceneState.Action.NONE -> Unit
+                return true
             }
         }
         return true

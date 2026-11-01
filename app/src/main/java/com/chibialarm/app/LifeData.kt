@@ -87,11 +87,24 @@ object LifeData {
 
 object RoutineReminder {
     private fun requestCode(id:Int)=id xor 0x382819
+
+    // A disabled or corrupted legacy routine must not create a notification.
+    // Keep the saved record untouched so an upgrade never destroys user data.
+    internal fun canSchedule(r:Routine):Boolean =
+        r.hour in 0..23 && r.minute in 0..59 && r.repeatMask in 1..127
+
+    // A delayed broadcast for an edited routine must not ring at its old time.
+    // Older pending intents without a signature are still accepted on upgrade.
+    internal fun scheduleSignature(r:Routine):String =
+        "${r.hour}:${r.minute}:${r.repeatMask}"
+
     private fun pending(ctx:Context,r:Routine):PendingIntent=PendingIntent.getBroadcast(
-        ctx,requestCode(r.id),Intent(ctx,RoutineReminderReceiver::class.java).putExtra("routine_id",r.id),
+        ctx,requestCode(r.id),Intent(ctx,RoutineReminderReceiver::class.java)
+            .putExtra("routine_id",r.id).putExtra("routine_signature",scheduleSignature(r)),
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     fun cancel(ctx:Context,r:Routine) { ctx.getSystemService(AlarmManager::class.java).cancel(pending(ctx,r)) }
     fun schedule(ctx:Context,r:Routine) {
+        if(!canSchedule(r)) { cancel(ctx,r);return }
         val c=Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY,r.hour);set(Calendar.MINUTE,r.minute);set(Calendar.SECOND,0);set(Calendar.MILLISECOND,0)
         }
@@ -124,6 +137,12 @@ class RoutineReminderReceiver:BroadcastReceiver() {
     override fun onReceive(ctx:Context,intent:Intent) {
         val id=intent.getIntExtra("routine_id",-1)
         val r=LifeData.routines(ctx).firstOrNull { it.id==id } ?: return
+        if(!RoutineReminder.canSchedule(r)) {
+            RoutineReminder.cancel(ctx,r)
+            return
+        }
+        val scheduledSignature=intent.getStringExtra("routine_signature")
+        if(scheduledSignature!=null && scheduledSignature!=RoutineReminder.scheduleSignature(r)) return
         RoutineReminder.schedule(ctx,r)
         if(LifeData.isDone(ctx,id)) return
         val nm=ctx.getSystemService(NotificationManager::class.java)

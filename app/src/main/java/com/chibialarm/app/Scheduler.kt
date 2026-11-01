@@ -4,17 +4,45 @@ import android.content.*
 import android.os.Build
 import java.util.Calendar
 
+/**
+ * Legacy alarm records: "hour,minute[,weekdayMask]". Two-field records
+ * remain readable for users upgrading from older versions.
+ * A zero mask is disabled; malformed records must never trigger an alarm.
+ */
+internal object AlarmTimeCodec {
+    data class Entry(val hour: Int, val minute: Int, val weekdayMask: Int)
+
+    fun parse(raw: String?): Entry? {
+        val fields = raw?.split(",") ?: return null
+        if (fields.size !in 2..3) return null
+        val hour = fields[0].trim().toIntOrNull() ?: return null
+        val minute = fields[1].trim().toIntOrNull() ?: return null
+        val mask = if (fields.size == 3)
+            fields[2].trim().toIntOrNull() ?: return null else 127
+        if (hour !in 0..23 || minute !in 0..59 || mask !in 0..127) return null
+        return Entry(hour, minute, mask)
+    }
+}
+
 object Scheduler {
     fun pending(ctx: Context, id: Int): PendingIntent =
         PendingIntent.getBroadcast(ctx, id, Intent(ctx, AlarmReceiver::class.java).putExtra("id", id), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
 
     fun schedule(ctx: Context, id: Int, h: Int, m: Int) {
+        // Use the latest persisted values even when a delayed caller supplies
+        // an older time. Keep the legacy h/m signature for existing call sites.
+        val record = AlarmTimeCodec.parse(
+            ctx.getSharedPreferences("alarms", 0).getString(id.toString(), null))
+        if (record == null || record.weekdayMask == 0) {
+            // Also cancel a previously scheduled alarm when the user unchecks
+            // every day, or an old/corrupted preference cannot be restored.
+            cancel(ctx, id)
+            return
+        }
         val cal = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, h); set(Calendar.MINUTE, m)
+            set(Calendar.HOUR_OF_DAY, record.hour); set(Calendar.MINUTE, record.minute)
             set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
-            val data = ctx.getSharedPreferences("alarms", 0).getString(id.toString(), null)?.split(",")
-            val mask = data?.getOrNull(2)?.toIntOrNull() ?: 127
-            if (mask == 0) return
+            val mask = record.weekdayMask
             var count = 0
             while ((timeInMillis <= System.currentTimeMillis() || (mask and (1 shl (get(Calendar.DAY_OF_WEEK)-1))) == 0) && count < 8) {
                 add(Calendar.DAY_OF_YEAR, 1); count++

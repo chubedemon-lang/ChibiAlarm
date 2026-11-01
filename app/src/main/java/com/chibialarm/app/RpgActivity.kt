@@ -45,7 +45,8 @@ class RpgActivity : Activity() {
         val quests: List<RpgQuest>,
         val achievements: List<RpgAchievement>,
         val growthStreak: Int,
-        val dailyClaimed: Boolean
+        val dailyClaimed: Boolean,
+        val petGameClaimed: Boolean
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -102,10 +103,11 @@ class RpgActivity : Activity() {
                     val dao = database.dao()
                     Dashboard(dao.character() ?: RpgCharacter(), dao.questsForPeriod(today),
                         dao.achievements(), growthStreak,
-                        dao.hasLedgerEntry("daily_login:" + today))
+                        dao.hasLedgerEntry("daily_login:" + today),
+                        dao.hasLedgerEntry("pet_game:" + today))
                 }
                 render(data.character, data.quests, data.achievements,
-                    data.growthStreak, data.dailyClaimed)
+                    data.growthStreak, data.dailyClaimed, data.petGameClaimed)
             } catch (error: Exception) {
                 if (error is CancellationException) throw error
                 Toast.makeText(this@RpgActivity,
@@ -217,7 +219,7 @@ class RpgActivity : Activity() {
 
     private fun render(character: RpgCharacter, quests: List<RpgQuest>,
                        achievements: List<RpgAchievement>, growthStreak: Int,
-                       dailyClaimed: Boolean) {
+                       dailyClaimed: Boolean, petGameClaimed: Boolean) {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(24, 26, 24, 30)
@@ -230,12 +232,40 @@ class RpgActivity : Activity() {
         val xpSpent = (1 until level).sumOf { RpgRules.xpToNext(it) }
         val xpRequired = RpgRules.xpToNext(level)
         val xpInLevel = (character.totalXp - xpSpent).coerceIn(0L, xpRequired)
+        var petTaps = 0
+        var petClaimPending = false
+        val petProgress = label(
+            if (petGameClaimed) "♥ Đã nhận thưởng chơi cùng Chibi hôm nay"
+            else "♥ Vuốt ve Chibi 3 lần: 0/3 • +10 EXP, +2 xu", 14f)
         hero.addView(ChibiHeroView(this).apply {
             onPet = {
-                Toast.makeText(this@RpgActivity, "Chibi vui quá! ♥", Toast.LENGTH_SHORT).show()
+                if (petGameClaimed) {
+                    petProgress.text = "♥ Chibi đã nhận quà hôm nay. Mai chơi tiếp nhé!"
+                } else if (!petClaimPending) {
+                    petTaps = (petTaps + 1).coerceAtMost(3)
+                    petProgress.text = "♥ Vuốt ve Chibi: $petTaps/3"
+                    if (petTaps == 3) {
+                        petClaimPending = true
+                        scope.launch {
+                            try {
+                                val rewarded = withContext(Dispatchers.IO) {
+                                    engine.claimDailyPetGame(LocalDate.parse(LifeData.today()))
+                                }
+                                Toast.makeText(this@RpgActivity,
+                                    if (rewarded) "Chibi vui quá! +10 EXP, +2 xu"
+                                    else "Đã nhận quà hôm nay rồi", Toast.LENGTH_SHORT).show()
+                                refresh()
+                            } catch (_: Exception) {
+                                petClaimPending = false
+                                petTaps = 0
+                                petProgress.text = "Chưa lưu được phần thưởng, thử lại nhé"
+                            }
+                        }
+                    }
+                }
             }
         })
-        hero.addView(label("👆 Chạm vào Chibi để vuốt ve và nhận phản ứng!", 14f))
+        hero.addView(petProgress)
         hero.addView(label("🌟 ${character.name} • Cấp $level", 23f))
         hero.addView(Button(this).apply {
             text = "✏️ Đổi tên Chibi"

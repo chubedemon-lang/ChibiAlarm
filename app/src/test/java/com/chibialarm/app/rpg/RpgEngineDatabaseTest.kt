@@ -54,6 +54,9 @@ class RpgEngineDatabaseTest {
         assertTrue(engine.syncCheckableProgress("growth:$day", 1))
         assertTrue(engine.claimQuest("growth:$day"))
         assertFalse(engine.claimQuest("growth:$day"))
+        // '_' is a SQL LIKE wildcard; unrelated ledger keys must not count.
+        dao.insertLedger(XpLedger(dedupeKey = "dailyXlogin:fake", questId = "test", amount = 0))
+        dao.insertLedger(XpLedger(dedupeKey = "petXgame:fake", questId = "test", amount = 0))
         assertEquals(1L, dao.dailyLoginClaimCount())
         assertEquals(1L, dao.petGameClaimCount())
         assertEquals(1, dao.questClaimCount())

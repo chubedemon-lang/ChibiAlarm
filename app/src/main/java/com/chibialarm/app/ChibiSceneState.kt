@@ -17,14 +17,34 @@ class ChibiSceneState {
     var destinationX: Float = 160f
         private set
 
+    /** Temporary scene state for Android rotation/process recreation, not RPG progress. */
+    data class Snapshot(val scene: Scene, val heroX: Float, val destinationX: Float)
+
+    fun snapshot(): Snapshot = Snapshot(scene, heroX, destinationX)
+
+    /** Reject malformed saved state rather than moving the hero outside the walkable floor. */
+    fun restore(saved: Snapshot): Boolean {
+        if (!saved.heroX.isFinite() || !saved.destinationX.isFinite() ||
+            saved.heroX !in 116f..204f || saved.destinationX !in 116f..204f) return false
+        scene = saved.scene
+        heroX = saved.heroX
+        destinationX = saved.destinationX
+        return true
+    }
+
+    fun switchScene(): Scene {
+        scene = if (scene == Scene.BEDROOM) Scene.GARDEN else Scene.BEDROOM
+        destinationX = 160f
+        heroX = 160f
+        return scene
+    }
+
     fun tap(x: Float, y: Float): Action {
         if (!x.isFinite() || !y.isFinite() || x !in 0f..320f || y !in 0f..240f) {
             return Action.NONE
         }
         if (x in 138f..182f && y in 225f..240f) {
-            scene = if (scene == Scene.BEDROOM) Scene.GARDEN else Scene.BEDROOM
-            destinationX = 160f
-            heroX = 160f
+            switchScene()
             return Action.DOOR
         }
         if (scene == Scene.GARDEN) {

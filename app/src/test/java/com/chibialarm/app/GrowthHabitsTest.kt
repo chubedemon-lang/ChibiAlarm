@@ -1,6 +1,11 @@
 package com.chibialarm.app
 
 import android.content.Context
+import androidx.room.Room
+import com.chibialarm.app.rpg.RpgDatabase
+import com.chibialarm.app.rpg.RpgEngine
+import kotlinx.coroutines.runBlocking
+import java.time.LocalDate
 import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
@@ -54,4 +59,29 @@ class GrowthHabitsTest {
             .putBoolean("other:2026-11-01:Đọc sách", true).commit()
         assertEquals(1, GrowthHabits.activeHistory(context).size)
     }
+
+    @Test fun deletingCompletedHabitRevokesUnclaimedDailyGrowthReward() = runBlocking {
+        val date = LocalDate.of(2026, 11, 1)
+        val db = Room.inMemoryDatabaseBuilder(context, RpgDatabase::class.java).build()
+        try {
+            val engine = RpgEngine(db)
+            engine.initialize(0, date)
+            val id = "growth:$date"
+            prefs.edit().putString("habits", "Đọc sách")
+                .putBoolean("done:2026-11-01:Đọc sách", true).commit()
+            assertTrue(engine.syncCheckableProgress(id,
+                GrowthHabits.activeHistory(context).count { it.localDate == date.toString() && it.completed }))
+            assertEquals("COMPLETED", db.dao().quest(id)!!.state)
+            prefs.edit().putString("habits", "").commit()
+            assertTrue(engine.syncCheckableProgress(id,
+                GrowthHabits.activeHistory(context).count { it.localDate == date.toString() && it.completed }))
+            assertEquals("ACTIVE", db.dao().quest(id)!!.state)
+            assertFalse(engine.claimQuest(id))
+            assertEquals(0L, db.dao().character()!!.totalXp)
+            assertTrue(prefs.getBoolean("done:2026-11-01:Đọc sách", false))
+        } finally {
+            db.close()
+        }
+    }
+
 }

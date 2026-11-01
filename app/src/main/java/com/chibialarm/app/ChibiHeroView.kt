@@ -21,6 +21,9 @@ class ChibiHeroView(context: Context) : View(context) {
             invalidate()
         }
     private var lastFrameMs = android.os.SystemClock.uptimeMillis()
+    private val reducedMotion = android.provider.Settings.Global.getFloat(
+        context.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f
+    ) == 0f
     private var waterUntil = 0L
     private var transitionUntil = 0L
     var onRoomChanged: ((Boolean) -> Unit)? = null
@@ -48,7 +51,7 @@ class ChibiHeroView(context: Context) : View(context) {
     }
 
     private fun showRoomChange() {
-        transitionUntil = android.os.SystemClock.uptimeMillis() + 350L
+        transitionUntil = if (reducedMotion) 0L else android.os.SystemClock.uptimeMillis() + 350L
         onRoomChanged?.invoke(sceneState.scene == ChibiSceneState.Scene.GARDEN)
         invalidate()
     }
@@ -62,7 +65,10 @@ class ChibiHeroView(context: Context) : View(context) {
             when (sceneState.tap(x, y)) {
                 ChibiSceneState.Action.PET -> performClick()
                 ChibiSceneState.Action.DOOR -> showRoomChange()
-                ChibiSceneState.Action.WALK -> invalidate()
+                ChibiSceneState.Action.WALK -> {
+                    if (reducedMotion) sceneState.finishWalk()
+                    invalidate()
+                }
                 ChibiSceneState.Action.WATER -> {
                     waterUntil = android.os.SystemClock.uptimeMillis() + 850L
                     onGardenAction?.invoke()
@@ -103,7 +109,7 @@ class ChibiHeroView(context: Context) : View(context) {
         val now = android.os.SystemClock.uptimeMillis()
         val dt = ((now - lastFrameMs).coerceIn(0L, 50L) / 1000f)
         lastFrameMs = now
-        val heroX = sceneState.advance(dt)
+        val heroX = if (reducedMotion) sceneState.finishWalk() else sceneState.advance(dt)
         val outdoor = sceneState.scene == ChibiSceneState.Scene.GARDEN
         paint.color = if (outdoor) Color.rgb(209, 245, 221) else Color.rgb(230, 242, 255)
         canvas.drawRoundRect(0f, 0f, 320f, 240f, 24f, 24f, paint)
@@ -146,11 +152,11 @@ class ChibiHeroView(context: Context) : View(context) {
         }
         paint.color = Color.rgb(172, 116, 90)
         canvas.drawRoundRect(138f, 228f, 182f, 239f, 5f, 5f, paint)
-        val bob = sin((now - startedAt) / 420.0).toFloat() * 3f
-        val gait = if (sceneState.isWalking) sin(now / 95.0).toFloat() * 5f else 0f
+        val bob = if (reducedMotion) 0f else sin((now - startedAt) / 420.0).toFloat() * 3f
+        val gait = if (!reducedMotion && sceneState.isWalking) sin(now / 95.0).toFloat() * 5f else 0f
         canvas.save()
         canvas.translate(heroX - 160f, bob)
-        if (sceneState.isWalking) {
+        if (!reducedMotion && sceneState.isWalking) {
             canvas.rotate(sin(now / 85.0).toFloat() * 2f, 160f, 175f)
         }
         // Ears, body, hands and feet form a distinct mascot silhouette.
@@ -188,7 +194,7 @@ class ChibiHeroView(context: Context) : View(context) {
             circle(canvas, Color.rgb(255, 252, 225), 160f, 57f, 4f)
         }
         // Brief blink every few seconds, using only the existing vector primitives.
-        if ((now - startedAt) % 4200L < 160L) {
+        if (!reducedMotion && (now - startedAt) % 4200L < 160L) {
             paint.color = Color.rgb(68, 62, 104)
             paint.style = Paint.Style.STROKE
             paint.strokeWidth = 3f
@@ -223,6 +229,12 @@ class ChibiHeroView(context: Context) : View(context) {
             canvas.drawRoundRect(0f, 0f, 320f, 240f, 24f, 24f, paint)
         }
         canvas.restoreToCount(save)
-        if (isAttachedToWindow && visibility == VISIBLE) postInvalidateDelayed(33)
+        val delay = ChibiFramePolicy.nextDelayMs(
+            visible = isAttachedToWindow && visibility == VISIBLE && windowVisibility == VISIBLE,
+            reducedMotion = reducedMotion,
+            walking = sceneState.isWalking,
+            activeEffect = now < happyUntil || now < waterUntil || now < transitionUntil
+        )
+        if (delay != null) postInvalidateDelayed(delay)
     }
 }

@@ -3,6 +3,7 @@ import concurrent.futures
 import http.client
 import json
 import os
+import sqlite3
 import tempfile
 import threading
 import unittest
@@ -35,6 +36,7 @@ class ProxyTests(unittest.TestCase):
             patch.object(proxy, "KEYS", {1: "fake-google-key", 2: "", 3: "", 4: "", 5: ""}),
             patch.object(proxy, "QUOTA_DB", os.path.join(self.tmp.name, "quota.sqlite3")),
             patch.object(proxy, "DAILY_LIMIT", 2),
+            patch.object(proxy, "PROFILE_DAILY_LIMIT", 20),
             patch.object(proxy, "SLOTS", threading.BoundedSemaphore(2)),
         ]
         for p in self.patchers:
@@ -111,6 +113,49 @@ class ProxyTests(unittest.TestCase):
         with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
             values = list(executor.map(lambda _: proxy.reserve_daily_attempt(db, "2026-11-01", 3), range(8)))
         self.assertEqual(sum(values), 3)
+
+    def test_profile_quota_is_atomic_and_does_not_burn_global_quota_on_rejection(self):
+        db = os.path.join(self.tmp.name, "profile.sqlite3")
+        day = "2026-11-01"
+        self.assertTrue(proxy.reserve_daily_attempt(db, day, 5, 1, 2))
+        self.assertTrue(proxy.reserve_daily_attempt(db, day, 5, 1, 2))
+        self.assertFalse(proxy.reserve_daily_attempt(db, day, 5, 1, 2))
+        self.assertTrue(proxy.reserve_daily_attempt(db, day, 5, 2, 2))
+        self.assertTrue(proxy.reserve_daily_attempt(db, day, 5, 2, 2))
+        self.assertTrue(proxy.reserve_daily_attempt(db, day, 5, 3, 2))
+        self.assertFalse(proxy.reserve_daily_attempt(db, day, 5, 3, 2))
+        with sqlite3.connect(db) as conn:
+            self.assertEqual(conn.execute("SELECT attempts FROM quota WHERE day=?", (day,)).fetchone()[0], 5)
+            self.assertEqual(conn.execute(
+                "SELECT profile, attempts FROM profile_quota WHERE day=? ORDER BY profile",
+                (day,)).fetchall(), [(1, 2), (2, 2), (3, 1)])
+
+    def test_profile_quota_persists_across_connections_and_resets_on_new_day(self):
+        db = os.path.join(self.tmp.name, "persistent.sqlite3")
+        self.assertTrue(proxy.reserve_daily_attempt(db, "2026-11-01", 10, 1, 1))
+        self.assertFalse(proxy.reserve_daily_attempt(db, "2026-11-01", 10, 1, 1))
+        self.assertTrue(proxy.reserve_daily_attempt(db, "2026-11-02", 10, 1, 1))
+
+    def test_concurrent_global_and_profile_quotas_cannot_overbook(self):
+        db = os.path.join(self.tmp.name, "parallel.sqlite3")
+        def attempt(profile):
+            return profile, proxy.reserve_daily_attempt(db, "2026-11-01", 5, profile, 3)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=12) as executor:
+            results = list(executor.map(attempt, [1, 2] * 8))
+        self.assertEqual(sum(ok for _, ok in results), 5)
+        for profile in (1, 2):
+            self.assertLessEqual(sum(ok for p, ok in results if p == profile), 3)
+
+    def test_http_profile_ceiling_rejects_before_upstream_call(self):
+        fake = FakeResponse(b'{"candidates":[{"content":{"parts":[{"text":"OK"}]}}]}')
+        with patch.object(proxy, "PROFILE_DAILY_LIMIT", 1), \\
+             patch.object(proxy, "DAILY_LIMIT", 3), \\
+             patch.object(proxy, "KEYS", {1: "key1", 2: "key2"}), \\
+             patch.object(proxy.urllib.request, "urlopen", return_value=fake) as upstream:
+            self.assertEqual(self.request({"topic": "hello", "profile": 1})[0], 200)
+            self.assertEqual(self.request({"topic": "hello", "profile": 1})[0], 429)
+            self.assertEqual(self.request({"topic": "hello", "profile": 2})[0], 200)
+            self.assertEqual(upstream.call_count, 2)
 
 
 if __name__ == "__main__":

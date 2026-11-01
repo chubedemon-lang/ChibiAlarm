@@ -271,6 +271,7 @@ class RpgActivity : Activity() {
         }
         val sceneView = ChibiHeroView(this).apply {
             sceneState = this@RpgActivity.sceneState
+            outfit = ChibiCosmetics.equipped(level)
             onRoomChanged = { inGarden ->
                 sceneHint.text = if (inGarden)
                     "🌱 Khu vườn • Chạm luống cây để tưới, chạm cửa để về phòng"
@@ -337,6 +338,11 @@ class RpgActivity : Activity() {
         hero.addView(quickActions)
         hero.addView(petProgress)
         hero.addView(label("🌟 ${character.name} • Cấp $level", 23f))
+        hero.addView(label(
+            "👗 ${ChibiCosmetics.equipped(level).label}" +
+                (ChibiCosmetics.nextUnlock(level)?.let {
+                    " • Mở ${it.label} ở cấp ${it.unlockLevel}"
+                } ?: " • Đã mở toàn bộ trang phục hiện tại"), 14f))
         hero.addView(Button(this).apply {
             text = "✏️ Đổi tên Chibi"
             setOnClickListener { editCharacterName(character.name) }

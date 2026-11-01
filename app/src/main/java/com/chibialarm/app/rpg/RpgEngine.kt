@@ -128,6 +128,12 @@ class RpgEngine(private val db: RpgDatabase) {
     suspend fun initialize(legacyXp: Int, today: LocalDate = LocalDate.now()) = db.withTransaction {
         val dao = db.dao()
         if (dao.character() == null) dao.insertCharacter(RpgCharacter())
+        // Seed one non-tradeable starter item per database, including upgraded v1
+        // players. A durable receipt prevents re-grants after app restart.
+        if (dao.insertItemReceipt(RpgItemReceipt(
+                "starter:camp_map:v1", "camp_map", 1L, System.currentTimeMillis())) != -1L) {
+            dao.insertItemStack(RpgItemStack("camp_map", 1L, System.currentTimeMillis()))
+        }
         val amount = legacyXp.coerceAtLeast(0)
         if (dao.insertLedger(XpLedger(dedupeKey = "migration:life_v12:xp90:v1",
                 questId = "legacy", amount = amount)) != -1L) {

@@ -4,6 +4,7 @@ import http.client
 import json
 import os
 import sqlite3
+import socket
 import tempfile
 import threading
 import unittest
@@ -58,6 +59,35 @@ class ProxyTests(unittest.TestCase):
         result = (response.status, json.loads(response.read()))
         conn.close()
         return result
+
+    def test_incomplete_request_body_times_out_without_spending_quota(self):
+        # A slow client used to block one ThreadingHTTPServer worker forever.
+        # The test uses a real local socket but never contacts Gemini.
+        with (patch.object(proxy, "CLIENT_READ_TIMEOUT_SECONDS", 1),
+              patch.object(proxy, "open_gemini") as upstream):
+            with socket.create_connection(("127.0.0.1", self.server.server_port), timeout=4) as sock:
+                sock.settimeout(4)
+                sock.sendall((
+                    "POST /generate HTTP/1.1\\r\\n"
+                    "Host: localhost\\r\\n"
+                    "Authorization: Bearer " + self.token + "\\r\\n"
+                    "Content-Type: application/json\\r\\n"
+                    "Content-Length: 100\\r\\n"
+                    "Connection: close\\r\\n\\r\\n"
+                    '{"topic":"partial"}'
+                ).encode("ascii"))
+                response = sock.recv(4096)
+            self.assertIn(b" 408 ", response.split(b"\\r\\n", 1)[0])
+            upstream.assert_not_called()
+            self.assertEqual(self.request(token=False)[0], 401)
+            self.assertFalse(os.path.exists(proxy.QUOTA_DB))
+
+    def test_invalid_client_read_timeout_is_rejected_at_startup(self):
+        for invalid in (0, 31):
+            with self.subTest(invalid=invalid), patch.object(
+                    proxy, "CLIENT_READ_TIMEOUT_SECONDS", invalid):
+                with self.assertRaises(ValueError):
+                    proxy.validate_config()
 
     def test_missing_auth_rejected_before_upstream(self):
         with patch.object(proxy, "open_gemini") as upstream:

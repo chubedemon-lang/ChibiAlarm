@@ -18,3 +18,22 @@ These checks are local correctness guards, not proof that an Android 16 device
 will deliver an exact alarm on time. Physical tests are still required for
 Doze, battery restrictions, reboot, timezone changes, notification permission
 and full-screen-intent behavior. Keep PR #1 draft until approved.
+
+
+## Focus timer stale-completion guard
+
+- Each newly scheduled Focus completion carries its expected end timestamp.
+  The receiver compares that value with the currently persisted session before
+  awarding a completed session or posting a notification.
+- A delayed broadcast from an earlier timer cannot complete a newer session.
+  Missing timestamps are accepted only for **unchanged legacy sessions** created
+  before this marker existed; starting or restoring a session enables strict
+  matching for subsequent alarms.
+- Focus counters remain in the existing `focus` SharedPreferences; this change
+  does not reset historical sessions or change the scheduled request code.
+- Tests cover old-session delivery, missing markers, legacy compatibility,
+  and single-payment behavior. Android 16 device validation is still required.
+- Focus preferences are **not yet isolated by authenticated user**. Do not
+  present this as public multi-user readiness; the login/account switch flow
+  must explicitly separate or migrate Focus, Fitness and alarm state before
+  public release.

@@ -8,7 +8,7 @@ Gemini Pro consumer subscriptions do not automatically include paid Gemini API a
 
 Set environment variables on your own machine (never commit or paste secrets into chat):
 
-- GEMINI_API_KEY_1 through GEMINI_API_KEY_5, or GEMINI_API_KEY as profile 1. Missing profile numbers are not silently remapped.
+- GEMINI_API_KEY_1 through GEMINI_API_KEY_5, or GEMINI_API_KEY as profile 1. Missing profile numbers are not silently remapped. Duplicate API keys across configured profiles are rejected at startup to prevent bypassing per-profile quotas.
 - APP_ACCESS_TOKEN: random private token at least 24 characters long. The proxy refuses to start without it.
 - GEMINI_MODEL: optional, default gemini-2.5-flash; allowlisted gemini-2.5-flash or gemini-2.5-pro.
 - GEMINI_DAILY_REQUEST_LIMIT: optional global attempt ceiling (default 50 per UTC day, 1–10000). Failed upstream calls also count.

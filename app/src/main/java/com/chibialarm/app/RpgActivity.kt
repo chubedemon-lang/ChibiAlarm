@@ -195,7 +195,10 @@ class RpgActivity : Activity() {
         scope.launch {
             try {
                 withContext(Dispatchers.IO) {
-                    val json = RpgDataExport.create(database)
+                    val currentXp = database.dao().character()?.totalXp?.coerceAtLeast(0L) ?: 0L
+                    val currentLevel = RpgRules.level(currentXp)
+                    val outfit = ChibiWardrobeStore(applicationContext).selected(currentLevel)
+                    val json = RpgDataExport.create(database, outfit)
                     contentResolver.openOutputStream(uri, "w")?.bufferedWriter(Charsets.UTF_8)?.use {
                         it.write(json)
                     } ?: error("Không thể ghi tệp đã chọn")
@@ -349,13 +352,21 @@ class RpgActivity : Activity() {
             text = "🎒 Tủ đồ • Chọn trang phục"
             contentDescription = "Mở tủ đồ và chọn trang phục Chibi đã mở khóa"
             setOnClickListener {
-                val available = ChibiCosmetics.unlocked(level)
-                val labels = available.map { "${it.label} • Cấp ${it.unlockLevel}" }.toTypedArray()
+                val available = ChibiCosmetics.Outfit.values().toList()
+                val labels = available.map {
+                    if (ChibiCosmetics.canEquip(level, it)) "✓ ${it.label}"
+                    else "🔒 ${it.label} • Mở ở cấp ${it.unlockLevel}"
+                }.toTypedArray()
                 val selectedIndex = available.indexOf(wardrobe.selected(level))
                 AlertDialog.Builder(this@RpgActivity)
                     .setTitle("🎒 Tủ đồ Chibi")
                     .setSingleChoiceItems(labels, selectedIndex) { dialog, index ->
                         val selected = available[index]
+                        if (!ChibiCosmetics.canEquip(level, selected)) {
+                            Toast.makeText(this@RpgActivity,
+                                "Trang phục mở ở cấp ${selected.unlockLevel}", Toast.LENGTH_SHORT).show()
+                            return@setSingleChoiceItems
+                        }
                         if (wardrobe.equip(level, selected)) {
                             sceneView.outfit = selected
                             wardrobeStatus.text = "👗 ${selected.label}$nextOutfitHint"

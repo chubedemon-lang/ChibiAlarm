@@ -52,6 +52,28 @@ class RpgActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Preserve the current room and movement through rotation/process recreation.
+        // RPG rewards remain exclusively in Room, not in this transient Bundle.
+        savedInstanceState?.let { saved ->
+            val scene = ChibiSceneState.Scene.values().firstOrNull {
+                it.name == saved.getString("chibi_scene")
+            }
+            if (scene != null) {
+                sceneState.restore(ChibiSceneState.Snapshot(
+                    scene,
+                    saved.getFloat("chibi_hero_x", 160f),
+                    saved.getFloat("chibi_destination_x", 160f)
+                ))
+            }
+        }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        val snapshot = sceneState.snapshot()
+        outState.putString("chibi_scene", snapshot.scene.name)
+        outState.putFloat("chibi_hero_x", snapshot.heroX)
+        outState.putFloat("chibi_destination_x", snapshot.destinationX)
+        super.onSaveInstanceState(outState)
     }
 
     override fun onResume() {
@@ -242,12 +264,18 @@ class RpgActivity : Activity() {
             if (sceneState.scene == ChibiSceneState.Scene.GARDEN)
                 "🌱 Khu vườn • Chạm luống cây để tưới, chạm cửa để về phòng"
             else "🏡 Phòng ngủ • Chạm sàn để đi, cửa để ra vườn", 14f)
-        hero.addView(ChibiHeroView(this).apply {
+        val sceneButton = Button(this).apply {
+            text = if (sceneState.scene == ChibiSceneState.Scene.GARDEN)
+                "🚪 Về phòng ngủ" else "🚪 Ra khu vườn"
+            contentDescription = "Chuyển giữa phòng ngủ và khu vườn"
+        }
+        val sceneView = ChibiHeroView(this).apply {
             sceneState = this@RpgActivity.sceneState
             onRoomChanged = { inGarden ->
                 sceneHint.text = if (inGarden)
                     "🌱 Khu vườn • Chạm luống cây để tưới, chạm cửa để về phòng"
                 else "🏡 Phòng ngủ • Chạm sàn để đi, cửa để ra vườn"
+                sceneButton.text = if (inGarden) "🚪 Về phòng ngủ" else "🚪 Ra khu vườn"
             }
             onGardenAction = {
                 Toast.makeText(this@RpgActivity,
@@ -288,8 +316,25 @@ class RpgActivity : Activity() {
                     }
                 }
             }
-        })
+        }
+        hero.addView(sceneView)
         hero.addView(sceneHint)
+        sceneButton.setOnClickListener { sceneView.toggleScene() }
+        hero.addView(sceneButton)
+        // Touch alternatives for TalkBack and small-screen precision.
+        val quickActions = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        listOf(
+            Triple("⏰", "Mở báo thức", AlarmSettingsActivity::class.java),
+            Triple("🍅", "Mở Focus", FocusActivity::class.java),
+            Triple("🏃", "Mở Fitness", FitnessActivity::class.java)
+        ).forEach { (symbol, description, destination) ->
+            quickActions.addView(Button(this).apply {
+                text = symbol
+                contentDescription = description
+                setOnClickListener { startActivity(Intent(this@RpgActivity, destination)) }
+            }, LinearLayout.LayoutParams(0, -2, 1f))
+        }
+        hero.addView(quickActions)
         hero.addView(petProgress)
         hero.addView(label("🌟 ${character.name} • Cấp $level", 23f))
         hero.addView(Button(this).apply {

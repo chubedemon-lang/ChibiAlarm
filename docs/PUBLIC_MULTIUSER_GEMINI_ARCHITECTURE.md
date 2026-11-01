@@ -74,5 +74,6 @@ by this document.
 
 - The existing private development proxy now rejects missing/weak access tokens at startup and checks every request with a constant-time comparison. It never permits anonymous generation.
 - It validates JSON fields, preserves numbered key profiles, bounds payload/output sizes, allowlists models and uses a persistent SQLite **global request-attempt** ceiling plus concurrency limit. Quota files are ignored by Git; nine offline Python regression tests run in the Android CI workflow.
+- The private proxy also has an atomic SQLite per-key-profile daily attempt ceiling (default 20), independent of the global ceiling (default 50). Rejected attempts do not burn the other quota; failed upstream attempts count. Profiles are manually configured API keys, **not verified user identities**. This reduces accidental overuse of one profile but does not guarantee a monetary spend cap.
 - This is **not** per-user authentication or a hard monetary cost cap. Never distribute the shared token in a public APK, and never treat the private proxy as the production Gemini service.
 - Production remains blocked on authenticated per-user quotas, issuer/audience/expiry verification, spend caps, consent and account data isolation.

@@ -15,6 +15,11 @@ class ChibiHeroView(context: Context) : View(context) {
     private val startedAt = android.os.SystemClock.uptimeMillis()
     private var happyUntil = 0L
     var sceneState = ChibiSceneState()
+    var outfit: ChibiCosmetics.Outfit = ChibiCosmetics.Outfit.STARTER
+        set(value) {
+            field = value
+            invalidate()
+        }
     private var lastFrameMs = android.os.SystemClock.uptimeMillis()
     private var waterUntil = 0L
     private var transitionUntil = 0L
@@ -160,6 +165,28 @@ class ChibiHeroView(context: Context) : View(context) {
         oval(canvas, Color.rgb(78, 83, 165), 124f, 199f + gait, 157f, 216f + gait)
         oval(canvas, Color.rgb(78, 83, 165), 163f, 199f - gait, 196f, 216f - gait)
         circle(canvas, Color.rgb(251, 244, 255), 160f, 111f, 69f)
+        // Outfits are unlocked by real RPG levels, not by repeatedly tapping the avatar.
+        if (outfit != ChibiCosmetics.Outfit.STARTER) {
+            paint.color = Color.rgb(240, 106, 130)
+            canvas.drawRoundRect(127f, 157f, 193f, 172f, 8f, 8f, paint)
+            canvas.drawRoundRect(181f, 165f, 194f, 194f, 5f, 5f, paint)
+            circle(canvas, Color.rgb(255, 224, 164), 137f, 165f, 3f)
+        }
+        if (outfit == ChibiCosmetics.Outfit.CROWN) {
+            paint.color = Color.rgb(245, 190, 58)
+            val crown = Path().apply {
+                moveTo(137f, 70f)
+                lineTo(140f, 47f)
+                lineTo(151f, 58f)
+                lineTo(160f, 39f)
+                lineTo(169f, 58f)
+                lineTo(180f, 47f)
+                lineTo(183f, 70f)
+                close()
+            }
+            canvas.drawPath(crown, paint)
+            circle(canvas, Color.rgb(255, 252, 225), 160f, 57f, 4f)
+        }
         // Brief blink every few seconds, using only the existing vector primitives.
         if ((now - startedAt) % 4200L < 160L) {
             paint.color = Color.rgb(68, 62, 104)

@@ -305,6 +305,11 @@ class RpgActivity : Activity() {
                 "🚪 Về phòng ngủ" else "🚪 Ra khu vườn"
             contentDescription = "Chuyển giữa phòng ngủ và khu vườn"
         }
+        val gardenButton = Button(this).apply {
+            text = "🌱 Tưới cây • Nhặt nguyên liệu (1 lần/ngày)"
+            contentDescription = "Tưới cây khu vườn, tìm một vật phẩm mỗi ngày"
+            isEnabled = sceneState.scene == ChibiSceneState.Scene.GARDEN
+        }
         val sceneView = ChibiHeroView(this).apply {
             sceneState = this@RpgActivity.sceneState
             outfit = equippedOutfit
@@ -313,6 +318,7 @@ class RpgActivity : Activity() {
                     "🌱 Khu vườn • Chạm luống cây để tưới, chạm cửa để về phòng"
                 else "🏡 Phòng ngủ • Chạm sàn để đi, cửa để ra vườn"
                 sceneButton.text = if (inGarden) "🚪 Về phòng ngủ" else "🚪 Ra khu vườn"
+                gardenButton.isEnabled = inGarden
             }
             onGardenAction = {
                 // The water effect always plays; the inventory reward is once
@@ -376,6 +382,8 @@ class RpgActivity : Activity() {
         hero.addView(sceneHint)
         sceneButton.setOnClickListener { sceneView.toggleScene() }
         hero.addView(sceneButton)
+        gardenButton.setOnClickListener { sceneView.waterGarden() }
+        hero.addView(gardenButton)
         // Touch alternatives for TalkBack and small-screen precision.
         val quickActions = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         listOf(

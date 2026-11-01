@@ -14,6 +14,8 @@ Set environment variables on your own machine (never commit or paste secrets int
 - GEMINI_DAILY_REQUEST_LIMIT: optional global attempt ceiling (default 50 per UTC day, 1–10000). Failed upstream calls also count.
 - GEMINI_DAILY_PROFILE_LIMIT: optional per-configured-key-profile attempt ceiling (default 20 per UTC day, 1–10000). Global quota still applies across profiles. Profiles are **not users**.
 - GEMINI_MAX_CONCURRENT: optional concurrent upstream call ceiling (default 2, 1–16).
+- GEMINI_DAILY_BUDGET_MICROUSD: optional estimated daily reservation ceiling (default 500000 = $0.50 USD). This is NOT measured Gemini spend.
+- GEMINI_REQUEST_RESERVE_MICROUSD: estimated reservation charged before each upstream attempt (default 50000 = $0.05 USD). Must be positive and no larger than the daily budget. These operator-supplied estimates may be lower than actual provider charges; configure provider-side billing alerts and independent spending controls.
 - GEMINI_QUOTA_DB: optional persistent SQLite quota path; default backend/gemini_quota.sqlite3 (excluded from Git). Keep this file private.
 
 For local Windows PowerShell testing:
@@ -31,7 +33,7 @@ The server binds to 127.0.0.1:8765 only. Remote testing requires an HTTPS revers
 
 POST /generate with Content-Type: application/json, Authorization: Bearer <APP_ACCESS_TOKEN>, and JSON {"topic":"...","profile":1}. Topic is at most 400 characters; profile must be a configured number 1–5. Success: {"message":"..."} (up to 500 characters). Errors return {"error":"..."} with HTTP error status. GET /healthz is an unauthenticated liveness check with no user data.
 
-The server uses constant-time token comparison, fails closed without credentials, bounds JSON requests and Gemini responses, allowlists models, applies a 25-second upstream timeout, avoids prompt/token logging, limits concurrent requests, and atomically persists **global and per-profile request-attempt quotas** in SQLite across restarts. Rejected requests consume neither quota. HTTP 429 indicates a busy or exhausted proxy. This quota is **not** a monetary spend cap; configure billing safeguards and provider alerts separately.
+The server uses constant-time token comparison, fails closed without credentials, bounds JSON requests and Gemini responses, allowlists models, applies a 25-second upstream timeout, avoids prompt/token logging, limits concurrent requests, and atomically persists **global and per-profile request-attempt quotas plus estimated USD reservations** in SQLite across restarts. Rejected requests consume neither quota nor budget. A failed upstream attempt still consumes the reservation. HTTP 429 indicates a busy or exhausted proxy. **The budget is a local estimate, not a guaranteed monetary cap or measured token usage**: provider pricing, retries outside this process, and other clients using the same API key are outside this proxy’s control. Keep provider-side billing alerts and account spending safeguards.
 
 ## Offline tests
 
@@ -43,4 +45,4 @@ Tests mock Gemini and require no network or real credentials. The Android APK wo
 
 ## Public release blockers
 
-Replace the shared token with verified, expiring per-user authentication (signature, issuer, audience, expiry); add durable per-user quotas, token/spend ceilings, request IDs and deduplication, user-scoped storage/deletion, consent for sending personal information, secret management, and privacy-conscious monitoring. Do not embed a project-owned key or shared backend token in an APK. This proxy is a test harness, not a production backend.
+Replace the shared token with verified, expiring per-user authentication (signature, issuer, audience, expiry); add durable per-user quotas, provider-usage reconciliation, real token/spend ceilings, request IDs and deduplication, user-scoped storage/deletion, consent for sending personal information, secret management, and privacy-conscious monitoring. Do not embed a project-owned key or shared backend token in an APK. This proxy is a test harness, not a production backend.

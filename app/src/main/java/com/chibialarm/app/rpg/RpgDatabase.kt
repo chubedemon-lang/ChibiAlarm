@@ -1,6 +1,7 @@
 package com.chibialarm.app.rpg
 
 import android.content.Context
+import java.security.MessageDigest
 import androidx.room.*
 
 @Entity(tableName = "rpg_character")
@@ -119,11 +120,50 @@ abstract class RpgDatabase : RoomDatabase() {
 
     companion object {
         @Volatile private var instance: RpgDatabase? = null
+        // Cache by opaque database filename, not the account identifier itself.
+        private val accountInstances = mutableMapOf<String, RpgDatabase>()
+
+        /**
+         * Legacy guest database. Its filename must never change: existing offline
+         * players keep their XP, streaks and quests across an app update.
+         */
         fun get(context: Context): RpgDatabase =
             instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
                     context.applicationContext, RpgDatabase::class.java, "chibi_rpg.db"
                 ).build().also { instance = it }
             }
+
+        /**
+         * A separate offline RPG database for an AUTHENTICATED account subject.
+         * The caller must obtain [verifiedSubject] from a trusted identity verifier,
+         * never from a user-editable name, email field or unverified token claim.
+         *
+         * This is storage isolation, NOT login/authentication. Guest data remains in
+         * chibi_rpg.db; it is deliberately not copied into another account without
+         * explicit consent and a separately tested import flow.
+         */
+        fun forVerifiedAccount(context: Context, verifiedSubject: String): RpgDatabase {
+            val file = accountDatabaseFile(verifiedSubject)
+            return synchronized(this) {
+                accountInstances.getOrPut(file) {
+                    Room.databaseBuilder(
+                        context.applicationContext, RpgDatabase::class.java, file
+                    ).build()
+                }
+            }
+        }
+
+        internal fun accountDatabaseFile(verifiedSubject: String): String {
+            require(verifiedSubject.isNotBlank() && verifiedSubject.length <= 128 &&
+                    verifiedSubject == verifiedSubject.trim() &&
+                    verifiedSubject.none { Character.isISOControl(it) }) {
+                "Invalid verified account subject"
+            }
+            val digest = MessageDigest.getInstance("SHA-256")
+                .digest(verifiedSubject.toByteArray(Charsets.UTF_8))
+                .joinToString("") { "%02x".format(it) }
+            return "chibi_rpg_account_${digest}.db"
+        }
     }
 }

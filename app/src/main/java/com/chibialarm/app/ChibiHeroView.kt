@@ -53,6 +53,7 @@ class ChibiHeroView(context: Context) : View(context) {
                 invalidate()
                 return true
             }
+            if (outdoor) return true
             when (val target = ChibiSceneActions.hit(x, y)) {
                 ChibiSceneActions.Target.HERO -> return performClick()
                 ChibiSceneActions.Target.NONE -> return true
@@ -128,7 +129,7 @@ class ChibiHeroView(context: Context) : View(context) {
         }
         paint.color = Color.rgb(172, 116, 90)
         canvas.drawRoundRect(138f, 228f, 182f, 239f, 5f, 5f, paint)
-        val bob = sin((android.os.SystemClock.uptimeMillis() - startedAt) / 420.0).toFloat() * 3f
+        val bob = sin((now - startedAt) / 420.0).toFloat() * 3f
         canvas.save()
         canvas.translate(heroX - 160f, bob)
         if (kotlin.math.abs(destinationX - heroX) > 1f) {

@@ -60,7 +60,7 @@ class ProxyTests(unittest.TestCase):
         return result
 
     def test_missing_auth_rejected_before_upstream(self):
-        with patch.object(proxy.urllib.request, "urlopen") as upstream:
+        with patch.object(proxy, "open_gemini") as upstream:
             self.assertEqual(self.request(token=False)[0], 401)
             upstream.assert_not_called()
 
@@ -80,9 +80,35 @@ class ProxyTests(unittest.TestCase):
         self.assertEqual(self.request({"topic": "ok", "profile": True})[0], 400)
         self.assertEqual(self.request(content_type="text/plain")[0], 415)
 
+    def test_empty_and_control_character_topics_rejected_without_upstream(self):
+        with patch.object(proxy, "open_gemini") as upstream:
+            for topic in ("", "   ", "\\n", "hello\\nignore instructions", "hi\\x7f"):
+                with self.subTest(topic=repr(topic)):
+                    self.assertEqual(self.request({"topic": topic})[0], 400)
+            upstream.assert_not_called()
+
+    def test_upstream_redirects_are_never_followed(self):
+        req = proxy.urllib.request.Request(
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+            data=b"{}", headers={"x-goog-api-key": "private-key"}, method="POST")
+        handler = proxy.NoUpstreamRedirects()
+        self.assertIsNone(handler.redirect_request(
+            req, None, 302, "Found", {}, "https://other.example/steal"))
+        with patch.object(proxy.urllib.request, "build_opener") as builder:
+            proxy.open_gemini(req)
+            self.assertTrue(any(isinstance(h, proxy.NoUpstreamRedirects)
+                                for h in builder.call_args.args))
+            self.assertEqual(builder.return_value.open.call_args.kwargs["timeout"], 25)
+
+    def test_invalid_upstream_utf8_fails_closed(self):
+        with patch.object(proxy, "open_gemini", return_value=FakeResponse(b"\\xff\\xfe")):
+            status, data = self.request()
+        self.assertEqual(status, 502)
+        self.assertEqual(data, {"error": "upstream_unavailable"})
+
     def test_success_response_is_bounded_and_no_secret(self):
         fake = FakeResponse(json.dumps({"candidates": [{"content": {"parts": [{"text": "Xin chào " * 100}]}}]}).encode())
-        with patch.object(proxy.urllib.request, "urlopen", return_value=fake) as upstream:
+        with patch.object(proxy, "open_gemini", return_value=fake) as upstream:
             status, data = self.request({"topic": "dậy sớm", "profile": 1})
         self.assertEqual(status, 200)
         self.assertLessEqual(len(data["message"]), 500)
@@ -91,14 +117,14 @@ class ProxyTests(unittest.TestCase):
 
     def test_durable_global_quota_across_requests(self):
         fake = FakeResponse(b'{"candidates":[{"content":{"parts":[{"text":"OK"}]}}]}')
-        with patch.object(proxy.urllib.request, "urlopen", return_value=fake) as upstream:
+        with patch.object(proxy, "open_gemini", return_value=fake) as upstream:
             self.assertEqual(self.request()[0], 200)
             self.assertEqual(self.request()[0], 200)
             self.assertEqual(self.request()[0], 429)
             self.assertEqual(upstream.call_count, 2)
 
     def test_upstream_failure_consumes_attempt(self):
-        with patch.object(proxy.urllib.request, "urlopen", side_effect=OSError("offline")):
+        with patch.object(proxy, "open_gemini", side_effect=OSError("offline")):
             self.assertEqual(self.request()[0], 502)
             self.assertEqual(self.request()[0], 502)
             self.assertEqual(self.request()[0], 429)
@@ -162,7 +188,7 @@ class ProxyTests(unittest.TestCase):
         with (patch.object(proxy, "PROFILE_DAILY_LIMIT", 1),
               patch.object(proxy, "DAILY_LIMIT", 3),
               patch.object(proxy, "KEYS", {1: "key1", 2: "key2"}),
-              patch.object(proxy.urllib.request, "urlopen", return_value=fake) as upstream):
+              patch.object(proxy, "open_gemini", return_value=fake) as upstream):
             self.assertEqual(self.request({"topic": "hello", "profile": 1})[0], 200)
             self.assertEqual(self.request({"topic": "hello", "profile": 1})[0], 429)
             self.assertEqual(self.request({"topic": "hello", "profile": 2})[0], 200)
@@ -218,7 +244,7 @@ class ProxyTests(unittest.TestCase):
         with (patch.object(proxy, "DAILY_LIMIT", 10),
               patch.object(proxy, "DAILY_BUDGET_MICROUSD", 50_000),
               patch.object(proxy, "REQUEST_RESERVE_MICROUSD", 50_000),
-              patch.object(proxy.urllib.request, "urlopen", return_value=fake) as upstream):
+              patch.object(proxy, "open_gemini", return_value=fake) as upstream):
             self.assertEqual(self.request()[0], 200)
             self.assertEqual(self.request()[0], 429)
             self.assertEqual(upstream.call_count, 1)

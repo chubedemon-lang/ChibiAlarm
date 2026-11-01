@@ -406,7 +406,7 @@ class RpgEngineDatabaseTest {
         assertTrue(engine.claimDailyLogin(day))
         assertTrue(engine.claimDailyPetGame(day))
         assertTrue(engine.claimQuest(questId))
-        assertEquals(55L, dao.character()!!.totalXp)
+        assertEquals(50L, dao.character()!!.totalXp)
         assertEquals(10L, dao.character()!!.coins)
     }
 

@@ -1,7 +1,9 @@
 # Chibi Life 3.0 — public multi-user and Gemini architecture (design only)
 
-> Status: **NOT IMPLEMENTED**. R1 remains a single-device offline beta. This document
-> is a release gate, not a claim that accounts, cloud sync or a Gemini proxy exist.
+> Status: **PUBLIC MULTI-USER BACKEND NOT IMPLEMENTED**. R1 remains a single-device
+> offline beta. A separate, private development-only Gemini text proxy exists in
+> backend/gemini_proxy.py, but it uses one shared bearer token and is NOT suitable
+> for public users. No account identity, cloud sync or production Gemini backend exists.
 
 ## Identity and local data
 
@@ -67,3 +69,10 @@ Android app --TLS + short-lived auth token--> authenticated API
 
 No production merge, public release, account rollout or paid Gemini calls are authorized
 by this document.
+
+## Private Gemini proxy hardening (2026-11-01)
+
+- The existing private development proxy now rejects missing/weak access tokens at startup and checks every request with a constant-time comparison. It never permits anonymous generation.
+- It validates JSON fields, preserves numbered key profiles, bounds payload/output sizes, allowlists models and uses a persistent SQLite **global request-attempt** ceiling plus concurrency limit. Quota files are ignored by Git; nine offline Python regression tests run in the Android CI workflow.
+- This is **not** per-user authentication or a hard monetary cost cap. Never distribute the shared token in a public APK, and never treat the private proxy as the production Gemini service.
+- Production remains blocked on authenticated per-user quotas, issuer/audience/expiry verification, spend caps, consent and account data isolation.

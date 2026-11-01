@@ -252,6 +252,8 @@ class RpgActivity : Activity() {
         root.addView(label("Hành trình trưởng thành của bạn • chơi ngoại tuyến", 14f))
         val hero = card()
         val level = RpgRules.level(character.totalXp)
+        val wardrobe = ChibiWardrobeStore(this)
+        val equippedOutfit = wardrobe.selected(level)
         val xpSpent = (1 until level).sumOf { RpgRules.xpToNext(it) }
         val xpRequired = RpgRules.xpToNext(level)
         val xpInLevel = (character.totalXp - xpSpent).coerceIn(0L, xpRequired)
@@ -271,7 +273,7 @@ class RpgActivity : Activity() {
         }
         val sceneView = ChibiHeroView(this).apply {
             sceneState = this@RpgActivity.sceneState
-            outfit = ChibiCosmetics.equipped(level)
+            outfit = equippedOutfit
             onRoomChanged = { inGarden ->
                 sceneHint.text = if (inGarden)
                     "🌱 Khu vườn • Chạm luống cây để tưới, chạm cửa để về phòng"
@@ -338,11 +340,35 @@ class RpgActivity : Activity() {
         hero.addView(quickActions)
         hero.addView(petProgress)
         hero.addView(label("🌟 ${character.name} • Cấp $level", 23f))
-        hero.addView(label(
-            "👗 ${ChibiCosmetics.equipped(level).label}" +
-                (ChibiCosmetics.nextUnlock(level)?.let {
-                    " • Mở ${it.label} ở cấp ${it.unlockLevel}"
-                } ?: " • Đã mở toàn bộ trang phục hiện tại"), 14f))
+        val nextOutfitHint = ChibiCosmetics.nextUnlock(level)?.let {
+            " • Mở ${it.label} ở cấp ${it.unlockLevel}"
+        } ?: " • Đã mở toàn bộ trang phục hiện tại"
+        val wardrobeStatus = label("👗 ${equippedOutfit.label}$nextOutfitHint", 14f)
+        hero.addView(wardrobeStatus)
+        hero.addView(Button(this).apply {
+            text = "🎒 Tủ đồ • Chọn trang phục"
+            contentDescription = "Mở tủ đồ và chọn trang phục Chibi đã mở khóa"
+            setOnClickListener {
+                val available = ChibiCosmetics.unlocked(level)
+                val labels = available.map { "${it.label} • Cấp ${it.unlockLevel}" }.toTypedArray()
+                val selectedIndex = available.indexOf(wardrobe.selected(level))
+                AlertDialog.Builder(this@RpgActivity)
+                    .setTitle("🎒 Tủ đồ Chibi")
+                    .setSingleChoiceItems(labels, selectedIndex) { dialog, index ->
+                        val selected = available[index]
+                        if (wardrobe.equip(level, selected)) {
+                            sceneView.outfit = selected
+                            wardrobeStatus.text = "👗 ${selected.label}$nextOutfitHint"
+                            dialog.dismiss()
+                        } else {
+                            Toast.makeText(this@RpgActivity,
+                                "Chưa lưu được trang phục, thử lại nhé", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                    .setNegativeButton("Đóng", null)
+                    .show()
+            }
+        })
         hero.addView(Button(this).apply {
             text = "✏️ Đổi tên Chibi"
             setOnClickListener { editCharacterName(character.name) }

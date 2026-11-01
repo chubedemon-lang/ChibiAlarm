@@ -3,6 +3,8 @@ package com.chibialarm.app.rpg
 import android.content.Context
 import java.security.MessageDigest
 import androidx.room.*
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Entity(tableName = "rpg_character")
 data class RpgCharacter(
@@ -51,6 +53,26 @@ data class StreakDay(
     val localDate: String,
     val completed: Boolean,
     val excused: Boolean = false
+)
+
+/**
+ * Durable non-currency item stacks. Distinct from ledger-derived keepsakes.
+ * Each authenticated account uses a separate Room database; the guest uses
+ * the original chibi_rpg.db. Item receipts prevent duplicate offline grants.
+ */
+@Entity(tableName = "rpg_item_stack")
+data class RpgItemStack(
+    @PrimaryKey val itemId: String,
+    val quantity: Long,
+    val updatedAt: Long
+)
+
+@Entity(tableName = "rpg_item_receipt")
+data class RpgItemReceipt(
+    @PrimaryKey val dedupeKey: String,
+    val itemId: String,
+    val quantity: Long,
+    val createdAt: Long
 )
 
 @Dao
@@ -115,17 +137,46 @@ interface RpgDao {
 
     @Query("SELECT * FROM rpg_streak_day WHERE habitId = :habitId ORDER BY localDate DESC")
     suspend fun streakDays(habitId: String): List<StreakDay>
+
+    @Query("SELECT * FROM rpg_item_stack WHERE quantity > 0 ORDER BY itemId ASC")
+    suspend fun itemStacks(): List<RpgItemStack>
+
+    @Query("SELECT * FROM rpg_item_stack WHERE itemId = :itemId LIMIT 1")
+    suspend fun itemStack(itemId: String): RpgItemStack?
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertItemStack(stack: RpgItemStack): Long
+
+    @Update suspend fun updateItemStack(stack: RpgItemStack)
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertItemReceipt(receipt: RpgItemReceipt): Long
+
+    @Query("SELECT COUNT(*) FROM rpg_item_receipt WHERE dedupeKey = :key")
+    suspend fun itemReceiptCount(key: String): Int
+
+    @Query("UPDATE rpg_item_stack SET quantity = quantity - :amount, updatedAt = :updatedAt WHERE itemId = :itemId AND quantity >= :amount")
+    suspend fun consumeItem(itemId: String, amount: Long, updatedAt: Long): Int
 }
 
 @Database(
-    entities = [RpgCharacter::class, RpgQuest::class, XpLedger::class, RpgAchievement::class, StreakDay::class],
-    version = 1,
+    entities = [RpgCharacter::class, RpgQuest::class, XpLedger::class, RpgAchievement::class, StreakDay::class,
+        RpgItemStack::class, RpgItemReceipt::class],
+    version = 2,
     exportSchema = true
 )
 abstract class RpgDatabase : RoomDatabase() {
     abstract fun dao(): RpgDao
 
     companion object {
+        /** Additive, non-destructive v1 → v2 migration: existing XP and quests survive. */
+        val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS `rpg_item_stack` (`itemId` TEXT NOT NULL, `quantity` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`itemId`))")
+                db.execSQL("CREATE TABLE IF NOT EXISTS `rpg_item_receipt` (`dedupeKey` TEXT NOT NULL, `itemId` TEXT NOT NULL, `quantity` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, PRIMARY KEY(`dedupeKey`))")
+            }
+        }
+
         @Volatile private var instance: RpgDatabase? = null
         // Cache by opaque database filename, not the account identifier itself.
         private val accountInstances = mutableMapOf<String, RpgDatabase>()
@@ -138,7 +189,7 @@ abstract class RpgDatabase : RoomDatabase() {
             instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
                     context.applicationContext, RpgDatabase::class.java, "chibi_rpg.db"
-                ).build().also { instance = it }
+                ).addMigrations(MIGRATION_1_2).build().also { instance = it }
             }
 
         /**
@@ -156,7 +207,7 @@ abstract class RpgDatabase : RoomDatabase() {
                 accountInstances.getOrPut(file) {
                     Room.databaseBuilder(
                         context.applicationContext, RpgDatabase::class.java, file
-                    ).build()
+                    ).addMigrations(MIGRATION_1_2).build()
                 }
             }
         }

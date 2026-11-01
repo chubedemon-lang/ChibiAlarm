@@ -18,7 +18,7 @@
 - RPG dashboard queries only the current local-date quest period and checks daily login by unique ledger key. Historical quests and reward ledger remain stored and exportable; the dashboard no longer loads every historical quest and ledger entry on each refresh.
 - Achievement quest-claim counts use an aggregate SQLite query rather than reading the entire ledger. Robolectric tests cover period filtering and exclusion of legacy imports/daily check-ins from claimed-quest totals.
 - Alarm and Focus scheduling now catch a race where Android revokes exact-alarm permission between the permission check and scheduling call. They fall back to inexact scheduling rather than crashing. This fallback **can fire late** and does not establish Android 16 device reliability.
-- The existing Room schema remains version 1; these are DAO-only queries, not a database schema migration. Do not change the entity schema without an explicit migration.
+- The inventory feature now upgrades Room schema from version 1 to version 2 using explicit additive MIGRATION_1_2; see docs/R1_INVENTORY_MIGRATION.md. Other dashboard history optimizations remain DAO-only.
 - Latest edits require a fresh green CI run before distributing their APK. Hardware testing remains outstanding.
 
 ## Multi-user architecture (planned, NOT shipped)
@@ -74,3 +74,10 @@ The RPG screen now offers a **user-initiated JSON export** through Android's sys
 - Multi-user isolation and Gemini backend remain **design-only**, detailed in
   `docs/PUBLIC_MULTIUSER_GEMINI_ARCHITECTURE.md`. No cloud accounts or API secrets
   have been provisioned.
+
+
+## Durable RPG inventory — 2026-11-01 (CI verification pending)
+- Added Room v2 item stack and unique grant receipt tables, with additive v1→v2 migration registered for guest and verified-account databases. No destructive migration or account login was added.
+- Seed a single garden map per RPG database; item grants are transactional and idempotent, consumption cannot underflow. Backpack now displays item stacks separately from ledger-derived keepsakes; RPG JSON export includes an additive itemStacks field.
+- Robolectric tests cover populated v1 migration, disk reopen, concurrency, invalid inputs and account isolation. See [R1_INVENTORY_MIGRATION.md](R1_INVENTORY_MIGRATION.md).
+- CI and physical-device results must be verified on the latest commit before sharing an APK. The actual installed v1.3→v2 upgrade, Android 16 hardware, authenticated multi-user isolation across modules and production Gemini backend are **not verified**.

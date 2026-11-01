@@ -26,6 +26,10 @@ MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 ALLOWED_MODELS = frozenset(("gemini-2.5-flash", "gemini-2.5-pro"))
 DAILY_LIMIT = int(os.environ.get("GEMINI_DAILY_REQUEST_LIMIT", "50"))
 PROFILE_DAILY_LIMIT = int(os.environ.get("GEMINI_DAILY_PROFILE_LIMIT", "20"))
+# Reserved micro-USD is an operator-configured estimate, NOT actual Gemini billing.
+# Conservative defaults: $0.05 reserved per call, $0.50 daily total.
+DAILY_BUDGET_MICROUSD = int(os.environ.get("GEMINI_DAILY_BUDGET_MICROUSD", "500000"))
+REQUEST_RESERVE_MICROUSD = int(os.environ.get("GEMINI_REQUEST_RESERVE_MICROUSD", "50000"))
 MAX_CONCURRENT = int(os.environ.get("GEMINI_MAX_CONCURRENT", "2"))
 QUOTA_DB = os.environ.get("GEMINI_QUOTA_DB", str(Path(__file__).with_name("gemini_quota.sqlite3")))
 SLOTS = threading.BoundedSemaphore(MAX_CONCURRENT if MAX_CONCURRENT > 0 else 1)
@@ -44,24 +48,34 @@ def validate_config():
         raise ValueError("GEMINI_MODEL is not allowlisted")
     if not (1 <= DAILY_LIMIT <= 10000) or not (1 <= PROFILE_DAILY_LIMIT <= 10000) or not (1 <= MAX_CONCURRENT <= 16):
         raise ValueError("Invalid quota/concurrency limits")
+    if not (1 <= REQUEST_RESERVE_MICROUSD <= DAILY_BUDGET_MICROUSD <= 1_000_000_000):
+        raise ValueError("Invalid estimated spend reservation limits")
 
 
-def reserve_daily_attempt(path, day, limit, profile=None, profile_limit=None):
+def reserve_daily_attempt(path, day, limit, profile=None, profile_limit=None,
+                          cost_limit=None, cost_reserve=None):
     """Atomically reserve a global and (optionally) per-profile upstream attempt.
 
     Both counters are checked and incremented in one SQLite write transaction.
-    Rejected requests never consume either quota. Upstream failures do count.
-    This is an attempt ceiling, NOT a monetary or token-based spend cap.
+    Rejected requests never consume quota or estimated spend reservation.
+    Upstream failures count. Cost reservation is a conservative operator-defined
+    estimate, NOT provider-measured usage or a guaranteed billing cap.
     """
     if (profile is None) != (profile_limit is None):
         raise ValueError("profile and profile_limit must be specified together")
     if profile is not None and (profile not in range(1, 6) or profile_limit < 1):
         raise ValueError("invalid profile quota")
+    if (cost_limit is None) != (cost_reserve is None):
+        raise ValueError("cost_limit and cost_reserve must be specified together")
+    if cost_limit is not None and not (1 <= cost_reserve <= cost_limit <= 1_000_000_000):
+        raise ValueError("invalid estimated spend reservation")
     # sqlite3's connection context manager commits but does NOT close connections.
     with closing(sqlite3.connect(path, timeout=5)) as conn:
         with conn:
             conn.execute("BEGIN IMMEDIATE")
             conn.execute("CREATE TABLE IF NOT EXISTS quota (day TEXT PRIMARY KEY, attempts INTEGER NOT NULL)")
+            conn.execute("CREATE TABLE IF NOT EXISTS reserved_budget ("
+                         "day TEXT PRIMARY KEY, reserved_microusd INTEGER NOT NULL)")
             conn.execute("CREATE TABLE IF NOT EXISTS profile_quota ("
                          "day TEXT NOT NULL, profile INTEGER NOT NULL, attempts INTEGER NOT NULL, "
                          "PRIMARY KEY(day, profile))")
@@ -74,15 +88,26 @@ def reserve_daily_attempt(path, day, limit, profile=None, profile_limit=None):
                     (day, profile)).fetchone()
                 if used and used[0] >= profile_limit:
                     return False
+            if cost_limit is not None:
+                reserved = conn.execute(
+                    "SELECT reserved_microusd FROM reserved_budget WHERE day=?", (day,)).fetchone()
+                if (reserved[0] if reserved else 0) + cost_reserve > cost_limit:
+                    return False
             conn.execute("INSERT INTO quota(day, attempts) VALUES(?, 1) "
                          "ON CONFLICT(day) DO UPDATE SET attempts=attempts+1", (day,))
             if profile is not None:
                 conn.execute("INSERT INTO profile_quota(day, profile, attempts) VALUES(?, ?, 1) "
                              "ON CONFLICT(day, profile) DO UPDATE SET attempts=attempts+1",
                              (day, profile))
+            if cost_limit is not None:
+                conn.execute("INSERT INTO reserved_budget(day, reserved_microusd) VALUES(?, ?) "
+                             "ON CONFLICT(day) DO UPDATE SET "
+                             "reserved_microusd=reserved_microusd+excluded.reserved_microusd",
+                             (day, cost_reserve))
             cutoff = day[:4] + "-01-01"
             conn.execute("DELETE FROM quota WHERE day < ?", (cutoff,))
             conn.execute("DELETE FROM profile_quota WHERE day < ?", (cutoff,))
+            conn.execute("DELETE FROM reserved_budget WHERE day < ?", (cutoff,))
             return True
 
 
@@ -146,7 +171,9 @@ class Handler(BaseHTTPRequestHandler):
         try:
             day = datetime.now(timezone.utc).date().isoformat()
             try:
-                allowed = reserve_daily_attempt(QUOTA_DB, day, DAILY_LIMIT, profile, PROFILE_DAILY_LIMIT)
+                allowed = reserve_daily_attempt(
+                    QUOTA_DB, day, DAILY_LIMIT, profile, PROFILE_DAILY_LIMIT,
+                    DAILY_BUDGET_MICROUSD, REQUEST_RESERVE_MICROUSD)
             except (sqlite3.Error, OSError):
                 self.reply(503, {"error": "quota_storage_unavailable"})
                 return

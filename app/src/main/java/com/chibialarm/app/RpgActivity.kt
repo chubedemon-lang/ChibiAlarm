@@ -24,6 +24,7 @@ import com.chibialarm.app.rpg.RpgQuest
 import com.chibialarm.app.rpg.RpgRules
 import com.chibialarm.app.rpg.RpgItemStack
 import com.chibialarm.app.rpg.RpgItemCatalog
+import com.chibialarm.app.rpg.RpgInventoryEngine
 import com.chibialarm.app.rpg.StreakDay
 import java.time.LocalDate
 import kotlinx.coroutines.CoroutineScope
@@ -43,6 +44,7 @@ class RpgActivity : Activity() {
     private val database by lazy { RpgDatabase.get(applicationContext) }
     private val sceneState = ChibiSceneState()
     private val engine by lazy { RpgEngine(database) }
+    private val itemEngine by lazy { RpgInventoryEngine(database) }
     private data class Dashboard(
         val character: RpgCharacter,
         val quests: List<RpgQuest>,
@@ -218,6 +220,25 @@ class RpgActivity : Activity() {
         }
     }
 
+    /** Local crafting: one herb + one star, no XP/coins or network calls. */
+    private fun craftGardenCharm() {
+        val receipt = "craft:garden_charm:" + java.util.UUID.randomUUID().toString()
+        scope.launch {
+            try {
+                val crafted = withContext(Dispatchers.IO) {
+                    itemEngine.craftGardenCharm(receipt)
+                }
+                Toast.makeText(this@RpgActivity,
+                    if (crafted) "🍀 Đã chế tạo Bùa khu vườn!"
+                    else "Chưa đủ 1 thảo mộc và 1 mảnh sao", Toast.LENGTH_SHORT).show()
+                refresh()
+            } catch (_: Exception) {
+                Toast.makeText(this@RpgActivity,
+                    "Không lưu được vật phẩm, vui lòng thử lại", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
     private fun claimDailyLogin() {
         scope.launch {
             try {
@@ -294,8 +315,26 @@ class RpgActivity : Activity() {
                 sceneButton.text = if (inGarden) "🚪 Về phòng ngủ" else "🚪 Ra khu vườn"
             }
             onGardenAction = {
-                Toast.makeText(this@RpgActivity,
-                    "Đã tưới cây! Hoạt động trang trí, không cộng EXP.", Toast.LENGTH_SHORT).show()
+                // The water effect always plays; the inventory reward is once
+                // per local calendar day, enforced by a durable Room receipt.
+                scope.launch {
+                    try {
+                        val itemId = withContext(Dispatchers.IO) {
+                            itemEngine.forageGarden(LocalDate.parse(LifeData.today()))
+                        }
+                        val message = if (itemId == null) {
+                            "🌱 Đã chăm vườn hôm nay. Mai quay lại tìm vật phẩm nhé!"
+                        } else {
+                            val item = RpgItemCatalog.describe(itemId)
+                            "🌱 Nhặt được ${item.icon} ${item.title}! (1 lần/ngày)"
+                        }
+                        Toast.makeText(this@RpgActivity, message, Toast.LENGTH_SHORT).show()
+                        if (itemId != null) refresh()
+                    } catch (_: Exception) {
+                        Toast.makeText(this@RpgActivity,
+                            "Không lưu được vật phẩm khu vườn", Toast.LENGTH_LONG).show()
+                    }
+                }
             }
             onSceneAction = { target ->
                 val destination = when (target) {
@@ -408,6 +447,19 @@ class RpgActivity : Activity() {
                         "\n\nChưa hỗ trợ mua bán, giao dịch hoặc dùng vật phẩm.")
                     .setPositiveButton("Đóng", null)
                     .show()
+            }
+        })
+        val herbs = itemStacks.firstOrNull { it.itemId == "herb" }?.quantity ?: 0L
+        val stars = itemStacks.firstOrNull { it.itemId == "star_fragment" }?.quantity ?: 0L
+        hero.addView(label("🌱 Tưới cây trong vườn để nhặt 1 nguyên liệu mỗi ngày. " +
+            "Đủ 1 thảo mộc và 1 mảnh sao có thể chế tạo bùa.", 14f))
+        hero.addView(Button(this).apply {
+            text = "🛠️ Chế tạo Bùa khu vườn • 🌿 $herbs/1 ✨ $stars/1"
+            contentDescription = "Chế tạo bùa từ một thảo mộc và một mảnh sao"
+            isEnabled = herbs >= 1L && stars >= 1L
+            setOnClickListener {
+                isEnabled = false
+                craftGardenCharm()
             }
         })
         hero.addView(Button(this).apply {

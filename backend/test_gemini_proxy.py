@@ -108,6 +108,12 @@ class ProxyTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 proxy.validate_config()
 
+    def test_bad_profile_daily_limit_rejected_at_startup(self):
+        for invalid in (0, 10001):
+            with self.subTest(invalid=invalid), patch.object(proxy, "PROFILE_DAILY_LIMIT", invalid):
+                with self.assertRaises(ValueError):
+                    proxy.validate_config()
+
     def test_concurrent_sqlite_quota_never_overbooks(self):
         db = os.path.join(self.tmp.name, "concurrent.sqlite3")
         with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:

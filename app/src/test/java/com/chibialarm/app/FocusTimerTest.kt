@@ -1,6 +1,7 @@
 package com.chibialarm.app
 
 import android.content.Context
+import android.content.Intent
 import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
@@ -59,6 +60,38 @@ class FocusTimerTest {
         assertTrue(FocusTimer.complete(context))
         assertEquals(Int.MAX_VALUE, FocusTimer.sessions(context))
         assertEquals(Int.MAX_VALUE, prefs.getInt(dayKey, 0))
+    }
+
+    @Test fun delayedAlarmFromPreviousSessionCannotCompleteNewSession() {
+        val oldEnd = System.currentTimeMillis() - 60_000L
+        val newEnd = System.currentTimeMillis() - 1_000L
+        assertTrue(prefs.edit().putLong("endTime", newEnd)
+            .putBoolean("signedAlarm", true).commit())
+        val stale = Intent(context, FocusDoneReceiver::class.java)
+            .putExtra("focus_expected_end", oldEnd)
+        assertFalse(FocusTimer.completeFromAlarm(context, stale))
+        assertEquals(newEnd, FocusTimer.endTime(context))
+        assertEquals(0, FocusTimer.sessions(context))
+
+        val current = Intent(context, FocusDoneReceiver::class.java)
+            .putExtra("focus_expected_end", newEnd)
+        assertTrue(FocusTimer.completeFromAlarm(context, current))
+        assertFalse(FocusTimer.completeFromAlarm(context, current))
+        assertEquals(1, FocusTimer.sessions(context))
+    }
+
+    @Test fun unsignedAlarmCannotCompleteNewSessionButLegacyAlarmStillWorks() {
+        expiredSession()
+        val legacy = Intent(context, FocusDoneReceiver::class.java)
+        // Before the upgrade, the scheduled PendingIntent had no end-time marker.
+        assertTrue(FocusTimer.completeFromAlarm(context, legacy))
+        assertEquals(1, FocusTimer.sessions(context))
+
+        expiredSession()
+        assertTrue(prefs.edit().putBoolean("signedAlarm", true).commit())
+        assertFalse(FocusTimer.completeFromAlarm(context, legacy))
+        assertEquals(1, FocusTimer.sessions(context))
+        assertTrue(FocusTimer.endTime(context) > 0L)
     }
 
     @Test fun concurrentCompletionOnlyPaysOnce() {

@@ -144,10 +144,14 @@ class RpgEngine(private val db: RpgDatabase) {
             val dao = db.dao()
             dao.insertLedger(XpLedger(dedupeKey = "migration:growth:v1",
                 questId = "legacy-growth", amount = 0))
-            days.distinctBy { it.habitId to it.localDate }.forEach { dao.recordStreak(it) }
-            // Read the persisted streak history once, rather than issuing one SQL
-            // query per habit on every dashboard resume.
-            val byHabit = dao.allStreakDays().groupBy { it.habitId }
+            // Read once, write only changed check-ins. Rewriting the entire historical
+            // Growth journal on every dashboard resume gets expensive over time.
+            val stored = dao.allStreakDays().associateBy { it.habitId to it.localDate }
+            val changes = days.distinctBy { it.habitId to it.localDate }
+                .filter { stored[it.habitId to it.localDate] != it }
+            changes.forEach { dao.recordStreak(it) }
+            val byHabit = (stored + changes.associateBy { it.habitId to it.localDate })
+                .values.groupBy { it.habitId }
             var longestCurrent = 0
             for (habitId in days.map { it.habitId }.distinct()) {
                 val current = RpgRules.streak(byHabit[habitId].orEmpty(), today)

@@ -13,13 +13,14 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class ChibiHeroViewInteractionTest {
+    private fun dispatch(view: ChibiHeroView, action: Int, x: Float, y: Float) {
+        val event = MotionEvent.obtain(0L, 10L, action, x, y, 0)
+        try { assertTrue(view.onTouchEvent(event)) } finally { event.recycle() }
+    }
+
     private fun tap(view: ChibiHeroView, x: Float, y: Float) {
-        val event = MotionEvent.obtain(0L, 0L, MotionEvent.ACTION_UP, x, y, 0)
-        try {
-            assertTrue(view.onTouchEvent(event))
-        } finally {
-            event.recycle()
-        }
+        dispatch(view, MotionEvent.ACTION_DOWN, x, y)
+        dispatch(view, MotionEvent.ACTION_UP, x, y)
     }
 
     @Test fun visualDoorAndAccessibleButtonSwitchTheSameScene() {
@@ -74,5 +75,35 @@ class ChibiHeroViewInteractionTest {
             android.provider.Settings.Global.putFloat(resolver, setting, previous)
         }
     }
+
+    @Test fun swipingAcrossHeroDoesNotPetOrChangeRoom() {
+        val view = ChibiHeroView(RuntimeEnvironment.getApplication())
+        view.layout(0, 0, 320, 240)
+        var pets = 0
+        var roomChanges = 0
+        view.onPet = { pets++ }
+        view.onRoomChanged = { roomChanges++ }
+        dispatch(view, MotionEvent.ACTION_DOWN, 160f, 110f)
+        dispatch(view, MotionEvent.ACTION_MOVE, 160f, 233f)
+        dispatch(view, MotionEvent.ACTION_UP, 160f, 233f)
+        assertEquals(0, pets)
+        assertEquals(0, roomChanges)
+        assertEquals(ChibiSceneState.Scene.BEDROOM, view.sceneState.scene)
+    }
+
+    @Test fun cancelledAndUpOnlyTouchesCannotTriggerRewards() {
+        val view = ChibiHeroView(RuntimeEnvironment.getApplication())
+        view.layout(0, 0, 320, 240)
+        var pets = 0
+        view.onPet = { pets++ }
+        dispatch(view, MotionEvent.ACTION_UP, 160f, 110f)
+        dispatch(view, MotionEvent.ACTION_DOWN, 160f, 110f)
+        dispatch(view, MotionEvent.ACTION_CANCEL, 160f, 110f)
+        dispatch(view, MotionEvent.ACTION_UP, 160f, 110f)
+        assertEquals(0, pets)
+        tap(view, 160f, 110f)
+        assertEquals(1, pets)
+    }
+
 
 }

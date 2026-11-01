@@ -277,4 +277,33 @@ class RpgEngineDatabaseTest {
         assertEquals(10, database.dao().ledgerEntries()
             .count { it.dedupeKey.startsWith("quest:") })
     }
+
+    @Test fun repeatedGrowthRefreshIsIdempotentAndUncheckedDayIsReconciled() = runBlocking {
+        val engine = RpgEngine(database)
+        engine.initialize(0, day)
+        val yesterday = StreakDay("growth:read", day.minusDays(1).toString(), true)
+        val today = StreakDay("growth:read", day.toString(), true)
+        assertEquals(2, engine.syncGrowth(listOf(yesterday, today), day))
+        assertEquals(2, engine.syncGrowth(listOf(yesterday, today), day))
+        assertEquals(2, database.dao().allStreakDays().size)
+        assertEquals(1, engine.syncGrowth(listOf(yesterday, today.copy(completed = false)), day))
+        assertFalse(database.dao().allStreakDays().first { it.localDate == day.toString() }.completed)
+        assertEquals(2, database.dao().allStreakDays().size)
+    }
+
+    @Test fun removingAllActiveGrowthHabitsResetsUnpaidStreakProgressButPreservesHistory() = runBlocking {
+        val engine = RpgEngine(database)
+        engine.initialize(0, day)
+        val days = listOf(
+            StreakDay("growth:read", day.toString(), true),
+            StreakDay("growth:read", day.minusDays(1).toString(), true)
+        )
+        assertEquals(2, engine.syncGrowth(days, day))
+        assertEquals(2, database.dao().achievements().first { it.id == "streak_3" }.progress)
+        assertEquals(0, engine.syncGrowth(emptyList(), day))
+        assertEquals(0, database.dao().achievements().first { it.id == "streak_3" }.progress)
+        // Historical entries are retained for recovery and export.
+        assertEquals(2, database.dao().allStreakDays().size)
+    }
+
 }

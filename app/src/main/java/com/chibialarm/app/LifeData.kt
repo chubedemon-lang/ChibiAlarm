@@ -43,7 +43,32 @@ object LifeData {
             recovered.sortedWith(compareBy({it.hour},{it.minute}))
         } catch (_:Exception) { emptyList() }
     }
+    private fun protectDamagedLegacyRoutines(ctx:Context) {
+        val current=prefs(ctx).all["routines"] ?: return
+        val raw=current as? String
+        val damaged = if (raw == null) true else try {
+            val data=JSONArray(raw)
+            (0 until data.length()).any { i ->
+                val item=data.optJSONObject(i)
+                if (item == null) true else try {
+                    item.getInt("id")
+                    item.getString("title")
+                    item.getInt("hour")
+                    item.getInt("minute")
+                    false
+                } catch (_:Exception) { true }
+            }
+        } catch (_:Exception) { true }
+        if (damaged && !prefs(ctx).contains("routines_corrupt_backup")) {
+            // Preserve the first damaged payload before an explicit user edit.
+            // Never overwrite the recovery copy on subsequent saves.
+            check(prefs(ctx).edit().putString("routines_corrupt_backup",current.toString()).commit()) {
+                "Cannot preserve damaged legacy routines"
+            }
+        }
+    }
     fun save(ctx:Context,routines:List<Routine>) {
+        protectDamagedLegacyRoutines(ctx)
         // Cancel alarms for removed IDs before replacing the stored routine list.
         // Rescheduling only the new list otherwise leaves orphan reminders behind.
         val retainedIds = routines.map { it.id }.toSet()

@@ -230,7 +230,12 @@ class RpgActivity : Activity() {
         val xpSpent = (1 until level).sumOf { RpgRules.xpToNext(it) }
         val xpRequired = RpgRules.xpToNext(level)
         val xpInLevel = (character.totalXp - xpSpent).coerceIn(0L, xpRequired)
-        hero.addView(ChibiHeroView(this).apply { contentDescription = "Nhân vật chibi thỏ đang chuyển động trong khu vườn" })
+        hero.addView(ChibiHeroView(this).apply {
+            onPet = {
+                Toast.makeText(this@RpgActivity, "Chibi vui quá! ♥", Toast.LENGTH_SHORT).show()
+            }
+        })
+        hero.addView(label("👆 Chạm vào Chibi để vuốt ve và nhận phản ứng!", 14f))
         hero.addView(label("🌟 ${character.name} • Cấp $level", 23f))
         hero.addView(Button(this).apply {
             text = "✏️ Đổi tên Chibi"

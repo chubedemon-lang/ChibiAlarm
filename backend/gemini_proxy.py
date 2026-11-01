@@ -37,6 +37,9 @@ def validate_config():
         raise ValueError("APP_ACCESS_TOKEN must be a strong, private token (24+ chars)")
     if not any(KEYS.values()):
         raise ValueError("At least one GEMINI_API_KEY(_1..5) must be configured")
+    configured_keys = [key for key in KEYS.values() if key]
+    if len(set(configured_keys)) != len(configured_keys):
+        raise ValueError("Each configured Gemini key profile must use a distinct API key")
     if MODEL not in ALLOWED_MODELS or not re.fullmatch(r"[a-zA-Z0-9._-]+", MODEL):
         raise ValueError("GEMINI_MODEL is not allowlisted")
     if not (1 <= DAILY_LIMIT <= 10000) or not (1 <= PROFILE_DAILY_LIMIT <= 10000) or not (1 <= MAX_CONCURRENT <= 16):

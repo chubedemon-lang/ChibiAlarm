@@ -90,10 +90,10 @@ interface RpgDao {
     suspend fun questClaimCount(): Int
 
     /** Backpack keepsakes use existing immutable reward claims; no new DB tables. */
-    @Query("SELECT COUNT(*) FROM rpg_xp_ledger WHERE dedupeKey LIKE 'daily_login:%'")
+    @Query("SELECT COUNT(*) FROM rpg_xp_ledger WHERE dedupeKey GLOB 'daily_login:*'")
     suspend fun dailyLoginClaimCount(): Long
 
-    @Query("SELECT COUNT(*) FROM rpg_xp_ledger WHERE dedupeKey LIKE 'pet_game:%'")
+    @Query("SELECT COUNT(*) FROM rpg_xp_ledger WHERE dedupeKey GLOB 'pet_game:*'")
     suspend fun petGameClaimCount(): Long
 
     @Query("SELECT * FROM rpg_streak_day ORDER BY localDate ASC, habitId ASC")

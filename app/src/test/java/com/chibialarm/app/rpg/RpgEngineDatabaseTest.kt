@@ -40,6 +40,31 @@ class RpgEngineDatabaseTest {
         assertNotNull(achievement.unlockedAt)
     }
 
+    @Test fun keepsakeCountsFollowOnlyCommittedRewardClaims() = runBlocking {
+        val engine = RpgEngine(database)
+        engine.initialize(0, day)
+        val dao = database.dao()
+        assertEquals(0L, dao.dailyLoginClaimCount())
+        assertEquals(0L, dao.petGameClaimCount())
+        assertEquals(0, dao.questClaimCount())
+        assertTrue(engine.claimDailyLogin(day))
+        assertFalse(engine.claimDailyLogin(day))
+        assertTrue(engine.claimDailyPetGame(day))
+        assertFalse(engine.claimDailyPetGame(day))
+        assertTrue(engine.syncCheckableProgress("growth:$day", 1))
+        assertTrue(engine.claimQuest("growth:$day"))
+        assertFalse(engine.claimQuest("growth:$day"))
+        assertEquals(1L, dao.dailyLoginClaimCount())
+        assertEquals(1L, dao.petGameClaimCount())
+        assertEquals(1, dao.questClaimCount())
+        // The one-time XP migration marker must never count as a collectible.
+        assertEquals(3, dao.ledgerEntries().count {
+            it.dedupeKey.startsWith("daily_login:") ||
+            it.dedupeKey.startsWith("pet_game:") ||
+            it.dedupeKey.startsWith("quest:")
+        })
+    }
+
     @Test fun dailyQuestClaimIsAtomicAndCannotPayTwice() = runBlocking {
         val engine = RpgEngine(database)
         engine.initialize(0, day)

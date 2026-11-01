@@ -40,10 +40,14 @@ class RpgAccountIsolationTest {
         val second = RpgDatabase.forVerifiedAccount(context, secondId)
         first.dao().insertCharacter(RpgCharacter(name = "Erase Me", totalXp = 10L))
         second.dao().insertCharacter(RpgCharacter(name = "Keep Me", totalXp = 20L))
+        assertTrue(RpgInventoryEngine(first).grant("star_fragment", 3, "account:first"))
+        assertTrue(RpgInventoryEngine(second).grant("herb", 2, "account:second"))
         assertTrue(RpgDatabase.deleteVerifiedAccount(context, firstId))
         val reopened = RpgDatabase.forVerifiedAccount(context, firstId)
         assertNull(reopened.dao().character())
         assertEquals(20L, second.dao().character()?.totalXp)
+        assertEquals(2L, second.dao().itemStack("herb")?.quantity)
+        assertNull(reopened.dao().itemStack("star_fragment"))
     }
 
     @Test fun differentAccountsDoNotShareRpgDataAndGuestDatabaseRemainsSeparate() = runBlocking {
@@ -56,6 +60,9 @@ class RpgAccountIsolationTest {
         assertNotSame(first, guest)
         assertNotSame(second, guest)
         first.dao().insertCharacter(RpgCharacter(name = "Account One", totalXp = 123L))
+        assertTrue(RpgInventoryEngine(first).grant("star_fragment", 7, "account:one"))
+        assertNull(second.dao().itemStack("star_fragment"))
+        assertNull(guest.dao().itemStack("star_fragment"))
         assertEquals(123L, first.dao().character()?.totalXp)
         assertNull(second.dao().character())
         assertSame(first, RpgDatabase.forVerifiedAccount(context, "test:$prefix:one"))

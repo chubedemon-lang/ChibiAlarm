@@ -14,6 +14,11 @@ class ChibiHeroView(context: Context) : View(context) {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val startedAt = android.os.SystemClock.uptimeMillis()
     private var happyUntil = 0L
+    private var heroX = 160f
+    private var destinationX = 160f
+    private var lastFrameMs = android.os.SystemClock.uptimeMillis()
+    private var outdoor = false
+    var onRoomChanged: ((Boolean) -> Unit)? = null
     var onPet: (() -> Unit)? = null
     var onSceneAction: ((ChibiSceneActions.Target) -> Unit)? = null
 
@@ -36,6 +41,18 @@ class ChibiHeroView(context: Context) : View(context) {
             if (scale <= 0f) return false
             val x = (event.x - (width - 320f * scale) / 2f) / scale
             val y = (event.y - (height - 240f * scale) / 2f) / scale
+            // Tapping the open floor moves the hero; the doorway changes rooms.
+            if (x in 138f..182f && y in 222f..240f) {
+                outdoor = !outdoor
+                onRoomChanged?.invoke(outdoor)
+                invalidate()
+                return true
+            }
+            if (y in 190f..240f && x in 88f..238f) {
+                destinationX = x.coerceIn(116f, 204f)
+                invalidate()
+                return true
+            }
             when (val target = ChibiSceneActions.hit(x, y)) {
                 ChibiSceneActions.Target.HERO -> return performClick()
                 ChibiSceneActions.Target.NONE -> return true
@@ -71,7 +88,12 @@ class ChibiHeroView(context: Context) : View(context) {
         val save = canvas.save()
         canvas.translate((width - 320f * scale) / 2f, (height - 240f * scale) / 2f)
         canvas.scale(scale, scale)
-        paint.color = Color.rgb(230, 242, 255)
+        val now = android.os.SystemClock.uptimeMillis()
+        val dt = ((now - lastFrameMs).coerceIn(0L, 50L) / 1000f)
+        lastFrameMs = now
+        val step = 105f * dt
+        heroX += (destinationX - heroX).coerceIn(-step, step)
+        paint.color = if (outdoor) Color.rgb(209, 245, 221) else Color.rgb(230, 242, 255)
         canvas.drawRoundRect(0f, 0f, 320f, 240f, 24f, 24f, paint)
         circle(canvas, Color.rgb(255, 255, 255), 53f, 43f, 17f)
         circle(canvas, Color.rgb(255, 255, 255), 73f, 43f, 22f)
@@ -80,6 +102,7 @@ class ChibiHeroView(context: Context) : View(context) {
         oval(canvas, Color.rgb(145, 199, 151), 0f, 195f, 320f, 265f)
         oval(canvas, Color.rgb(111, 163, 121), 95f, 209f, 225f, 227f)
         // Hand-drawn interactive bedroom props: bed, focus desk and training mat.
+        if (!outdoor) {
         paint.color = Color.rgb(164, 112, 178)
         canvas.drawRoundRect(9f, 122f, 79f, 199f, 9f, 9f, paint)
         paint.color = Color.rgb(255, 239, 246)
@@ -96,9 +119,21 @@ class ChibiHeroView(context: Context) : View(context) {
         canvas.drawRoundRect(263f, 105f, 290f, 121f, 2f, 2f, paint)
         paint.color = Color.rgb(112, 174, 190)
         canvas.drawRoundRect(12f, 212f, 86f, 230f, 8f, 8f, paint)
+        } else {
+            paint.color = Color.rgb(255, 218, 118)
+            canvas.drawCircle(274f, 43f, 23f, paint)
+            paint.color = Color.rgb(92, 164, 105)
+            canvas.drawRoundRect(15f, 140f, 82f, 198f, 10f, 10f, paint)
+            canvas.drawRoundRect(242f, 140f, 307f, 198f, 10f, 10f, paint)
+        }
+        paint.color = Color.rgb(172, 116, 90)
+        canvas.drawRoundRect(138f, 228f, 182f, 239f, 5f, 5f, paint)
         val bob = sin((android.os.SystemClock.uptimeMillis() - startedAt) / 420.0).toFloat() * 3f
         canvas.save()
-        canvas.translate(0f, bob)
+        canvas.translate(heroX - 160f, bob)
+        if (kotlin.math.abs(destinationX - heroX) > 1f) {
+            canvas.rotate(sin(now / 85.0).toFloat() * 2f, 160f, 175f)
+        }
         // Ears, body, hands and feet form a distinct mascot silhouette.
         oval(canvas, Color.rgb(251, 244, 255), 114f, 18f, 144f, 108f)
         oval(canvas, Color.rgb(251, 244, 255), 176f, 18f, 206f, 108f)

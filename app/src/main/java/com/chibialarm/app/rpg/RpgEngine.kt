@@ -108,6 +108,29 @@ class RpgEngine(private val db: RpgDatabase) {
         true
     }
 
+    /**
+     * Consume one crafted garden charm for a once-per-day offline reward.
+     * Ledger receipt, charm debit and character credit are one Room transaction:
+     * retries, rotation and concurrent taps cannot pay twice or lose a charm.
+     */
+    suspend fun activateDailyGardenCharm(today: LocalDate = LocalDate.now()): Boolean = db.withTransaction {
+        val dao = db.dao()
+        val character = dao.character() ?: return@withTransaction false
+        if (character.totalXp < 0L || character.coins < 0L) return@withTransaction false
+        if ((dao.itemStack("garden_charm")?.quantity ?: 0L) < 1L) return@withTransaction false
+        val key = "garden_charm:boost:$today"
+        if (dao.insertLedger(XpLedger(dedupeKey = key,
+                questId = "garden-charm-boost", amount = 20)) == -1L) return@withTransaction false
+        check(dao.consumeItem("garden_charm", 1L, System.currentTimeMillis()) == 1) {
+            "Garden charm debit failed"
+        }
+        val nextXp = Math.addExact(character.totalXp, 20L)
+        val nextCoins = Math.addExact(character.coins, 1L)
+        dao.updateCharacter(character.copy(totalXp = nextXp, coins = nextCoins))
+        updateMilestones(dao)
+        true
+    }
+
     /** User-editable local character name; never changes character identity or rewards. */
     suspend fun renameCharacter(name: String): Boolean = db.withTransaction {
         val normalized = name.trim().replace(Regex("\\s+"), " ")

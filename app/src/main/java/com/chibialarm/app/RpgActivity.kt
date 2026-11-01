@@ -52,6 +52,7 @@ class RpgActivity : Activity() {
         val growthStreak: Int,
         val dailyClaimed: Boolean,
         val petGameClaimed: Boolean,
+        val charmClaimed: Boolean,
         val inventory: List<ChibiInventory.Item>,
         val itemStacks: List<RpgItemStack>
     )
@@ -134,13 +135,15 @@ class RpgActivity : Activity() {
                         dao.achievements(), growthStreak,
                         dao.hasLedgerEntry("daily_login:" + today),
                         dao.hasLedgerEntry("pet_game:" + today),
+                        dao.hasLedgerEntry("garden_charm:boost:" + today),
                         ChibiInventory.fromClaims(
                             dao.dailyLoginClaimCount(), dao.petGameClaimCount(),
                             dao.questClaimCount().toLong()
                         ), dao.itemStacks())
                 }
                 render(data.character, data.quests, data.achievements,
-                    data.growthStreak, data.dailyClaimed, data.petGameClaimed, data.inventory, data.itemStacks)
+                    data.growthStreak, data.dailyClaimed, data.petGameClaimed,
+                    data.charmClaimed, data.inventory, data.itemStacks)
             } catch (error: Exception) {
                 if (error is CancellationException) throw error
                 Toast.makeText(this@RpgActivity,
@@ -239,6 +242,24 @@ class RpgActivity : Activity() {
         }
     }
 
+    private fun activateDailyGardenCharm() {
+        scope.launch {
+            try {
+                val activated = withContext(Dispatchers.IO) {
+                    engine.activateDailyGardenCharm(LocalDate.parse(LifeData.today()))
+                }
+                Toast.makeText(this@RpgActivity,
+                    if (activated) "🍀 Bùa tỏa sáng! +20 EXP, +1 xu"
+                    else "Không có bùa hoặc đã dùng hôm nay", Toast.LENGTH_SHORT).show()
+                refresh()
+            } catch (_: Exception) {
+                Toast.makeText(this@RpgActivity,
+                    "Không kích hoạt được bùa, vật phẩm vẫn được giữ", Toast.LENGTH_SHORT).show()
+                refresh()
+            }
+        }
+    }
+
     private fun claimDailyLogin() {
         scope.launch {
             try {
@@ -275,7 +296,7 @@ class RpgActivity : Activity() {
     private fun render(character: RpgCharacter, quests: List<RpgQuest>,
                        achievements: List<RpgAchievement>, growthStreak: Int,
                        dailyClaimed: Boolean, petGameClaimed: Boolean,
-                       inventory: List<ChibiInventory.Item>,
+                       charmClaimed: Boolean, inventory: List<ChibiInventory.Item>,
                        itemStacks: List<RpgItemStack>) {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -468,6 +489,18 @@ class RpgActivity : Activity() {
             setOnClickListener {
                 isEnabled = false
                 craftGardenCharm()
+            }
+        })
+        val charms = itemStacks.firstOrNull { it.itemId == "garden_charm" }?.quantity ?: 0L
+        hero.addView(Button(this).apply {
+            text = if (charmClaimed) "✓ Đã dùng bùa hôm nay"
+                else "🍀 Dùng Bùa khu vườn (+20 EXP, +1 xu) • Có $charms"
+            contentDescription = if (charmClaimed) "Đã nhận thưởng bùa hôm nay"
+                else "Tiêu hao một bùa khu vườn để nhận 20 kinh nghiệm và một xu"
+            isEnabled = !charmClaimed && charms >= 1L
+            setOnClickListener {
+                isEnabled = false
+                activateDailyGardenCharm()
             }
         })
         hero.addView(Button(this).apply {

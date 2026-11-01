@@ -148,10 +148,10 @@ class ProxyTests(unittest.TestCase):
 
     def test_http_profile_ceiling_rejects_before_upstream_call(self):
         fake = FakeResponse(b'{"candidates":[{"content":{"parts":[{"text":"OK"}]}}]}')
-        with patch.object(proxy, "PROFILE_DAILY_LIMIT", 1), \\
-             patch.object(proxy, "DAILY_LIMIT", 3), \\
-             patch.object(proxy, "KEYS", {1: "key1", 2: "key2"}), \\
-             patch.object(proxy.urllib.request, "urlopen", return_value=fake) as upstream:
+        with (patch.object(proxy, "PROFILE_DAILY_LIMIT", 1),
+              patch.object(proxy, "DAILY_LIMIT", 3),
+              patch.object(proxy, "KEYS", {1: "key1", 2: "key2"}),
+              patch.object(proxy.urllib.request, "urlopen", return_value=fake) as upstream):
             self.assertEqual(self.request({"topic": "hello", "profile": 1})[0], 200)
             self.assertEqual(self.request({"topic": "hello", "profile": 1})[0], 429)
             self.assertEqual(self.request({"topic": "hello", "profile": 2})[0], 200)

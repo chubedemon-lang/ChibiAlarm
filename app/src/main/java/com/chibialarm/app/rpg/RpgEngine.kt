@@ -112,7 +112,9 @@ class RpgEngine(private val db: RpgDatabase) {
         if (dao.insertLedger(XpLedger(dedupeKey = "migration:life_v12:xp90:v1",
                 questId = "legacy", amount = amount)) != -1L) {
             val character = dao.character() ?: error("Character not created")
-            dao.updateCharacter(character.copy(totalXp = character.totalXp + amount.toLong()))
+            val nextXp = character.totalXp + amount.toLong()
+            require(nextXp >= character.totalXp) { "Legacy XP overflow" }
+            dao.updateCharacter(character.copy(totalXp = nextXp))
         }
         val day = today.toString()
         listOf(

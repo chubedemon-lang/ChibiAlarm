@@ -224,6 +224,21 @@ class RpgEngineDatabaseTest {
         assertEquals(1, dao.questClaimCount())
     }
 
+    @Test fun petMiniGameRewardsOnlyOncePerDayAndSurvivesEngineRecreation() = runBlocking {
+        val engine = RpgEngine(database)
+        engine.initialize(0, day)
+        assertTrue(engine.claimDailyPetGame(day))
+        assertFalse(engine.claimDailyPetGame(day))
+        assertFalse(RpgEngine(database).claimDailyPetGame(day))
+        assertEquals(10L, database.dao().character()!!.totalXp)
+        assertEquals(2L, database.dao().character()!!.coins)
+        assertEquals(0, database.dao().questClaimCount())
+        assertTrue(database.dao().hasLedgerEntry("pet_game:$day"))
+        assertTrue(engine.claimDailyPetGame(day.plusDays(1)))
+        assertEquals(20L, database.dao().character()!!.totalXp)
+        assertEquals(4L, database.dao().character()!!.coins)
+    }
+
     @Test fun dailyCheckInRewardsOncePerDateAndDoesNotCountAsQuest() = runBlocking {
         val engine = RpgEngine(database)
         engine.initialize(0, day)

@@ -368,4 +368,69 @@ class RpgEngineDatabaseTest {
         assertEquals(2, database.dao().allStreakDays().size)
     }
 
+
+    @Test fun overflowingRewardsRollbackLedgerAndLeaveQuestsRetryable() = runBlocking {
+        val engine = RpgEngine(database)
+        engine.initialize(0, day)
+        val dao = database.dao()
+        val original = dao.character()!!
+
+        dao.updateCharacter(original.copy(totalXp = Long.MAX_VALUE))
+        try {
+            engine.claimDailyLogin(day)
+            fail("Daily check-in must reject XP overflow")
+        } catch (_: ArithmeticException) { }
+        assertFalse(dao.hasLedgerEntry("daily_login:$day"))
+        assertEquals(Long.MAX_VALUE, dao.character()!!.totalXp)
+
+        dao.updateCharacter(original.copy(coins = Long.MAX_VALUE))
+        try {
+            engine.claimDailyPetGame(day)
+            fail("Pet game must reject coin overflow")
+        } catch (_: ArithmeticException) { }
+        assertFalse(dao.hasLedgerEntry("pet_game:$day"))
+        assertEquals(Long.MAX_VALUE, dao.character()!!.coins)
+
+        val questId = "growth:$day"
+        assertTrue(engine.syncCheckableProgress(questId, 1))
+        try {
+            engine.claimQuest(questId)
+            fail("Quest must reject coin overflow")
+        } catch (_: ArithmeticException) { }
+        assertFalse(dao.hasLedgerEntry("quest:${questId}:$day"))
+        assertEquals("COMPLETED", dao.quest(questId)!!.state)
+        assertEquals(Long.MAX_VALUE, dao.character()!!.coins)
+
+        // A failed transaction does not burn a reward: it remains claimable.
+        dao.updateCharacter(original)
+        assertTrue(engine.claimDailyLogin(day))
+        assertTrue(engine.claimDailyPetGame(day))
+        assertTrue(engine.claimQuest(questId))
+        assertEquals(50L, dao.character()!!.totalXp)
+        assertEquals(10L, dao.character()!!.coins)
+    }
+
+    @Test fun invalidNegativeBalanceNeverCreatesRewardReceipts() = runBlocking {
+        val engine = RpgEngine(database)
+        engine.initialize(0, day)
+        val dao = database.dao()
+        dao.updateCharacter(dao.character()!!.copy(coins = -1L))
+        val questId = "routine:$day"
+        assertTrue(engine.syncCheckableProgress(questId, 1))
+        for (claim in listOf<suspend () -> Boolean>(
+                { engine.claimDailyLogin(day) },
+                { engine.claimDailyPetGame(day) },
+                { engine.claimQuest(questId) })) {
+            try {
+                claim()
+                fail("Invalid balance must reject a reward")
+            } catch (_: IllegalArgumentException) { }
+        }
+        assertFalse(dao.hasLedgerEntry("daily_login:$day"))
+        assertFalse(dao.hasLedgerEntry("pet_game:$day"))
+        assertFalse(dao.hasLedgerEntry("quest:${questId}:$day"))
+        assertEquals("COMPLETED", dao.quest(questId)!!.state)
+        assertEquals(-1L, dao.character()!!.coins)
+    }
+
 }

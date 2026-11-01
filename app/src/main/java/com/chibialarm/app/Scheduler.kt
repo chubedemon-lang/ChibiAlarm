@@ -29,7 +29,7 @@ internal object AlarmTimeCodec {
 }
 
 object Scheduler {
-    fun pending(ctx: Context, id: Int, record: AlarmTimeCodec.Entry? = null): PendingIntent {
+    internal fun pending(ctx: Context, id: Int, record: AlarmTimeCodec.Entry? = null): PendingIntent {
         val intent = Intent(ctx, AlarmReceiver::class.java).putExtra("id", id)
         if (record != null) intent.putExtra("alarm_signature", AlarmTimeCodec.signature(record))
         return PendingIntent.getBroadcast(ctx, id, intent,

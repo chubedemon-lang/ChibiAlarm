@@ -56,4 +56,23 @@ class ChibiHeroViewInteractionTest {
         tap(view, 40f, 160f)
         assertEquals(listOf(ChibiSceneActions.Target.BED), props)
     }
+    @Test fun disabledSystemAnimationsMakeWalkingInstantAndKeepTouchResponsive() {
+        val context = RuntimeEnvironment.getApplication()
+        val resolver = context.contentResolver
+        val setting = android.provider.Settings.Global.ANIMATOR_DURATION_SCALE
+        val previous = android.provider.Settings.Global.getFloat(resolver, setting, 1f)
+        try {
+            android.provider.Settings.Global.putFloat(resolver, setting, 0f)
+            val view = ChibiHeroView(context)
+            view.layout(0, 0, 320, 240)
+            tap(view, 200f, 210f)
+            assertEquals(200f, view.sceneState.heroX, 0.001f)
+            assertTrue(!view.sceneState.isWalking)
+            tap(view, 160f, 233f)
+            assertEquals(ChibiSceneState.Scene.GARDEN, view.sceneState.scene)
+        } finally {
+            android.provider.Settings.Global.putFloat(resolver, setting, previous)
+        }
+    }
+
 }

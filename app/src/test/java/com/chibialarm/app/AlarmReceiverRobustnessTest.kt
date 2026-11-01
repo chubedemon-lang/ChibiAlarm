@@ -22,6 +22,7 @@ class AlarmReceiverRobustnessTest {
 
     @Before fun reset() {
         Scheduler.cancel(context, id)
+        context.getSystemService(NotificationManager::class.java).cancel(id)
         prefs.edit().remove(id.toString()).commit()
     }
 
@@ -47,5 +48,27 @@ class AlarmReceiverRobustnessTest {
         val notifications = context.getSystemService(NotificationManager::class.java)
             .activeNotifications
         assertFalse(notifications.any { it.id == id })
+    }
+
+    @Test fun editedTimeRejectsOldScheduledBroadcastWithoutCancellingNewSchedule() {
+        assertTrue(prefs.edit().putString(id.toString(), "9,0,127").commit())
+        Scheduler.schedule(context, id, 9, 0)
+        AlarmReceiver().onReceive(context,
+            Intent(context, AlarmReceiver::class.java).putExtra("id", id)
+                .putExtra("alarm_signature", "8:0:127"))
+        val notifications = context.getSystemService(NotificationManager::class.java)
+        assertFalse(notifications.activeNotifications.any { it.id == id })
+        // A stale event must not erase the valid alarm's preference.
+        assertEquals("9,0,127", prefs.getString(id.toString(), null))
+    }
+
+    @Test fun editedRepeatDaysRejectsOldSnoozeBroadcast() {
+        assertTrue(prefs.edit().putString(id.toString(), "9,0,62").commit())
+        AlarmReceiver().onReceive(context,
+            Intent(context, AlarmReceiver::class.java).putExtra("id", id)
+                .putExtra("snooze", true)
+                .putExtra("alarm_signature", "9:0:127"))
+        val notifications = context.getSystemService(NotificationManager::class.java)
+        assertFalse(notifications.activeNotifications.any { it.id == id })
     }
 }

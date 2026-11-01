@@ -37,3 +37,20 @@ and full-screen-intent behavior. Keep PR #1 draft until approved.
   present this as public multi-user readiness; the login/account switch flow
   must explicitly separate or migrate Focus, Fitness and alarm state before
   public release.
+
+## Legacy routine corruption recovery (2026-11-02)
+
+- The routine reader now skips individual malformed JSON entries instead of
+  hiding the entire routine list when one row is damaged. Valid entries still
+  sort by time; malformed SharedPreferences types and truncated JSON do not
+  crash the screen. Reading never rewrites legacy data.
+- If a user later saves routines while the original payload is damaged, the
+  first damaged payload is retained locally under
+  `chibi_life_v12/routines_corrupt_backup` before the editable list is replaced.
+  This is a **recovery copy, not an automatic restoration or cloud sync**.
+  Subsequent edits do not overwrite the first recovery copy.
+- Robolectric regressions cover mixed valid/invalid rows, non-string values,
+  read-only recovery, backup-on-save and no backup for valid records.
+- The UI does not yet offer a recovery/import screen. A malformed entry may
+  remain invisible until a future repair tool; keep real v1.3 upgrade testing
+  and export/delete coverage on the release checklist.

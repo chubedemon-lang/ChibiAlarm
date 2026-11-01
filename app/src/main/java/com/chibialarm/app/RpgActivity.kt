@@ -238,6 +238,15 @@ class RpgActivity : Activity() {
             if (petGameClaimed) "♥ Đã nhận thưởng chơi cùng Chibi hôm nay"
             else "♥ Vuốt ve Chibi 3 lần: 0/3 • +10 EXP, +2 xu", 14f)
         hero.addView(ChibiHeroView(this).apply {
+            onSceneAction = { target ->
+                val destination = when (target) {
+                    ChibiSceneActions.Target.BED -> AlarmSettingsActivity::class.java
+                    ChibiSceneActions.Target.DESK -> FocusActivity::class.java
+                    ChibiSceneActions.Target.TRAINING -> FitnessActivity::class.java
+                    else -> null
+                }
+                if (destination != null) startActivity(Intent(this@RpgActivity, destination))
+            }
             onPet = {
                 if (petGameClaimed) {
                     petProgress.text = "♥ Chibi đã nhận quà hôm nay. Mai chơi tiếp nhé!"

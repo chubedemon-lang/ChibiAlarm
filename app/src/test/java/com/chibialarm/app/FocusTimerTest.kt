@@ -80,6 +80,16 @@ class FocusTimerTest {
         assertEquals(1, FocusTimer.sessions(context))
     }
 
+    @Test fun staleReceiverDoesNotAwardOrClearCurrentSession() {
+        val currentEnd = System.currentTimeMillis() - 1_000L
+        assertTrue(prefs.edit().putLong("endTime", currentEnd)
+            .putBoolean("signedAlarm", true).commit())
+        FocusDoneReceiver().onReceive(context, Intent(context, FocusDoneReceiver::class.java)
+            .putExtra("focus_expected_end", currentEnd - 60_000L))
+        assertEquals(currentEnd, FocusTimer.endTime(context))
+        assertEquals(0, FocusTimer.sessions(context))
+    }
+
     @Test fun unsignedAlarmCannotCompleteNewSessionButLegacyAlarmStillWorks() {
         expiredSession()
         val legacy = Intent(context, FocusDoneReceiver::class.java)

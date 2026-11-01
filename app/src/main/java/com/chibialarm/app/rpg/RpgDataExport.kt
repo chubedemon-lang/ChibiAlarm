@@ -40,6 +40,14 @@ object RpgDataExport {
                 put(JSONObject().put("id", item.id).put("count", item.count))
             }
         })
+        // Additive JSON field: durable item stacks are separate from derived
+        // keepsakes. Receipts/opaque account identifiers are never exported.
+        result.put("itemStacks", JSONArray().apply {
+            dao.itemStacks().forEach { stack ->
+                put(JSONObject().put("itemId", stack.itemId)
+                    .put("quantity", stack.quantity))
+            }
+        })
         result.put("quests", JSONArray().apply {
             dao.quests().forEach { quest ->
                 put(JSONObject().put("id", quest.id)

@@ -104,4 +104,68 @@ class RpgInventoryDatabaseTest {
             } finally { second.close() }
         } finally { context.deleteDatabase(name) }
     }
+    @Test fun gardenForageIsDailyIdempotentAndDeterministic() = runBlocking {
+        val inventory = RpgInventoryEngine(db)
+        val tomorrow = today.plusDays(1)
+        val first = RpgGardenRules.dailyFind(today)
+        val second = RpgGardenRules.dailyFind(tomorrow)
+        assertNotEquals(first, second)
+        assertEquals(first, inventory.forageGarden(today))
+        assertNull(inventory.forageGarden(today))
+        assertEquals(second, inventory.forageGarden(tomorrow))
+        assertNull(inventory.forageGarden(tomorrow))
+        assertEquals(1L, db.dao().itemStack(first)!!.quantity)
+        assertEquals(1L, db.dao().itemStack(second)!!.quantity)
+        assertEquals(1, db.dao().itemReceiptCount("garden:forage:$today"))
+    }
+
+    @Test fun craftRequiresBothIngredientsAndDoesNotReserveFailedReceipt() = runBlocking {
+        val inventory = RpgInventoryEngine(db)
+        val key = "craft:garden_charm:attempt1"
+        assertFalse(inventory.craftGardenCharm(key))
+        assertEquals(0, db.dao().itemReceiptCount(key))
+        assertTrue(inventory.grant("herb", 2L, "test:herbs"))
+        assertFalse(inventory.craftGardenCharm(key))
+        assertEquals(2L, db.dao().itemStack("herb")!!.quantity)
+        assertEquals(0, db.dao().itemReceiptCount(key))
+        assertTrue(inventory.grant("star_fragment", 1L, "test:stars"))
+        assertTrue(inventory.craftGardenCharm(key))
+        assertFalse(inventory.craftGardenCharm(key))
+        assertEquals(1, db.dao().itemReceiptCount(key))
+        assertEquals(1L, db.dao().itemStack("herb")!!.quantity)
+        assertEquals(0L, db.dao().itemStack("star_fragment")!!.quantity)
+        assertEquals(1L, db.dao().itemStack("garden_charm")!!.quantity)
+        assertFalse(inventory.craftGardenCharm("craft:garden_charm:attempt2"))
+        assertEquals(1L, db.dao().itemStack("herb")!!.quantity)
+    }
+
+    @Test fun concurrentCraftsCannotSpendSameIngredientsTwice() = runBlocking {
+        val inventory = RpgInventoryEngine(db)
+        assertTrue(inventory.grant("herb", 1L, "test:herb"))
+        assertTrue(inventory.grant("star_fragment", 1L, "test:star"))
+        val results = coroutineScope {
+            (1..10).map { i ->
+                async(Dispatchers.Default) {
+                    inventory.craftGardenCharm("craft:garden_charm:attempt$i")
+                }
+            }.awaitAll()
+        }
+        assertEquals(1, results.count { it })
+        assertEquals(1L, db.dao().itemStack("garden_charm")!!.quantity)
+        assertEquals(0L, db.dao().itemStack("herb")!!.quantity)
+        assertEquals(0L, db.dao().itemStack("star_fragment")!!.quantity)
+    }
+
+    @Test fun invalidCraftKeyCannotConsumeIngredients() = runBlocking {
+        val inventory = RpgInventoryEngine(db)
+        assertTrue(inventory.grant("herb", 1L, "test:herb"))
+        assertTrue(inventory.grant("star_fragment", 1L, "test:star"))
+        for (key in listOf("other:receipt", "craft:garden_charm:BAD", "craft:garden_charm:../")) {
+            try { inventory.craftGardenCharm(key); fail("Accepted invalid craft key") }
+            catch (_: IllegalArgumentException) { }
+        }
+        assertEquals(1L, db.dao().itemStack("herb")!!.quantity)
+        assertEquals(1L, db.dao().itemStack("star_fragment")!!.quantity)
+    }
+
 }

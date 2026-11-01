@@ -13,6 +13,7 @@ import sqlite3
 import threading
 import urllib.error
 import urllib.request
+from contextlib import closing
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -46,16 +47,19 @@ def reserve_daily_attempt(path, day, limit):
 
     Failed upstream calls also count; this is NOT a monetary spend cap.
     """
-    with sqlite3.connect(path, timeout=5) as conn:
-        conn.execute("CREATE TABLE IF NOT EXISTS quota (day TEXT PRIMARY KEY, attempts INTEGER NOT NULL)")
-        conn.execute("BEGIN IMMEDIATE")
-        row = conn.execute("SELECT attempts FROM quota WHERE day=?", (day,)).fetchone()
-        if row and row[0] >= limit:
-            return False
-        conn.execute("INSERT INTO quota(day, attempts) VALUES(?, 1) "
-                     "ON CONFLICT(day) DO UPDATE SET attempts=attempts+1", (day,))
-        conn.execute("DELETE FROM quota WHERE day < ?", (day[:4] + "-01-01",))
-        return True
+    # sqlite3's connection context manager commits but does NOT close connections.
+    # Explicitly close per request to avoid leaking file handles under load.
+    with closing(sqlite3.connect(path, timeout=5)) as conn:
+        with conn:
+            conn.execute("CREATE TABLE IF NOT EXISTS quota (day TEXT PRIMARY KEY, attempts INTEGER NOT NULL)")
+            conn.execute("BEGIN IMMEDIATE")
+            row = conn.execute("SELECT attempts FROM quota WHERE day=?", (day,)).fetchone()
+            if row and row[0] >= limit:
+                return False
+            conn.execute("INSERT INTO quota(day, attempts) VALUES(?, 1) "
+                         "ON CONFLICT(day) DO UPDATE SET attempts=attempts+1", (day,))
+            conn.execute("DELETE FROM quota WHERE day < ?", (day[:4] + "-01-01",))
+            return True
 
 
 class Handler(BaseHTTPRequestHandler):

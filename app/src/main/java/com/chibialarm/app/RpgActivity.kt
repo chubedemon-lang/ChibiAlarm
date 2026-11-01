@@ -452,7 +452,7 @@ class RpgActivity : Activity() {
                     .setTitle("🎒 Ba lô Chibi")
                     .setMessage("VẬT PHẨM LƯU NGOẠI TUYẾN\n" + durableItems +
                         "\n\nKỶ VẬT TỪ NHIỆM VỤ\n" + summary +
-                        "\n\nChưa hỗ trợ mua bán, giao dịch hoặc dùng vật phẩm.")
+                        "\n\nNguyên liệu có thể chế tạo bùa. Chưa hỗ trợ mua bán hoặc giao dịch.")
                     .setPositiveButton("Đóng", null)
                     .show()
             }

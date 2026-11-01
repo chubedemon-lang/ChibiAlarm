@@ -113,7 +113,7 @@ class ChibiWardrobeStoreTest {
         assertFalse(alice.contains("issuer"))
         assertTrue(alice.startsWith("chibi_wardrobe_account_"))
         assertFalse(alice == ChibiWardrobeStore.verifiedPreferenceName("issuer:bob"))
-        for (bad in listOf("", " alice", "bad\\nsubject", "x".repeat(129))) {
+        for (bad in listOf("", " alice", "bad\nsubject", "x".repeat(129))) {
             try {
                 ChibiWardrobeStore.verifiedPreferenceName(bad)
                 org.junit.Assert.fail("Expected rejection")

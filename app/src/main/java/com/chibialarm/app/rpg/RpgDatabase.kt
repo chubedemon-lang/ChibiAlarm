@@ -154,6 +154,20 @@ abstract class RpgDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Explicit local RPG erasure for an authenticated account after logout.
+         * Do not call while an account's screens or coroutines still use its DAO.
+         * Never deletes the guest database or any other account's database.
+         * This does not erase independent Fitness/Focus/Alarm preferences.
+         */
+        fun deleteVerifiedAccount(context: Context, verifiedSubject: String): Boolean {
+            val file = accountDatabaseFile(verifiedSubject)
+            return synchronized(this) {
+                accountInstances.remove(file)?.close()
+                context.applicationContext.deleteDatabase(file)
+            }
+        }
+
         internal fun accountDatabaseFile(verifiedSubject: String): String {
             require(verifiedSubject.isNotBlank() && verifiedSubject.length <= 128 &&
                     verifiedSubject == verifiedSubject.trim() &&

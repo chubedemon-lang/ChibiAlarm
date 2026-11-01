@@ -2,6 +2,7 @@ package com.chibialarm.app.rpg
 
 import androidx.room.withTransaction
 import com.chibialarm.app.ChibiCosmetics
+import com.chibialarm.app.ChibiInventory
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.Instant
@@ -30,6 +31,15 @@ object RpgDataExport {
         if (equippedOutfit != null) {
             result.put("cosmetics", JSONObject().put("equippedOutfit", equippedOutfit.name))
         }
+        // Derived from the existing ledger: safe for older exports and DB schema v1.
+        result.put("keepsakes", JSONArray().apply {
+            ChibiInventory.fromClaims(
+                dao.dailyLoginClaimCount(), dao.petGameClaimCount(),
+                dao.questClaimCount().toLong()
+            ).forEach { item ->
+                put(JSONObject().put("id", item.id).put("count", item.count))
+            }
+        })
         result.put("quests", JSONArray().apply {
             dao.quests().forEach { quest ->
                 put(JSONObject().put("id", quest.id)

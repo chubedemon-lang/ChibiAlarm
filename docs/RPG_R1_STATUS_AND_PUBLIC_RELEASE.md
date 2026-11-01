@@ -53,3 +53,24 @@ This document records implementation truth, not a claim of 100% completion.
 ### RPG data portability (R1)
 
 The RPG screen now offers a **user-initiated JSON export** through Android's system document picker. It includes character, quests, achievements, streak days and XP ledger, but excludes legacy alarm preferences, Gemini credentials and coach conversations. Exported JSON can contain sensitive habit information; users choose where to save it. Import, account sync, full data deletion and production privacy policy remain separate review gates. Both encrypted Gemini key preference stores (`gemini_secure` and `gemini_vault`) are excluded from Android backup and device transfer.
+
+### Growth deletion and refresh efficiency — 2026-11-01
+
+- Fixed a reward correctness bug: deleting a Growth habit previously left its old
+  `done:date:name` preferences behind, which the RPG dashboard could still count
+  toward today's Growth quest and active streak. The RPG now filters legacy check-ins
+  through the **currently active habit names**. Historical preferences are preserved,
+  not silently deleted. A deleted habit no longer grants an unclaimed quest reward.
+- Growth default habit names are shared between the Growth screen and the RPG reader
+  to prevent mismatched default sets on a fresh installation.
+- Repeated RPG refreshes now read stored streak days once and write **only changed**
+  day records, instead of replacing the entire Growth history on every screen resume.
+  This is a performance optimization without a Room schema change.
+- Added Robolectric tests for deleted/empty habit lists, malformed history keys,
+  check/uncheck reconciliation, repeated refresh, and revocation of an unclaimed
+  daily Growth quest when its last completed habit is removed.
+- The newest changes require a fresh successful CI run; the last verified green
+  build before these changes was #195 on commit `cd9db10`.
+- Multi-user isolation and Gemini backend remain **design-only**, detailed in
+  `docs/PUBLIC_MULTIUSER_GEMINI_ARCHITECTURE.md`. No cloud accounts or API secrets
+  have been provisioned.

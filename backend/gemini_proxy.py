@@ -35,6 +35,19 @@ QUOTA_DB = os.environ.get("GEMINI_QUOTA_DB", str(Path(__file__).with_name("gemin
 SLOTS = threading.BoundedSemaphore(MAX_CONCURRENT if MAX_CONCURRENT > 0 else 1)
 
 
+class NoUpstreamRedirects(urllib.request.HTTPRedirectHandler):
+    """Never forward the server-owned Gemini key to a redirected origin."""
+
+    def redirect_request(self, request, fp, code, msg, headers, newurl):
+        return None
+
+
+def open_gemini(request, timeout=25):
+    # The default urllib opener follows redirects and may forward x-goog-api-key.
+    # An upstream redirect must fail closed, not send credentials to another host.
+    return urllib.request.build_opener(NoUpstreamRedirects()).open(request, timeout=timeout)
+
+
 def validate_config():
     """Fail at startup instead of accidentally serving unauthenticated requests."""
     if len(TOKEN) < 24:
@@ -122,6 +135,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
         for name, value in (extra_headers or {}).items():
             self.send_header(name, value)
         self.end_headers()
@@ -157,8 +171,11 @@ class Handler(BaseHTTPRequestHandler):
                 raise ValueError("expected object")
             topic = payload.get("topic", "")
             profile = payload.get("profile", 1)
-            if not isinstance(topic, str) or len(topic) > 400 or not isinstance(profile, int) or isinstance(profile, bool):
+            if not isinstance(topic, str) or not isinstance(profile, int) or isinstance(profile, bool):
                 raise ValueError("invalid fields")
+            topic = topic.strip()
+            if not topic or len(topic) > 400 or any(ord(ch) < 32 or ord(ch) == 127 for ch in topic):
+                raise ValueError("invalid topic")
             if profile not in KEYS or not KEYS[profile]:
                 self.reply(400, {"error": "profile_unavailable"})
                 return
@@ -188,7 +205,7 @@ class Handler(BaseHTTPRequestHandler):
             req = urllib.request.Request(url, data=body, headers={
                 "x-goog-api-key": KEYS[profile], "Content-Type": "application/json"}, method="POST")
             try:
-                with urllib.request.urlopen(req, timeout=25) as resp:
+                with open_gemini(req, timeout=25) as resp:
                     raw = resp.read(16385)
                 if len(raw) > 16384:
                     raise ValueError("upstream response too large")
@@ -200,7 +217,7 @@ class Handler(BaseHTTPRequestHandler):
                 self.reply(200, {"message": message})
             except urllib.error.HTTPError as exc:
                 self.reply(429 if exc.code == 429 else 502, {"error": "upstream_unavailable"})
-            except (OSError, ValueError, KeyError, IndexError, TypeError):
+            except (OSError, ValueError, UnicodeError, KeyError, IndexError, TypeError):
                 self.reply(502, {"error": "upstream_unavailable"})
         finally:
             SLOTS.release()

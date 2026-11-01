@@ -12,6 +12,21 @@ import kotlin.math.sin
 /** Lightweight offline 2D mascot scene; no downloaded assets or permissions. */
 class ChibiHeroView(context: Context) : View(context) {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    // Avoid allocating vector paths on every animation frame.
+    private val smilePath = Path().apply {
+        moveTo(153f, 130f)
+        quadTo(160f, 139f, 167f, 130f)
+    }
+    private val crownPath = Path().apply {
+        moveTo(137f, 70f)
+        lineTo(140f, 47f)
+        lineTo(151f, 58f)
+        lineTo(160f, 39f)
+        lineTo(169f, 58f)
+        lineTo(180f, 47f)
+        lineTo(183f, 70f)
+        close()
+    }
     private val startedAt = android.os.SystemClock.uptimeMillis()
     private var happyUntil = 0L
     var sceneState = ChibiSceneState()
@@ -180,17 +195,7 @@ class ChibiHeroView(context: Context) : View(context) {
         }
         if (outfit == ChibiCosmetics.Outfit.CROWN) {
             paint.color = Color.rgb(245, 190, 58)
-            val crown = Path().apply {
-                moveTo(137f, 70f)
-                lineTo(140f, 47f)
-                lineTo(151f, 58f)
-                lineTo(160f, 39f)
-                lineTo(169f, 58f)
-                lineTo(180f, 47f)
-                lineTo(183f, 70f)
-                close()
-            }
-            canvas.drawPath(crown, paint)
+            canvas.drawPath(crownPath, paint)
             circle(canvas, Color.rgb(255, 252, 225), 160f, 57f, 4f)
         }
         // Brief blink every few seconds, using only the existing vector primitives.
@@ -212,8 +217,7 @@ class ChibiHeroView(context: Context) : View(context) {
         paint.color = Color.rgb(87, 67, 110)
         paint.style = Paint.Style.STROKE
         paint.strokeWidth = 2.5f
-        val smile = Path().apply { moveTo(153f, 130f); quadTo(160f, 139f, 167f, 130f) }
-        canvas.drawPath(smile, paint)
+        canvas.drawPath(smilePath, paint)
         paint.style = Paint.Style.FILL
         canvas.restore()
         if (android.os.SystemClock.uptimeMillis() < happyUntil) {

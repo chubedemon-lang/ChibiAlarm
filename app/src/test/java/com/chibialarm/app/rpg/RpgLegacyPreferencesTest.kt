@@ -37,16 +37,18 @@ class RpgLegacyPreferencesTest {
             val before = preferences.all.toMap()
             assertEquals(10, LifeData.points(context))
 
-            database = Room.databaseBuilder(context, RpgDatabase::class.java, file).build()
-            RpgEngine(database).initialize(LifeData.points(context), LocalDate.parse(date))
-            assertEquals(10L, database.dao().character()!!.totalXp)
+            val first = Room.databaseBuilder(context, RpgDatabase::class.java, file).build()
+            database = first
+            RpgEngine(first).initialize(LifeData.points(context), LocalDate.parse(date))
+            assertEquals(10L, first.dao().character()!!.totalXp)
             assertEquals(before, preferences.all)
 
-            database.close()
+            first.close()
             database = null
-            database = Room.databaseBuilder(context, RpgDatabase::class.java, file).build()
-            RpgEngine(database).initialize(LifeData.points(context), LocalDate.parse(date))
-            assertEquals(10L, database.dao().character()!!.totalXp)
+            val reopened = Room.databaseBuilder(context, RpgDatabase::class.java, file).build()
+            database = reopened
+            RpgEngine(reopened).initialize(LifeData.points(context), LocalDate.parse(date))
+            assertEquals(10L, reopened.dao().character()!!.totalXp)
             assertEquals(before, preferences.all)
         } finally {
             database?.close()

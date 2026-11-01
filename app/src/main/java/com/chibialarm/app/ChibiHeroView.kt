@@ -14,17 +14,17 @@ class ChibiHeroView(context: Context) : View(context) {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val startedAt = android.os.SystemClock.uptimeMillis()
     private var happyUntil = 0L
-    private var heroX = 160f
-    private var destinationX = 160f
+    var sceneState = ChibiSceneState()
     private var lastFrameMs = android.os.SystemClock.uptimeMillis()
-    private var outdoor = false
+    private var waterUntil = 0L
     var onRoomChanged: ((Boolean) -> Unit)? = null
+    var onGardenAction: (() -> Unit)? = null
     var onPet: (() -> Unit)? = null
     var onSceneAction: ((ChibiSceneActions.Target) -> Unit)? = null
 
     init {
         isClickable = true
-        contentDescription = "Chạm nhân vật để vuốt ve, giường để mở báo thức, bàn để mở Focus, thảm để mở Fitness"
+        contentDescription = "Chạm Chibi để vuốt ve, chạm sàn để đi, chạm cửa để chuyển phòng và khu vườn"
     }
 
     override fun performClick(): Boolean {
@@ -41,26 +41,22 @@ class ChibiHeroView(context: Context) : View(context) {
             if (scale <= 0f) return false
             val x = (event.x - (width - 320f * scale) / 2f) / scale
             val y = (event.y - (height - 240f * scale) / 2f) / scale
-            // Tapping the open floor moves the hero; the doorway changes rooms.
-            if (x in 138f..182f && y in 222f..240f) {
-                outdoor = !outdoor
-                onRoomChanged?.invoke(outdoor)
-                invalidate()
-                return true
-            }
-            if (y in 190f..240f && x in 88f..238f) {
-                destinationX = x.coerceIn(116f, 204f)
-                invalidate()
-                return true
-            }
-            if (outdoor) return true
-            when (val target = ChibiSceneActions.hit(x, y)) {
-                ChibiSceneActions.Target.HERO -> return performClick()
-                ChibiSceneActions.Target.NONE -> return true
-                else -> {
-                    onSceneAction?.invoke(target)
-                    return true
+            when (sceneState.tap(x, y)) {
+                ChibiSceneState.Action.PET -> performClick()
+                ChibiSceneState.Action.DOOR -> {
+                    onRoomChanged?.invoke(sceneState.scene == ChibiSceneState.Scene.GARDEN)
+                    invalidate()
                 }
+                ChibiSceneState.Action.WALK -> invalidate()
+                ChibiSceneState.Action.WATER -> {
+                    waterUntil = android.os.SystemClock.uptimeMillis() + 850L
+                    onGardenAction?.invoke()
+                    invalidate()
+                }
+                ChibiSceneState.Action.BED -> onSceneAction?.invoke(ChibiSceneActions.Target.BED)
+                ChibiSceneState.Action.DESK -> onSceneAction?.invoke(ChibiSceneActions.Target.DESK)
+                ChibiSceneState.Action.TRAINING -> onSceneAction?.invoke(ChibiSceneActions.Target.TRAINING)
+                ChibiSceneState.Action.NONE -> Unit
             }
         }
         return true
@@ -92,8 +88,8 @@ class ChibiHeroView(context: Context) : View(context) {
         val now = android.os.SystemClock.uptimeMillis()
         val dt = ((now - lastFrameMs).coerceIn(0L, 50L) / 1000f)
         lastFrameMs = now
-        val step = 105f * dt
-        heroX += (destinationX - heroX).coerceIn(-step, step)
+        val heroX = sceneState.advance(dt)
+        val outdoor = sceneState.scene == ChibiSceneState.Scene.GARDEN
         paint.color = if (outdoor) Color.rgb(209, 245, 221) else Color.rgb(230, 242, 255)
         canvas.drawRoundRect(0f, 0f, 320f, 240f, 24f, 24f, paint)
         circle(canvas, Color.rgb(255, 255, 255), 53f, 43f, 17f)
@@ -126,13 +122,19 @@ class ChibiHeroView(context: Context) : View(context) {
             paint.color = Color.rgb(92, 164, 105)
             canvas.drawRoundRect(15f, 140f, 82f, 198f, 10f, 10f, paint)
             canvas.drawRoundRect(242f, 140f, 307f, 198f, 10f, 10f, paint)
+            if (now < waterUntil) {
+                paint.color = Color.rgb(58, 147, 223)
+                canvas.drawCircle(50f, 117f, 5f, paint)
+                canvas.drawCircle(272f, 116f, 5f, paint)
+                canvas.drawCircle(60f, 105f, 3f, paint)
+            }
         }
         paint.color = Color.rgb(172, 116, 90)
         canvas.drawRoundRect(138f, 228f, 182f, 239f, 5f, 5f, paint)
         val bob = sin((now - startedAt) / 420.0).toFloat() * 3f
         canvas.save()
         canvas.translate(heroX - 160f, bob)
-        if (kotlin.math.abs(destinationX - heroX) > 1f) {
+        if (sceneState.isWalking) {
             canvas.rotate(sin(now / 85.0).toFloat() * 2f, 160f, 175f)
         }
         // Ears, body, hands and feet form a distinct mascot silhouette.
@@ -167,6 +169,6 @@ class ChibiHeroView(context: Context) : View(context) {
             canvas.drawText("♥", 91f, 86f, paint)
         }
         canvas.restoreToCount(save)
-        if (isAttachedToWindow && visibility == VISIBLE) postInvalidateDelayed(50)
+        if (isAttachedToWindow && visibility == VISIBLE) postInvalidateDelayed(33)
     }
 }

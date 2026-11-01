@@ -80,9 +80,9 @@ class RpgEngine(private val db: RpgDatabase) {
         if (dao.insertLedger(XpLedger(dedupeKey = "daily_login:$today",
                 questId = "daily-login", amount = xpReward)) == -1L) return@withTransaction false
         val character = dao.character() ?: RpgCharacter().also { dao.insertCharacter(it) }
-        val nextXp = character.totalXp + xpReward
-        val nextCoins = character.coins + coinReward
-        require(nextXp >= character.totalXp && nextCoins >= character.coins) { "Reward overflow" }
+        require(character.totalXp >= 0L && character.coins >= 0L) { "Invalid reward balance" }
+        val nextXp = Math.addExact(character.totalXp, xpReward.toLong())
+        val nextCoins = Math.addExact(character.coins, coinReward.toLong())
         dao.updateCharacter(character.copy(totalXp = nextXp, coins = nextCoins))
         updateMilestones(dao)
         true
@@ -100,9 +100,9 @@ class RpgEngine(private val db: RpgDatabase) {
         if (dao.insertLedger(XpLedger(dedupeKey = "pet_game:$today",
                 questId = "pet-game", amount = rewardXp)) == -1L) return@withTransaction false
         val character = dao.character() ?: RpgCharacter().also { dao.insertCharacter(it) }
-        val nextXp = character.totalXp + rewardXp.toLong()
-        val nextCoins = character.coins + rewardCoins.toLong()
-        require(nextXp >= character.totalXp && nextCoins >= character.coins) { "Reward overflow" }
+        require(character.totalXp >= 0L && character.coins >= 0L) { "Invalid reward balance" }
+        val nextXp = Math.addExact(character.totalXp, rewardXp.toLong())
+        val nextCoins = Math.addExact(character.coins, rewardCoins.toLong())
         dao.updateCharacter(character.copy(totalXp = nextXp, coins = nextCoins))
         updateMilestones(dao)
         true
@@ -274,9 +274,9 @@ class RpgEngine(private val db: RpgDatabase) {
         if (dao.insertLedger(XpLedger(dedupeKey = key, questId = quest.id,
                 amount = quest.rewardXp)) == -1L) return@withTransaction false
         val character = dao.character() ?: RpgCharacter().also { dao.insertCharacter(it) }
-        val xp = character.totalXp + quest.rewardXp.toLong()
-        val coins = character.coins + quest.rewardCoins.toLong()
-        require(xp >= character.totalXp && coins >= character.coins) { "Reward overflow" }
+        require(character.totalXp >= 0L && character.coins >= 0L) { "Invalid reward balance" }
+        val xp = Math.addExact(character.totalXp, quest.rewardXp.toLong())
+        val coins = Math.addExact(character.coins, quest.rewardCoins.toLong())
         dao.updateCharacter(character.copy(totalXp = xp, coins = coins))
         dao.updateQuest(quest.copy(state = "CLAIMED"))
         updateMilestones(dao)

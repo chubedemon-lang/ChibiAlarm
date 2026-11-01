@@ -50,6 +50,47 @@ class RpgAccountIsolationTest {
         assertNull(reopened.dao().itemStack("star_fragment"))
     }
 
+    @Test fun logoutClosesAccountHandleWithoutErasingDurableRpgData() = runBlocking {
+        val context = RuntimeEnvironment.getApplication()
+        val subject = "test:${UUID.randomUUID()}:logout"
+        val first = RpgDatabase.forVerifiedAccount(context, subject)
+        try {
+            first.dao().insertCharacter(RpgCharacter(name = "Returning Player", totalXp = 777L))
+            assertTrue(RpgInventoryEngine(first).grant("herb", 4L, "test:logout:herbs"))
+            RpgDatabase.closeVerifiedAccount(subject)
+            assertFalse(first.isOpen)
+            val reopened = RpgDatabase.forVerifiedAccount(context, subject)
+            assertNotSame(first, reopened)
+            assertEquals(777L, reopened.dao().character()?.totalXp)
+            assertEquals(4L, reopened.dao().itemStack("herb")?.quantity)
+            assertFalse(RpgInventoryEngine(reopened).grant("herb", 4L, "test:logout:herbs"))
+        } finally {
+            RpgDatabase.deleteVerifiedAccount(context, subject)
+        }
+    }
+
+    @Test fun closingOneAccountDoesNotCloseOrEraseOtherAccount() = runBlocking {
+        val context = RuntimeEnvironment.getApplication()
+        val prefix = UUID.randomUUID().toString()
+        val firstId = "test:${prefix}:logout-first"
+        val secondId = "test:${prefix}:stay-signed-in"
+        try {
+            val first = RpgDatabase.forVerifiedAccount(context, firstId)
+            val second = RpgDatabase.forVerifiedAccount(context, secondId)
+            first.dao().insertCharacter(RpgCharacter(name = "First", totalXp = 100L))
+            second.dao().insertCharacter(RpgCharacter(name = "Second", totalXp = 200L))
+            RpgDatabase.closeVerifiedAccount(firstId)
+            assertFalse(first.isOpen)
+            assertTrue(second.isOpen)
+            assertEquals(200L, second.dao().character()?.totalXp)
+            assertEquals(100L, RpgDatabase.forVerifiedAccount(context, firstId)
+                .dao().character()?.totalXp)
+        } finally {
+            RpgDatabase.deleteVerifiedAccount(context, firstId)
+            RpgDatabase.deleteVerifiedAccount(context, secondId)
+        }
+    }
+
     @Test fun differentAccountsDoNotShareRpgDataAndGuestDatabaseRemainsSeparate() = runBlocking {
         val context = RuntimeEnvironment.getApplication()
         val prefix = UUID.randomUUID().toString()

@@ -39,6 +39,7 @@ class RpgActivity : Activity() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var refreshJob: Job? = null
     private val database by lazy { RpgDatabase.get(applicationContext) }
+    private val sceneState = ChibiSceneState()
     private val engine by lazy { RpgEngine(database) }
     private data class Dashboard(
         val character: RpgCharacter,
@@ -237,7 +238,21 @@ class RpgActivity : Activity() {
         val petProgress = label(
             if (petGameClaimed) "♥ Đã nhận thưởng chơi cùng Chibi hôm nay"
             else "♥ Vuốt ve Chibi 3 lần: 0/3 • +10 EXP, +2 xu", 14f)
+        val sceneHint = label(
+            if (sceneState.scene == ChibiSceneState.Scene.GARDEN)
+                "🌱 Khu vườn • Chạm luống cây để tưới, chạm cửa để về phòng"
+            else "🏡 Phòng ngủ • Chạm sàn để đi, cửa để ra vườn", 14f)
         hero.addView(ChibiHeroView(this).apply {
+            sceneState = this@RpgActivity.sceneState
+            onRoomChanged = { inGarden ->
+                sceneHint.text = if (inGarden)
+                    "🌱 Khu vườn • Chạm luống cây để tưới, chạm cửa để về phòng"
+                else "🏡 Phòng ngủ • Chạm sàn để đi, cửa để ra vườn"
+            }
+            onGardenAction = {
+                Toast.makeText(this@RpgActivity,
+                    "Đã tưới cây! Hoạt động trang trí, không cộng EXP.", Toast.LENGTH_SHORT).show()
+            }
             onSceneAction = { target ->
                 val destination = when (target) {
                     ChibiSceneActions.Target.BED -> AlarmSettingsActivity::class.java
@@ -274,6 +289,7 @@ class RpgActivity : Activity() {
                 }
             }
         })
+        hero.addView(sceneHint)
         hero.addView(petProgress)
         hero.addView(label("🌟 ${character.name} • Cấp $level", 23f))
         hero.addView(Button(this).apply {

@@ -106,4 +106,20 @@ class ChibiHeroViewInteractionTest {
     }
 
 
+    @Test fun accessibleGardenActionMatchesTapAndIsDisabledInBedroom() {
+        val view = ChibiHeroView(RuntimeEnvironment.getApplication())
+        view.layout(0, 0, 320, 240)
+        var watered = 0
+        view.onGardenAction = { watered++ }
+        assertTrue(!view.waterGarden())
+        assertEquals(0, watered)
+        view.toggleScene()
+        assertTrue(view.waterGarden())
+        tap(view, 40f, 160f)
+        assertEquals(2, watered)
+        view.toggleScene()
+        assertTrue(!view.waterGarden())
+        assertEquals(2, watered)
+    }
+
 }

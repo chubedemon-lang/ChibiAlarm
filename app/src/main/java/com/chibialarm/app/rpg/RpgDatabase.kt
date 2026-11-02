@@ -168,6 +168,17 @@ interface RpgDao {
 abstract class RpgDatabase : RoomDatabase() {
     abstract fun dao(): RpgDao
 
+    /** Only the original guest database may import the legacy shared-preference XP.
+     * A verified account must never inherit device-wide guest progress implicitly.
+     * This is set before an account database is exposed to callers.
+     */
+    internal var allowLegacyXpImport: Boolean = true
+        private set
+
+    internal fun markVerifiedAccountStorage() {
+        allowLegacyXpImport = false
+    }
+
     companion object {
         /** Additive, non-destructive v1 → v2 migration: existing XP and quests survive. */
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -207,7 +218,9 @@ abstract class RpgDatabase : RoomDatabase() {
                 accountInstances.getOrPut(file) {
                     Room.databaseBuilder(
                         context.applicationContext, RpgDatabase::class.java, file
-                    ).addMigrations(MIGRATION_1_2).build()
+                    ).addMigrations(MIGRATION_1_2).build().also {
+                        it.markVerifiedAccountStorage()
+                    }
                 }
             }
         }

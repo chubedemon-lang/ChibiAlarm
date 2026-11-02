@@ -255,9 +255,32 @@ abstract class RpgDatabase : RoomDatabase() {
         }
 
         internal fun accountDatabaseFile(verifiedSubject: String): String {
+            // Malformed UTF-16 is silently replaced by the JVM UTF-8 encoder. Two
+            // different identity subjects could then hash to the same database file.
+            // Also reject invisible format/bidi controls that can spoof account IDs.
+            var validUnicode = true
+            var index = 0
+            while (index < verifiedSubject.length) {
+                val ch = verifiedSubject[index]
+                if (Character.isISOControl(ch) || Character.getType(ch) == Character.FORMAT) {
+                    validUnicode = false
+                    break
+                }
+                if (Character.isHighSurrogate(ch)) {
+                    if (index + 1 >= verifiedSubject.length ||
+                        !Character.isLowSurrogate(verifiedSubject[index + 1])) {
+                        validUnicode = false
+                        break
+                    }
+                    index++ // A well-formed supplementary Unicode code point.
+                } else if (Character.isLowSurrogate(ch)) {
+                    validUnicode = false
+                    break
+                }
+                index++
+            }
             require(verifiedSubject.isNotBlank() && verifiedSubject.length <= 128 &&
-                    verifiedSubject == verifiedSubject.trim() &&
-                    verifiedSubject.none { Character.isISOControl(it) }) {
+                    verifiedSubject == verifiedSubject.trim() && validUnicode) {
                 "Invalid verified account subject"
             }
             val digest = MessageDigest.getInstance("SHA-256")

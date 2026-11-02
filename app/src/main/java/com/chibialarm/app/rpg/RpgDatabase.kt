@@ -262,7 +262,7 @@ abstract class RpgDatabase : RoomDatabase() {
             var index = 0
             while (index < verifiedSubject.length) {
                 val ch = verifiedSubject[index]
-                if (Character.isISOControl(ch) || Character.getType(ch) == Character.FORMAT) {
+                if (Character.isISOControl(ch) || Character.getType(ch) == Character.FORMAT.toInt()) {
                     validUnicode = false
                     break
                 }

@@ -84,4 +84,50 @@ class GrowthHabitsTest {
         }
     }
 
+
+    @Test fun malformedLegacyHabitListFailsClosedWithoutOverwritingOriginal() {
+        prefs.edit().putInt("habits", 42)
+            .putBoolean("done:2026-11-01:Đọc sách", true).commit()
+        assertTrue(GrowthHabits.hasMalformedHabitList(context))
+        assertTrue(GrowthHabits.habitNames(context).isEmpty())
+        assertTrue(GrowthHabits.activeHistory(context).isEmpty())
+        assertEquals(42, prefs.getInt("habits", -1)) // Read never mutates old data.
+    }
+
+    @Test fun repairingMalformedHabitListBacksUpOriginalAndKeepsCheckins() {
+        prefs.edit().putInt("habits", 42)
+            .putBoolean("done:2026-11-01:Đọc sách", true).commit()
+        assertTrue(GrowthHabits.saveHabits(context, listOf("Đọc sách", "Uống nước")))
+        assertFalse(GrowthHabits.hasMalformedHabitList(context))
+        assertEquals("42", prefs.getString("habits_corrupt_backup", null))
+        assertEquals(listOf("Đọc sách", "Uống nước"), GrowthHabits.habitNames(context))
+        assertEquals(1, GrowthHabits.activeHistory(context).count { it.completed })
+        // Never overwrite the first backup when the user edits the list again.
+        assertTrue(GrowthHabits.saveHabits(context, listOf("Uống nước")))
+        assertEquals("42", prefs.getString("habits_corrupt_backup", null))
+        assertTrue(prefs.getBoolean("done:2026-11-01:Đọc sách", false))
+    }
+
+    @Test fun malformedCheckinIsNotAwardedAndCanBeCorrectedDurably() {
+        prefs.edit().putString("habits", "Đọc sách")
+            .putString("done:2026-11-01:Đọc sách", "invalid").commit()
+        assertFalse(GrowthHabits.isDone(context, "Đọc sách", "2026-11-01"))
+        assertTrue(GrowthHabits.activeHistory(context).isEmpty())
+        assertEquals("invalid", prefs.getString("done:2026-11-01:Đọc sách", null))
+        assertTrue(GrowthHabits.setDone(context, "Đọc sách", "2026-11-01", true))
+        assertTrue(GrowthHabits.isDone(context, "Đọc sách", "2026-11-01"))
+        assertEquals(1, GrowthHabits.activeHistory(context).count { it.completed })
+        assertTrue(GrowthHabits.setDone(context, "Đọc sách", "2026-11-01", false))
+        assertFalse(GrowthHabits.isDone(context, "Đọc sách", "2026-11-01"))
+        assertEquals(0, GrowthHabits.activeHistory(context).count { it.completed })
+    }
+
+    @Test fun storedHabitOrderAndEmptyListSurviveRestartStyleReads() {
+        assertTrue(GrowthHabits.saveHabits(context, listOf("Học", "Thiền", "Học")))
+        assertEquals(listOf("Học", "Thiền"), GrowthHabits.habitNames(context))
+        assertTrue(GrowthHabits.saveHabits(context, emptyList()))
+        assertTrue(GrowthHabits.habitNames(context).isEmpty())
+        assertTrue(GrowthHabits.activeHistory(context).isEmpty())
+    }
+
 }

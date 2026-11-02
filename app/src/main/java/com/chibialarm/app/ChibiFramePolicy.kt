@@ -9,6 +9,8 @@ object ChibiFramePolicy {
     const val WALK_MS = 33L
     const val IDLE_MS = 100L
     const val EFFECT_MS = 33L
+    // A still reaction should not burn 30 FPS when Android animations are disabled.
+    const val REDUCED_EFFECT_MS = 250L
 
     /**
      * Null means no frame needs to be scheduled. Explicit user interaction
@@ -21,7 +23,7 @@ object ChibiFramePolicy {
         activeEffect: Boolean
     ): Long? = when {
         !visible -> null
-        reducedMotion -> if (activeEffect) EFFECT_MS else null
+        reducedMotion -> if (activeEffect) REDUCED_EFFECT_MS else null
         walking -> WALK_MS
         activeEffect -> EFFECT_MS
         else -> IDLE_MS

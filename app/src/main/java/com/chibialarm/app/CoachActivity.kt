@@ -226,8 +226,11 @@ Thông tin người dùng: $detail"""
             return
         }
         try {
-            GoalData.save(this,GoalData.goals(this)+
-                LifeGoal(LifeData.nextId()+99,title,span,System.currentTimeMillis(),emptySet()))
+            if (!GoalData.save(this,GoalData.goals(this)+
+                LifeGoal(LifeData.nextId()+99,title,span,System.currentTimeMillis(),emptySet()))) {
+                Toast.makeText(this,"Đã lưu lịch, nhưng chưa lưu được mục tiêu. Hãy kiểm tra lại.",Toast.LENGTH_LONG).show()
+                return
+            }
             append("assistant","Đã lưu kế hoạch $span ngày: $title, gồm ${draft.size} hoạt động.")
             Toast.makeText(this,"Đã lưu lịch và mục tiêu!",Toast.LENGTH_LONG).show()
         } catch (_:Exception) {

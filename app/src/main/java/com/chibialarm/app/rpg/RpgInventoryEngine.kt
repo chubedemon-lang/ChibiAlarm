@@ -23,8 +23,11 @@ class RpgInventoryEngine(private val db: RpgDatabase) {
             if (existing == null) {
                 dao.insertItemStack(RpgItemStack(itemId, amount, receipt.createdAt))
             } else {
+                // A damaged negative stack must never be "repaired" by a new
+                // grant: doing so could silently create spendable items.
+                // Throw inside the transaction to roll back its receipt too.
+                require(existing.quantity >= 0L) { "Corrupt inventory balance" }
                 val total = Math.addExact(existing.quantity, amount)
-                require(total >= 0L) { "Corrupt inventory balance" }
                 dao.updateItemStack(existing.copy(quantity = total, updatedAt = receipt.createdAt))
             }
             true

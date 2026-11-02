@@ -101,6 +101,24 @@ class RpgEngineDatabaseTest {
             .first { it.localDate == today }.completed)
         assertEquals(1, database.dao().achievements().first { it.id == "streak_3" }.progress)
     }
+    @Test fun duplicateLegacyGrowthDayUsesLatestCheckInAndNeverGrantsPhantomStreak() = runBlocking {
+        val engine = RpgEngine(database)
+        engine.initialize(0, day)
+        val yesterday = StreakDay("growth:read", day.minusDays(1).toString(), true)
+        val checked = StreakDay("growth:read", day.toString(), true)
+        val unchecked = checked.copy(completed = false)
+        assertEquals(1, engine.syncGrowth(listOf(yesterday, checked, unchecked), day))
+        assertFalse(database.dao().streakDays("growth:read")
+            .first { it.localDate == day.toString() }.completed)
+        assertEquals(1, database.dao().achievements()
+            .first { it.id == "streak_3" }.progress)
+        // A later valid check-in is still accepted without deleting the older day.
+        assertEquals(2, engine.syncGrowth(listOf(yesterday, unchecked, checked), day))
+        assertTrue(database.dao().streakDays("growth:read")
+            .first { it.localDate == day.toString() }.completed)
+        assertEquals(2, database.dao().allStreakDays().size)
+    }
+
     @Test fun multipleHabitsUseLongestCurrentStreakAndRespectCorrections() = runBlocking {
         val engine = RpgEngine(database)
         engine.initialize(0, day)

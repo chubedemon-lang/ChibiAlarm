@@ -81,3 +81,24 @@ The RPG screen now offers a **user-initiated JSON export** through Android's sys
 - Seed a single garden map per RPG database; item grants are transactional and idempotent, consumption cannot underflow. Backpack now displays item stacks separately from ledger-derived keepsakes; RPG JSON export includes an additive itemStacks field.
 - Robolectric tests cover populated v1 migration, disk reopen, concurrency, invalid inputs and account isolation. See [R1_INVENTORY_MIGRATION.md](R1_INVENTORY_MIGRATION.md).
 - CI and physical-device results must be verified on the latest commit before sharing an APK. The actual installed v1.3→v2 upgrade, Android 16 hardware, authenticated multi-user isolation across modules and production Gemini backend are **not verified**.
+
+
+## Growth preference recovery and durable check-ins — 2026-11-02
+
+- A malformed legacy `growth.habits` preference no longer crashes the Growth screen
+  or the RPG refresh. It fails closed (no inferred default habits or accidental
+  quest/streak credit), preserves the original value on read, and displays a warning.
+- Replacing an invalid habit list stores the first damaged value in
+  `habits_corrupt_backup` in the **same durable SharedPreferences commit**.
+  Existing `done:date:name` history is preserved; this is not a complete restore UI.
+- Growth check/uncheck and habit add/delete now check synchronous write success.
+  Failed writes do not show successful progress; the screen refreshes from persisted
+  state after a check-in attempt. No Room schema change.
+- The 7-day dashboard reads individual boolean preferences without copying the
+  entire history for every checkbox. Invalid legacy check-in types are treated as
+  incomplete and are not overwritten until the user checks them again.
+- New Robolectric regression cases cover corrupt habit-list fail-closed behavior,
+  backup on replacement, malformed check-in recovery and stable habit ordering.
+- These are guest/offline legacy improvements. **Growth/Focus/Fitness/Alarm remain
+  unscoped for verified accounts**; no production account login or secure Gemini
+  backend has been added. A fresh CI run and Android 16 device test are still needed.

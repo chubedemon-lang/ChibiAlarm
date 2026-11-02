@@ -83,6 +83,33 @@ object GoalData {
         })
     }
 
-    fun elapsed(g: LifeGoal): Int =
-        ((System.currentTimeMillis() - g.started) / 86400000L).toInt().coerceAtLeast(0) + 1
+    /** Challenge days follow the user's local calendar, not elapsed 24-hour blocks.
+     * This stays correct across midnight and daylight-saving time changes.
+     * A future-dated legacy goal displays day one but earns no completed days.
+     */
+    fun elapsed(g: LifeGoal): Int = elapsedAt(g, System.currentTimeMillis(), java.time.ZoneId.systemDefault())
+
+    internal fun elapsedAt(g: LifeGoal, now: Long, zone: java.time.ZoneId): Int {
+        val start = java.time.Instant.ofEpochMilli(g.started).atZone(zone).toLocalDate()
+        val today = java.time.Instant.ofEpochMilli(now).atZone(zone).toLocalDate()
+        val days = java.time.temporal.ChronoUnit.DAYS.between(start, today)
+        return (days.coerceIn(0L, Int.MAX_VALUE.toLong() - 1L) + 1L).toInt()
+    }
+
+    /** Read-only, bounded progress. Malformed, future and out-of-window legacy
+     * marks remain in storage for recovery but cannot inflate the displayed goal.
+     */
+    fun completedDays(g: LifeGoal): Int =
+        completedDaysAt(g, System.currentTimeMillis(), java.time.ZoneId.systemDefault())
+
+    internal fun completedDaysAt(g: LifeGoal, now: Long, zone: java.time.ZoneId): Int {
+        if (g.span <= 0 || g.started > now) return 0
+        val start = java.time.Instant.ofEpochMilli(g.started).atZone(zone).toLocalDate()
+        val today = java.time.Instant.ofEpochMilli(now).atZone(zone).toLocalDate()
+        val lastDay = start.plusDays(g.span.toLong() - 1L)
+        return g.checked.count { raw ->
+            val day = try { java.time.LocalDate.parse(raw) } catch (_: Exception) { null }
+            day != null && !day.isBefore(start) && !day.isAfter(lastDay) && !day.isAfter(today)
+        }.coerceAtMost(g.span)
+    }
 }

@@ -158,7 +158,10 @@ class RpgEngine(private val db: RpgDatabase) {
             dao.insertItemStack(RpgItemStack("camp_map", 1L, System.currentTimeMillis()))
         }
         val amount = legacyXp.coerceAtLeast(0)
-        if (dao.insertLedger(XpLedger(dedupeKey = "migration:life_v12:xp90:v1",
+        // The device-wide LifeData XP belongs to the original guest only.
+        // Verified accounts start with their own independent RPG progress.
+        if (db.allowLegacyXpImport &&
+            dao.insertLedger(XpLedger(dedupeKey = "migration:life_v12:xp90:v1",
                 questId = "legacy", amount = amount)) != -1L) {
             val character = dao.character() ?: error("Character not created")
             val nextXp = character.totalXp + amount.toLong()

@@ -75,7 +75,7 @@ class ProxyTests(unittest.TestCase):
         # These characters can disguise instructions in a prompt or alarm UI.
         # A rejected request must not create quota storage or call Gemini.
         with patch.object(proxy, "open_gemini") as upstream:
-            for hidden in ("\\u202e", "\\u2066", "\\u200b", "\\ufeff", "\\u0085"):
+            for hidden in ("\u202e", "\u2066", "\u200b", "\ufeff", "\u0085"):
                 topic = "morning" + hidden + "wake"
                 with self.subTest(character=repr(hidden)):
                     self.assertFalse(proxy.safe_user_topic(topic))

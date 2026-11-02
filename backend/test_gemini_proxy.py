@@ -71,6 +71,25 @@ class ProxyTests(unittest.TestCase):
         conn.close()
         return result
 
+    def test_invisible_and_bidi_topic_controls_rejected_before_quota(self):
+        # These characters can disguise instructions in a prompt or alarm UI.
+        # A rejected request must not create quota storage or call Gemini.
+        with patch.object(proxy, "open_gemini") as upstream:
+            for hidden in ("\\u202e", "\\u2066", "\\u200b", "\\ufeff", "\\u0085"):
+                topic = "morning" + hidden + "wake"
+                with self.subTest(character=repr(hidden)):
+                    self.assertFalse(proxy.safe_user_topic(topic))
+                    status, payload = self.request({"topic": topic})
+                    self.assertEqual(400, status)
+                    self.assertEqual("invalid_request", payload["error"])
+            upstream.assert_not_called()
+            self.assertFalse(os.path.exists(proxy.QUOTA_DB))
+
+    def test_normal_vietnamese_topic_remains_accepted(self):
+        self.assertTrue(proxy.safe_user_topic("Dậy sớm, uống nước và tập thể dục!"))
+        self.assertFalse(proxy.safe_user_topic(""))
+        self.assertFalse(proxy.safe_user_topic("x" * 401))
+
     def test_duplicate_json_keys_rejected_before_quota_or_upstream(self):
         # Duplicate keys at any depth are ambiguous and must never reach Gemini.
         cases = (

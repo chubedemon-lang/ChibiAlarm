@@ -16,6 +16,14 @@ class RoutineActivity:Activity() {
     }
     private fun background(color:Int)=GradientDrawable().apply { setColor(color);cornerRadius=32f }
     override fun onCreate(savedInstanceState:Bundle?) { super.onCreate(savedInstanceState);render() }
+    /** Never show a successful edit when storage could not persist it. */
+    private fun saveSafely(updated:List<Routine>):Boolean = try {
+        LifeData.save(this,updated)
+        true
+    } catch (_:Exception) {
+        Toast.makeText(this,"Không lưu được lịch. Lịch và báo nhắc cũ vẫn được giữ.",Toast.LENGTH_LONG).show()
+        false
+    }
     private fun render() {
         val root=LinearLayout(this).apply { orientation=1;setPadding(24,25,24,25);setBackgroundColor(Color.rgb(252,242,249)) }
         root.addView(text("🌸 Lịch trình Chibi",28f))
@@ -36,12 +44,12 @@ class RoutineActivity:Activity() {
         if(routines.isEmpty()) {
             root.addView(text("Chưa có lịch. Thêm việc đầu tiên hoặc chọn mẫu bên dưới.",15f))
             root.addView(Button(this).apply { text="✨ Tạo lịch mẫu cân bằng";setOnClickListener {
-                LifeData.save(this@RoutineActivity,listOf(
+                if (saveSafely(listOf(
                     Routine(LifeData.nextId(),"Uống nước & vận động nhẹ","💧 Sinh hoạt",7,0,10),
                     Routine(LifeData.nextId()+1,"Tập thể dục","🏃 Sức khỏe",7,30,30),
                     Routine(LifeData.nextId()+2,"Học kỹ năng mới","📚 Học tập",19,0,45),
                     Routine(LifeData.nextId()+3,"Đọc sách và thư giãn","🧘 Tinh thần",21,0,20)
-                ));render()
+                ))) render()
             } })
         }
         routines.forEach { r ->
@@ -95,8 +103,7 @@ class RoutineActivity:Activity() {
             .setPositiveButton("💾 Lưu",null).setNegativeButton("Hủy",null)
             .apply {
                 if(existing!=null) setNeutralButton("🗑 Xóa"){_,_->
-                    LifeData.save(this@RoutineActivity,LifeData.routines(this@RoutineActivity).filterNot { it.id==existing.id })
-                    RoutineReminder.cancel(this@RoutineActivity,existing);render()
+                    if (saveSafely(LifeData.routines(this@RoutineActivity).filterNot { it.id==existing.id })) render()
                 }
             }.create()
         dialog.setOnShowListener {
@@ -108,8 +115,10 @@ class RoutineActivity:Activity() {
                     Toast.makeText(this,"Nhập tên, thời lượng 1–480 phút và chọn ngày lặp.",Toast.LENGTH_LONG).show()
                 } else {
                     val r=Routine(existing?.id ?: LifeData.nextId(),name,category.selectedItem.toString(),picker.hour,picker.minute,mins,mask)
-                    LifeData.save(this,LifeData.routines(this).filterNot { it.id==r.id }+r)
-                    dialog.dismiss();render()
+                    if (saveSafely(LifeData.routines(this).filterNot { it.id==r.id }+r)) {
+                        dialog.dismiss()
+                        render()
+                    }
                 }
             }
         }

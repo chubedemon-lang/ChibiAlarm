@@ -14,11 +14,13 @@ class GrowthActivity : Activity() {
     private val store by lazy { getSharedPreferences("growth", MODE_PRIVATE) }
     private val defaults = GrowthHabits.defaultNames
     private fun today() = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
-    private fun habits(): MutableList<String> {
-        val saved = store.getString("habits", null)
-        return if (saved == null) defaults.toMutableList() else saved.split("\n").filter { it.isNotBlank() }.toMutableList()
+    private fun habits(): MutableList<String> = GrowthHabits.habitNames(this).toMutableList()
+    private fun done(name:String, day:String=today()) = GrowthHabits.isDone(this, name, day)
+    private fun saveHabits(names: List<String>): Boolean {
+        val saved = GrowthHabits.saveHabits(this, names)
+        if (!saved) Toast.makeText(this, "Không lưu được thói quen, dữ liệu cũ vẫn được giữ.", Toast.LENGTH_LONG).show()
+        return saved
     }
-    private fun done(name:String, day:String=today()) = store.getBoolean("done:$day:$name", false)
     private fun label(t:String, size:Float=18f) = TextView(this).apply {
         text=t; textSize=size; setTextColor(Color.rgb(99,55,99)); setPadding(4,10,4,10)
     }
@@ -28,6 +30,9 @@ class GrowthActivity : Activity() {
         root.addView(label("🌱 Chibi Growth Coach",28f))
         root.addView(label("Mỗi ngày tiến bộ 1% ✨",16f))
         val habits=habits()
+        if (GrowthHabits.hasMalformedHabitList(this)) {
+            root.addView(label("⚠ Danh sách thói quen cũ bị lỗi. Chưa tính điểm RPG; thêm thói quen mới để lưu bản sao dữ liệu cũ.", 15f))
+        }
         val completed=habits.count { done(it) }
         root.addView(label("🎯 Hôm nay: $completed / ${habits.size} thói quen",21f))
         val progress=ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal).apply {
@@ -40,13 +45,16 @@ class GrowthActivity : Activity() {
                 text=habit; textSize=17f; isChecked=done(habit)
                 layoutParams=LinearLayout.LayoutParams(0,-2,1f)
                 setOnCheckedChangeListener { _,checked ->
-                    store.edit().putBoolean("done:${today()}:$habit",checked).apply()
+                    if (!GrowthHabits.setDone(this@GrowthActivity, habit, today(), checked)) {
+                        Toast.makeText(this@GrowthActivity,
+                            "Không lưu được điểm danh. Vui lòng thử lại.", Toast.LENGTH_LONG).show()
+                    }
                     showDashboard()
                 }
             })
             row.addView(Button(this).apply { text="🗑"; setOnClickListener {
-                habits.remove(habit); store.edit().putString("habits",habits.joinToString("\n")).apply()
-                showDashboard()
+                val updated = habits.filter { it != habit }
+                if (saveHabits(updated)) showDashboard()
             } })
             root.addView(row)
         }
@@ -56,7 +64,7 @@ class GrowthActivity : Activity() {
                 .setPositiveButton("Lưu"){_,_->
                     val name=input.text.toString().trim().replace("\n"," ").take(60)
                     if(name.isNotBlank() && name !in habits) {
-                        habits.add(name); store.edit().putString("habits",habits.joinToString("\n")).apply(); showDashboard()
+                        if (saveHabits(habits + name)) showDashboard()
                     }
                 }.setNegativeButton("Hủy",null).show()
         } })

@@ -60,7 +60,14 @@ class RoutineActivity:Activity() {
             header.addView(CheckBox(this).apply {
                 text=r.label()+" • "+r.title; textSize=16f;isChecked=LifeData.isDone(this@RoutineActivity,r.id)
                 layoutParams=LinearLayout.LayoutParams(0,-2,1f)
-                setOnCheckedChangeListener { _,checked->LifeData.mark(this@RoutineActivity,r.id,checked);render() }
+                setOnCheckedChangeListener { _,checked ->
+                    if (!LifeData.mark(this@RoutineActivity,r.id,checked)) {
+                        Toast.makeText(this@RoutineActivity,
+                            "Không lưu được điểm danh. Vui lòng thử lại.",Toast.LENGTH_LONG).show()
+                    }
+                    // Re-read durable state, including after a failed commit.
+                    render()
+                }
             })
             header.addView(Button(this).apply { text="✎";setOnClickListener { editor(r) } })
             row.addView(header)

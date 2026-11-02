@@ -11,6 +11,7 @@ import os
 import re
 import sqlite3
 import threading
+import unicodedata
 import urllib.error
 import urllib.request
 from contextlib import closing
@@ -128,6 +129,18 @@ def reserve_daily_attempt(path, day, limit, profile=None, profile_limit=None,
             return True
 
 
+def unsafe_unicode_character(char, allow_response_whitespace=False):
+    """Block invisible format controls and line separators consistently.
+
+    Unicode categories catch controls such as ARABIC LETTER MARK (U+061C),
+    WORD JOINER (U+2060) and U+2028/U+2029, which hand-picked ranges miss.
+    Normal Vietnamese combining accents and ordinary emoji remain valid.
+    """
+    if allow_response_whitespace and char in ("\\n", "\\t"):
+        return False
+    return unicodedata.category(char) in ("Cc", "Cf", "Cs", "Zl", "Zp")
+
+
 def extract_safe_message(result):
     """Bound Gemini text and reject unsafe Unicode before writing an HTTP response.
 
@@ -146,14 +159,8 @@ def extract_safe_message(result):
         raise ValueError("empty Gemini response")
     # Disallow invalid UTF-8 code points, control characters, and directional
     # overrides that can disguise text shown to users or passed to TTS.
-    if any(
-        0xD800 <= ord(ch) <= 0xDFFF
-        or (ord(ch) < 32 and ch not in "\n\t")
-        or 0x7F <= ord(ch) <= 0x9F
-        or 0x202A <= ord(ch) <= 0x202E
-        or 0x2066 <= ord(ch) <= 0x2069
-        for ch in message
-    ):
+    if any(unsafe_unicode_character(ch, allow_response_whitespace=True)
+           for ch in message):
         raise ValueError("unsafe Gemini response text")
     return message[:500]
 
@@ -167,15 +174,7 @@ def safe_user_topic(topic):
     """
     if not isinstance(topic, str) or not 1 <= len(topic) <= 400:
         return False
-    return not any(
-        ord(ch) < 32 or 0x7F <= ord(ch) <= 0x9F
-        or 0xD800 <= ord(ch) <= 0xDFFF
-        or 0x200B <= ord(ch) <= 0x200F
-        or 0x202A <= ord(ch) <= 0x202E
-        or 0x2066 <= ord(ch) <= 0x2069
-        or ord(ch) == 0xFEFF
-        for ch in topic
-    )
+    return not any(unsafe_unicode_character(ch) for ch in topic)
 
 
 def reject_duplicate_json_keys(pairs):

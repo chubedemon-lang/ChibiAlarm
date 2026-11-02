@@ -200,10 +200,7 @@ Thông tin người dùng: $detail"""
                             AlertDialog.Builder(this).setTitle("🗓 Duyệt kế hoạch $span ngày")
                                 .setMessage("🎯 $goalTitle\n\n$preview\n\nLịch cũ sẽ được giữ nguyên. Chỉ thêm lịch sau khi bạn đồng ý.")
                                 .setPositiveButton("✓ Đồng ý thêm lịch"){_,_->
-                                    LifeData.save(this,LifeData.routines(this)+draft)
-                                    GoalData.save(this,GoalData.goals(this)+LifeGoal(LifeData.nextId()+99,goalTitle,span,System.currentTimeMillis(),emptySet()))
-                                    append("assistant","Đã thêm kế hoạch $span ngày: $goalTitle, gồm ${draft.size} hoạt động.")
-                                    Toast.makeText(this,"Đã thêm lịch và mục tiêu!",Toast.LENGTH_LONG).show()
+                                    saveApprovedPlan(goalTitle,draft,span)
                                 }.setNegativeButton("Bỏ qua",null).show()
                         }
                     }catch(e:Exception){runOnUiThread {
@@ -220,14 +217,29 @@ Thông tin người dùng: $detail"""
         }
         dialog.show()
     }
+    /** AI only drafts plans; commit routines before claiming an approved plan was saved. */
+    private fun saveApprovedPlan(title:String,draft:List<Routine>,span:Int) {
+        try {
+            LifeData.save(this,LifeData.routines(this)+draft)
+        } catch (_:Exception) {
+            Toast.makeText(this,"Không lưu được lịch. Dữ liệu cũ vẫn được giữ, hãy thử lại.",Toast.LENGTH_LONG).show()
+            return
+        }
+        try {
+            GoalData.save(this,GoalData.goals(this)+
+                LifeGoal(LifeData.nextId()+99,title,span,System.currentTimeMillis(),emptySet()))
+            append("assistant","Đã lưu kế hoạch $span ngày: $title, gồm ${draft.size} hoạt động.")
+            Toast.makeText(this,"Đã lưu lịch và mục tiêu!",Toast.LENGTH_LONG).show()
+        } catch (_:Exception) {
+            Toast.makeText(this,"Đã lưu lịch, nhưng chưa lưu được mục tiêu. Hãy kiểm tra lại.",Toast.LENGTH_LONG).show()
+        }
+    }
     private fun showFreePlan(title:String,draft:List<Routine>,span:Int) {
         val preview=draft.joinToString("\n") { it.label()+" • "+it.title+" ("+it.duration+" phút)" }
         AlertDialog.Builder(this).setTitle("🐰 Lịch mẫu miễn phí $span ngày")
             .setMessage(title+"\n\n"+preview+"\n\nĐây là lịch mẫu, không phải kế hoạch do AI tạo.")
             .setPositiveButton("Lưu lịch"){_,_->
-                LifeData.save(this,LifeData.routines(this)+draft)
-                GoalData.save(this,GoalData.goals(this)+LifeGoal(LifeData.nextId()+99,title,span,System.currentTimeMillis(),emptySet()))
-                append("assistant","Đã lưu lịch mẫu ngoại tuyến gồm "+draft.size+" hoạt động.")
+                saveApprovedPlan(title,draft,span)
             }.setNegativeButton("Hủy",null).show()
     }
 

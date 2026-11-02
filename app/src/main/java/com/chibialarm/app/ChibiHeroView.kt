@@ -72,7 +72,7 @@ class ChibiHeroView(context: Context) : View(context) {
 
     override fun performClick(): Boolean {
         super.performClick()
-        happyUntil = android.os.SystemClock.uptimeMillis() + 1100L
+        happyUntil = android.os.SystemClock.uptimeMillis() + ChibiCharacterMotion.PET_REACTION_MS
         onPet?.invoke()
         invalidate()
         return true
@@ -298,8 +298,13 @@ class ChibiHeroView(context: Context) : View(context) {
         }
         val bob = if (reducedMotion) 0f else sin((now - startedAt) / 420.0).toFloat() * 3f
         val gait = if (!reducedMotion && sceneState.isWalking) sin(now / 95.0).toFloat() * 5f else 0f
+        val breath = if (sceneState.isWalking) 1f else
+            ChibiCharacterMotion.breathScale(elapsedMs, reducedMotion)
+        val petHop = ChibiCharacterMotion.petHop(now, happyUntil, reducedMotion)
         canvas.save()
-        canvas.translate(heroX - 160f, bob)
+        canvas.translate(heroX - 160f, bob + petHop)
+        // Keep feet planted during the idle breathing cycle; petting adds a brief hop.
+        canvas.scale(1f, breath, 160f, 207f)
         // Face the direction of travel without extra bitmap assets or allocations.
         // Mirror around the mascot's local center, not around the entire scene.
         if (!sceneState.facingRight) canvas.scale(-1f, 1f, 160f, 135f)

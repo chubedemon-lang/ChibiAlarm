@@ -36,6 +36,18 @@ class ChibiHeroViewInteractionTest {
         assertEquals(listOf(true, false), visited)
     }
 
+    @Test fun talkBackDescriptionTracksRoomAndRestoredScene() {
+        val view = ChibiHeroView(RuntimeEnvironment.getApplication())
+        assertTrue(view.contentDescription.contains("Phòng ngủ"))
+        view.toggleScene()
+        assertTrue(view.contentDescription.contains("Khu vườn"))
+        val restored = ChibiSceneState().apply { switchScene() }
+        view.sceneState = restored
+        assertTrue(view.contentDescription.contains("Khu vườn"))
+        view.toggleScene()
+        assertTrue(view.contentDescription.contains("Phòng ngủ"))
+    }
+
     @Test fun gardenWaterCannotOpenBedroomAlarmAndPetStillWorks() {
         val view = ChibiHeroView(RuntimeEnvironment.getApplication())
         view.layout(0, 0, 320, 240)

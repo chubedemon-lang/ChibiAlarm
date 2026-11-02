@@ -158,6 +158,26 @@ def extract_safe_message(result):
     return message[:500]
 
 
+def safe_user_topic(topic):
+    """Reject spoofing/control characters before the text enters a Gemini prompt.
+
+    Invisible directional controls can reorder displayed words, and C1 controls
+    are not suitable for the alarm/voice UI. Ordinary Vietnamese Unicode stays
+    supported. This validation runs before quota is reserved.
+    """
+    if not isinstance(topic, str) or not 1 <= len(topic) <= 400:
+        return False
+    return not any(
+        ord(ch) < 32 or 0x7F <= ord(ch) <= 0x9F
+        or 0xD800 <= ord(ch) <= 0xDFFF
+        or 0x200B <= ord(ch) <= 0x200F
+        or 0x202A <= ord(ch) <= 0x202E
+        or 0x2066 <= ord(ch) <= 0x2069
+        or ord(ch) == 0xFEFF
+        for ch in topic
+    )
+
+
 def reject_duplicate_json_keys(pairs):
     """Reject ambiguous JSON objects instead of silently using the last value."""
     result = {}
@@ -241,7 +261,7 @@ class Handler(BaseHTTPRequestHandler):
             if not isinstance(topic, str) or not isinstance(profile, int) or isinstance(profile, bool):
                 raise ValueError("invalid fields")
             topic = topic.strip()
-            if not topic or len(topic) > 400 or any(ord(ch) < 32 or ord(ch) == 127 or 0xD800 <= ord(ch) <= 0xDFFF for ch in topic):
+            if not safe_user_topic(topic):
                 raise ValueError("invalid topic")
             if profile not in KEYS or not KEYS[profile]:
                 self.reply(400, {"error": "profile_unavailable"})

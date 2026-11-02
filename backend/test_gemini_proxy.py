@@ -60,6 +60,33 @@ class ProxyTests(unittest.TestCase):
         conn.close()
         return result
 
+    def test_ambiguous_http_framing_rejected_before_quota_or_upstream(self):
+        # Use raw HTTP: http.client normalizes framing headers.
+        cases = (
+            "Content-Length: 2\r\nContent-Length: 100\r\n",
+            "Content-Length: 2\r\nTransfer-Encoding: chunked\r\n",
+            "Transfer-Encoding: chunked\r\n",
+            "Content-Length: 2, 100\r\n",
+            "Content-Length: invalid\r\n",
+        )
+        with patch.object(proxy, "open_gemini") as upstream:
+            for headers in cases:
+                with self.subTest(headers=headers):
+                    with socket.create_connection(
+                            ("127.0.0.1", self.server.server_port), timeout=4) as sock:
+                        sock.settimeout(4)
+                        sock.sendall((
+                            "POST /generate HTTP/1.1\r\n"
+                            "Host: localhost\r\n"
+                            "Authorization: Bearer " + self.token + "\r\n"
+                            "Content-Type: application/json\r\n"
+                            + headers + "Connection: close\r\n\r\n{}"
+                        ).encode("ascii"))
+                        first_line = sock.recv(4096).split(b"\r\n", 1)[0]
+                    self.assertIn(b" 400 ", first_line)
+            upstream.assert_not_called()
+            self.assertFalse(os.path.exists(proxy.QUOTA_DB))
+
     def test_incomplete_request_body_times_out_without_spending_quota(self):
         # A slow client used to block one ThreadingHTTPServer worker forever.
         # The test uses a real local socket but never contacts Gemini.

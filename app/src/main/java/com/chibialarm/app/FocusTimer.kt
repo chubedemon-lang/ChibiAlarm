@@ -54,10 +54,11 @@ object FocusTimer {
             }
         }
     }
-    @Synchronized fun stop(ctx:Context) {
+    @Synchronized fun stop(ctx:Context): Boolean {
         // Keep the old scheduled alarm if storage refuses to clear the session.
-        if (prefs(ctx).edit().remove("endTime").commit())
-            ctx.getSystemService(AlarmManager::class.java).cancel(pi(ctx))
+        if (!prefs(ctx).edit().remove("endTime").commit()) return false
+        ctx.getSystemService(AlarmManager::class.java).cancel(pi(ctx))
+        return true
     }
     /**
      * Ignore a delayed alarm from an earlier Focus session after the user restarted
@@ -67,9 +68,15 @@ object FocusTimer {
     @Synchronized fun completeFromAlarm(ctx:Context,intent:Intent):Boolean {
         val current = endTime(ctx)
         if (current == 0L) return false
-        val expected = intent.getLongExtra(EXTRA_EXPECTED_END,0L)
+        // A malformed broadcast extra or legacy marker must fail closed rather
+        // than crash the receiver or authorize an unsigned stale completion.
+        val expected = try {
+            intent.getLongExtra(EXTRA_EXPECTED_END,0L)
+        } catch (_: ClassCastException) { return false }
+        val marker = prefs(ctx).all["signedAlarm"]
+        val requiresSignature = marker != null && marker != false
         if (expected != current &&
-            (expected != 0L || prefs(ctx).getBoolean("signedAlarm",false))) return false
+            (expected != 0L || requiresSignature)) return false
         return complete(ctx)
     }
 

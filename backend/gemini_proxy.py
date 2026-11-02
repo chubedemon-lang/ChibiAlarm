@@ -128,6 +128,16 @@ def reserve_daily_attempt(path, day, limit, profile=None, profile_limit=None,
             return True
 
 
+def reject_duplicate_json_keys(pairs):
+    """Reject ambiguous JSON objects instead of silently using the last value."""
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("duplicate JSON key")
+        result[key] = value
+    return result
+
+
 class Handler(BaseHTTPRequestHandler):
     def setup(self):
         # ThreadingHTTPServer otherwise allows a slow client to hold a thread
@@ -185,7 +195,10 @@ class Handler(BaseHTTPRequestHandler):
             if not 0 < size <= 2048:
                 self.reply(413, {"error": "invalid_size"})
                 return
-            payload = json.loads(self.rfile.read(size))
+            raw_body = self.rfile.read(size)
+            if len(raw_body) != size:
+                raise ValueError("truncated request body")
+            payload = json.loads(raw_body, object_pairs_hook=reject_duplicate_json_keys)
             if not isinstance(payload, dict):
                 raise ValueError("expected object")
             topic = payload.get("topic", "")
@@ -193,7 +206,7 @@ class Handler(BaseHTTPRequestHandler):
             if not isinstance(topic, str) or not isinstance(profile, int) or isinstance(profile, bool):
                 raise ValueError("invalid fields")
             topic = topic.strip()
-            if not topic or len(topic) > 400 or any(ord(ch) < 32 or ord(ch) == 127 for ch in topic):
+            if not topic or len(topic) > 400 or any(ord(ch) < 32 or ord(ch) == 127 or 0xD800 <= ord(ch) <= 0xDFFF for ch in topic):
                 raise ValueError("invalid topic")
             if profile not in KEYS or not KEYS[profile]:
                 self.reply(400, {"error": "profile_unavailable"})

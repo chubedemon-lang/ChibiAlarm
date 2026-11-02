@@ -128,6 +128,36 @@ def reserve_daily_attempt(path, day, limit, profile=None, profile_limit=None,
             return True
 
 
+def extract_safe_message(result):
+    """Bound Gemini text and reject unsafe Unicode before writing an HTTP response.
+
+    json.loads accepts escaped lone surrogates, but our UTF-8 HTTP encoder does
+    not. Without this validation a malformed upstream payload can crash the
+    request handler after quota has already been reserved.
+    """
+    parts = result["candidates"][0]["content"]["parts"]
+    if not isinstance(parts, list):
+        raise ValueError("invalid upstream parts")
+    message = "".join(
+        part["text"] for part in parts
+        if isinstance(part, dict) and isinstance(part.get("text"), str)
+    ).strip()
+    if not message:
+        raise ValueError("empty Gemini response")
+    # Disallow invalid UTF-8 code points, control characters, and directional
+    # overrides that can disguise text shown to users or passed to TTS.
+    if any(
+        0xD800 <= ord(ch) <= 0xDFFF
+        or (ord(ch) < 32 and ch not in "\\n\\t")
+        or 0x7F <= ord(ch) <= 0x9F
+        or 0x202A <= ord(ch) <= 0x202E
+        or 0x2066 <= ord(ch) <= 0x2069
+        for ch in message
+    ):
+        raise ValueError("unsafe Gemini response text")
+    return message[:500]
+
+
 def reject_duplicate_json_keys(pairs):
     """Reject ambiguous JSON objects instead of silently using the last value."""
     result = {}
@@ -252,11 +282,7 @@ class Handler(BaseHTTPRequestHandler):
                 if len(raw) > 16384:
                     raise ValueError("upstream response too large")
                 result = json.loads(raw)
-                parts = result["candidates"][0]["content"]["parts"]
-                message = "".join(p.get("text", "") for p in parts if isinstance(p, dict)).strip()[:500]
-                if not message:
-                    raise ValueError("empty Gemini response")
-                self.reply(200, {"message": message})
+                self.reply(200, {"message": extract_safe_message(result)})
             except urllib.error.HTTPError as exc:
                 self.reply(429 if exc.code == 429 else 502, {"error": "upstream_unavailable"})
             except (OSError, ValueError, UnicodeError, KeyError, IndexError, TypeError):

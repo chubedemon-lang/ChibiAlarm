@@ -206,7 +206,10 @@ class RpgEngine(private val db: RpgDatabase) {
             // Read once, write only changed check-ins. Rewriting the entire historical
             // Growth journal on every dashboard resume gets expensive over time.
             val stored = dao.allStreakDays().associateBy { it.habitId to it.localDate }
-            val changes = days.distinctBy { it.habitId to it.localDate }
+            // A recovered legacy journal can contain repeated records for the
+            // same habit/date. The latest observation wins, so a later uncheck
+            // cannot be discarded by distinctBy's first-record behavior.
+            val changes = days.associateBy { it.habitId to it.localDate }.values
                 .filter { stored[it.habitId to it.localDate] != it }
             changes.forEach { dao.recordStreak(it) }
             val byHabit = (stored + changes.associateBy { it.habitId to it.localDate })

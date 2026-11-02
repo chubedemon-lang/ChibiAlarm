@@ -109,6 +109,40 @@ class RpgAccountIsolationTest {
         assertSame(first, RpgDatabase.forVerifiedAccount(context, "test:$prefix:one"))
     }
 
+    @Test fun verifiedAccountsNeverImportDeviceWideGrowthHistoryOrUnlockStreaks() = runBlocking {
+        val context = RuntimeEnvironment.getApplication()
+        val prefix = UUID.randomUUID().toString()
+        val aliceId = "test:$prefix:alice-growth"
+        val bobId = "test:$prefix:bob-growth"
+        val today = java.time.LocalDate.of(2026, 11, 2)
+        val guestHistory = (0L..6L).map {
+            StreakDay("growth:private-guest-habit", today.minusDays(it).toString(), true)
+        }
+        try {
+            val alice = RpgDatabase.forVerifiedAccount(context, aliceId)
+            val bob = RpgDatabase.forVerifiedAccount(context, bobId)
+            RpgEngine(alice).initialize(1000, today)
+            RpgEngine(bob).initialize(1000, today)
+            assertEquals(0, RpgEngine(alice).syncGrowth(guestHistory, today))
+            assertEquals(0, RpgEngine(bob).syncGrowth(guestHistory, today))
+            for (database in listOf(alice, bob)) {
+                assertTrue(database.dao().allStreakDays().isEmpty())
+                assertFalse(database.dao().hasLedgerEntry("migration:growth:v1"))
+                assertNull(database.dao().achievements().first { it.id == "streak_7" }.unlockedAt)
+                assertEquals(0, database.dao().achievements().first { it.id == "streak_7" }.progress)
+            }
+            RpgDatabase.closeVerifiedAccount(aliceId)
+            val reopened = RpgDatabase.forVerifiedAccount(context, aliceId)
+            assertEquals(0, RpgEngine(reopened).syncGrowth(guestHistory, today))
+            assertTrue(reopened.dao().allStreakDays().isEmpty())
+            assertFalse(reopened.dao().hasLedgerEntry("migration:growth:v1"))
+            assertEquals(0L, reopened.dao().character()!!.totalXp)
+        } finally {
+            RpgDatabase.deleteVerifiedAccount(context, aliceId)
+            RpgDatabase.deleteVerifiedAccount(context, bobId)
+        }
+    }
+
     @Test fun verifiedAccountsNeverInheritGuestLegacyXpEvenAfterReopen() = runBlocking {
         val context = RuntimeEnvironment.getApplication()
         val prefix = UUID.randomUUID().toString()

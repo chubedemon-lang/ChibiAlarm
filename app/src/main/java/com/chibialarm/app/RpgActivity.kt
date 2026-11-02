@@ -127,7 +127,7 @@ class RpgActivity : Activity() {
                     engine.syncCheckableProgress("routine:" + today,
                         if (LifeData.count(applicationContext) > 0) 1 else 0)
                     engine.syncProgress("focus:" + today,
-                        getSharedPreferences("focus", MODE_PRIVATE).getInt("sessions:" + today, 0))
+                        FocusTimer.sessionsOnDay(applicationContext, today))
                     // Workout journal entries are user-editable. Reconcile deletions before
                     // claiming, just like reversible Routine/Growth check-ins.
                     engine.syncCheckableProgress("fitness:" + today,

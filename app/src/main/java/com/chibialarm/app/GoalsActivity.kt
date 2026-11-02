@@ -29,12 +29,12 @@ class GoalsActivity:Activity() {
             }
             card.addView(txt("🌟 "+g.title,19f))
             val elapsed=GoalData.elapsed(g)
-            val marked=g.checked.size.coerceAtMost(g.span)
+            val marked=GoalData.completedDays(g)
             card.addView(txt("Ngày ${elapsed.coerceAtMost(g.span)} / ${g.span}   •   Đã hoàn thành $marked ngày",14f))
             card.addView(ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal).apply {
                 max=g.span;progress=marked
             })
-            card.addView(txt("🎁 Thành tích: ${marked*20} XP   "+(if(elapsed>g.span) "• Đã hết thời hạn" else "• Còn ${g.span-elapsed} ngày"),14f))
+            card.addView(txt("🎯 Đã điểm danh $marked ngày hợp lệ   "+(if(elapsed>g.span) "• Đã hết thời hạn" else "• Còn ${g.span-elapsed} ngày"),14f))
             val actions=LinearLayout(this).apply { orientation=0;gravity=Gravity.CENTER_VERTICAL }
             actions.addView(Button(this).apply {
                 text=if(LifeData.today() in g.checked) "✓ Đã hoàn thành hôm nay" else "✓ Check-in hôm nay"

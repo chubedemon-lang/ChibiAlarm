@@ -85,4 +85,33 @@ class ChibiAmbientMotionTest {
     fun butterflyRejectsInvalidIndex() {
         ChibiAmbientMotion.butterflyXOffset(100L, 2, false)
     }
+    @Test fun wateringDropsFallWithinGardenAndFadeWithoutOverflow() {
+        for (index in 0..2) {
+            val start = 96f + index * 8f
+            assertEquals(start, ChibiAmbientMotion.wateringDropY(850L, index, false), 0f)
+            assertEquals(start + 55f, ChibiAmbientMotion.wateringDropY(0L, index, false), 0f)
+            for (remaining in listOf(-10L, 0L, 1L, 200L, 425L, 850L, 900L, Long.MAX_VALUE)) {
+                val y = ChibiAmbientMotion.wateringDropY(remaining, index, false)
+                assertTrue(y.isFinite() && y in start..(start + 55f))
+                assertTrue(ChibiAmbientMotion.wateringDropAlpha(remaining, false) in 0..210)
+            }
+        }
+        assertEquals(0, ChibiAmbientMotion.wateringDropAlpha(0L, false))
+        assertEquals(210, ChibiAmbientMotion.wateringDropAlpha(850L, false))
+    }
+
+    @Test fun reducedMotionShowsStationaryWaterDrops() {
+        for (index in 0..2) {
+            assertEquals(96f + index * 8f,
+                ChibiAmbientMotion.wateringDropY(100L, index, true), 0f)
+        }
+        assertEquals(180, ChibiAmbientMotion.wateringDropAlpha(400L, true))
+        assertEquals(0, ChibiAmbientMotion.wateringDropAlpha(-1L, true))
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun wateringDropsRejectInvalidIndex() {
+        ChibiAmbientMotion.wateringDropY(200L, 3, false)
+    }
+
 }

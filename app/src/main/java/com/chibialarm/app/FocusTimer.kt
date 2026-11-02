@@ -26,6 +26,8 @@ object FocusTimer {
         if (runCatching { java.time.LocalDate.parse(day) }.isFailure) return 0
         return validCount(ctx, "sessions:$day") ?: 0
     }
+    internal fun canPostCompletionNotification(sdk:Int, permissionGranted:Boolean):Boolean =
+        sdk < 33 || permissionGranted
     @Synchronized fun start(ctx:Context,minutes:Int) {
         val end=System.currentTimeMillis()+minutes.coerceIn(1,180)*60000L
         // Do not cancel the previous timer before the replacement is durable.
@@ -106,15 +108,25 @@ object FocusTimer {
 class FocusDoneReceiver:BroadcastReceiver() {
     override fun onReceive(ctx:Context,intent:Intent) {
         if(!FocusTimer.completeFromAlarm(ctx,intent))return
+        // The durable session reward is independent of notification permission.
+        // Android 13+ may deny/revoke POST_NOTIFICATIONS at any time.
+        if (!FocusTimer.canPostCompletionNotification(Build.VERSION.SDK_INT,
+                ctx.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) ==
+                    android.content.pm.PackageManager.PERMISSION_GRANTED)) return
         val nm=ctx.getSystemService(NotificationManager::class.java)
         val channel="chibi_focus"
         nm.createNotificationChannel(NotificationChannel(channel,"Hoàn thành tập trung",NotificationManager.IMPORTANCE_HIGH))
         val open=PendingIntent.getActivity(ctx,47821,Intent(ctx,FocusActivity::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-        nm.notify(47821,Notification.Builder(ctx,channel)
-            .setSmallIcon(android.R.drawable.ic_popup_reminder)
-            .setContentTitle("🎉 Hoàn thành phiên tập trung!")
-            .setContentText("Chibi khen bạn! Đứng dậy vận động và nghỉ ngơi nhé.")
-            .setContentIntent(open).setAutoCancel(true).build())
+        try {
+            nm.notify(47821,Notification.Builder(ctx,channel)
+                .setSmallIcon(android.R.drawable.ic_popup_reminder)
+                .setContentTitle("🎉 Hoàn thành phiên tập trung!")
+                .setContentText("Chibi khen bạn! Đứng dậy vận động và nghỉ ngơi nhé.")
+                .setContentIntent(open).setAutoCancel(true).build())
+        } catch (_: SecurityException) {
+            // Permission can be revoked between the check and notify().
+            // Never crash a receiver after recording the completed session.
+        }
     }
 }

@@ -221,6 +221,9 @@ class ChibiHeroView(context: Context) : View(context) {
         val gait = if (!reducedMotion && sceneState.isWalking) sin(now / 95.0).toFloat() * 5f else 0f
         canvas.save()
         canvas.translate(heroX - 160f, bob)
+        // Face the direction of travel without extra bitmap assets or allocations.
+        // Mirror around the mascot's local center, not around the entire scene.
+        if (!sceneState.facingRight) canvas.scale(-1f, 1f, 160f, 135f)
         if (!reducedMotion && sceneState.isWalking) {
             canvas.rotate(sin(now / 85.0).toFloat() * 2f, 160f, 175f)
         }

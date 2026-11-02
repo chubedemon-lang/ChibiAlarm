@@ -6,7 +6,8 @@ Status: **storage foundation only, NOT multi-user release readiness**.
 
 - `RpgDatabase.get(context)` keeps the original `chibi_rpg.db` guest database and all its existing data. No destructive Room migration and no automatic ownership reassignment.
 - `RpgDatabase.forVerifiedAccount(context, verifiedSubject)` opens an independent Room database for each **trusted, authenticated subject**. Filenames contain SHA-256 of the exact subject, not the raw subject, display name or email. The subject MUST come from a backend-verified identity token, not from user input.
-- The Room schema remains version 1 in each database. XP ledger, daily quests, character, streaks and achievements are scoped to the selected database instance.
+- The Room schema is version 2 in each database, with a non-destructive v1-to-v2 migration. XP ledger, daily quests, character, streaks and achievements are scoped to the selected database instance.
+- `RpgEngine.initialize(legacyXp, ...)` imports device-wide v1.3 XP **only** for guest storage. Verified account databases ignore the supplied guest snapshot and do not create its migration ledger receipt; reopens and retries cannot silently claim it. This does not provide an opt-in guest transfer flow.
 - `RpgDatabase.deleteVerifiedAccount(context, verifiedSubject)` explicitly closes and removes only that account's local RPG database. Invoke only after all screens/jobs have stopped using the account DAO. This does **not** delete other app data.
 - Robolectric tests check opaque filenames, invalid subjects, account isolation, preservation of the guest database, and erasure of only the selected account.
 

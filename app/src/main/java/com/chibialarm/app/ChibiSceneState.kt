@@ -87,7 +87,8 @@ class ChibiSceneState {
 
     fun advance(dtSeconds: Float): Float {
         if (!dtSeconds.isFinite() || dtSeconds <= 0f) return heroX
-        val maxStep = 105f * dtSeconds.coerceAtMost(0.05f)
+        // Keep real-time speed on slow devices while bounding resume/suspend jumps.
+        val maxStep = 105f * dtSeconds.coerceAtMost(0.25f)
         heroX += (destinationX - heroX).coerceIn(-maxStep, maxStep)
         return heroX
     }

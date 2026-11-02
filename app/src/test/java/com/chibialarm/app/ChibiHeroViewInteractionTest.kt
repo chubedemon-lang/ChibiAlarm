@@ -103,6 +103,26 @@ class ChibiHeroViewInteractionTest {
         assertEquals(ChibiSceneState.Scene.BEDROOM, view.sceneState.scene)
     }
 
+    @Test fun diagonalDragBeyondCircularSlopDoesNotPetOrWater() {
+        val view = ChibiHeroView(RuntimeEnvironment.getApplication())
+        view.layout(0, 0, 320, 240)
+        var pets = 0
+        var watered = 0
+        view.onPet = { pets++ }
+        view.onGardenAction = { watered++ }
+        // 9px on each axis is below a 12px square, but above a 12px radius.
+        // Robolectric device slop varies; use the pure test for the exact threshold.
+        dispatch(view, MotionEvent.ACTION_DOWN, 160f, 110f)
+        dispatch(view, MotionEvent.ACTION_MOVE, 190f, 140f)
+        dispatch(view, MotionEvent.ACTION_UP, 160f, 110f)
+        assertEquals(0, pets)
+        view.toggleScene()
+        dispatch(view, MotionEvent.ACTION_DOWN, 40f, 160f)
+        dispatch(view, MotionEvent.ACTION_MOVE, 70f, 190f)
+        dispatch(view, MotionEvent.ACTION_UP, 40f, 160f)
+        assertEquals(0, watered)
+    }
+
     @Test fun cancelledAndUpOnlyTouchesCannotTriggerRewards() {
         val view = ChibiHeroView(RuntimeEnvironment.getApplication())
         view.layout(0, 0, 320, 240)

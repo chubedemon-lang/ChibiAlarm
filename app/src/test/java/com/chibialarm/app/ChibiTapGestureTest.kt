@@ -39,6 +39,27 @@ class ChibiTapGestureTest {
         assertFalse(gesture.end(Float.NEGATIVE_INFINITY, 10f))
     }
 
+    @Test fun diagonalScrollBeyondCircularSlopCannotPetEvenIfEachAxisIsInsideSlop() {
+        val gesture = ChibiTapGesture(12f)
+        assertTrue(gesture.begin(160f, 110f))
+        assertFalse(gesture.move(169f, 119f))
+        assertFalse(gesture.end(160f, 110f))
+    }
+
+    @Test fun radialBoundaryAndShortDiagonalTapRemainValid() {
+        val gesture = ChibiTapGesture(12f)
+        assertTrue(gesture.begin(0f, 0f))
+        assertTrue(gesture.end(12f, 0f))
+        assertTrue(gesture.begin(0f, 0f))
+        assertTrue(gesture.end(6f, 8f))
+    }
+
+    @Test fun largeFiniteCoordinatesCannotOverflowSlopComparison() {
+        val gesture = ChibiTapGesture(12f)
+        assertTrue(gesture.begin(Float.MAX_VALUE, Float.MAX_VALUE))
+        assertFalse(gesture.end(-Float.MAX_VALUE, -Float.MAX_VALUE))
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun negativeTouchSlopIsRejected() {
         ChibiTapGesture(-1f)

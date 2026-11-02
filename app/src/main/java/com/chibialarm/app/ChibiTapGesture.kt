@@ -1,7 +1,5 @@
 package com.chibialarm.app
 
-import kotlin.math.abs
-
 /**
  * Distinguishes an intentional tap from a scroll, swipe or cancelled gesture.
  * Pure Kotlin so accidental RPG interactions can be regression-tested without
@@ -43,8 +41,14 @@ internal class ChibiTapGesture(private val touchSlopPx: Float) {
         active = false
     }
 
-    private fun withinSlop(x: Float, y: Float): Boolean =
-        x.isFinite() && y.isFinite() &&
-            abs(x - startX) <= touchSlopPx &&
-            abs(y - startY) <= touchSlopPx
+    private fun withinSlop(x: Float, y: Float): Boolean {
+        if (!x.isFinite() || !y.isFinite()) return false
+        // Android touch slop is a radius, not an axis-aligned square. A diagonal
+        // scroll must not be mistaken for a pet/reward tap. Double avoids
+        // overflow even if malformed coordinates are very large but finite.
+        val dx = x.toDouble() - startX.toDouble()
+        val dy = y.toDouble() - startY.toDouble()
+        val radius = touchSlopPx.toDouble()
+        return dx * dx + dy * dy <= radius * radius
+    }
 }

@@ -184,7 +184,8 @@ class ChibiHeroView(context: Context) : View(context) {
         canvas.translate((width - 320f * scale) / 2f, (height - 240f * scale) / 2f)
         canvas.scale(scale, scale)
         val now = android.os.SystemClock.uptimeMillis()
-        val dt = ((now - lastFrameMs).coerceIn(0L, 50L) / 1000f)
+        // Account for slow frames without teleporting after a long app pause.
+        val dt = ((now - lastFrameMs).coerceIn(0L, 250L) / 1000f)
         lastFrameMs = now
         val heroX = if (reducedMotion) sceneState.finishWalk() else sceneState.advance(dt)
         val outdoor = sceneState.scene == ChibiSceneState.Scene.GARDEN
@@ -251,6 +252,12 @@ class ChibiHeroView(context: Context) : View(context) {
         }
         paint.color = Color.rgb(172, 116, 90)
         canvas.drawRoundRect(138f, 228f, 182f, 239f, 5f, 5f, paint)
+        // Subtle destination marker: taps have visible movement feedback, and
+        // it disappears when the character arrives. No extra reward state.
+        if (sceneState.isWalking && !reducedMotion) {
+            circle(canvas, Color.rgb(255, 242, 174), sceneState.destinationX, 216f, 5f)
+            circle(canvas, Color.rgb(119, 153, 133), sceneState.destinationX, 216f, 2f)
+        }
         val bob = if (reducedMotion) 0f else sin((now - startedAt) / 420.0).toFloat() * 3f
         val gait = if (!reducedMotion && sceneState.isWalking) sin(now / 95.0).toFloat() * 5f else 0f
         canvas.save()

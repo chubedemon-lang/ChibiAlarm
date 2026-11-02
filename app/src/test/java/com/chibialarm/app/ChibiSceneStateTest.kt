@@ -29,6 +29,24 @@ class ChibiSceneStateTest {
         assertEquals(ChibiSceneState.Action.NONE, state.tap(100f, 110f))
     }
 
+    @Test fun slowFramesKeepWalkSpeedAndLongPausesAreBounded() {
+        val slow = ChibiSceneState()
+        val fast = ChibiSceneState()
+        assertEquals(ChibiSceneState.Action.WALK, slow.tap(200f, 210f))
+        assertEquals(ChibiSceneState.Action.WALK, fast.tap(200f, 210f))
+        repeat(2) { slow.advance(0.1f) }
+        repeat(4) { fast.advance(0.05f) }
+        assertEquals(181f, slow.heroX, 0.001f)
+        assertEquals(fast.heroX, slow.heroX, 0.001f)
+
+        val resumed = ChibiSceneState()
+        resumed.tap(200f, 210f)
+        assertEquals(186.25f, resumed.advance(10f), 0.001f)
+        assertTrue(resumed.isWalking)
+        assertEquals(200f, resumed.advance(0.25f), 0.001f)
+        assertFalse(resumed.isWalking)
+    }
+
     @Test fun doorwaySwitchesSceneAndGardenDoesNotTriggerBedroomActions() {
         val state = ChibiSceneState()
         assertEquals(ChibiSceneState.Action.DOOR, state.tap(160f, 233f))

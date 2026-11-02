@@ -67,19 +67,23 @@ object LifeData {
             }
         }
     }
-    fun save(ctx:Context,routines:List<Routine>) {
+    @Synchronized fun save(ctx:Context,routines:List<Routine>) {
         protectDamagedLegacyRoutines(ctx)
-        // Cancel alarms for removed IDs before replacing the stored routine list.
-        // Rescheduling only the new list otherwise leaves orphan reminders behind.
-        val retainedIds = routines.map { it.id }.toSet()
-        this.routines(ctx).filterNot { it.id in retainedIds }
-            .forEach { RoutineReminder.cancel(ctx, it) }
+        // Snapshot the previous IDs before persisting, so removed alarms can be
+        // cancelled only AFTER the replacement is durable. A failed disk write
+        // must not silently delete a user's working reminder schedule.
+        val previous = this.routines(ctx)
         val array=JSONArray()
         routines.forEach { r ->
             array.put(JSONObject().put("id",r.id).put("title",r.title).put("category",r.category)
                 .put("hour",r.hour).put("minute",r.minute).put("duration",r.duration).put("repeatMask",r.repeatMask))
         }
-        prefs(ctx).edit().putString("routines",array.toString()).apply()
+        check(prefs(ctx).edit().putString("routines",array.toString()).commit()) {
+            "Cannot save routines"
+        }
+        val retainedIds = routines.map { it.id }.toSet()
+        previous.filterNot { it.id in retainedIds }
+            .forEach { RoutineReminder.cancel(ctx, it) }
         RoutineReminder.rescheduleAll(ctx)
         ChibiWidget.updateAll(ctx)
     }

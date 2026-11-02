@@ -114,7 +114,7 @@ class ChibiHeroView(context: Context) : View(context) {
                 tapGesture.move(event.x, event.y)
                 return true
             }
-            MotionEvent.ACTION_POINTER_DOWN, MotionEvent.ACTION_CANCEL -> {
+            MotionEvent.ACTION_POINTER_DOWN, MotionEvent.ACTION_CANCEL, MotionEvent.ACTION_OUTSIDE -> {
                 tapGesture.cancel()
                 return true
             }

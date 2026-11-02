@@ -46,8 +46,8 @@ class BootReceiver : BroadcastReceiver() {
         RoutineReminder.rescheduleAll(context)
         FocusTimer.restore(context)
         ChibiWidget.updateAll(context)
-        val growth=context.getSharedPreferences("growth",Context.MODE_PRIVATE)
-        if(growth.contains("remindHour")) GrowthReminder.schedule(context,growth.getInt("remindHour",8),growth.getInt("remindMinute",0))
+        // A damaged legacy Growth preference must not crash boot restoration.
+        GrowthReminder.restore(context)
         for ((key, value) in context.getSharedPreferences("alarms", 0).all) {
             val id = key.toIntOrNull() ?: continue
             val record = AlarmTimeCodec.parse(value as? String)

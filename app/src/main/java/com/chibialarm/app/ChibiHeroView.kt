@@ -44,6 +44,10 @@ class ChibiHeroView(context: Context) : View(context) {
     )
     private var waterUntil = 0L
     private var transitionUntil = 0L
+    // Recalculate ambient lighting at most once per minute; do not query the
+    // wall clock on every Canvas frame (important on low-power devices).
+    private var nextLightCheckMs = 0L
+    private var lightPhase = ChibiDayCycle.Phase.DAY
     var onRoomChanged: ((Boolean) -> Unit)? = null
     var onGardenAction: (() -> Unit)? = null
     var onPet: (() -> Unit)? = null
@@ -152,12 +156,23 @@ class ChibiHeroView(context: Context) : View(context) {
         lastFrameMs = now
         val heroX = if (reducedMotion) sceneState.finishWalk() else sceneState.advance(dt)
         val outdoor = sceneState.scene == ChibiSceneState.Scene.GARDEN
-        paint.color = if (outdoor) Color.rgb(209, 245, 221) else Color.rgb(230, 242, 255)
+        if (now >= nextLightCheckMs) {
+            lightPhase = ChibiDayCycle.phase(java.time.LocalTime.now().hour)
+            nextLightCheckMs = now + 60_000L
+        }
+        paint.color = when (lightPhase) {
+            ChibiDayCycle.Phase.DAY ->
+                if (outdoor) Color.rgb(209, 245, 221) else Color.rgb(230, 242, 255)
+            ChibiDayCycle.Phase.SUNSET -> Color.rgb(250, 211, 194)
+            ChibiDayCycle.Phase.NIGHT -> Color.rgb(57, 70, 117)
+        }
         canvas.drawRoundRect(0f, 0f, 320f, 240f, 24f, 24f, paint)
-        circle(canvas, Color.rgb(255, 255, 255), 53f, 43f, 17f)
-        circle(canvas, Color.rgb(255, 255, 255), 73f, 43f, 22f)
-        circle(canvas, Color.rgb(255, 255, 255), 250f, 59f, 23f)
-        circle(canvas, Color.rgb(255, 255, 255), 270f, 59f, 16f)
+        val cloudColor = if (lightPhase == ChibiDayCycle.Phase.NIGHT)
+            Color.rgb(128, 141, 179) else Color.WHITE
+        circle(canvas, cloudColor, 53f, 43f, 17f)
+        circle(canvas, cloudColor, 73f, 43f, 22f)
+        circle(canvas, cloudColor, 250f, 59f, 23f)
+        circle(canvas, cloudColor, 270f, 59f, 16f)
         oval(canvas, Color.rgb(145, 199, 151), 0f, 195f, 320f, 265f)
         oval(canvas, Color.rgb(111, 163, 121), 95f, 209f, 225f, 227f)
         // Hand-drawn interactive bedroom props: bed, focus desk and training mat.
@@ -179,8 +194,17 @@ class ChibiHeroView(context: Context) : View(context) {
         paint.color = Color.rgb(112, 174, 190)
         canvas.drawRoundRect(12f, 212f, 86f, 230f, 8f, 8f, paint)
         } else {
-            paint.color = Color.rgb(255, 218, 118)
-            canvas.drawCircle(274f, 43f, 23f, paint)
+            if (lightPhase == ChibiDayCycle.Phase.NIGHT) {
+                // Moon and a few static stars: legible without extra animations.
+                circle(canvas, Color.rgb(248, 243, 215), 274f, 43f, 18f)
+                circle(canvas, Color.rgb(255, 249, 208), 112f, 36f, 2.5f)
+                circle(canvas, Color.rgb(255, 249, 208), 208f, 21f, 2f)
+                circle(canvas, Color.rgb(255, 249, 208), 225f, 76f, 2.5f)
+            } else {
+                paint.color = if (lightPhase == ChibiDayCycle.Phase.SUNSET)
+                    Color.rgb(246, 142, 102) else Color.rgb(255, 218, 118)
+                canvas.drawCircle(274f, 43f, 23f, paint)
+            }
             paint.color = Color.rgb(92, 164, 105)
             canvas.drawRoundRect(15f, 140f, 82f, 198f, 10f, 10f, paint)
             canvas.drawRoundRect(242f, 140f, 307f, 198f, 10f, 10f, paint)

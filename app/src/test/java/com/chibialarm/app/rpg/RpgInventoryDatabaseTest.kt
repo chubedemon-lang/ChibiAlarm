@@ -211,4 +211,27 @@ class RpgInventoryDatabaseTest {
         assertEquals(1L, db.dao().itemStack("star_fragment")!!.quantity)
     }
 
+    @Test fun negativeCorruptCraftedStackDoesNotSpendIngredientsOrReserveReceipt() = runBlocking {
+        val inventory = RpgInventoryEngine(db)
+        val dao = db.dao()
+        assertTrue(inventory.grant("herb", 1L, "test:negative:herb"))
+        assertTrue(inventory.grant("star_fragment", 1L, "test:negative:star"))
+        dao.insertItemStack(RpgItemStack("garden_charm", -1L, 1L))
+        val receipt = "craft:garden_charm:negative"
+        try {
+            inventory.craftGardenCharm(receipt)
+            fail("Damaged negative charm stack must not be repaired by crafting")
+        } catch (_: IllegalArgumentException) { }
+        assertEquals(1L, dao.itemStack("herb")!!.quantity)
+        assertEquals(1L, dao.itemStack("star_fragment")!!.quantity)
+        assertEquals(-1L, dao.itemStack("garden_charm")!!.quantity)
+        assertEquals(0, dao.itemReceiptCount(receipt))
+        // Once the damaged stack is repaired by a separate recovery flow, the
+        // same receipt can still be used: failure did not burn the attempt.
+        dao.updateItemStack(RpgItemStack("garden_charm", 0L, 2L))
+        assertTrue(inventory.craftGardenCharm(receipt))
+        assertEquals(1L, dao.itemStack("garden_charm")!!.quantity)
+        assertEquals(1, dao.itemReceiptCount(receipt))
+    }
+
 }

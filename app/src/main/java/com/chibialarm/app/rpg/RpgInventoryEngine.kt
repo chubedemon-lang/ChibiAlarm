@@ -69,12 +69,17 @@ class RpgInventoryEngine(private val db: RpgDatabase) {
                 (dao.itemStack("star_fragment")?.quantity ?: 0L) < 1L) {
                 return@withTransaction false
             }
+            // Do not turn a damaged negative output stack into spendable charms
+            // by consuming good ingredients. Reject before reserving a receipt.
+            val existing = dao.itemStack("garden_charm")
+            require(existing == null || existing.quantity >= 0L) {
+                "Corrupt crafted inventory balance"
+            }
             val now = System.currentTimeMillis()
             if (dao.insertItemReceipt(RpgItemReceipt(
                     dedupeKey, "garden_charm", 1L, now)) == -1L) return@withTransaction false
             check(dao.consumeItem("herb", 1L, now) == 1)
             check(dao.consumeItem("star_fragment", 1L, now) == 1)
-            val existing = dao.itemStack("garden_charm")
             if (existing == null) {
                 check(dao.insertItemStack(RpgItemStack("garden_charm", 1L, now)) != -1L)
             } else {

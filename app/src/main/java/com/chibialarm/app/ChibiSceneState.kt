@@ -19,20 +19,28 @@ class ChibiSceneState {
     /** Direction is presentation-only: it never grants rewards or changes collisions. */
     var facingRight: Boolean = true
         private set
+    /** Visual-only garden care stage, never a source of XP, coins or item grants. */
+    var gardenGrowth: Int = 0
+        private set
 
     /** Temporary scene state for Android rotation/process recreation, not RPG progress. */
-    data class Snapshot(val scene: Scene, val heroX: Float, val destinationX: Float, val facingRight: Boolean = true)
+    data class Snapshot(
+        val scene: Scene, val heroX: Float, val destinationX: Float,
+        val facingRight: Boolean = true, val gardenGrowth: Int = 0
+    )
 
-    fun snapshot(): Snapshot = Snapshot(scene, heroX, destinationX, facingRight)
+    fun snapshot(): Snapshot = Snapshot(scene, heroX, destinationX, facingRight, gardenGrowth)
 
     /** Reject malformed saved state rather than moving the hero outside the walkable floor. */
     fun restore(saved: Snapshot): Boolean {
         if (!saved.heroX.isFinite() || !saved.destinationX.isFinite() ||
-            saved.heroX !in 116f..204f || saved.destinationX !in 116f..204f) return false
+            saved.heroX !in 116f..204f || saved.destinationX !in 116f..204f ||
+            saved.gardenGrowth !in 0..3) return false
         scene = saved.scene
         heroX = saved.heroX
         destinationX = saved.destinationX
         facingRight = saved.facingRight
+        gardenGrowth = saved.gardenGrowth
         return true
     }
 
@@ -69,6 +77,12 @@ class ChibiSceneState {
             return Action.WALK
         }
         return Action.NONE
+    }
+
+    /** Repeated watering reveals a three-stage illustrated sprout, without minting rewards. */
+    fun tendGarden(): Int {
+        if (scene == Scene.GARDEN) gardenGrowth = (gardenGrowth + 1).coerceAtMost(3)
+        return gardenGrowth
     }
 
     fun advance(dtSeconds: Float): Float {

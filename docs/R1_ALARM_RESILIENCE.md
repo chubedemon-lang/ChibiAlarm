@@ -93,3 +93,11 @@ and full-screen-intent behavior. Keep PR #1 draft until approved.
   add/delete and stale-broadcast tests remain in CI.
 - This is a local durability fix, not a cross-file transaction, account-scoped
   alarm isolation, Android 16 physical timing validation or production readiness.
+
+## Growth / Focus legacy-data hardening — 2026-11-02
+
+- Growth reminders now validate saved hour/minute types and ranges before boot restoration. Invalid values are left untouched for recovery; a stale Growth broadcast with removed or corrupt settings does not display a notification. Missing legacy minute still defaults to zero.
+- Growth scheduling handles exact-alarm permission revocation with an inexact fallback. The time-picker commits the new reminder before reporting success, and distinguishes persistence failure from scheduling failure. Inexact alarms may arrive late on Android 12–16.
+- Focus completion now rejects malformed broadcast end-time extras and treats damaged signature metadata as requiring a signed end-time match. This preserves existing session data and prevents unsigned stale alarms from awarding a new session. Focus UI reports start/stop failures rather than silently claiming success.
+- Robolectric regression tests cover malformed Growth preferences, disabled reminders, valid legacy reminders, damaged Focus signature metadata, malformed Focus intents and stop behavior.
+- These are guest-mode reliability fixes, **not authenticated multi-user isolation**. They do not prove behavior on Android 16 hardware, across process death, or during storage failure on a physical device. Latest CI must be checked before sharing an APK.

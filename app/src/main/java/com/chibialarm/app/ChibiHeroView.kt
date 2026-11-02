@@ -282,10 +282,16 @@ class ChibiHeroView(context: Context) : View(context) {
                 drawButterfly(canvas, 210f, 104f, 1, elapsedMs)
             }
             if (now < waterUntil) {
-                paint.color = Color.rgb(58, 147, 223)
-                canvas.drawCircle(50f, 117f, 5f, paint)
-                canvas.drawCircle(272f, 116f, 5f, paint)
-                canvas.drawCircle(60f, 105f, 3f, paint)
+                // Animated droplets give immediate visual feedback to watering.
+                // This never touches the RPG ledger; reduced-motion stays still.
+                val remaining = waterUntil - now
+                val alpha = ChibiAmbientMotion.wateringDropAlpha(remaining, reducedMotion)
+                for (index in 0..2) {
+                    val y = ChibiAmbientMotion.wateringDropY(remaining, index, reducedMotion)
+                    val x = 43f + index * 7f
+                    circle(canvas, Color.argb(alpha, 58, 147, 223), x, y, 3.5f)
+                    circle(canvas, Color.argb(alpha, 58, 147, 223), x + 223f, y, 3.5f)
+                }
             }
         }
         paint.color = Color.rgb(172, 116, 90)
@@ -301,6 +307,14 @@ class ChibiHeroView(context: Context) : View(context) {
         val breath = if (sceneState.isWalking) 1f else
             ChibiCharacterMotion.breathScale(elapsedMs, reducedMotion)
         val petHop = ChibiCharacterMotion.petHop(now, happyUntil, reducedMotion)
+        // A tiny dust trail helps make movement readable without sprite sheets.
+        val dustAlpha = ChibiCharacterMotion.footstepDustAlpha(elapsedMs,
+            sceneState.isWalking, reducedMotion)
+        if (dustAlpha > 0) {
+            val radius = ChibiCharacterMotion.footstepDustRadius(elapsedMs, true, false)
+            circle(canvas, Color.argb(dustAlpha, 237, 219, 183), heroX - 18f, 214f, radius)
+            circle(canvas, Color.argb(dustAlpha, 237, 219, 183), heroX + 18f, 214f, radius)
+        }
         canvas.save()
         canvas.translate(heroX - 160f, bob + petHop)
         // Keep feet planted during the idle breathing cycle; petting adds a brief hop.

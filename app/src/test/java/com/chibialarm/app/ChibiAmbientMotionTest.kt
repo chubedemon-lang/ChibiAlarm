@@ -45,4 +45,44 @@ class ChibiAmbientMotionTest {
     fun rejectsNegativeFireflyIndex() {
         ChibiAmbientMotion.fireflyOffset(10L, -1, false)
     }
+
+    @Test fun butterfliesLoopAndStayInsideTheirDecorativeBounds() {
+        for (index in 0..1) {
+            assertEquals(ChibiAmbientMotion.butterflyXOffset(0L, index, false),
+                ChibiAmbientMotion.butterflyXOffset(6_400L, index, false), 0.0001f)
+            assertEquals(ChibiAmbientMotion.butterflyYOffset(0L, index, false),
+                ChibiAmbientMotion.butterflyYOffset(6_400L, index, false), 0.0001f)
+            assertEquals(ChibiAmbientMotion.butterflyWingScale(0L, index, false),
+                ChibiAmbientMotion.butterflyWingScale(420L, index, false), 0.0001f)
+            for (time in 0L..12_800L step 179L) {
+                assertTrue(ChibiAmbientMotion.butterflyXOffset(time, index, false) in -11f..11f)
+                assertTrue(ChibiAmbientMotion.butterflyYOffset(time, index, false) in -4f..4f)
+                assertTrue(ChibiAmbientMotion.butterflyWingScale(time, index, false) in 0.65f..1.0f)
+            }
+        }
+    }
+
+    @Test fun reducedMotionFreezesButterfliesEvenAtExtremeTimestamps() {
+        for (time in listOf(-1L, 0L, 500L, Long.MAX_VALUE)) {
+            for (index in 0..1) {
+                assertEquals(0f, ChibiAmbientMotion.butterflyXOffset(time, index, true), 0f)
+                assertEquals(0f, ChibiAmbientMotion.butterflyYOffset(time, index, true), 0f)
+                assertEquals(0.7f, ChibiAmbientMotion.butterflyWingScale(time, index, true), 0f)
+            }
+        }
+    }
+
+    @Test fun negativeButterflyTimeIsClampedToZero() {
+        for (index in 0..1) {
+            assertEquals(ChibiAmbientMotion.butterflyXOffset(0L, index, false),
+                ChibiAmbientMotion.butterflyXOffset(-100L, index, false), 0f)
+            assertEquals(ChibiAmbientMotion.butterflyWingScale(0L, index, false),
+                ChibiAmbientMotion.butterflyWingScale(-100L, index, false), 0f)
+        }
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun butterflyRejectsInvalidIndex() {
+        ChibiAmbientMotion.butterflyXOffset(100L, 2, false)
+    }
 }

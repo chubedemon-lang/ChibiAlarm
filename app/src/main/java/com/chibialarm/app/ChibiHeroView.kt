@@ -185,6 +185,20 @@ class ChibiHeroView(context: Context) : View(context) {
         circle(canvas, Color.argb(alpha, 255, 246, 174), x, y + offset, 2.7f)
     }
 
+
+    /** Original vector butterfly: no bitmap, network or mutable reward state. */
+    private fun drawButterfly(canvas: Canvas, anchorX: Float, anchorY: Float, index: Int, elapsedMs: Long) {
+        val x = anchorX + ChibiAmbientMotion.butterflyXOffset(elapsedMs, index, reducedMotion)
+        val y = anchorY + ChibiAmbientMotion.butterflyYOffset(elapsedMs, index, reducedMotion)
+        val wing = ChibiAmbientMotion.butterflyWingScale(elapsedMs, index, reducedMotion)
+        val color = if (index == 0) Color.rgb(246, 156, 189) else Color.rgb(177, 151, 240)
+        oval(canvas, color, x - 13f * wing, y - 8f, x - 2f, y + 2f)
+        oval(canvas, color, x + 2f, y - 8f, x + 13f * wing, y + 2f)
+        oval(canvas, color, x - 9f * wing, y, x - 1f, y + 7f)
+        oval(canvas, color, x + 1f, y, x + 9f * wing, y + 7f)
+        oval(canvas, Color.rgb(93, 78, 113), x - 1.5f, y - 5f, x + 1.5f, y + 7f)
+    }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val scale = minOf(width / 320f, height / 240f)
@@ -261,6 +275,11 @@ class ChibiHeroView(context: Context) : View(context) {
                 drawFirefly(canvas, 113f, 88f, 0, elapsedMs)
                 drawFirefly(canvas, 202f, 118f, 1, elapsedMs)
                 drawFirefly(canvas, 176f, 54f, 2, elapsedMs)
+            } else {
+                // Daylight butterflies make the garden visually distinct from the
+                // bedroom. Reduced-motion devices show stationary illustrations.
+                drawButterfly(canvas, 113f, 85f, 0, elapsedMs)
+                drawButterfly(canvas, 210f, 104f, 1, elapsedMs)
             }
             if (now < waterUntil) {
                 paint.color = Color.rgb(58, 147, 223)
@@ -293,8 +312,9 @@ class ChibiHeroView(context: Context) : View(context) {
         oval(canvas, Color.rgb(245, 175, 202), 122f, 31f, 136f, 92f)
         oval(canvas, Color.rgb(245, 175, 202), 184f, 31f, 198f, 92f)
         oval(canvas, Color.rgb(114, 116, 212), 119f, 137f, 201f, 211f)
-        oval(canvas, Color.rgb(251, 244, 255), 106f, 148f, 133f, 183f)
-        oval(canvas, Color.rgb(251, 244, 255), 187f, 148f, 214f, 183f)
+        // Arms swing opposite the feet while walking; stationary in reduced motion.
+        oval(canvas, Color.rgb(251, 244, 255), 106f, 148f + gait * 0.4f, 133f, 183f + gait * 0.4f)
+        oval(canvas, Color.rgb(251, 244, 255), 187f, 148f - gait * 0.4f, 214f, 183f - gait * 0.4f)
         // Opposing foot motion makes the walk readable without external sprite assets.
         oval(canvas, Color.rgb(78, 83, 165), 124f, 199f + gait, 157f, 216f + gait)
         oval(canvas, Color.rgb(78, 83, 165), 163f, 199f - gait, 196f, 216f - gait)

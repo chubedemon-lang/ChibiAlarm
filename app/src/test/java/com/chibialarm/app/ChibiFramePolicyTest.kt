@@ -20,7 +20,8 @@ class ChibiFramePolicyTest {
     @Test fun reducedMotionStopsContinuousRendering() {
         assertNull(ChibiFramePolicy.nextDelayMs(true, true, false, false))
         assertNull(ChibiFramePolicy.nextDelayMs(true, true, true, false))
-        assertEquals(33L, ChibiFramePolicy.nextDelayMs(true, true, false, true))
+        assertEquals(250L, ChibiFramePolicy.nextDelayMs(true, true, false, true))
+        assertEquals(250L, ChibiFramePolicy.nextDelayMs(true, true, true, true))
     }
 
     @Test fun instantMovementRespectsBoundedTarget() {

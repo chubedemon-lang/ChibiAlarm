@@ -219,4 +219,23 @@ class FocusTimerTest {
         assertEquals(1, FocusTimer.sessions(context))
     }
 
+
+    @Test fun rpgDailyFocusProgressFailsClosedForCorruptLegacyCounter() {
+        val day = LifeData.today()
+        assertTrue(prefs.edit().putString("sessions:$day", "damaged").commit())
+        assertEquals(0, FocusTimer.sessionsOnDay(context, day))
+        assertEquals("damaged", prefs.getString("sessions:$day", null))
+        assertTrue(prefs.edit().putInt("sessions:$day", -8).commit())
+        assertEquals(0, FocusTimer.sessionsOnDay(context, day))
+        assertEquals(-8, prefs.getInt("sessions:$day", 0))
+        assertTrue(prefs.edit().putInt("sessions:$day", 2).commit())
+        assertEquals(2, FocusTimer.sessionsOnDay(context, day))
+    }
+
+    @Test fun invalidCalendarDayCannotBeUsedForFocusQuestProgress() {
+        assertTrue(prefs.edit().putInt("sessions:2026-02-30", 9).commit())
+        assertEquals(0, FocusTimer.sessionsOnDay(context, "2026-02-30"))
+        assertEquals(0, FocusTimer.sessionsOnDay(context, "not-a-date"))
+        assertEquals(9, prefs.getInt("sessions:2026-02-30", 0))
+    }
 }

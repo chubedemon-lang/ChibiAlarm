@@ -138,6 +138,28 @@ class ChibiHeroViewInteractionTest {
     }
 
 
+    @Test fun outsideTouchCancelsPendingPetOrDoorTap() {
+        val view = ChibiHeroView(RuntimeEnvironment.getApplication())
+        view.layout(0, 0, 320, 240)
+        var pets = 0
+        var roomChanges = 0
+        view.onPet = { pets++ }
+        view.onRoomChanged = { roomChanges++ }
+
+        dispatch(view, MotionEvent.ACTION_DOWN, 160f, 110f)
+        dispatch(view, MotionEvent.ACTION_OUTSIDE, 160f, 110f)
+        dispatch(view, MotionEvent.ACTION_UP, 160f, 110f)
+        dispatch(view, MotionEvent.ACTION_DOWN, 160f, 233f)
+        dispatch(view, MotionEvent.ACTION_OUTSIDE, 160f, 233f)
+        dispatch(view, MotionEvent.ACTION_UP, 160f, 233f)
+        assertEquals(0, pets)
+        assertEquals(0, roomChanges)
+        assertEquals(ChibiSceneState.Scene.BEDROOM, view.sceneState.scene)
+
+        tap(view, 160f, 110f)
+        assertEquals(1, pets)
+    }
+
     @Test fun accessibleGardenActionMatchesTapAndIsDisabledInBedroom() {
         val view = ChibiHeroView(RuntimeEnvironment.getApplication())
         view.layout(0, 0, 320, 240)

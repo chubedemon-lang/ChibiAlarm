@@ -30,6 +30,11 @@ class ChibiHeroView(context: Context) : View(context) {
     private val startedAt = android.os.SystemClock.uptimeMillis()
     private var happyUntil = 0L
     var sceneState = ChibiSceneState()
+        set(value) {
+            field = value
+            updateSceneAccessibility()
+            invalidate()
+        }
     var outfit: ChibiCosmetics.Outfit = ChibiCosmetics.Outfit.STARTER
         set(value) {
             field = value
@@ -55,7 +60,14 @@ class ChibiHeroView(context: Context) : View(context) {
 
     init {
         isClickable = true
-        contentDescription = "Chạm Chibi để vuốt ve, chạm sàn để đi, chạm cửa để chuyển phòng và khu vườn"
+        updateSceneAccessibility()
+    }
+
+    /** Announce the active room to TalkBack after a doorway or restored scene change. */
+    private fun updateSceneAccessibility() {
+        val room = if (sceneState.scene == ChibiSceneState.Scene.GARDEN)
+            "Khu vườn, chạm luống cây để tưới" else "Phòng ngủ, chạm giường, bàn học hoặc thảm tập"
+        contentDescription = "$room. Chạm Chibi để vuốt ve, chạm sàn để đi, chạm cửa để chuyển phòng"
     }
 
     override fun performClick(): Boolean {
@@ -82,6 +94,7 @@ class ChibiHeroView(context: Context) : View(context) {
     }
 
     private fun showRoomChange() {
+        updateSceneAccessibility()
         transitionUntil = if (reducedMotion) 0L else android.os.SystemClock.uptimeMillis() + 350L
         onRoomChanged?.invoke(sceneState.scene == ChibiSceneState.Scene.GARDEN)
         invalidate()

@@ -134,4 +134,28 @@ class ChibiHeroViewInteractionTest {
         assertEquals(2, watered)
     }
 
+
+    @Test fun wateringButtonAndPlanterTapGrowVisualSproutsWithoutExtraRewards() {
+        val view = ChibiHeroView(RuntimeEnvironment.getApplication())
+        view.layout(0, 0, 320, 240)
+        var calls = 0
+        view.onGardenAction = { calls++ }
+        assertTrue(!view.waterGarden())
+        assertEquals(0, view.sceneState.gardenGrowth)
+        view.toggleScene()
+        assertTrue(view.waterGarden())
+        assertEquals(1, view.sceneState.gardenGrowth)
+        tap(view, 40f, 160f)
+        assertEquals(2, view.sceneState.gardenGrowth)
+        tap(view, 274f, 160f)
+        assertEquals(3, view.sceneState.gardenGrowth)
+        assertTrue(view.contentDescription.contains("giai đoạn 3 trên 3"))
+        repeat(4) { view.waterGarden() }
+        assertEquals(3, view.sceneState.gardenGrowth)
+        assertEquals(7, calls) // Callbacks remain subject to Room daily receipt deduplication.
+        view.toggleScene()
+        assertTrue(!view.waterGarden())
+        assertEquals(7, calls)
+    }
+
 }

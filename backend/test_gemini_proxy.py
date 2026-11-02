@@ -245,6 +245,51 @@ class ProxyTests(unittest.TestCase):
         self.assertEqual(status, 502)
         self.assertEqual(data, {"error": "upstream_unavailable"})
 
+    def test_malformed_upstream_unicode_is_rejected_without_crashing_handler(self):
+        # Escaped lone surrogates are valid JSON syntax but not UTF-8 text.
+        # A directional override could disguise instructions displayed to users.
+        invalid_texts = ("\ud800", "hello\udfff", "hi\x00there",
+                         "fake\u202eexe.txt", "abc\u2066def", "")
+        with patch.object(proxy, "DAILY_LIMIT", 20):
+            for value in invalid_texts:
+                with self.subTest(value=repr(value)):
+                    fake = FakeResponse(json.dumps({
+                        "candidates": [{"content": {"parts": [{"text": value}]}}]
+                    }).encode("utf-8"))
+                    with patch.object(proxy, "open_gemini", return_value=fake):
+                        status, body = self.request()
+                    self.assertEqual(status, 502)
+                    self.assertEqual(body, {"error": "upstream_unavailable"})
+
+            # The same HTTP server remains available after all malformed replies.
+            valid = FakeResponse(json.dumps({
+                "candidates": [{"content": {"parts": [{"text": "Chào buổi sáng! 🐰"}]}}]
+            }, ensure_ascii=False).encode("utf-8"))
+            with patch.object(proxy, "open_gemini", return_value=valid):
+                status, body = self.request()
+            self.assertEqual(status, 200)
+            self.assertEqual(body["message"], "Chào buổi sáng! 🐰")
+
+    def test_upstream_non_text_parts_do_not_crash_or_leak_data(self):
+        fake = FakeResponse(json.dumps({
+            "candidates": [{"content": {"parts": [
+                {"text": 123}, {"inline_data": {"data": "secret"}},
+                {"text": "\nXin chào!\t"}
+            ]}}]
+        }).encode("utf-8"))
+        with patch.object(proxy, "open_gemini", return_value=fake):
+            status, body = self.request()
+        self.assertEqual(status, 200)
+        self.assertEqual(body, {"message": "Xin chào!"})
+        self.assertNotIn("secret", json.dumps(body))
+
+    def test_upstream_parts_must_be_list(self):
+        fake = FakeResponse(b'{"candidates":[{"content":{"parts":"not a list"}}]}')
+        with patch.object(proxy, "open_gemini", return_value=fake):
+            status, body = self.request()
+        self.assertEqual(status, 502)
+        self.assertEqual(body, {"error": "upstream_unavailable"})
+
     def test_success_response_is_bounded_and_no_secret(self):
         fake = FakeResponse(json.dumps({"candidates": [{"content": {"parts": [{"text": "Xin chào " * 100}]}}]}).encode())
         with patch.object(proxy, "open_gemini", return_value=fake) as upstream:

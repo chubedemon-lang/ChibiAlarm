@@ -174,11 +174,16 @@ class Handler(BaseHTTPRequestHandler):
         if len(TOKEN) < 24 or not any(KEYS.values()):
             self.reply(503, {"error": "not_configured"})
             return
-        auth = self.headers.get("Authorization", "")
-        if not hmac.compare_digest(auth, "Bearer " + TOKEN):
+        # Duplicate security-sensitive headers may be interpreted differently by
+        # reverse proxies and this server. Fail closed before parsing the body.
+        auth_headers = self.headers.get_all("Authorization", [])
+        if len(auth_headers) != 1 or not hmac.compare_digest(auth_headers[0], "Bearer " + TOKEN):
+            self.close_connection = True
             self.reply(401, {"error": "unauthorized"})
             return
-        if self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower() != "application/json":
+        content_types = self.headers.get_all("Content-Type", [])
+        if len(content_types) != 1 or content_types[0].split(";", 1)[0].strip().lower() != "application/json":
+            self.close_connection = True
             self.reply(415, {"error": "unsupported_media_type"})
             return
         # Reject ambiguous HTTP request framing before reading or spending quota.

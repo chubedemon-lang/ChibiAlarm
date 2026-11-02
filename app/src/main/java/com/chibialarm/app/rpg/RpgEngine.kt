@@ -195,6 +195,11 @@ class RpgEngine(private val db: RpgDatabase) {
      */
     suspend fun syncGrowth(days: List<StreakDay>, today: LocalDate = LocalDate.now()) =
         db.withTransaction {
+            // The caller supplies device-wide v1.x Growth preferences. Never import
+            // them into an authenticated account's isolated RPG database: the
+            // check-ins, streak achievements and migration marker are guest-owned.
+            // A future account-specific Growth source needs a separate API.
+            if (!db.allowLegacyXpImport) return@withTransaction 0
             val dao = db.dao()
             dao.insertLedger(XpLedger(dedupeKey = "migration:growth:v1",
                 questId = "legacy-growth", amount = 0))

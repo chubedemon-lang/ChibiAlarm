@@ -65,9 +65,22 @@ class GrowthActivity : Activity() {
         root.addView(Button(this).apply { text="🔔 Đặt giờ nhắc hằng ngày"; setOnClickListener {
             val now=Calendar.getInstance()
             TimePickerDialog(this@GrowthActivity,{_,h,m->
-                store.edit().putInt("remindHour",h).putInt("remindMinute",m).apply()
-                GrowthReminder.schedule(this@GrowthActivity,h,m)
-                Toast.makeText(this@GrowthActivity,String.format(Locale.US,"Đã đặt nhắc %02d:%02d",h,m),Toast.LENGTH_LONG).show()
+                // Persist first: never claim a reminder is saved if the write failed.
+                val saved=store.edit().putInt("remindHour",h).putInt("remindMinute",m).commit()
+                if (!saved) {
+                    Toast.makeText(this@GrowthActivity,"Không lưu được giờ nhắc. Hãy thử lại.",Toast.LENGTH_LONG).show()
+                } else {
+                    try {
+                        GrowthReminder.schedule(this@GrowthActivity,h,m)
+                        Toast.makeText(this@GrowthActivity,String.format(Locale.US,
+                            "Đã lưu giờ nhắc %02d:%02d",h,m),Toast.LENGTH_LONG).show()
+                    } catch (_: RuntimeException) {
+                        // The persisted reminder can be restored on the next boot.
+                        Toast.makeText(this@GrowthActivity,
+                            "Đã lưu giờ nhắc, nhưng chưa lên lịch được. Hãy kiểm tra quyền báo thức.",
+                            Toast.LENGTH_LONG).show()
+                    }
+                }
             },now.get(Calendar.HOUR_OF_DAY),now.get(Calendar.MINUTE),true).show()
         } })
         root.addView(label("📊 Tổng kết 7 ngày",21f))

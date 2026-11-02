@@ -16,11 +16,14 @@ class ChibiSceneState {
         private set
     var destinationX: Float = 160f
         private set
+    /** Direction is presentation-only: it never grants rewards or changes collisions. */
+    var facingRight: Boolean = true
+        private set
 
     /** Temporary scene state for Android rotation/process recreation, not RPG progress. */
-    data class Snapshot(val scene: Scene, val heroX: Float, val destinationX: Float)
+    data class Snapshot(val scene: Scene, val heroX: Float, val destinationX: Float, val facingRight: Boolean = true)
 
-    fun snapshot(): Snapshot = Snapshot(scene, heroX, destinationX)
+    fun snapshot(): Snapshot = Snapshot(scene, heroX, destinationX, facingRight)
 
     /** Reject malformed saved state rather than moving the hero outside the walkable floor. */
     fun restore(saved: Snapshot): Boolean {
@@ -29,6 +32,7 @@ class ChibiSceneState {
         scene = saved.scene
         heroX = saved.heroX
         destinationX = saved.destinationX
+        facingRight = saved.facingRight
         return true
     }
 
@@ -59,7 +63,9 @@ class ChibiSceneState {
         // Match the moving character, not the original fixed center.
         if (abs(x - heroX) <= 48f && y in 43f..190f) return Action.PET
         if (x in 88f..238f && y in 195f..224f) {
-            destinationX = x.coerceIn(116f, 204f)
+            val nextX = x.coerceIn(116f, 204f)
+            if (nextX != heroX) facingRight = nextX > heroX
+            destinationX = nextX
             return Action.WALK
         }
         return Action.NONE

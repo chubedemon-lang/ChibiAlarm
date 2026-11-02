@@ -66,7 +66,7 @@ class ChibiHeroView(context: Context) : View(context) {
     /** Announce the active room to TalkBack after a doorway or restored scene change. */
     private fun updateSceneAccessibility() {
         val room = if (sceneState.scene == ChibiSceneState.Scene.GARDEN)
-            "Khu vườn, chạm luống cây để tưới" else "Phòng ngủ, chạm giường, bàn học hoặc thảm tập"
+            "Khu vườn, mầm cây trang trí giai đoạn ${sceneState.gardenGrowth} trên 3, chạm luống cây để tưới" else "Phòng ngủ, chạm giường, bàn học hoặc thảm tập"
         contentDescription = "$room. Chạm Chibi để vuốt ve, chạm sàn để đi, chạm cửa để chuyển phòng"
     }
 
@@ -87,6 +87,8 @@ class ChibiHeroView(context: Context) : View(context) {
     /** TalkBack/large-target equivalent of tapping a garden planter. */
     fun waterGarden(): Boolean {
         if (sceneState.scene != ChibiSceneState.Scene.GARDEN) return false
+        sceneState.tendGarden()
+        updateSceneAccessibility()
         waterUntil = android.os.SystemClock.uptimeMillis() + 850L
         onGardenAction?.invoke()
         invalidate()
@@ -158,6 +160,23 @@ class ChibiHeroView(context: Context) : View(context) {
         canvas.drawCircle(x, y, radius, paint)
     }
 
+    /** Draw both planters without allocating bitmaps or per-frame collections. */
+    private fun drawGardenSprout(canvas: Canvas, x: Float, growth: Int) {
+        if (growth <= 0) return
+        val top = 181f - growth * 10f
+        paint.color = Color.rgb(40, 119, 64)
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = 4f
+        canvas.drawLine(x, 187f, x, top, paint)
+        paint.style = Paint.Style.FILL
+        oval(canvas, Color.rgb(83, 191, 102), x - 14f, top + 3f, x + 1f, top + 12f)
+        oval(canvas, Color.rgb(83, 191, 102), x - 1f, top - 2f, x + 14f, top + 8f)
+        if (growth == 3) {
+            circle(canvas, Color.rgb(255, 190, 220), x, top - 6f, 8f)
+            circle(canvas, Color.rgb(255, 224, 101), x, top - 6f, 3f)
+        }
+    }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val scale = minOf(width / 320f, height / 240f)
@@ -221,6 +240,8 @@ class ChibiHeroView(context: Context) : View(context) {
             paint.color = Color.rgb(92, 164, 105)
             canvas.drawRoundRect(15f, 140f, 82f, 198f, 10f, 10f, paint)
             canvas.drawRoundRect(242f, 140f, 307f, 198f, 10f, 10f, paint)
+            drawGardenSprout(canvas, 49f, sceneState.gardenGrowth)
+            drawGardenSprout(canvas, 274f, sceneState.gardenGrowth)
             if (now < waterUntil) {
                 paint.color = Color.rgb(58, 147, 223)
                 canvas.drawCircle(50f, 117f, 5f, paint)

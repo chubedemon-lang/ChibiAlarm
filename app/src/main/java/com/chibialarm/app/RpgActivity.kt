@@ -69,7 +69,8 @@ class RpgActivity : Activity() {
                 sceneState.restore(ChibiSceneState.Snapshot(
                     scene,
                     saved.getFloat("chibi_hero_x", 160f),
-                    saved.getFloat("chibi_destination_x", 160f)
+                    saved.getFloat("chibi_destination_x", 160f),
+                    saved.getBoolean("chibi_facing_right", true)
                 ))
             }
         }
@@ -80,6 +81,7 @@ class RpgActivity : Activity() {
         outState.putString("chibi_scene", snapshot.scene.name)
         outState.putFloat("chibi_hero_x", snapshot.heroX)
         outState.putFloat("chibi_destination_x", snapshot.destinationX)
+        outState.putBoolean("chibi_facing_right", snapshot.facingRight)
         super.onSaveInstanceState(outState)
     }
 

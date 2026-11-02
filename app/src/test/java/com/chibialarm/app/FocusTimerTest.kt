@@ -135,4 +135,51 @@ class FocusTimerTest {
             pool.shutdownNow()
         }
     }
+
+    @Test fun replacingFocusSessionPreservesCountersAndRejectsOldAlarm() {
+        FocusTimer.start(context, 20)
+        val oldEnd = FocusTimer.endTime(context)
+        assertTrue(oldEnd > System.currentTimeMillis())
+        FocusTimer.start(context, 60)
+        val newEnd = FocusTimer.endTime(context)
+        assertTrue(newEnd > oldEnd)
+        assertEquals(0, FocusTimer.sessions(context))
+        assertFalse(FocusTimer.completeFromAlarm(context,
+            Intent(context, FocusDoneReceiver::class.java)
+                .putExtra("focus_expected_end", oldEnd)))
+        assertEquals(newEnd, FocusTimer.endTime(context))
+        FocusTimer.stop(context)
+        assertEquals(0L, FocusTimer.endTime(context))
+        assertEquals(0, FocusTimer.sessions(context))
+    }
+
+    @Test fun malformedLegacyEndTimeDoesNotCrashRestoreOrEraseOriginal() {
+        assertTrue(prefs.edit().putString("endTime", "invalid-legacy-value").commit())
+        assertEquals(0L, FocusTimer.endTime(context))
+        FocusTimer.restore(context)
+        assertEquals("invalid-legacy-value", prefs.getString("endTime", null))
+        assertEquals(0, FocusTimer.sessions(context))
+    }
+
+    @Test fun malformedOrNegativeHistoricalCountersBlockAwardWithoutDataLoss() {
+        val dayKey = "sessions:" + LifeData.today()
+        expiredSession()
+        assertTrue(prefs.edit().putString("sessions", "damaged").commit())
+        assertFalse(FocusTimer.complete(context))
+        assertEquals("damaged", prefs.getString("sessions", null))
+        assertTrue(FocusTimer.endTime(context) > 0L)
+        assertEquals(0, prefs.getInt(dayKey, 0))
+
+        assertTrue(prefs.edit().putInt("sessions", 4)
+            .putInt(dayKey, -1).commit())
+        assertFalse(FocusTimer.complete(context))
+        assertEquals(4, prefs.getInt("sessions", 0))
+        assertEquals(-1, prefs.getInt(dayKey, 0))
+        assertTrue(FocusTimer.endTime(context) > 0L)
+
+        assertTrue(prefs.edit().putInt(dayKey, 0).commit())
+        assertTrue(FocusTimer.complete(context))
+        assertEquals(5, FocusTimer.sessions(context))
+        assertEquals(1, prefs.getInt(dayKey, 0))
+    }
 }

@@ -85,6 +85,19 @@ class ProxyTests(unittest.TestCase):
             upstream.assert_not_called()
             self.assertFalse(os.path.exists(proxy.QUOTA_DB))
 
+    def test_additional_unicode_format_and_separator_topics_rejected_before_quota(self):
+        # Invisible controls missed by range-only checks can spoof a prompt.
+        with patch.object(proxy, "open_gemini") as upstream:
+            for hidden in ("\u061c", "\u180e", "\u2060", "\u2028", "\u2029"):
+                with self.subTest(codepoint=hex(ord(hidden))):
+                    topic = "wake" + hidden + "early"
+                    self.assertFalse(proxy.safe_user_topic(topic))
+                    status, body = self.request({"topic": topic})
+                    self.assertEqual(status, 400)
+                    self.assertEqual(body, {"error": "invalid_request"})
+            upstream.assert_not_called()
+            self.assertFalse(os.path.exists(proxy.QUOTA_DB))
+
     def test_normal_vietnamese_topic_remains_accepted(self):
         self.assertTrue(proxy.safe_user_topic("Dậy sớm, uống nước và tập thể dục!"))
         self.assertFalse(proxy.safe_user_topic(""))
@@ -288,6 +301,31 @@ class ProxyTests(unittest.TestCase):
                 status, body = self.request()
             self.assertEqual(status, 200)
             self.assertEqual(body["message"], "Chào buổi sáng! 🐰")
+
+    def test_additional_unicode_format_and_separator_upstream_text_fails_closed(self):
+        # Upstream content is untrusted even when Google returned HTTP 200.
+        with patch.object(proxy, "DAILY_LIMIT", 20):
+            for hidden in ("\u061c", "\u180e", "\u2060", "\u200b", "\u200d",
+                           "\ufeff", "\u2028", "\u2029"):
+                with self.subTest(codepoint=hex(ord(hidden))):
+                    response = FakeResponse(json.dumps({
+                        "candidates": [{"content": {"parts": [
+                            {"text": "Chào" + hidden + "bạn"}
+                        ]}}]
+                    }).encode("utf-8"))
+                    with patch.object(proxy, "open_gemini", return_value=response):
+                        status, body = self.request()
+                    self.assertEqual(status, 502)
+                    self.assertEqual(body, {"error": "upstream_unavailable"})
+
+    def test_vietnamese_combining_accents_emoji_and_response_newlines_are_valid(self):
+        topic = "Thức dậy sớm, uống nước! \U0001f430"
+        self.assertTrue(proxy.safe_user_topic(topic))
+        response = {"candidates": [{"content": {"parts": [
+            {"text": "Cha\u0300o buổi sáng!\n\U0001f430"}
+        ]}}]}
+        self.assertEqual(proxy.extract_safe_message(response),
+                         "Cha\u0300o buổi sáng!\n\U0001f430")
 
     def test_upstream_non_text_parts_do_not_crash_or_leak_data(self):
         fake = FakeResponse(json.dumps({

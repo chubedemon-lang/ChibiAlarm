@@ -54,3 +54,23 @@ and full-screen-intent behavior. Keep PR #1 draft until approved.
 - The UI does not yet offer a recovery/import screen. A malformed entry may
   remain invisible until a future repair tool; keep real v1.3 upgrade testing
   and export/delete coverage on the release checklist.
+
+
+## Focus preference and replacement safety (2026-11-02)
+
+- Starting a replacement Focus session now persists the new end time and strict
+  alarm marker **before** replacing the old AlarmManager entry. A failed
+  preference write no longer cancels the previous timer first.
+- Stopping a session cancels its alarm only after the end-time removal commits.
+  A failed removal leaves the prior alarm available for retry/recovery.
+- Boot restore persists the strict receiver marker before scheduling; malformed
+  or non-positive legacy `endTime` values are ignored **without deleting them**.
+- Malformed or negative historical session counters fail closed: the timer does
+  not award another session or overwrite the damaged value. Users can recover
+  after the underlying preference is repaired.
+- Robolectric regressions cover replacement without extra rewards, rejection
+  of the previous alarm, malformed end time, damaged total/day counters and
+  successful retry after a repaired counter.
+- These changes do not implement account-scoped Focus data, an authenticated
+  backend, or real-device Android 16 validation. No SharedPreferences key,
+  alarm request code or Room schema was changed.

@@ -32,13 +32,14 @@ class RpgAccountIsolationTest {
     }
 
     @Test fun malformedUtf16CannotAliasAnotherAccountDatabase() {
-        // Java UTF-8 replaces lone surrogates. Without validation these two
-        // different subjects may silently resolve to the same account file.
-        for (subject in listOf("issuer:bad\\uD800", "issuer:bad\\uDC00",
-                "issuer:bad\\uD800x", "issuer:x\\uDC00y")) {
-            val decoded = subject.replace("\\uD800", "\uD800").replace("\\uDC00", "\uDC00")
+        // UTF-8 encoding replaces lone surrogate code units with a replacement byte.
+        // Reject them before hashing or opening an account-specific database.
+        val high = 0xD800.toChar()
+        val low = 0xDC00.toChar()
+        for (subject in listOf("issuer:bad$high", "issuer:bad$low",
+                "issuer:bad${high}x", "issuer:x${low}y")) {
             try {
-                RpgDatabase.accountDatabaseFile(decoded)
+                RpgDatabase.accountDatabaseFile(subject)
                 fail("Malformed UTF-16 subject was accepted")
             } catch (_: IllegalArgumentException) {
                 // Fail closed before opening a database.
@@ -47,12 +48,10 @@ class RpgAccountIsolationTest {
     }
 
     @Test fun invisibleFormatControlsCannotSpoofVerifiedAccountSubject() {
-        for (subject in listOf("issuer:alice\\u202E", "issuer:alice\\u200B",
-                "issuer:alice\\u2066")) {
-            val decoded = subject.replace("\\u202E", "\u202E")
-                .replace("\\u200B", "\u200B").replace("\\u2066", "\u2066")
+        for (codePoint in listOf(0x202E, 0x200B, 0x2066)) {
+            val subject = "issuer:alice" + codePoint.toChar()
             try {
-                RpgDatabase.accountDatabaseFile(decoded)
+                RpgDatabase.accountDatabaseFile(subject)
                 fail("Invisible formatting subject was accepted")
             } catch (_: IllegalArgumentException) {
                 // Bidi overrides and zero-width format characters are not identity.
@@ -61,8 +60,7 @@ class RpgAccountIsolationTest {
     }
 
     @Test fun validSupplementaryUnicodeSubjectIsStableAndDistinct() {
-        val subject = "issuer:player-\\uD83D\\uDE80"
-            .replace("\\uD83D", "\uD83D").replace("\\uDE80", "\uDE80")
+        val subject = "issuer:player-" + String(Character.toChars(0x1F680))
         val file = RpgDatabase.accountDatabaseFile(subject)
         assertEquals(file, RpgDatabase.accountDatabaseFile(subject))
         assertNotEquals(file, RpgDatabase.accountDatabaseFile("issuer:player"))

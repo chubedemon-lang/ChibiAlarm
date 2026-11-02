@@ -67,6 +67,22 @@ class ChibiSceneStateTest {
         assertFalse(restored.isWalking)
     }
 
+    @Test fun walkingFacesDestinationAndRestoresDirectionWithoutChangingRewards() {
+        val state = ChibiSceneState()
+        assertTrue(state.facingRight)
+        assertEquals(ChibiSceneState.Action.WALK, state.tap(120f, 210f))
+        assertFalse(state.facingRight)
+        val restored = ChibiSceneState()
+        assertTrue(restored.restore(state.snapshot()))
+        assertFalse(restored.facingRight)
+        repeat(20) { restored.advance(0.05f) }
+        assertEquals(120f, restored.heroX, 0.001f)
+        assertEquals(ChibiSceneState.Action.WALK, restored.tap(200f, 210f))
+        assertTrue(restored.facingRight)
+        assertEquals(ChibiSceneState.Action.PET, restored.tap(120f, 110f))
+        assertTrue(restored.facingRight)
+    }
+
     @Test fun corruptedSnapshotCannotEscapeWalkableFloorOrChangeScene() {
         val state = ChibiSceneState()
         assertFalse(state.restore(ChibiSceneState.Snapshot(

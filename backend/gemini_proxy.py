@@ -148,7 +148,7 @@ def extract_safe_message(result):
     # overrides that can disguise text shown to users or passed to TTS.
     if any(
         0xD800 <= ord(ch) <= 0xDFFF
-        or (ord(ch) < 32 and ch not in "\\n\\t")
+        or (ord(ch) < 32 and ch not in "\n\t")
         or 0x7F <= ord(ch) <= 0x9F
         or 0x202A <= ord(ch) <= 0x202E
         or 0x2066 <= ord(ch) <= 0x2069

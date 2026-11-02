@@ -12,12 +12,20 @@ object FocusTimer {
         Intent(ctx,FocusDoneReceiver::class.java).putExtra(EXTRA_EXPECTED_END,end),
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     private fun prefs(ctx:Context)=ctx.getSharedPreferences("focus",Context.MODE_PRIVATE)
-    fun endTime(ctx:Context):Long=prefs(ctx).getLong("endTime",0L)
-    fun sessions(ctx:Context):Int=prefs(ctx).getInt("sessions",0)
+    // A malformed legacy preference must not crash boot restore or silently
+    // overwrite historical session counters. Keep damaged values for recovery.
+    fun endTime(ctx:Context):Long = try {
+        prefs(ctx).getLong("endTime", 0L).takeIf { it > 0L } ?: 0L
+    } catch (_: ClassCastException) { 0L }
+    private fun validCount(ctx:Context, key:String):Int? = try {
+        prefs(ctx).getInt(key, 0).takeIf { it >= 0 }
+    } catch (_: ClassCastException) { null }
+    fun sessions(ctx:Context):Int = validCount(ctx, "sessions") ?: 0
     @Synchronized fun start(ctx:Context,minutes:Int) {
-        stop(ctx)
         val end=System.currentTimeMillis()+minutes.coerceIn(1,180)*60000L
-        // Persist before scheduling so a killed process can restore the pending session.
+        // Do not cancel the previous timer before the replacement is durable.
+        // Scheduling the same PendingIntent replaces its old AlarmManager entry.
+        // If the write fails, the original session and alarm remain intact.
         check(prefs(ctx).edit().putLong("endTime",end)
             .putBoolean("signedAlarm",true).commit()) { "Cannot save Focus timer" }
         schedule(ctx,end)
@@ -26,9 +34,10 @@ object FocusTimer {
         val end=endTime(ctx)
         if(end==0L)return
         if(end<=System.currentTimeMillis()) complete(ctx) else {
+            // Persist the strict receiver marker before installing a new alarm.
+            // Failed writes must not weaken stale-broadcast protection.
+            if (!prefs(ctx).edit().putBoolean("signedAlarm",true).commit()) return
             schedule(ctx,end)
-            // Existing legacy sessions are upgraded without changing their end time.
-            prefs(ctx).edit().putBoolean("signedAlarm",true).commit()
         }
     }
     private fun schedule(ctx:Context,end:Long) {
@@ -46,8 +55,9 @@ object FocusTimer {
         }
     }
     @Synchronized fun stop(ctx:Context) {
-        ctx.getSystemService(AlarmManager::class.java).cancel(pi(ctx))
-        prefs(ctx).edit().remove("endTime").commit()
+        // Keep the old scheduled alarm if storage refuses to clear the session.
+        if (prefs(ctx).edit().remove("endTime").commit())
+            ctx.getSystemService(AlarmManager::class.java).cancel(pi(ctx))
     }
     /**
      * Ignore a delayed alarm from an earlier Focus session after the user restarted
@@ -68,10 +78,12 @@ object FocusTimer {
         val current=endTime(ctx)
         if(current==0L || current>System.currentTimeMillis())return false
         val dayKey = "sessions:" + LifeData.today()
-        val currentDay = prefs(ctx).getInt(dayKey, 0)
+        val currentDay = validCount(ctx, dayKey) ?: return false
+        val total = validCount(ctx, "sessions") ?: return false
+        // Do not destroy malformed/negative historical counts to award a new one.
         // commit() is intentional: durable reward state before notifying the user.
         val saved = prefs(ctx).edit().remove("endTime")
-            .putInt("sessions", if (sessions(ctx) == Int.MAX_VALUE) Int.MAX_VALUE else sessions(ctx) + 1)
+            .putInt("sessions", if (total == Int.MAX_VALUE) Int.MAX_VALUE else total + 1)
             .putInt(dayKey, if (currentDay == Int.MAX_VALUE) Int.MAX_VALUE else currentDay + 1)
             .commit()
         if (!saved) return false

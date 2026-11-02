@@ -60,6 +60,61 @@ class ProxyTests(unittest.TestCase):
         conn.close()
         return result
 
+    def request_raw(self, body):
+        conn = http.client.HTTPConnection("127.0.0.1", self.server.server_port, timeout=5)
+        conn.request("POST", "/generate", body=body, headers={
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + self.token,
+        })
+        response = conn.getresponse()
+        result = (response.status, json.loads(response.read()))
+        conn.close()
+        return result
+
+    def test_duplicate_json_keys_rejected_before_quota_or_upstream(self):
+        # Duplicate keys at any depth are ambiguous and must never reach Gemini.
+        cases = (
+            b'{"topic":"safe","topic":"override"}',
+            b'{"topic":"safe","profile":1,"profile":2}',
+            b'{"topic":"safe","metadata":{"x":1,"x":2}}',
+        )
+        with patch.object(proxy, "open_gemini") as upstream:
+            for body in cases:
+                with self.subTest(body=body):
+                    self.assertEqual(self.request_raw(body)[0], 400)
+            upstream.assert_not_called()
+            self.assertFalse(os.path.exists(proxy.QUOTA_DB))
+
+    def test_unpaired_unicode_surrogates_rejected_before_quota(self):
+        # json.loads permits escaped lone surrogates, but UTF-8 upstream encoding
+        # cannot represent them. Reject before consuming any quota.
+        with patch.object(proxy, "open_gemini") as upstream:
+            for body in (b'{"topic":"\\ud800"}', b'{"topic":"hello\\udfff"}'):
+                with self.subTest(body=body):
+                    self.assertEqual(self.request_raw(body)[0], 400)
+            upstream.assert_not_called()
+            self.assertFalse(os.path.exists(proxy.QUOTA_DB))
+
+    def test_truncated_request_body_does_not_consume_quota(self):
+        with patch.object(proxy, "open_gemini") as upstream:
+            with socket.create_connection(
+                    ("127.0.0.1", self.server.server_port), timeout=4) as sock:
+                sock.settimeout(4)
+                sock.sendall((
+                    "POST /generate HTTP/1.1\r\n"
+                    "Host: localhost\r\n"
+                    "Authorization: Bearer " + self.token + "\r\n"
+                    "Content-Type: application/json\r\n"
+                    "Content-Length: 100\r\n"
+                    "Connection: close\r\n\r\n"
+                    '{"topic":"short"}'
+                ).encode("ascii"))
+                sock.shutdown(socket.SHUT_WR)
+                first_line = sock.recv(4096).split(b"\r\n", 1)[0]
+            self.assertIn(b" 400 ", first_line)
+            upstream.assert_not_called()
+            self.assertFalse(os.path.exists(proxy.QUOTA_DB))
+
     def test_ambiguous_http_framing_rejected_before_quota_or_upstream(self):
         # Use raw HTTP: http.client normalizes framing headers.
         cases = (

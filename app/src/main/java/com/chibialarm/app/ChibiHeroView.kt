@@ -177,6 +177,14 @@ class ChibiHeroView(context: Context) : View(context) {
         }
     }
 
+    /** Three glowing garden lights share a pure timebase and never touch RPG rewards. */
+    private fun drawFirefly(canvas: Canvas, x: Float, y: Float, index: Int, elapsedMs: Long) {
+        val alpha = ChibiAmbientMotion.fireflyAlpha(elapsedMs, index, reducedMotion)
+        val offset = ChibiAmbientMotion.fireflyOffset(elapsedMs, index, reducedMotion)
+        circle(canvas, Color.argb(alpha / 4, 255, 229, 133), x, y + offset, 9f)
+        circle(canvas, Color.argb(alpha, 255, 246, 174), x, y + offset, 2.7f)
+    }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val scale = minOf(width / 320f, height / 240f)
@@ -184,6 +192,7 @@ class ChibiHeroView(context: Context) : View(context) {
         canvas.translate((width - 320f * scale) / 2f, (height - 240f * scale) / 2f)
         canvas.scale(scale, scale)
         val now = android.os.SystemClock.uptimeMillis()
+        val elapsedMs = (now - startedAt).coerceAtLeast(0L)
         // Account for slow frames without teleporting after a long app pause.
         val dt = ((now - lastFrameMs).coerceIn(0L, 250L) / 1000f)
         lastFrameMs = now
@@ -202,10 +211,13 @@ class ChibiHeroView(context: Context) : View(context) {
         canvas.drawRoundRect(0f, 0f, 320f, 240f, 24f, 24f, paint)
         val cloudColor = if (lightPhase == ChibiDayCycle.Phase.NIGHT)
             Color.rgb(128, 141, 179) else Color.WHITE
-        circle(canvas, cloudColor, 53f, 43f, 17f)
-        circle(canvas, cloudColor, 73f, 43f, 22f)
-        circle(canvas, cloudColor, 250f, 59f, 23f)
-        circle(canvas, cloudColor, 270f, 59f, 16f)
+        // Gentle parallax makes both rooms feel alive without assets or network calls.
+        // Reduced-motion users see clouds fixed in place.
+        val cloudDrift = ChibiAmbientMotion.cloudOffset(elapsedMs, reducedMotion)
+        circle(canvas, cloudColor, 53f + cloudDrift, 43f, 17f)
+        circle(canvas, cloudColor, 73f + cloudDrift, 43f, 22f)
+        circle(canvas, cloudColor, 250f - cloudDrift, 59f, 23f)
+        circle(canvas, cloudColor, 270f - cloudDrift, 59f, 16f)
         oval(canvas, Color.rgb(145, 199, 151), 0f, 195f, 320f, 265f)
         oval(canvas, Color.rgb(111, 163, 121), 95f, 209f, 225f, 227f)
         // Hand-drawn interactive bedroom props: bed, focus desk and training mat.
@@ -243,6 +255,13 @@ class ChibiHeroView(context: Context) : View(context) {
             canvas.drawRoundRect(242f, 140f, 307f, 198f, 10f, 10f, paint)
             drawGardenSprout(canvas, 49f, sceneState.gardenGrowth)
             drawGardenSprout(canvas, 274f, sceneState.gardenGrowth)
+            // At night, tiny floating lights make the garden visually distinct.
+            // Their phase is deterministic; they never represent collectable currency.
+            if (lightPhase == ChibiDayCycle.Phase.NIGHT) {
+                drawFirefly(canvas, 113f, 88f, 0, elapsedMs)
+                drawFirefly(canvas, 202f, 118f, 1, elapsedMs)
+                drawFirefly(canvas, 176f, 54f, 2, elapsedMs)
+            }
             if (now < waterUntil) {
                 paint.color = Color.rgb(58, 147, 223)
                 canvas.drawCircle(50f, 117f, 5f, paint)

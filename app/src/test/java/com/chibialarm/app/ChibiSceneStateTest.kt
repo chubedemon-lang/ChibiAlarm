@@ -97,4 +97,28 @@ class ChibiSceneStateTest {
         assertEquals(ChibiSceneState.Scene.BEDROOM, state.switchScene())
         assertEquals(160f, state.destinationX, 0f)
     }
+
+    @Test fun gardenCareIsBoundedVisualOnlyAndSurvivesSceneSnapshot() {
+        val state = ChibiSceneState()
+        assertEquals(0, state.tendGarden()) // Bedroom cannot grow the garden.
+        state.switchScene()
+        assertEquals(1, state.tendGarden())
+        assertEquals(2, state.tendGarden())
+        assertEquals(3, state.tendGarden())
+        repeat(20) { assertEquals(3, state.tendGarden()) }
+        val snapshot = state.snapshot()
+        val restored = ChibiSceneState()
+        assertTrue(restored.restore(snapshot))
+        assertEquals(3, restored.gardenGrowth)
+        restored.switchScene()
+        assertEquals(3, restored.tendGarden())
+        restored.switchScene()
+        assertEquals(3, restored.gardenGrowth)
+        // Invalid snapshot must not mutate the previous scene or care stage.
+        assertFalse(restored.restore(snapshot.copy(gardenGrowth = -1)))
+        assertFalse(restored.restore(snapshot.copy(gardenGrowth = 4)))
+        assertEquals(3, restored.gardenGrowth)
+        assertEquals(ChibiSceneState.Scene.GARDEN, restored.scene)
+    }
+
 }

@@ -21,6 +21,11 @@ object FocusTimer {
         prefs(ctx).getInt(key, 0).takeIf { it >= 0 }
     } catch (_: ClassCastException) { null }
     fun sessions(ctx:Context):Int = validCount(ctx, "sessions") ?: 0
+    /** Invalid legacy day counters must never crash the RPG dashboard or award quest progress. */
+    fun sessionsOnDay(ctx:Context, day:String):Int {
+        if (runCatching { java.time.LocalDate.parse(day) }.isFailure) return 0
+        return validCount(ctx, "sessions:$day") ?: 0
+    }
     @Synchronized fun start(ctx:Context,minutes:Int) {
         val end=System.currentTimeMillis()+minutes.coerceIn(1,180)*60000L
         // Do not cancel the previous timer before the replacement is durable.

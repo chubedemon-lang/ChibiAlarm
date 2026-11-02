@@ -171,8 +171,17 @@ class Handler(BaseHTTPRequestHandler):
         if self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower() != "application/json":
             self.reply(415, {"error": "unsupported_media_type"})
             return
+        # Reject ambiguous HTTP request framing before reading or spending quota.
+        # Reverse proxies and this HTTP server can disagree about which body a
+        # duplicate Content-Length or Transfer-Encoding header describes.
+        lengths = self.headers.get_all("Content-Length", [])
+        if (self.headers.get_all("Transfer-Encoding", []) or len(lengths) != 1
+                or not re.fullmatch(r"[0-9]+", lengths[0])):
+            self.close_connection = True
+            self.reply(400, {"error": "invalid_request_framing"})
+            return
         try:
-            size = int(self.headers.get("Content-Length", "0"))
+            size = int(lengths[0])
             if not 0 < size <= 2048:
                 self.reply(413, {"error": "invalid_size"})
                 return

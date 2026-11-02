@@ -182,4 +182,41 @@ class FocusTimerTest {
         assertEquals(5, FocusTimer.sessions(context))
         assertEquals(1, prefs.getInt(dayKey, 0))
     }
+    @Test fun damagedSignedMarkerRejectsUnsignedLegacyAlarmWithoutLosingSession() {
+        val end = System.currentTimeMillis() - 1_000L
+        assertTrue(prefs.edit().putLong("endTime", end)
+            .putString("signedAlarm", "corrupt").commit())
+        val unsigned = Intent(context, FocusDoneReceiver::class.java)
+        assertFalse(FocusTimer.completeFromAlarm(context, unsigned))
+        assertEquals(end, FocusTimer.endTime(context))
+        assertEquals("corrupt", prefs.getString("signedAlarm", null))
+        assertEquals(0, FocusTimer.sessions(context))
+
+        // A correctly matched current alarm remains recoverable.
+        assertTrue(FocusTimer.completeFromAlarm(context,
+            Intent(context, FocusDoneReceiver::class.java)
+                .putExtra("focus_expected_end", end)))
+        assertEquals(1, FocusTimer.sessions(context))
+    }
+
+    @Test fun malformedAlarmExtraDoesNotCrashOrAwardSession() {
+        val end = System.currentTimeMillis() - 1_000L
+        assertTrue(prefs.edit().putLong("endTime", end)
+            .putBoolean("signedAlarm", true).commit())
+        assertFalse(FocusTimer.completeFromAlarm(context,
+            Intent(context, FocusDoneReceiver::class.java)
+                .putExtra("focus_expected_end", "not-a-long")))
+        assertEquals(end, FocusTimer.endTime(context))
+        assertEquals(0, FocusTimer.sessions(context))
+    }
+
+    @Test fun stoppingFocusReturnsSuccessAndKeepsHistoricalCounters() {
+        expiredSession()
+        assertTrue(FocusTimer.complete(context))
+        FocusTimer.start(context, 25)
+        assertTrue(FocusTimer.stop(context))
+        assertEquals(0L, FocusTimer.endTime(context))
+        assertEquals(1, FocusTimer.sessions(context))
+    }
+
 }

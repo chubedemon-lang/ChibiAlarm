@@ -108,4 +108,38 @@ class RpgAccountIsolationTest {
         assertNull(second.dao().character())
         assertSame(first, RpgDatabase.forVerifiedAccount(context, "test:$prefix:one"))
     }
+
+    @Test fun verifiedAccountsNeverInheritGuestLegacyXpEvenAfterReopen() = runBlocking {
+        val context = RuntimeEnvironment.getApplication()
+        val prefix = UUID.randomUUID().toString()
+        val aliceId = "test:$prefix:alice"
+        val bobId = "test:$prefix:bob"
+        try {
+            val alice = RpgDatabase.forVerifiedAccount(context, aliceId)
+            val bob = RpgDatabase.forVerifiedAccount(context, bobId)
+            val today = java.time.LocalDate.of(2026, 11, 2)
+
+            // A device-wide v1.3 XP snapshot must not become Alice's or Bob's XP.
+            RpgEngine(alice).initialize(620, today)
+            RpgEngine(bob).initialize(999, today)
+            assertEquals(0L, alice.dao().character()!!.totalXp)
+            assertEquals(0L, bob.dao().character()!!.totalXp)
+            assertFalse(alice.dao().hasLedgerEntry("migration:life_v12:xp90:v1"))
+            assertFalse(bob.dao().hasLedgerEntry("migration:life_v12:xp90:v1"))
+
+            assertTrue(RpgEngine(alice).claimDailyLogin(today))
+            assertEquals(15L, alice.dao().character()!!.totalXp)
+            assertEquals(0L, bob.dao().character()!!.totalXp)
+            RpgDatabase.closeVerifiedAccount(aliceId)
+
+            val reopened = RpgDatabase.forVerifiedAccount(context, aliceId)
+            RpgEngine(reopened).initialize(2000, today)
+            assertEquals(15L, reopened.dao().character()!!.totalXp)
+            assertFalse(reopened.dao().hasLedgerEntry("migration:life_v12:xp90:v1"))
+            assertFalse(RpgEngine(reopened).claimDailyLogin(today))
+        } finally {
+            RpgDatabase.deleteVerifiedAccount(context, aliceId)
+            RpgDatabase.deleteVerifiedAccount(context, bobId)
+        }
+    }
 }

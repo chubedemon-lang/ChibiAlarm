@@ -74,3 +74,22 @@ and full-screen-intent behavior. Keep PR #1 draft until approved.
 - These changes do not implement account-scoped Focus data, an authenticated
   backend, or real-device Android 16 validation. No SharedPreferences key,
   alarm request code or Room schema was changed.
+
+## Routine editor durable-save ordering (2026-11-02)
+
+- A routine list edit now uses a synchronous SharedPreferences commit before
+  cancelling any removed alarms or installing replacement reminders. Previously
+  the code cancelled reminders first and used asynchronous `apply()`, so a
+  failed storage write could leave the user's old list with missing alarms.
+- A failed commit raises a clear error without changing the previously
+  scheduled alarms. The routine editor keeps the add/edit dialog open on a
+  failed save and shows a retry message; template and delete actions also
+  report failure instead of displaying false success.
+- Coach-generated and offline template plans only claim success after their
+  routine list has been saved. If the separate goal write fails, the UI
+  explicitly reports that the routines may already have been saved.
+- Robolectric exercises a deliberately failing preference editor, checking
+  that the original JSON and scheduled alarm survive. Existing reminder
+  add/delete and stale-broadcast tests remain in CI.
+- This is a local durability fix, not a cross-file transaction, account-scoped
+  alarm isolation, Android 16 physical timing validation or production readiness.

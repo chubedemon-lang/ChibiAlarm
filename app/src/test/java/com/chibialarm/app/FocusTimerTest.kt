@@ -238,4 +238,19 @@ class FocusTimerTest {
         assertEquals(0, FocusTimer.sessionsOnDay(context, "not-a-date"))
         assertEquals(9, prefs.getInt("sessions:2026-02-30", 0))
     }
+
+    @Test fun android13NotificationPermissionDoesNotGateDurableFocusReward() {
+        assertTrue(FocusTimer.canPostCompletionNotification(28, false))
+        assertTrue(FocusTimer.canPostCompletionNotification(32, false))
+        assertFalse(FocusTimer.canPostCompletionNotification(33, false))
+        assertFalse(FocusTimer.canPostCompletionNotification(36, false))
+        assertTrue(FocusTimer.canPostCompletionNotification(33, true))
+
+        expiredSession()
+        // Even when notifications are denied, completing the session still
+        // records the reward once; only the optional notification is skipped.
+        assertTrue(FocusTimer.complete(context))
+        assertEquals(1, FocusTimer.sessions(context))
+        assertFalse(FocusTimer.complete(context))
+    }
 }

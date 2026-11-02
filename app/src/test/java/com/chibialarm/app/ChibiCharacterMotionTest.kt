@@ -38,4 +38,24 @@ class ChibiCharacterMotionTest {
         assertEquals(0f, ChibiCharacterMotion.petHop(100L, -1L, false), 0f)
         assertTrue(ChibiCharacterMotion.breathScale(Long.MAX_VALUE, false).isFinite())
     }
+    @Test fun walkingDustIsBoundedPeriodicAndPurelyVisual() {
+        assertEquals(110, ChibiCharacterMotion.footstepDustAlpha(0L, true, false))
+        assertEquals(110, ChibiCharacterMotion.footstepDustAlpha(480L, true, false))
+        for (time in listOf(-5L, 0L, 1L, 240L, 479L, 480L, Long.MAX_VALUE)) {
+            val alpha = ChibiCharacterMotion.footstepDustAlpha(time, true, false)
+            val radius = ChibiCharacterMotion.footstepDustRadius(time, true, false)
+            assertTrue(alpha in 0..110)
+            assertTrue(radius.isFinite() && radius in 2f..6f)
+        }
+    }
+
+    @Test fun walkingDustStopsImmediatelyWhenIdleOrMotionDisabled() {
+        for (time in listOf(0L, 240L, Long.MAX_VALUE)) {
+            assertEquals(0, ChibiCharacterMotion.footstepDustAlpha(time, false, false))
+            assertEquals(0, ChibiCharacterMotion.footstepDustAlpha(time, true, true))
+            assertEquals(0f, ChibiCharacterMotion.footstepDustRadius(time, false, false), 0f)
+            assertEquals(0f, ChibiCharacterMotion.footstepDustRadius(time, true, true), 0f)
+        }
+    }
+
 }

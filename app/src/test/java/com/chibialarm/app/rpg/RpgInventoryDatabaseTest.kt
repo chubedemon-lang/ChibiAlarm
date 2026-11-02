@@ -156,6 +156,20 @@ class RpgInventoryDatabaseTest {
         assertEquals(0L, db.dao().itemStack("star_fragment")!!.quantity)
     }
 
+    @Test fun negativeCorruptStackCannotBeMadeSpendableByGrant() = runBlocking {
+        val inventory = RpgInventoryEngine(db)
+        val dao = db.dao()
+        dao.insertItemStack(RpgItemStack("herb", -1L, 1L))
+        val receipt = "test:corrupt:grant"
+        try {
+            inventory.grant("herb", 3L, receipt)
+            fail("Negative stored quantity must be rejected before adding items")
+        } catch (_: IllegalArgumentException) { }
+        assertEquals(-1L, dao.itemStack("herb")!!.quantity)
+        assertEquals(0, dao.itemReceiptCount(receipt))
+        assertFalse(inventory.consume("herb", 1L))
+    }
+
     @Test fun grantOverflowRollsBackReceiptAndPreservesBalance() = runBlocking {
         val inventory = RpgInventoryEngine(db)
         val dao = db.dao()

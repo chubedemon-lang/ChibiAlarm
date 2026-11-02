@@ -30,4 +30,17 @@ internal object ChibiCharacterMotion {
         val progress = (PET_REACTION_MS - remaining).toDouble() / PET_REACTION_MS
         return (-8.0 * sin(PI * progress)).toFloat()
     }
+    /** Dust puffs at the mascot's feet: decorative only, never a reward event. */
+    fun footstepDustAlpha(elapsedMs: Long, walking: Boolean, reducedMotion: Boolean): Int {
+        if (!walking || reducedMotion) return 0
+        val phase = (elapsedMs.coerceAtLeast(0L) % 480L).toFloat() / 480f
+        return ((1f - phase) * 110f).toInt().coerceIn(0, 110)
+    }
+
+    fun footstepDustRadius(elapsedMs: Long, walking: Boolean, reducedMotion: Boolean): Float {
+        if (!walking || reducedMotion) return 0f
+        val phase = (elapsedMs.coerceAtLeast(0L) % 480L).toFloat() / 480f
+        return 2f + phase * 4f
+    }
+
 }

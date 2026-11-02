@@ -65,4 +65,20 @@ internal object ChibiAmbientMotion {
         val phase = (elapsedMs.coerceAtLeast(0L) % 420L).toDouble() / 420.0
         return (0.65 + 0.35 * kotlin.math.abs(sin(2.0 * PI * phase + index))).toFloat()
     }
+    /** Three tiny watering droplets per planter, using an 850ms bounded timeline. */
+    fun wateringDropY(remainingMs: Long, index: Int, reducedMotion: Boolean): Float {
+        require(index in 0..2) { "Unknown watering droplet" }
+        val start = 96f + index * 8f
+        if (reducedMotion) return start
+        val elapsed = (850L - remainingMs.coerceIn(0L, 850L)).toFloat() / 850f
+        return start + 55f * elapsed
+    }
+
+    fun wateringDropAlpha(remainingMs: Long, reducedMotion: Boolean): Int {
+        if (remainingMs <= 0L) return 0
+        if (reducedMotion) return 180
+        return (210f * (remainingMs.coerceAtMost(850L).toFloat() / 850f))
+            .toInt().coerceIn(0, 210)
+    }
+
 }

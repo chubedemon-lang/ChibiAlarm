@@ -87,10 +87,17 @@ object LifeData {
         RoutineReminder.rescheduleAll(ctx)
         ChibiWidget.updateAll(ctx)
     }
-    fun isDone(ctx:Context,id:Int,date:String=today()):Boolean=prefs(ctx).getBoolean("done:$date:$id",false)
-    fun mark(ctx:Context,id:Int,done:Boolean) {
-        prefs(ctx).edit().putBoolean("done:${today()}:$id",done).apply()
-        ChibiWidget.updateAll(ctx)
+    // A malformed legacy checkbox must not crash Routine or erase other check-ins.
+    // Keep its raw value untouched until the user explicitly changes that checkbox.
+    fun isDone(ctx:Context,id:Int,date:String=today()):Boolean = try {
+        prefs(ctx).getBoolean("done:$date:$id",false)
+    } catch (_: ClassCastException) { false }
+
+    /** Return false on a failed durable write; never claim a check-in was saved. */
+    fun mark(ctx:Context,id:Int,done:Boolean):Boolean {
+        val saved = prefs(ctx).edit().putBoolean("done:${today()}:$id",done).commit()
+        if (saved) ChibiWidget.updateAll(ctx)
+        return saved
     }
     fun count(ctx:Context,date:String=today()):Int=routines(ctx).count { isDone(ctx,it.id,date) }
     fun nextId():Int=(System.currentTimeMillis()%1800000000L).toInt()

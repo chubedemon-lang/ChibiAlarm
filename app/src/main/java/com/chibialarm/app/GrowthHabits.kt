@@ -47,8 +47,11 @@ object GrowthHabits {
     }
 
     /** An invalid old check-in is not a completed habit and remains untouched. */
-    fun isDone(context: Context, name: String, day: String): Boolean =
-        prefs(context).all["done:$day:$name"] == true
+    fun isDone(context: Context, name: String, day: String): Boolean = try {
+        prefs(context).getBoolean("done:$day:$name", false)
+    } catch (_: ClassCastException) {
+        false
+    }
 
     /** A failed write must never be reported as a successful daily check-in. */
     @Synchronized fun setDone(context: Context, name: String, day: String, done: Boolean): Boolean =

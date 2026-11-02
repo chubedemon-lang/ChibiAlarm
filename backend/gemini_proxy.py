@@ -136,7 +136,7 @@ def unsafe_unicode_character(char, allow_response_whitespace=False):
     WORD JOINER (U+2060) and U+2028/U+2029, which hand-picked ranges miss.
     Normal Vietnamese combining accents and ordinary emoji remain valid.
     """
-    if allow_response_whitespace and char in ("\\n", "\\t"):
+    if allow_response_whitespace and char in ("\n", "\t"):
         return False
     return unicodedata.category(char) in ("Cc", "Cf", "Cs", "Zl", "Zp")
 

@@ -154,7 +154,9 @@ def extract_safe_message(result):
     message = "".join(
         part["text"] for part in parts
         if isinstance(part, dict) and isinstance(part.get("text"), str)
-    ).strip()
+    )
+    # Validate before stripping: str.strip() silently removes Unicode line
+    # separators (U+2028/U+2029), masking unsafe upstream content.
     if not message:
         raise ValueError("empty Gemini response")
     # Disallow invalid UTF-8 code points, control characters, and directional
@@ -162,6 +164,9 @@ def extract_safe_message(result):
     if any(unsafe_unicode_character(ch, allow_response_whitespace=True)
            for ch in message):
         raise ValueError("unsafe Gemini response text")
+    message = message.strip()
+    if not message:
+        raise ValueError("empty Gemini response")
     return message[:500]
 
 

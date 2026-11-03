@@ -257,6 +257,9 @@ class Handler(BaseHTTPRequestHandler):
         try:
             size = int(lengths[0])
             if not 0 < size <= 2048:
+                # Unread bytes must not be interpreted as a subsequent request
+                # on a persistent connection after rejecting an oversized body.
+                self.close_connection = True
                 self.reply(413, {"error": "invalid_size"})
                 return
             raw_body = self.rfile.read(size)

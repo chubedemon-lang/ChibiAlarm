@@ -193,6 +193,32 @@ class ProxyTests(unittest.TestCase):
             upstream.assert_not_called()
             self.assertFalse(os.path.exists(proxy.QUOTA_DB))
 
+    def test_oversized_request_closes_connection_without_quota(self):
+        # A rejected body must not remain buffered for another HTTP request.
+        with patch.object(proxy, "open_gemini") as upstream:
+            with socket.create_connection(
+                    ("127.0.0.1", self.server.server_port), timeout=4) as sock:
+                sock.settimeout(4)
+                sock.sendall((
+                    "POST /generate HTTP/1.1\\r\\n"
+                    "Host: localhost\\r\\n"
+                    "Authorization: Bearer " + self.token + "\\r\\n"
+                    "Content-Type: application/json\\r\\n"
+                    "Content-Length: 2049\\r\\n"
+                    "Connection: keep-alive\\r\\n\\r\\n"
+                ).encode("ascii"))
+                chunks = []
+                while True:
+                    data = sock.recv(4096)
+                    if not data:
+                        break
+                    chunks.append(data)
+            response = b"".join(chunks)
+            self.assertIn(b" 413 ", response.split(b"\\r\\n", 1)[0])
+            self.assertEqual(response.count(b"HTTP/1."), 1)
+            upstream.assert_not_called()
+            self.assertFalse(os.path.exists(proxy.QUOTA_DB))
+
     def test_truncated_request_body_does_not_consume_quota(self):
         with patch.object(proxy, "open_gemini") as upstream:
             with socket.create_connection(

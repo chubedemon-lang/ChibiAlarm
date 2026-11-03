@@ -268,9 +268,13 @@ class Handler(BaseHTTPRequestHandler):
             profile = payload.get("profile", 1)
             if not isinstance(topic, str) or not isinstance(profile, int) or isinstance(profile, bool):
                 raise ValueError("invalid fields")
-            topic = topic.strip()
+            # Validate the original text before strip(): Python strips Unicode
+            # line separators at the edges, which would hide unsafe input.
             if not safe_user_topic(topic):
                 raise ValueError("invalid topic")
+            topic = topic.strip()
+            if not topic:
+                raise ValueError("empty topic")
             if profile not in KEYS or not KEYS[profile]:
                 self.reply(400, {"error": "profile_unavailable"})
                 return

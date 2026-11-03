@@ -111,10 +111,12 @@ class ChibiHeroView(context: Context) : View(context) {
             MotionEvent.ACTION_MOVE -> {
                 // A scroll or swipe must never pet, claim a reward or change rooms.
                 // Let the parent ScrollView intercept movement naturally.
-                tapGesture.move(event.x, event.y)
+                if (event.pointerCount != 1) tapGesture.cancel()
+                else tapGesture.move(event.x, event.y)
                 return true
             }
-            MotionEvent.ACTION_POINTER_DOWN, MotionEvent.ACTION_CANCEL, MotionEvent.ACTION_OUTSIDE -> {
+            MotionEvent.ACTION_POINTER_DOWN, MotionEvent.ACTION_POINTER_UP,
+            MotionEvent.ACTION_CANCEL, MotionEvent.ACTION_OUTSIDE -> {
                 tapGesture.cancel()
                 return true
             }
@@ -372,12 +374,17 @@ class ChibiHeroView(context: Context) : View(context) {
         canvas.drawPath(smilePath, paint)
         paint.style = Paint.Style.FILL
         canvas.restore()
-        if (android.os.SystemClock.uptimeMillis() < happyUntil) {
-            paint.color = Color.rgb(231, 79, 140)
-            paint.textSize = 30f
-            canvas.drawText("♥", 219f, 70f, paint)
-            paint.textSize = 22f
-            canvas.drawText("♥", 91f, 86f, paint)
+        if (now < happyUntil) {
+            val remaining = happyUntil - now
+            val alpha = ChibiCharacterMotion.petHeartAlpha(remaining, reducedMotion)
+            if (alpha > 0) {
+                val rise = ChibiCharacterMotion.petHeartRise(remaining, reducedMotion)
+                paint.color = Color.argb(alpha, 231, 79, 140)
+                paint.textSize = 30f
+                canvas.drawText("♥", 219f, 70f - rise, paint)
+                paint.textSize = 22f
+                canvas.drawText("♥", 91f, 86f - rise * 0.75f, paint)
+            }
         }
         if (now < transitionUntil) {
             val remaining = ((transitionUntil - now).toFloat() / 350f).coerceIn(0f, 1f)

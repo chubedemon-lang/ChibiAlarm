@@ -30,6 +30,22 @@ internal object ChibiCharacterMotion {
         val progress = (PET_REACTION_MS - remaining).toDouble() / PET_REACTION_MS
         return (-8.0 * sin(PI * progress)).toFloat()
     }
+    /**
+     * Two hearts rise briefly after a deliberate pet. These values are presentation-only:
+     * the reward is still guarded by the durable, once-per-day Room receipt.
+     * Reject stale deadlines rather than drawing hearts indefinitely.
+     */
+    fun petHeartRise(remainingMs: Long, reducedMotion: Boolean): Float {
+        if (reducedMotion || remainingMs !in 1L..PET_REACTION_MS) return 0f
+        return 18f * (1f - remainingMs.toFloat() / PET_REACTION_MS)
+    }
+
+    fun petHeartAlpha(remainingMs: Long, reducedMotion: Boolean): Int {
+        if (remainingMs !in 1L..PET_REACTION_MS) return 0
+        if (reducedMotion) return 255
+        return (255f * remainingMs.toFloat() / PET_REACTION_MS).toInt().coerceIn(0, 255)
+    }
+
     /** Dust puffs at the mascot's feet: decorative only, never a reward event. */
     fun footstepDustAlpha(elapsedMs: Long, walking: Boolean, reducedMotion: Boolean): Int {
         if (!walking || reducedMotion) return 0

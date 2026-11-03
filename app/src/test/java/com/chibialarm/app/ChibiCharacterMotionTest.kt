@@ -38,6 +38,30 @@ class ChibiCharacterMotionTest {
         assertEquals(0f, ChibiCharacterMotion.petHop(100L, -1L, false), 0f)
         assertTrue(ChibiCharacterMotion.breathScale(Long.MAX_VALUE, false).isFinite())
     }
+    @Test fun petHeartsFadeAndRiseWithinTheReactionWindow() {
+        assertEquals(0, ChibiCharacterMotion.petHeartAlpha(0L, false))
+        assertEquals(255, ChibiCharacterMotion.petHeartAlpha(1_100L, false))
+        assertEquals(0f, ChibiCharacterMotion.petHeartRise(1_100L, false), 0f)
+        assertTrue(ChibiCharacterMotion.petHeartRise(550L, false) in 8.9f..9.1f)
+        assertTrue(ChibiCharacterMotion.petHeartAlpha(550L, false) in 126..128)
+        for (remaining in listOf(1L, 100L, 550L, 1_099L, 1_100L)) {
+            assertTrue(ChibiCharacterMotion.petHeartAlpha(remaining, false) in 0..255)
+            assertTrue(ChibiCharacterMotion.petHeartRise(remaining, false) in 0f..18f)
+        }
+    }
+
+    @Test fun petHeartsAreStillInReducedMotionAndIgnoreStaleDeadlines() {
+        for (remaining in listOf(1L, 500L, 1_100L)) {
+            assertEquals(255, ChibiCharacterMotion.petHeartAlpha(remaining, true))
+            assertEquals(0f, ChibiCharacterMotion.petHeartRise(remaining, true), 0f)
+        }
+        for (remaining in listOf(-1L, 0L, 1_101L, Long.MAX_VALUE)) {
+            assertEquals(0, ChibiCharacterMotion.petHeartAlpha(remaining, false))
+            assertEquals(0, ChibiCharacterMotion.petHeartAlpha(remaining, true))
+            assertEquals(0f, ChibiCharacterMotion.petHeartRise(remaining, false), 0f)
+        }
+    }
+
     @Test fun walkingDustIsBoundedPeriodicAndPurelyVisual() {
         assertEquals(110, ChibiCharacterMotion.footstepDustAlpha(0L, true, false))
         assertEquals(110, ChibiCharacterMotion.footstepDustAlpha(480L, true, false))

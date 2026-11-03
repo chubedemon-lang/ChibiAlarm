@@ -58,7 +58,7 @@ class RequestBoundaryTests(unittest.TestCase):
     def test_unconfigured_profile_returns_profile_unavailable_without_quota(self):
         with patch.object(proxy, "open_gemini") as upstream:
             self.assertEqual((400, {"error": "profile_unavailable"}),
-                             self.post(b\'{"topic":"wake","profile":0}\'))
+                             self.post(b'{"topic":"wake","profile":0}'))
             upstream.assert_not_called()
         self.assertFalse(os.path.exists(proxy.QUOTA_DB))
 

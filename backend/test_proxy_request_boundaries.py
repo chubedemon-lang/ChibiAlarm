@@ -43,7 +43,6 @@ class RequestBoundaryTests(unittest.TestCase):
 
     def test_malformed_utf8_and_non_object_json_fail_before_quota(self):
         cases = (
-            b'{"topic":"\\xff"}',  # valid JSON string; harmless literal escape
             b'{"topic":"\xff"}',   # invalid UTF-8 byte
             b'null', b'[]', b'"morning"', b'123', b'true',
             b'{"topic":"wake","profile":true}',
@@ -51,7 +50,7 @@ class RequestBoundaryTests(unittest.TestCase):
             b'{"topic":"wake","profile":0}',
         )
         with patch.object(proxy, "open_gemini") as upstream:
-            for raw in cases[1:]:
+            for raw in cases:
                 with self.subTest(raw=raw):
                     self.assertEqual((400, {"error": "invalid_request"}), self.post(raw))
             upstream.assert_not_called()

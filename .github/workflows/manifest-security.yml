@@ -1,0 +1,19 @@
+name: Android manifest security regression
+on:
+  push:
+    branches:
+      - feature/rpg-life-r1-foundation
+  pull_request:
+  workflow_dispatch:
+jobs:
+  manifest-security:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify cleartext, component exposure and backup declarations
+        run: python -m unittest discover -s tools -p 'test_manifest_security.py' -v

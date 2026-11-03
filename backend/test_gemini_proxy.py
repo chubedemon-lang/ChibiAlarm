@@ -140,6 +140,22 @@ class ProxyTests(unittest.TestCase):
             upstream.assert_not_called()
             self.assertFalse(os.path.exists(proxy.QUOTA_DB))
 
+    def test_nonfinite_json_constants_rejected_before_quota(self):
+        # Python json.loads accepts NaN and Infinity by default, although
+        # they are invalid JSON and can create inconsistent proxy parsing.
+        with patch.object(proxy, "open_gemini") as upstream:
+            for body in (
+                b'{"topic":"wake","profile":NaN}',
+                b'{"topic":"wake","profile":Infinity}',
+                b'{"topic":"wake","profile":-Infinity}',
+                b'{"topic":"wake","extra":{"value":NaN}}',
+            ):
+                with self.subTest(body=body):
+                    self.assertEqual((400, {"error": "invalid_request"}),
+                                     self.request_raw(body))
+            upstream.assert_not_called()
+            self.assertFalse(os.path.exists(proxy.QUOTA_DB))
+
     def test_unpaired_unicode_surrogates_rejected_before_quota(self):
         # json.loads permits escaped lone surrogates, but UTF-8 upstream encoding
         # cannot represent them. Reject before consuming any quota.

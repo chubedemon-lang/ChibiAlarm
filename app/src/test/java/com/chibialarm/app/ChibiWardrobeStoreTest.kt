@@ -106,6 +106,32 @@ class ChibiWardrobeStoreTest {
         ChibiWardrobeStore.deleteVerifiedAccount(context, bob)
     }
 
+    @Test fun accountSubjectCaseAndUnicodeRemainDistinctNamespaces() {
+        val context = RuntimeEnvironment.getApplication()
+        val subjects = listOf("issuer:User", "issuer:user", "issuer:é", "issuer:e\u0301")
+        val names = subjects.map(ChibiWardrobeStore::verifiedPreferenceName)
+        assertEquals(subjects.size, names.toSet().size)
+        try {
+            subjects.forEachIndexed { index, subject ->
+                val outfit = if (index % 2 == 0) ChibiCosmetics.Outfit.STARTER
+                    else ChibiCosmetics.Outfit.SCARF
+                assertTrue(ChibiWardrobeStore.forVerifiedAccount(context, subject).equip(10, outfit))
+            }
+            subjects.forEachIndexed { index, subject ->
+                val expected = if (index % 2 == 0) ChibiCosmetics.Outfit.STARTER
+                    else ChibiCosmetics.Outfit.SCARF
+                assertEquals(expected, ChibiWardrobeStore.forVerifiedAccount(context, subject).selected(10))
+            }
+            assertTrue(ChibiWardrobeStore.deleteVerifiedAccount(context, subjects[0]))
+            assertEquals(ChibiCosmetics.Outfit.CROWN,
+                ChibiWardrobeStore.forVerifiedAccount(context, subjects[0]).selected(10))
+            assertEquals(ChibiCosmetics.Outfit.SCARF,
+                ChibiWardrobeStore.forVerifiedAccount(context, subjects[1]).selected(10))
+        } finally {
+            subjects.forEach { ChibiWardrobeStore.deleteVerifiedAccount(context, it) }
+        }
+    }
+
     @Test fun verifiedAccountFilenamesAreOpaqueAndRejectInvalidIdentity() {
         val alice = ChibiWardrobeStore.verifiedPreferenceName("issuer:alice")
         assertEquals(alice, ChibiWardrobeStore.verifiedPreferenceName("issuer:alice"))

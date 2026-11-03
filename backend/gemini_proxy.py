@@ -192,6 +192,11 @@ def reject_duplicate_json_keys(pairs):
     return result
 
 
+def reject_nonfinite_json_constant(value):
+    """Reject NaN/Infinity, which Python accepts but RFC 8259 JSON forbids."""
+    raise ValueError("non-finite JSON number")
+
+
 class Handler(BaseHTTPRequestHandler):
     def setup(self):
         # ThreadingHTTPServer otherwise allows a slow client to hold a thread
@@ -257,7 +262,8 @@ class Handler(BaseHTTPRequestHandler):
             raw_body = self.rfile.read(size)
             if len(raw_body) != size:
                 raise ValueError("truncated request body")
-            payload = json.loads(raw_body, object_pairs_hook=reject_duplicate_json_keys)
+            payload = json.loads(raw_body, object_pairs_hook=reject_duplicate_json_keys,
+                                 parse_constant=reject_nonfinite_json_constant)
             if not isinstance(payload, dict):
                 raise ValueError("expected object")
             # Refuse extra fields: private profile/fitness data must never be

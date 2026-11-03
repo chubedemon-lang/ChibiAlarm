@@ -255,6 +255,10 @@ class Handler(BaseHTTPRequestHandler):
             payload = json.loads(raw_body, object_pairs_hook=reject_duplicate_json_keys)
             if not isinstance(payload, dict):
                 raise ValueError("expected object")
+            # Refuse extra fields: private profile/fitness data must never be
+            # silently accepted by this narrow alarm-text endpoint.
+            if set(payload) - {"topic", "profile"}:
+                raise ValueError("unexpected request fields")
             topic = payload.get("topic", "")
             profile = payload.get("profile", 1)
             if not isinstance(topic, str) or not isinstance(profile, int) or isinstance(profile, bool):

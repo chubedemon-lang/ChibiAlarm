@@ -55,6 +55,23 @@ class RequestBoundaryTests(unittest.TestCase):
             upstream.assert_not_called()
         self.assertFalse(os.path.exists(proxy.QUOTA_DB))
 
+    def test_truncated_json_and_nonfinite_numbers_fail_closed(self):
+        # Malformed JSON and Python-specific NaN/Infinity tokens must never
+        # reach the paid upstream or allocate per-profile quota state.
+        cases = (
+            b'{"topic":',
+            b'{"topic":"wake",}',
+            b'{"topic":"wake"} trailing',
+            b'{"topic":"wake","extra":{"value":NaN}}',
+            b'{"topic":"wake","extra":[Infinity,-Infinity]}',
+        )
+        with patch.object(proxy, "open_gemini") as upstream:
+            for raw in cases:
+                with self.subTest(raw=raw):
+                    self.assertEqual((400, {"error": "invalid_request"}), self.post(raw))
+            upstream.assert_not_called()
+        self.assertFalse(os.path.exists(proxy.QUOTA_DB))
+
     def test_unconfigured_profile_returns_profile_unavailable_without_quota(self):
         with patch.object(proxy, "open_gemini") as upstream:
             self.assertEqual((400, {"error": "profile_unavailable"}),

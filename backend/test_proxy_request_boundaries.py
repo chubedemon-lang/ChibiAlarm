@@ -72,6 +72,23 @@ class RequestBoundaryTests(unittest.TestCase):
             upstream.assert_not_called()
         self.assertFalse(os.path.exists(proxy.QUOTA_DB))
 
+    def test_duplicate_keys_and_unexpected_private_fields_fail_before_quota(self):
+        # Duplicate keys can be interpreted differently by JSON gateways.
+        # Extra private data must not be silently forwarded to Gemini.
+        cases = (
+            b'{"topic":"wake","topic":"override"}',
+            b'{"topic":"wake","profile":1,"profile":2}',
+            b'{"topic":"wake","extra":{"a":1,"a":2}}',
+            b'{"topic":"wake","fitness":{"heart_rate":72}}',
+            b'{"topic":"wake","chat_history":["private message"]}',
+        )
+        with patch.object(proxy, "open_gemini") as upstream:
+            for raw in cases:
+                with self.subTest(raw=raw):
+                    self.assertEqual((400, {"error": "invalid_request"}), self.post(raw))
+            upstream.assert_not_called()
+        self.assertFalse(os.path.exists(proxy.QUOTA_DB))
+
     def test_unconfigured_profile_returns_profile_unavailable_without_quota(self):
         with patch.object(proxy, "open_gemini") as upstream:
             self.assertEqual((400, {"error": "profile_unavailable"}),

@@ -47,12 +47,18 @@ class RequestBoundaryTests(unittest.TestCase):
             b'null', b'[]', b'"morning"', b'123', b'true',
             b'{"topic":"wake","profile":true}',
             b'{"topic":"wake","profile":1.0}',
-            b'{"topic":"wake","profile":0}',
         )
         with patch.object(proxy, "open_gemini") as upstream:
             for raw in cases:
                 with self.subTest(raw=raw):
                     self.assertEqual((400, {"error": "invalid_request"}), self.post(raw))
+            upstream.assert_not_called()
+        self.assertFalse(os.path.exists(proxy.QUOTA_DB))
+
+    def test_unconfigured_profile_returns_profile_unavailable_without_quota(self):
+        with patch.object(proxy, "open_gemini") as upstream:
+            self.assertEqual((400, {"error": "profile_unavailable"}),
+                             self.post(b\'{"topic":"wake","profile":0}\'))
             upstream.assert_not_called()
         self.assertFalse(os.path.exists(proxy.QUOTA_DB))
 

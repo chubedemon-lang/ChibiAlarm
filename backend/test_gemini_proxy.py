@@ -329,6 +329,21 @@ class ProxyTests(unittest.TestCase):
                     self.assertEqual(status, 502)
                     self.assertEqual(body, {"error": "upstream_unavailable"})
 
+    def test_upstream_boundary_unicode_separators_rejected_before_strip(self):
+        # str.strip() removes U+2028/U+2029; they must not disappear
+        # before the security validation sees the raw Gemini response.
+        with patch.object(proxy, "DAILY_LIMIT", 20):
+            for text in ("\\u2028Xin chào", "Xin chào\\u2029",
+                         "\\u2029", "  \\u2028Xin chào  "):
+                with self.subTest(text=repr(text)):
+                    fake = FakeResponse(json.dumps({
+                        "candidates": [{"content": {"parts": [{"text": text}]}}]
+                    }).encode("utf-8"))
+                    with patch.object(proxy, "open_gemini", return_value=fake):
+                        status, body = self.request()
+                    self.assertEqual(status, 502)
+                    self.assertEqual(body, {"error": "upstream_unavailable"})
+
     def test_vietnamese_combining_accents_emoji_and_response_newlines_are_valid(self):
         topic = "Thức dậy sớm, uống nước! \U0001f430"
         self.assertTrue(proxy.safe_user_topic(topic))

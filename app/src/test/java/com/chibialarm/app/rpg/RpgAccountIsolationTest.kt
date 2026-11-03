@@ -212,4 +212,35 @@ class RpgAccountIsolationTest {
             RpgDatabase.deleteVerifiedAccount(context, bobId)
         }
     }
+
+    @Test fun identicalReceiptKeysAreScopedToEachVerifiedAccount() = runBlocking {
+        val context = RuntimeEnvironment.getApplication()
+        val prefix = UUID.randomUUID().toString()
+        val aliceId = "test:$prefix:alice-receipts"
+        val bobId = "test:$prefix:bob-receipts"
+        try {
+            val alice = RpgDatabase.forVerifiedAccount(context, aliceId)
+            val bob = RpgDatabase.forVerifiedAccount(context, bobId)
+            val receipt = "garden:forage:2026-11-04"
+            assertTrue(RpgInventoryEngine(alice).grant("herb", 1L, receipt))
+            assertTrue(RpgInventoryEngine(bob).grant("star_fragment", 1L, receipt))
+            assertFalse(RpgInventoryEngine(alice).grant("herb", 1L, receipt))
+            assertFalse(RpgInventoryEngine(bob).grant("star_fragment", 1L, receipt))
+            assertEquals(1L, alice.dao().itemStack("herb")?.quantity)
+            assertNull(alice.dao().itemStack("star_fragment"))
+            assertEquals(1L, bob.dao().itemStack("star_fragment")?.quantity)
+            assertNull(bob.dao().itemStack("herb"))
+            RpgDatabase.closeVerifiedAccount(aliceId)
+            RpgDatabase.closeVerifiedAccount(bobId)
+            val reopenedAlice = RpgDatabase.forVerifiedAccount(context, aliceId)
+            val reopenedBob = RpgDatabase.forVerifiedAccount(context, bobId)
+            assertFalse(RpgInventoryEngine(reopenedAlice).grant("herb", 1L, receipt))
+            assertFalse(RpgInventoryEngine(reopenedBob).grant("star_fragment", 1L, receipt))
+            assertEquals(1L, reopenedAlice.dao().itemStack("herb")?.quantity)
+            assertEquals(1L, reopenedBob.dao().itemStack("star_fragment")?.quantity)
+        } finally {
+            RpgDatabase.deleteVerifiedAccount(context, aliceId)
+            RpgDatabase.deleteVerifiedAccount(context, bobId)
+        }
+    }
 }

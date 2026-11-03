@@ -98,6 +98,18 @@ class ProxyTests(unittest.TestCase):
             upstream.assert_not_called()
             self.assertFalse(os.path.exists(proxy.QUOTA_DB))
 
+    def test_edge_unicode_separators_rejected_before_quota(self):
+        # str.strip() removes U+2028/U+2029 at the edges. Validation must
+        # inspect the raw topic before any whitespace normalization.
+        with patch.object(proxy, "open_gemini") as upstream:
+            for topic in ("\\u2028wake", "wake\\u2029", "\\u2029wake\\u2028"):
+                with self.subTest(topic=repr(topic)):
+                    status, body = self.request({"topic": topic})
+                    self.assertEqual(400, status)
+                    self.assertEqual({"error": "invalid_request"}, body)
+            upstream.assert_not_called()
+            self.assertFalse(os.path.exists(proxy.QUOTA_DB))
+
     def test_normal_vietnamese_topic_remains_accepted(self):
         self.assertTrue(proxy.safe_user_topic("Dậy sớm, uống nước và tập thể dục!"))
         self.assertFalse(proxy.safe_user_topic(""))

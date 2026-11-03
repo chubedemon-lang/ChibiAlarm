@@ -102,7 +102,7 @@ class ProxyTests(unittest.TestCase):
         # str.strip() removes U+2028/U+2029 at the edges. Validation must
         # inspect the raw topic before any whitespace normalization.
         with patch.object(proxy, "open_gemini") as upstream:
-            for topic in ("\\u2028wake", "wake\\u2029", "\\u2029wake\\u2028"):
+            for topic in ("\u2028wake", "wake\u2029", "\u2029wake\u2028"):
                 with self.subTest(topic=repr(topic)):
                     status, body = self.request({"topic": topic})
                     self.assertEqual(400, status)

@@ -103,6 +103,17 @@ class ProxyTests(unittest.TestCase):
         self.assertFalse(proxy.safe_user_topic(""))
         self.assertFalse(proxy.safe_user_topic("x" * 401))
 
+    def test_unexpected_personal_fields_rejected_before_quota(self):
+        # Do not silently accept accidental health, account or chat data.
+        with patch.object(proxy, "open_gemini") as upstream:
+            for field in ("user_id", "fitness_history", "chat", "metadata"):
+                with self.subTest(field=field):
+                    status, body = self.request({"topic": "morning", field: "private"})
+                    self.assertEqual(status, 400)
+                    self.assertEqual(body, {"error": "invalid_request"})
+            upstream.assert_not_called()
+            self.assertFalse(os.path.exists(proxy.QUOTA_DB))
+
     def test_duplicate_json_keys_rejected_before_quota_or_upstream(self):
         # Duplicate keys at any depth are ambiguous and must never reach Gemini.
         cases = (

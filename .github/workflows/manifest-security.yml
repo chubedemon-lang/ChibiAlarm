@@ -17,3 +17,5 @@ jobs:
           python-version: '3.11'
       - name: Verify cleartext, component exposure and backup declarations
         run: python -m unittest discover -s tools -p 'test_manifest_security.py' -v
+      - name: Verify Android component exposure regression tests
+        run: python -m unittest discover -s tests -p 'test_*.py' -v

@@ -76,6 +76,30 @@ class PublicEntrypointRegressionTests(unittest.TestCase):
                     for node in widget.findall("meta-data")]
         self.assertEqual([("android.appwidget.provider", "@xml/chibi_widget_info")], metadata)
 
+    def test_private_components_cannot_gain_implicit_entrypoints(self):
+        # Explicit in-app intents do not require filters. An accidental filter
+        # can expose a private screen if a future manifest merge changes export.
+        for tag in ("activity", "activity-alias", "receiver", "service", "provider"):
+            for node in self.app.findall(tag):
+                if node.get(ANDROID + "exported") == "false":
+                    name = node.get(ANDROID + "name")
+                    if name == ".BootReceiver":
+                        continue  # Android system broadcasts are intentional.
+                    self.assertEqual([], node.findall("intent-filter"),
+                                     f"Unexpected intent filter on private {tag} {name}")
+
+    def test_no_component_uses_risky_task_or_uri_overrides(self):
+        for tag in ("activity", "activity-alias", "receiver", "service", "provider"):
+            for node in self.app.findall(tag):
+                name = node.get(ANDROID + "name")
+                for attr in ("taskAffinity", "allowTaskReparenting", "documentLaunchMode"):
+                    self.assertIsNone(node.get(ANDROID + attr),
+                                      f"Review {attr} on {tag} {name} before enabling")
+                self.assertNotEqual("true", node.get(ANDROID + "grantUriPermissions"),
+                                    f"Unexpected URI grant on {tag} {name}")
+                self.assertEqual([], node.findall("grant-uri-permission"),
+                                 f"Unexpected URI grant rules on {tag} {name}")
+
     def test_system_alarm_receivers_remain_private(self):
         private_receivers = {
             ".AlarmReceiver", ".BootReceiver", ".FocusDoneReceiver",

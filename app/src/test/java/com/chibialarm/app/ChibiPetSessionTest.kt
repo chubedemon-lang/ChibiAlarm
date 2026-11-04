@@ -55,4 +55,33 @@ class ChibiPetSessionTest {
             assertEquals(0, session.progress(today))
         }
     }
+    @Test fun switchingLocalDatesNeverCarriesUnpaidPetProgress() {
+        val session = ChibiPetSession()
+        val monday = "2026-11-02"
+        val tuesday = "2026-11-03"
+        assertEquals(1, session.pet(monday))
+        assertEquals(2, session.pet(monday))
+        assertEquals(0, session.progress(tuesday))
+        assertEquals(1, session.pet(tuesday))
+        // A manual clock rollback must not resurrect Monday's partial taps.
+        assertEquals(0, session.progress(monday))
+        assertEquals(1, session.pet(monday))
+        assertEquals(0, session.progress(tuesday))
+    }
+
+    @Test fun staleSnapshotCannotRestoreAcrossDateBoundary() {
+        val session = ChibiPetSession()
+        val monday = "2026-11-02"
+        val tuesday = "2026-11-03"
+        repeat(2) { session.pet(monday) }
+        val stale = session.snapshot(monday)
+        val restored = ChibiPetSession()
+        restored.restore(tuesday, stale)
+        assertEquals(0, restored.progress(tuesday))
+        assertEquals(1, restored.pet(tuesday))
+        // Repeated restore from an old saved instance must remain harmless.
+        restored.restore(tuesday, stale)
+        assertEquals(0, restored.progress(tuesday))
+    }
+
 }

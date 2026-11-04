@@ -7,6 +7,7 @@ Python 3.10+, standard library only.
 
 import hmac
 import json
+import math
 import os
 import re
 import sqlite3
@@ -192,6 +193,14 @@ def reject_duplicate_json_keys(pairs):
     return result
 
 
+def reject_nonfinite_json_float(value):
+    """Reject finite-looking JSON exponents that overflow Python floats."""
+    parsed = float(value)
+    if not math.isfinite(parsed):
+        raise ValueError("overflowed JSON number")
+    return parsed
+
+
 def reject_nonfinite_json_constant(value):
     """Reject NaN/Infinity, which Python accepts but RFC 8259 JSON forbids."""
     raise ValueError("non-finite JSON number")
@@ -266,7 +275,8 @@ class Handler(BaseHTTPRequestHandler):
             if len(raw_body) != size:
                 raise ValueError("truncated request body")
             payload = json.loads(raw_body, object_pairs_hook=reject_duplicate_json_keys,
-                                 parse_constant=reject_nonfinite_json_constant)
+                                 parse_constant=reject_nonfinite_json_constant,
+                                 parse_float=reject_nonfinite_json_float)
             if not isinstance(payload, dict):
                 raise ValueError("expected object")
             # Refuse extra fields: private profile/fitness data must never be

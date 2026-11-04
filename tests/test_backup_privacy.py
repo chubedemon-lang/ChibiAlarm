@@ -8,6 +8,7 @@ import xml.etree.ElementTree as ET
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 XML = ROOT / "app" / "src" / "main" / "res" / "xml"
+ANDROID_NS = "{http://schemas.android.com/apk/res/android}"
 SENSITIVE_PREFS = frozenset({
     "gemini_secure.xml",
     "gemini_vault.xml",
@@ -27,8 +28,17 @@ def excluded_preferences(element):
 class BackupPrivacyRegressionTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        cls.manifest = ET.parse(ROOT / "app" / "src" / "main" / "AndroidManifest.xml").getroot()
         cls.legacy = ET.parse(XML / "backup_rules.xml").getroot()
         cls.modern = ET.parse(XML / "data_extraction_rules.xml").getroot()
+
+    def test_manifest_actually_uses_both_audited_backup_rule_files(self):
+        # Valid exclusion XML is useless if a future manifest edit stops
+        # referencing it. Guard both legacy and Android 12+ entry points.
+        app = self.manifest.find("application")
+        self.assertIsNotNone(app)
+        self.assertEqual("@xml/backup_rules", app.get(ANDROID_NS + "fullBackupContent"))
+        self.assertEqual("@xml/data_extraction_rules", app.get(ANDROID_NS + "dataExtractionRules"))
 
     def test_sensitive_preferences_excluded_on_android_6_to_11(self):
         self.assertEqual("full-backup-content", self.legacy.tag)

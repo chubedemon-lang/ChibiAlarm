@@ -134,6 +134,42 @@ class BackupPrivacyRegressionTests(unittest.TestCase):
                     self.assertEqual(path, path.strip())
                     self.assertNotIn("..", path.split("/"))
 
+    def test_sensitive_names_cannot_be_included_with_path_aliases(self):
+        # Reject prefixed paths, Windows separators and case-only aliases.
+        # Such entries deserve review rather than relying on exact matching.
+        for destination, rules in (
+            ("legacy", self.legacy),
+            ("cloud", self.modern.find("cloud-backup")),
+            ("transfer", self.modern.find("device-transfer")),
+        ):
+            with self.subTest(destination=destination):
+                self.assertIsNotNone(rules)
+                for node in rules.findall("include"):
+                    raw = (node.get("path") or "").replace("\\", "/")
+                    parts = [part.casefold() for part in raw.split("/") if part not in ("", ".")]
+                    self.assertFalse(
+                        any(part in {name.casefold() for name in SENSITIVE_PREFS}
+                            for part in parts),
+                        f"Sensitive preference included via {raw!r}",
+                    )
+
+    def test_no_directory_wide_include_of_shared_preferences(self):
+        # A directory-level include under root/file can accidentally sweep
+        # credential and coach-history XML into a future backup.
+        for destination, rules in (
+            ("legacy", self.legacy),
+            ("cloud", self.modern.find("cloud-backup")),
+            ("transfer", self.modern.find("device-transfer")),
+        ):
+            with self.subTest(destination=destination):
+                self.assertIsNotNone(rules)
+                for node in rules.findall("include"):
+                    path = (node.get("path") or "").replace("\\", "/").strip("/")
+                    if node.get("domain") in ("root", "file"):
+                        self.assertNotIn(path.casefold(), (
+                            "shared_prefs", "shared_prefs/.", "shared_prefs/*"
+                        ))
+
     def test_sensitive_exclusion_policy_consistent_across_versions(self):
         legacy = excluded_preferences(self.legacy)
         cloud = excluded_preferences(self.modern.find("cloud-backup"))

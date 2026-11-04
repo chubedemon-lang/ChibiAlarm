@@ -85,6 +85,37 @@ class ChibiTapGestureTest {
         assertFalse(gesture.end(10f, 10f))
     }
 
+
+    @Test fun cancelledGestureCanRecoverOnNextValidDown() {
+        val gesture = ChibiTapGesture(12f)
+        assertTrue(gesture.begin(10f, 10f))
+        assertFalse(gesture.move(40f, 40f))
+        assertFalse(gesture.end(10f, 10f))
+        assertTrue(gesture.begin(50f, 50f))
+        assertTrue(gesture.end(54f, 54f))
+    }
+
+    @Test fun repeatedCancelAndMoveWithoutDownNeverProduceTap() {
+        val gesture = ChibiTapGesture(12f)
+        gesture.cancel()
+        gesture.cancel()
+        assertFalse(gesture.move(0f, 0f))
+        assertFalse(gesture.end(0f, 0f))
+        assertTrue(gesture.begin(0f, 0f))
+        gesture.cancel()
+        assertFalse(gesture.move(0f, 0f))
+        assertFalse(gesture.end(0f, 0f))
+    }
+
+    @Test fun finiteSubpixelMovementAndNegativeCoordinatesAreHandled() {
+        val gesture = ChibiTapGesture(0.5f)
+        assertTrue(gesture.begin(-10f, -20f))
+        assertTrue(gesture.move(-9.7f, -19.8f))
+        assertTrue(gesture.end(-9.7f, -19.8f))
+        assertTrue(gesture.begin(-10f, -20f))
+        assertFalse(gesture.end(-9.6f, -19.6f))
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun nonFiniteTouchSlopIsRejected() {
         ChibiTapGesture(Float.POSITIVE_INFINITY)

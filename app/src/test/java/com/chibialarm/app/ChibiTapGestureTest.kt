@@ -60,6 +60,36 @@ class ChibiTapGestureTest {
         assertFalse(gesture.end(-Float.MAX_VALUE, -Float.MAX_VALUE))
     }
 
+
+    @Test fun zeroSlopOnlyAcceptsExactlyStationaryTap() {
+        val gesture = ChibiTapGesture(0f)
+        assertTrue(gesture.begin(5f, 8f))
+        assertTrue(gesture.end(5f, 8f))
+        assertTrue(gesture.begin(5f, 8f))
+        assertFalse(gesture.end(5.001f, 8f))
+    }
+
+    @Test fun newDownInvalidatesPriorGestureAndDoesNotReuseItsOrigin() {
+        val gesture = ChibiTapGesture(12f)
+        assertTrue(gesture.begin(10f, 10f))
+        assertTrue(gesture.begin(100f, 100f))
+        assertFalse(gesture.end(10f, 10f))
+        assertTrue(gesture.begin(100f, 100f))
+        assertTrue(gesture.end(105f, 105f))
+    }
+
+    @Test fun invalidNewDownCancelsPreviousActiveGesture() {
+        val gesture = ChibiTapGesture(12f)
+        assertTrue(gesture.begin(10f, 10f))
+        assertFalse(gesture.begin(Float.NaN, 10f))
+        assertFalse(gesture.end(10f, 10f))
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun nonFiniteTouchSlopIsRejected() {
+        ChibiTapGesture(Float.POSITIVE_INFINITY)
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun negativeTouchSlopIsRejected() {
         ChibiTapGesture(-1f)

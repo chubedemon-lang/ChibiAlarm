@@ -100,6 +100,34 @@ class PublicEntrypointRegressionTests(unittest.TestCase):
                 self.assertEqual([], node.findall("grant-uri-permission"),
                                  f"Unexpected URI grant rules on {tag} {name}")
 
+    def test_no_duplicate_component_declarations(self):
+        # Duplicate manifest declarations may merge differently between build
+        # variants and silently widen an entrypoint's exported surface.
+        seen = set()
+        for tag in ("activity", "activity-alias", "receiver", "service", "provider"):
+            for node in self.app.findall(tag):
+                name = node.get(ANDROID + "name")
+                key = (tag, name)
+                self.assertNotIn(key, seen, f"Duplicate {tag} declaration: {name}")
+                seen.add(key)
+
+    def test_public_filters_are_not_browsable_or_priority_overridden(self):
+        # Launcher/widget entrypoints are not deep-link handlers; adding
+        # BROWSABLE, MIME types or intent priorities requires explicit review.
+        for tag, name in PUBLIC_COMPONENTS:
+            node = next(n for n in self.app.findall(tag)
+                        if n.get(ANDROID + "name") == name)
+            for filt in node.findall("intent-filter"):
+                self.assertIsNone(filt.get(ANDROID + "priority"),
+                                  f"Unexpected intent priority on {name}")
+                self.assertIsNone(filt.get(ANDROID + "autoVerify"),
+                                  f"Unexpected deep-link verification on {name}")
+                categories = {c.get(ANDROID + "name")
+                              for c in filt.findall("category")}
+                self.assertNotIn("android.intent.category.BROWSABLE", categories)
+                self.assertEqual([], filt.findall("data"),
+                                 f"Unexpected URI/MIME matching on {name}")
+
     def test_system_alarm_receivers_remain_private(self):
         private_receivers = {
             ".AlarmReceiver", ".BootReceiver", ".FocusDoneReceiver",

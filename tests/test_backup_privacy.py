@@ -70,6 +70,35 @@ class BackupPrivacyRegressionTests(unittest.TestCase):
             }
             self.assertFalse(SENSITIVE_PREFS.intersection(included))
 
+    def test_sensitive_exclusions_are_unconditional(self):
+        # A conditional exclusion may silently allow secrets to transfer on
+        # devices that do not meet its flags. The privacy contract is absolute.
+        for destination, rules in (
+            ("legacy", self.legacy),
+            ("cloud", self.modern.find("cloud-backup")),
+            ("transfer", self.modern.find("device-transfer")),
+        ):
+            with self.subTest(destination=destination):
+                self.assertIsNotNone(rules)
+                for node in rules.findall("exclude"):
+                    if (node.get("domain") == "sharedpref"
+                            and node.get("path") in SENSITIVE_PREFS):
+                        self.assertIsNone(node.get("requireFlags"))
+
+    def test_no_broad_sharedpref_include_can_override_privacy_intent(self):
+        # Explicit allow-all sharedpref rules are dangerous during future
+        # refactors; the sensitive exclusion list must remain authoritative.
+        for destination, rules in (
+            ("legacy", self.legacy),
+            ("cloud", self.modern.find("cloud-backup")),
+            ("transfer", self.modern.find("device-transfer")),
+        ):
+            with self.subTest(destination=destination):
+                self.assertIsNotNone(rules)
+                for node in rules.findall("include"):
+                    if node.get("domain") == "sharedpref":
+                        self.assertNotIn(node.get("path"), (".", "./", "", "*"))
+
     def test_sensitive_exclusion_policy_consistent_across_versions(self):
         legacy = excluded_preferences(self.legacy)
         cloud = excluded_preferences(self.modern.find("cloud-backup"))

@@ -47,6 +47,28 @@ class ComponentExposureRegressionTests(unittest.TestCase):
                     receiver.get(ANDROID + "name"),
                 )
 
+    def test_every_component_declares_exported_explicitly(self):
+        # Missing android:exported can silently change exposure on older
+        # Android versions when an intent-filter is introduced.
+        for tag in ("activity", "activity-alias", "receiver", "service", "provider"):
+            for component in self.application.findall(tag):
+                with self.subTest(tag=tag, name=component.get(ANDROID + "name")):
+                    self.assertIn(
+                        component.get(ANDROID + "exported"), ("true", "false")
+                    )
+
+    def test_only_approved_components_have_intent_filters(self):
+        approved = {("activity", ".MainActivity"),
+                    ("receiver", ".ChibiWidget"),
+                    ("receiver", ".BootReceiver")}
+        for tag in ("activity", "activity-alias", "receiver", "service", "provider"):
+            for component in self.application.findall(tag):
+                if component.findall("intent-filter"):
+                    self.assertIn((tag, component.get(ANDROID + "name")), approved)
+
+    def test_no_activity_alias_bypasses_launcher_policy(self):
+        self.assertEqual([], self.application.findall("activity-alias"))
+
     def test_no_unexpected_exported_services_or_providers(self):
         for tag in ("service", "provider"):
             for component in self.application.findall(tag):

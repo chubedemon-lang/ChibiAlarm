@@ -64,6 +64,9 @@ class RequestBoundaryTests(unittest.TestCase):
             b'{"topic":"wake"} trailing',
             b'{"topic":"wake","extra":{"value":NaN}}',
             b'{"topic":"wake","extra":[Infinity,-Infinity]}',
+            b'{"topic":"wake","profile":1e999}',
+            b'{"topic":"wake","profile":-1e999}',
+            b'{"topic":"wake","profile":1e-9999}',
         )
         with patch.object(proxy, "open_gemini") as upstream:
             for raw in cases:

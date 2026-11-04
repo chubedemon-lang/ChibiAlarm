@@ -99,6 +99,41 @@ class BackupPrivacyRegressionTests(unittest.TestCase):
                     if node.get("domain") == "sharedpref":
                         self.assertNotIn(node.get("path"), (".", "./", "", "*"))
 
+    def test_no_backup_rule_can_explicitly_include_sensitive_files(self):
+        # Check every include domain, not only sharedpref. A future rule
+        # using root/file with a sensitive basename must not bypass review.
+        for destination, rules in (
+            ("legacy", self.legacy),
+            ("cloud", self.modern.find("cloud-backup")),
+            ("transfer", self.modern.find("device-transfer")),
+        ):
+            with self.subTest(destination=destination):
+                self.assertIsNotNone(rules)
+                for node in rules.findall("include"):
+                    path = (node.get("path") or "").replace("\\", "/")
+                    self.assertNotIn(path.rsplit("/", 1)[-1], SENSITIVE_PREFS)
+
+    def test_no_duplicate_or_ambiguous_sensitive_exclusions(self):
+        # A duplicate or path-variant entry often signals an accidental
+        # refactor of the real preference filename.
+        for destination, rules in (
+            ("legacy", self.legacy),
+            ("cloud", self.modern.find("cloud-backup")),
+            ("transfer", self.modern.find("device-transfer")),
+        ):
+            with self.subTest(destination=destination):
+                self.assertIsNotNone(rules)
+                paths = [
+                    node.get("path")
+                    for node in rules.findall("exclude")
+                    if node.get("domain") == "sharedpref"
+                ]
+                self.assertEqual(len(paths), len(set(paths)))
+                for path in paths:
+                    self.assertIsNotNone(path)
+                    self.assertEqual(path, path.strip())
+                    self.assertNotIn("..", path.split("/"))
+
     def test_sensitive_exclusion_policy_consistent_across_versions(self):
         legacy = excluded_preferences(self.legacy)
         cloud = excluded_preferences(self.modern.find("cloud-backup"))

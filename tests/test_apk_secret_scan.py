@@ -41,7 +41,7 @@ def scan_apk(apk_path):
             seen.add(name)
             is_dex = re.fullmatch(r"classes(?:[0-9]+)?\.dex", Path(name).name) is not None and "/" not in name
             is_resource_table = name == "resources.arsc"
-            if not (name.lower().endswith(SUFFIXES) or is_dex or is_resource_table):
+            # Small opaque assets can also contain embedded plaintext credentials.\n            # Keep the existing inspection budget for all scanned entries.\n            is_opaque_asset = name.startswith("assets/") and name.lower().endswith((".bin", ".dat", ".db", ".sqlite"))\n            if not (name.lower().endswith(SUFFIXES) or is_dex or is_resource_table or is_opaque_asset):
                 continue
             if entry.file_size > MAX_ENTRY:
                 raise ValueError("Oversized APK text entry")
@@ -104,7 +104,7 @@ class ApkSecretScanTests(unittest.TestCase):
                 archive.writestr("resources.arsc", ("AIza" + "F" * 35).encode("utf-16le"))
             self.assertEqual(["resources.arsc"], scan_apk(apk))
 
-    def test_duplicate_entry_fails_closed(self):
+    def test_literal_key_in_binary_asset_is_detected(self):\n        with TemporaryDirectory() as directory:\n            apk = Path(directory) / "sample.apk"\n            with zipfile.ZipFile(apk, "w") as archive:\n                archive.writestr("assets/config.dat", b"\\x00\\x01" + ("AIza" + "G" * 35).encode())\n            self.assertEqual(["assets/config.dat"], scan_apk(apk))\n\n    def test_utf16le_key_in_database_asset_is_detected(self):\n        with TemporaryDirectory() as directory:\n            apk = Path(directory) / "sample.apk"\n            with zipfile.ZipFile(apk, "w") as archive:\n                archive.writestr("assets/cache.db", ("AIza" + "H" * 35).encode("utf-16le"))\n            self.assertEqual(["assets/cache.db"], scan_apk(apk))\n\n    def test_duplicate_entry_fails_closed(self):
         with TemporaryDirectory() as directory:
             apk = Path(directory) / "sample.apk"
             with zipfile.ZipFile(apk, "w") as archive:

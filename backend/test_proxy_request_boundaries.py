@@ -92,6 +92,16 @@ class RequestBoundaryTests(unittest.TestCase):
             upstream.assert_not_called()
         self.assertFalse(os.path.exists(proxy.QUOTA_DB))
 
+    def test_excessively_nested_json_fails_closed_without_spending_quota(self):
+        # A small (<2 KiB) body can exceed Python's JSON recursion depth.
+        # The handler must return a bounded 400 instead of dropping the socket.
+        # Keep this case below the 2048-byte request limit.
+        raw = b'{"topic":' + b'[' * 950 + b'0' + b']' * 950 + b'}'
+        with patch.object(proxy, "open_gemini") as upstream:
+            self.assertEqual((400, {"error": "invalid_request"}), self.post(raw))
+            upstream.assert_not_called()
+        self.assertFalse(os.path.exists(proxy.QUOTA_DB))
+
     def test_unconfigured_profile_returns_profile_unavailable_without_quota(self):
         with patch.object(proxy, "open_gemini") as upstream:
             self.assertEqual((400, {"error": "profile_unavailable"}),

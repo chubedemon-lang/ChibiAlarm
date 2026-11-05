@@ -18,6 +18,7 @@ KEY = re.compile(rb"AIza[0-9A-Za-z_-]{30,}")
 KEY_UTF16LE = re.compile(rb"A\x00I\x00z\x00a\x00(?:[0-9A-Za-z_-]\x00){30,}")
 SUFFIXES = (".xml", ".json", ".txt", ".html", ".js", ".properties",
             ".yaml", ".yml", ".toml", ".cfg", ".ini", ".env")
+FORBIDDEN_ASSET_SUFFIXES = (".pem", ".p12", ".pfx", ".jks", ".keystore", ".key")
 MAX_ENTRY = 4_000_000
 MAX_TOTAL = 32_000_000
 MAX_RATIO = 200
@@ -39,6 +40,10 @@ def scan_apk(apk_path):
             if name in seen:
                 raise ValueError("Duplicate APK entry")
             seen.add(name)
+            # Credential containers have no legitimate place in a public APK, even
+            # when encrypted or encoded beyond the literal-key detector.
+            if name.startswith("assets/") and name.lower().endswith(FORBIDDEN_ASSET_SUFFIXES):
+                raise ValueError("Packaged credential container")
             is_dex = re.fullmatch(r"classes(?:[0-9]+)?\.dex", Path(name).name) is not None and "/" not in name
             is_resource_table = name == "resources.arsc"
             # Native libraries and WebAssembly can carry hardcoded credentials too.
@@ -136,6 +141,22 @@ class ApkSecretScanTests(unittest.TestCase):
             with zipfile.ZipFile(apk, "w") as archive:
                 archive.writestr("assets/coach.wasm", ("AIza" + "K" * 35).encode("utf-16le"))
             self.assertEqual(["assets/coach.wasm"], scan_apk(apk))
+
+    def test_packaged_private_key_container_fails_closed(self):
+        with TemporaryDirectory() as directory:
+            apk = Path(directory) / "sample.apk"
+            with zipfile.ZipFile(apk, "w") as archive:
+                archive.writestr("assets/service-account.p12", b"opaque-key-material")
+            with self.assertRaisesRegex(ValueError, "credential container"):
+                scan_apk(apk)
+
+    def test_packaged_keystore_fails_closed_case_insensitive(self):
+        with TemporaryDirectory() as directory:
+            apk = Path(directory) / "sample.apk"
+            with zipfile.ZipFile(apk, "w") as archive:
+                archive.writestr("assets/Release.KEYSTORE", b"opaque-key-material")
+            with self.assertRaisesRegex(ValueError, "credential container"):
+                scan_apk(apk)
 
     def test_duplicate_entry_fails_closed(self):
         with TemporaryDirectory() as directory:

@@ -33,14 +33,19 @@ def scan_apk(apk_path):
     with zipfile.ZipFile(apk_path) as archive:
         for entry in archive.infolist():
             name = entry.filename
-            # APK entries must be regular files, never symlinks or special files.
-            # Some ZIP tools follow symlinks when extracting or inspecting them.
-            mode = (entry.external_attr >> 16) & 0xFFFF
-            if entry.create_system == 3 and stat.S_IFMT(mode) not in (0, stat.S_IFREG):
-                raise ValueError("Unsafe APK entry type")
-            # Avoid zip-slip-style names and ambiguous duplicate entries.
-            if (name.startswith("/") or "\\" in name or any(part in ("", ".", "..") for part in name.split("/"))):
+            # Validate the path before entry type so unsafe directory names fail
+            # consistently; one trailing slash is legitimate for a ZIP directory.
+            parts = name[:-1].split("/") if name.endswith("/") else name.split("/")
+            if (not name or name.startswith("/") or "\\" in name
+                    or any(part in ("", ".", "..") for part in parts)):
                 raise ValueError("Unsafe APK entry path")
+            # Directory entries are valid ZIP members, but symlinks and other
+            # special file types are never accepted.
+            mode = (entry.external_attr >> 16) & 0xFFFF
+            kind = stat.S_IFMT(mode)
+            allowed = (0, stat.S_IFDIR) if entry.is_dir() else (0, stat.S_IFREG)
+            if entry.create_system == 3 and kind not in allowed:
+                raise ValueError("Unsafe APK entry type")
             if name in seen:
                 raise ValueError("Duplicate APK entry")
             seen.add(name)

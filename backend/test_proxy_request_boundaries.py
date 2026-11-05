@@ -55,6 +55,19 @@ class RequestBoundaryTests(unittest.TestCase):
             upstream.assert_not_called()
         self.assertFalse(os.path.exists(proxy.QUOTA_DB))
 
+    def test_non_utf8_json_encodings_do_not_reach_upstream(self):
+        # Python json.loads(bytes) auto-detects UTF-16/32; reject those wire
+        # encodings to keep the HTTP JSON boundary deterministic.
+        document = '{"topic":"wake","profile":1}'
+        cases = (document.encode("utf-16"), document.encode("utf-16-le"),
+                 document.encode("utf-32"), document.encode("utf-32-le"))
+        with patch.object(proxy, "open_gemini") as upstream:
+            for raw in cases:
+                with self.subTest(raw=raw[:8]):
+                    self.assertEqual((400, {"error": "invalid_request"}), self.post(raw))
+            upstream.assert_not_called()
+        self.assertFalse(os.path.exists(proxy.QUOTA_DB))
+
     def test_truncated_json_and_nonfinite_numbers_fail_closed(self):
         # Malformed JSON and Python-specific NaN/Infinity tokens must never
         # reach the paid upstream or allocate per-profile quota state.

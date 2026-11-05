@@ -79,9 +79,9 @@ class ChibiPetSessionTest {
         restored.restore(tuesday, stale)
         assertEquals(0, restored.progress(tuesday))
         assertEquals(1, restored.pet(tuesday))
-        // Repeated restore from an old saved instance must remain harmless.
+        // Repeated restore from an old saved instance must preserve new Tuesday taps.
         restored.restore(tuesday, stale)
-        assertEquals(0, restored.progress(tuesday))
+        assertEquals(1, restored.progress(tuesday))
     }
 
     @Test fun repeatedSameDayRestoreCannotUndoNewerInteractions() {

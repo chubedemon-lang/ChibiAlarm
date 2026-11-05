@@ -45,7 +45,11 @@ internal class ChibiPetSession {
 
     /** Treat Bundle values as untrusted and never restore yesterday's progress. */
     fun restore(today: String, saved: Snapshot) {
+        // Repeated lifecycle restores must not roll back newer same-day taps.
+        // Never carry progress across local dates or accept a completed third tap.
+        val existing = if (day == today) taps else 0
         day = today
-        taps = if (saved.day == today && saved.taps in 0..2) saved.taps else 0
+        val incoming = if (saved.day == today && saved.taps in 0..2) saved.taps else 0
+        taps = maxOf(existing, incoming)
     }
 }

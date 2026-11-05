@@ -516,6 +516,18 @@ class ProxyTests(unittest.TestCase):
             self.assertEqual(upstream.call_count, 2)
 
 
+    def test_deeply_nested_upstream_json_fails_closed_without_crashing(self):
+        # An upstream response can be within the byte cap yet exceed Python's
+        # JSON nesting limit. Return 502 and keep the HTTP worker usable.
+        nested = b"[" * 1100 + b"0" + b"]" * 1100
+        good = FakeResponse(b'{"candidates":[{"content":{"parts":[{"text":"OK"}]}}]}')
+        with patch.object(proxy, "open_gemini", side_effect=[
+            FakeResponse(nested), good
+        ]) as upstream:
+            self.assertEqual(self.request(), (502, {"error": "upstream_unavailable"}))
+            self.assertEqual(self.request(), (200, {"message": "OK"}))
+            self.assertEqual(upstream.call_count, 2)
+
     def test_budget_reservation_is_atomic_across_profiles_and_threads(self):
         db = os.path.join(self.tmp.name, "budget.sqlite3")
         def reserve(profile):

@@ -302,7 +302,7 @@ class Handler(BaseHTTPRequestHandler):
             return
         except ConnectionError:
             return  # Peer disconnected while sending a bounded request body.
-        except (ValueError, UnicodeDecodeError, json.JSONDecodeError):
+        except (ValueError, UnicodeDecodeError, json.JSONDecodeError, RecursionError):
             self.reply(400, {"error": "invalid_request"})
             return
         if not SLOTS.acquire(blocking=False):

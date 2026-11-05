@@ -336,7 +336,7 @@ class Handler(BaseHTTPRequestHandler):
                 self.reply(200, {"message": extract_safe_message(result)})
             except urllib.error.HTTPError as exc:
                 self.reply(429 if exc.code == 429 else 502, {"error": "upstream_unavailable"})
-            except (OSError, ValueError, UnicodeError, KeyError, IndexError, TypeError):
+            except (OSError, ValueError, UnicodeError, KeyError, IndexError, TypeError, RecursionError):
                 self.reply(502, {"error": "upstream_unavailable"})
         finally:
             SLOTS.release()

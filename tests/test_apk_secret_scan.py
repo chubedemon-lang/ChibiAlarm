@@ -6,6 +6,7 @@ This is defense in depth: literal keys in DEX and resources.arsc are inspected, 
 obfuscated, split or dynamically reconstructed keys are NOT covered.
 """
 import re
+import stat
 import sys
 import unittest
 import zipfile
@@ -34,6 +35,11 @@ def scan_apk(apk_path):
             if entry.is_dir():
                 continue
             name = entry.filename
+            # APK entries must be regular files, never symlinks or special files.
+            # Some ZIP tools follow symlinks when extracting or inspecting them.
+            mode = (entry.external_attr >> 16) & 0xFFFF
+            if entry.create_system == 3 and stat.S_IFMT(mode) not in (0, stat.S_IFREG):
+                raise ValueError("Unsafe APK entry type")
             # Avoid zip-slip-style names and ambiguous duplicate entries.
             if name.startswith("/") or ".." in Path(name).parts or "\\" in name:
                 raise ValueError("Unsafe APK entry path")
@@ -156,6 +162,17 @@ class ApkSecretScanTests(unittest.TestCase):
             with zipfile.ZipFile(apk, "w") as archive:
                 archive.writestr("assets/Release.KEYSTORE", b"opaque-key-material")
             with self.assertRaisesRegex(ValueError, "credential container"):
+                scan_apk(apk)
+
+    def test_symlink_entry_fails_closed(self):
+        with TemporaryDirectory() as directory:
+            apk = Path(directory) / "sample.apk"
+            with zipfile.ZipFile(apk, "w") as archive:
+                entry = zipfile.ZipInfo("assets/config.txt")
+                entry.create_system = 3
+                entry.external_attr = (stat.S_IFLNK | 0o777) << 16
+                archive.writestr(entry, "target.txt")
+            with self.assertRaisesRegex(ValueError, "entry type"):
                 scan_apk(apk)
 
     def test_duplicate_entry_fails_closed(self):

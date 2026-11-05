@@ -13,6 +13,9 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 KEY = re.compile(rb"AIza[0-9A-Za-z_-]{30,}")
+# DEX/string resources may contain UTF-16LE literals; match without decoding
+# arbitrary binary blobs or exposing matched credentials.
+KEY_UTF16LE = re.compile(rb"A\x00I\x00z\x00a\x00(?:[0-9A-Za-z_-]\x00){30,}")
 SUFFIXES = (".xml", ".json", ".txt", ".html", ".js", ".properties",
             ".yaml", ".yml", ".toml", ".cfg", ".ini", ".env")
 MAX_ENTRY = 4_000_000
@@ -50,7 +53,7 @@ def scan_apk(apk_path):
                 data = handle.read(MAX_ENTRY + 1)
             if len(data) > MAX_ENTRY:
                 raise ValueError("APK text entry exceeds limit")
-            if KEY.search(data):
+            if KEY.search(data) or KEY_UTF16LE.search(data):
                 offenders.append(name)
     return offenders
 
@@ -70,6 +73,21 @@ class ApkSecretScanTests(unittest.TestCase):
             with zipfile.ZipFile(apk, "w") as archive:
                 archive.writestr("classes.dex", "AIza" + "B" * 35)
             self.assertEqual(["classes.dex"], scan_apk(apk))
+
+    def test_utf16le_key_in_dex_is_detected_without_exposing_secret(self):
+        with TemporaryDirectory() as directory:
+            apk = Path(directory) / "sample.apk"
+            secret = "AIza" + "C" * 35
+            with zipfile.ZipFile(apk, "w") as archive:
+                archive.writestr("classes2.dex", secret.encode("utf-16le"))
+            self.assertEqual(["classes2.dex"], scan_apk(apk))
+
+    def test_utf16le_key_in_resource_is_detected(self):
+        with TemporaryDirectory() as directory:
+            apk = Path(directory) / "sample.apk"
+            with zipfile.ZipFile(apk, "w") as archive:
+                archive.writestr("assets/config.txt", ("AIza" + "D" * 35).encode("utf-16le"))
+            self.assertEqual(["assets/config.txt"], scan_apk(apk))
 
     def test_duplicate_entry_fails_closed(self):
         with TemporaryDirectory() as directory:

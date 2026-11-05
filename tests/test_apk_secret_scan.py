@@ -2,7 +2,7 @@
 
 Usage: python -m unittest tests.test_apk_secret_scan
        python tests/test_apk_secret_scan.py path/to/app-debug.apk
-This is defense in depth: compiled DEX and obfuscated/encoded keys are NOT covered.
+This is defense in depth: literal keys in DEX are inspected, but encoded,\nobfuscated, split or dynamically reconstructed keys are NOT covered.
 """
 import re
 import sys
@@ -16,12 +16,14 @@ SUFFIXES = (".xml", ".json", ".txt", ".html", ".js", ".properties",
             ".yaml", ".yml", ".toml", ".cfg", ".ini", ".env")
 MAX_ENTRY = 4_000_000
 MAX_TOTAL = 32_000_000
+MAX_RATIO = 200
 
 
 def scan_apk(apk_path):
     """Return offending entry names; never return or print credentials."""
     offenders = []
     total = 0
+    seen = set()
     with zipfile.ZipFile(apk_path) as archive:
         for entry in archive.infolist():
             if entry.is_dir():
@@ -30,10 +32,16 @@ def scan_apk(apk_path):
             # Avoid zip-slip-style names and ambiguous duplicate entries.
             if name.startswith("/") or ".." in Path(name).parts or "\\" in name:
                 raise ValueError("Unsafe APK entry path")
-            if not name.lower().endswith(SUFFIXES):
+            if name in seen:
+                raise ValueError("Duplicate APK entry")
+            seen.add(name)
+            is_dex = re.fullmatch(r"classes(?:[0-9]+)?\.dex", Path(name).name) is not None and "/" not in name
+            if not (name.lower().endswith(SUFFIXES) or is_dex):
                 continue
             if entry.file_size > MAX_ENTRY:
                 raise ValueError("Oversized APK text entry")
+            if entry.file_size > MAX_RATIO * max(1, entry.compress_size):
+                raise ValueError("Excessive APK entry compression ratio")
             total += entry.file_size
             if total > MAX_TOTAL:
                 raise ValueError("APK text inspection budget exceeded")
@@ -55,12 +63,29 @@ class ApkSecretScanTests(unittest.TestCase):
                 archive.writestr("assets/normal.txt", "safe")
             self.assertEqual(["assets/config.json"], scan_apk(apk))
 
-    def test_binary_dex_is_not_claimed_as_scanned(self):
+    def test_literal_key_in_dex_is_detected(self):
         with TemporaryDirectory() as directory:
             apk = Path(directory) / "sample.apk"
             with zipfile.ZipFile(apk, "w") as archive:
                 archive.writestr("classes.dex", "AIza" + "B" * 35)
-            self.assertEqual([], scan_apk(apk))
+            self.assertEqual(["classes.dex"], scan_apk(apk))
+
+    def test_duplicate_entry_fails_closed(self):
+        with TemporaryDirectory() as directory:
+            apk = Path(directory) / "sample.apk"
+            with zipfile.ZipFile(apk, "w") as archive:
+                archive.writestr("assets/normal.txt", "first")
+                archive.writestr("assets/normal.txt", "second")
+            with self.assertRaisesRegex(ValueError, "Duplicate"):
+                scan_apk(apk)
+
+    def test_compression_bomb_fails_closed(self):
+        with TemporaryDirectory() as directory:
+            apk = Path(directory) / "sample.apk"
+            with zipfile.ZipFile(apk, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+                archive.writestr("assets/repetitive.txt", "x" * 100_000)
+            with self.assertRaisesRegex(ValueError, "compression ratio"):
+                scan_apk(apk)
 
     def test_oversized_entry_fails_closed(self):
         with TemporaryDirectory() as directory:
@@ -90,6 +115,6 @@ if __name__ == "__main__":
         if matches:
             print("Potential Google API key in APK entries: " + ", ".join(matches), file=sys.stderr)
             sys.exit(1)
-        print("No literal Google API key found in inspected APK text entries (DEX not inspected)")
+        print("No literal Google API key found in inspected APK text entries (literal DEX bytes included; encoded keys not covered)")
         sys.exit(0)
     unittest.main()

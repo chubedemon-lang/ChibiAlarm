@@ -84,4 +84,31 @@ class ChibiPetSessionTest {
         assertEquals(0, restored.progress(tuesday))
     }
 
+    @Test fun repeatedSameDayRestoreCannotUndoNewerInteractions() {
+        val day = "2026-11-06"
+        val session = ChibiPetSession()
+        session.pet(day)
+        val oldSnapshot = session.snapshot(day)
+        session.pet(day)
+        session.restore(day, oldSnapshot)
+        assertEquals(2, session.progress(day))
+        // A malformed same-day snapshot must not erase valid live progress.
+        session.restore(day, ChibiPetSession.Snapshot(day, Int.MAX_VALUE))
+        assertEquals(2, session.progress(day))
+        // A newer snapshot can still restore progress on a fresh instance.
+        val recreated = ChibiPetSession()
+        recreated.restore(day, session.snapshot(day))
+        assertEquals(2, recreated.progress(day))
+    }
+
+    @Test fun restoreFromYesterdayResetsOnlyWhenCurrentDayChanges() {
+        val session = ChibiPetSession()
+        session.pet("2026-11-05")
+        session.restore("2026-11-06", ChibiPetSession.Snapshot("2026-11-05", 2))
+        assertEquals(0, session.progress("2026-11-06"))
+        session.pet("2026-11-06")
+        session.restore("2026-11-06", ChibiPetSession.Snapshot("2026-11-05", 2))
+        assertEquals(1, session.progress("2026-11-06"))
+    }
+
 }

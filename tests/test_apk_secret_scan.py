@@ -2,7 +2,8 @@
 
 Usage: python -m unittest tests.test_apk_secret_scan
        python tests/test_apk_secret_scan.py path/to/app-debug.apk
-This is defense in depth: literal keys in DEX are inspected, but encoded,\nobfuscated, split or dynamically reconstructed keys are NOT covered.
+This is defense in depth: literal keys in DEX are inspected, but encoded,
+obfuscated, split or dynamically reconstructed keys are NOT covered.
 """
 import re
 import sys

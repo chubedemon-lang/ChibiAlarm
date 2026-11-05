@@ -41,10 +41,12 @@ def scan_apk(apk_path):
             seen.add(name)
             is_dex = re.fullmatch(r"classes(?:[0-9]+)?\.dex", Path(name).name) is not None and "/" not in name
             is_resource_table = name == "resources.arsc"
+            # Native libraries and WebAssembly can carry hardcoded credentials too.
+            is_native_binary = (name.startswith("lib/") and name.endswith(".so")) or name.lower().endswith(".wasm")
             # Small opaque assets can also contain embedded plaintext credentials.
             # Keep the existing inspection budget for all scanned entries.
             is_opaque_asset = name.startswith("assets/") and name.lower().endswith((".bin", ".dat", ".db", ".sqlite"))
-            if not (name.lower().endswith(SUFFIXES) or is_dex or is_resource_table or is_opaque_asset):
+            if not (name.lower().endswith(SUFFIXES) or is_dex or is_resource_table or is_opaque_asset or is_native_binary):
                 continue
             if entry.file_size > MAX_ENTRY:
                 raise ValueError("Oversized APK text entry")
@@ -120,6 +122,20 @@ class ApkSecretScanTests(unittest.TestCase):
             with zipfile.ZipFile(apk, "w") as archive:
                 archive.writestr("assets/cache.db", ("AIza" + "H" * 35).encode("utf-16le"))
             self.assertEqual(["assets/cache.db"], scan_apk(apk))
+
+    def test_literal_key_in_native_library_is_detected(self):
+        with TemporaryDirectory() as directory:
+            apk = Path(directory) / "sample.apk"
+            with zipfile.ZipFile(apk, "w") as archive:
+                archive.writestr("lib/arm64-v8a/libcoach.so", b"ELF" + ("AIza" + "J" * 35).encode())
+            self.assertEqual(["lib/arm64-v8a/libcoach.so"], scan_apk(apk))
+
+    def test_utf16le_key_in_wasm_is_detected(self):
+        with TemporaryDirectory() as directory:
+            apk = Path(directory) / "sample.apk"
+            with zipfile.ZipFile(apk, "w") as archive:
+                archive.writestr("assets/coach.wasm", ("AIza" + "K" * 35).encode("utf-16le"))
+            self.assertEqual(["assets/coach.wasm"], scan_apk(apk))
 
     def test_duplicate_entry_fails_closed(self):
         with TemporaryDirectory() as directory:

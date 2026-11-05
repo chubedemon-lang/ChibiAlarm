@@ -32,8 +32,6 @@ def scan_apk(apk_path):
     seen = set()
     with zipfile.ZipFile(apk_path) as archive:
         for entry in archive.infolist():
-            if entry.is_dir():
-                continue
             name = entry.filename
             # APK entries must be regular files, never symlinks or special files.
             # Some ZIP tools follow symlinks when extracting or inspecting them.
@@ -46,6 +44,8 @@ def scan_apk(apk_path):
             if name in seen:
                 raise ValueError("Duplicate APK entry")
             seen.add(name)
+            if entry.is_dir():
+                continue
             # Credential containers have no legitimate place in a public APK, even
             # when encrypted or encoded beyond the literal-key detector.
             if name.startswith("assets/") and name.lower().endswith(FORBIDDEN_ASSET_SUFFIXES):
@@ -208,6 +208,24 @@ class ApkSecretScanTests(unittest.TestCase):
                     archive.writestr(unsafe, "safe")
                 with self.assertRaisesRegex(ValueError, "Unsafe"):
                     scan_apk(apk)
+
+    def test_rejects_unsafe_directory_entries(self):
+        for unsafe in ("../assets/", "assets/../", "assets//"):
+            with self.subTest(path=unsafe), TemporaryDirectory() as directory:
+                apk = Path(directory) / "sample.apk"
+                with zipfile.ZipFile(apk, "w") as archive:
+                    archive.writestr(unsafe, "")
+                with self.assertRaisesRegex(ValueError, "Unsafe APK entry path"):
+                    scan_apk(apk)
+
+    def test_duplicate_directory_entry_fails_closed(self):
+        with TemporaryDirectory() as directory:
+            apk = Path(directory) / "sample.apk"
+            with zipfile.ZipFile(apk, "w") as archive:
+                archive.writestr("assets/", "")
+                archive.writestr("assets/", "")
+            with self.assertRaisesRegex(ValueError, "Duplicate APK entry"):
+                scan_apk(apk)
 
     def test_rejects_traversal(self):
         with TemporaryDirectory() as directory:

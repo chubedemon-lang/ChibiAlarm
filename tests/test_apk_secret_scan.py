@@ -2,7 +2,7 @@
 
 Usage: python -m unittest tests.test_apk_secret_scan
        python tests/test_apk_secret_scan.py path/to/app-debug.apk
-This is defense in depth: literal keys in DEX are inspected, but encoded,
+This is defense in depth: literal keys in DEX and resources.arsc are inspected, but encoded,
 obfuscated, split or dynamically reconstructed keys are NOT covered.
 """
 import re
@@ -40,7 +40,8 @@ def scan_apk(apk_path):
                 raise ValueError("Duplicate APK entry")
             seen.add(name)
             is_dex = re.fullmatch(r"classes(?:[0-9]+)?\.dex", Path(name).name) is not None and "/" not in name
-            if not (name.lower().endswith(SUFFIXES) or is_dex):
+            is_resource_table = name == "resources.arsc"
+            if not (name.lower().endswith(SUFFIXES) or is_dex or is_resource_table):
                 continue
             if entry.file_size > MAX_ENTRY:
                 raise ValueError("Oversized APK text entry")
@@ -88,6 +89,20 @@ class ApkSecretScanTests(unittest.TestCase):
             with zipfile.ZipFile(apk, "w") as archive:
                 archive.writestr("assets/config.txt", ("AIza" + "D" * 35).encode("utf-16le"))
             self.assertEqual(["assets/config.txt"], scan_apk(apk))
+
+    def test_literal_key_in_compiled_resource_table_is_detected(self):
+        with TemporaryDirectory() as directory:
+            apk = Path(directory) / "sample.apk"
+            with zipfile.ZipFile(apk, "w") as archive:
+                archive.writestr("resources.arsc", b"binary-prefix" + ("AIza" + "E" * 35).encode())
+            self.assertEqual(["resources.arsc"], scan_apk(apk))
+
+    def test_utf16le_key_in_compiled_resource_table_is_detected(self):
+        with TemporaryDirectory() as directory:
+            apk = Path(directory) / "sample.apk"
+            with zipfile.ZipFile(apk, "w") as archive:
+                archive.writestr("resources.arsc", ("AIza" + "F" * 35).encode("utf-16le"))
+            self.assertEqual(["resources.arsc"], scan_apk(apk))
 
     def test_duplicate_entry_fails_closed(self):
         with TemporaryDirectory() as directory:

@@ -41,7 +41,7 @@ def scan_apk(apk_path):
             if entry.create_system == 3 and stat.S_IFMT(mode) not in (0, stat.S_IFREG):
                 raise ValueError("Unsafe APK entry type")
             # Avoid zip-slip-style names and ambiguous duplicate entries.
-            if name.startswith("/") or ".." in Path(name).parts or "\\" in name:
+            if (name.startswith("/") or "\\" in name or any(part in ("", ".", "..") for part in name.split("/"))):
                 raise ValueError("Unsafe APK entry path")
             if name in seen:
                 raise ValueError("Duplicate APK entry")
@@ -199,6 +199,15 @@ class ApkSecretScanTests(unittest.TestCase):
                 archive.writestr("assets/huge.txt", "x" * (MAX_ENTRY + 1))
             with self.assertRaisesRegex(ValueError, "Oversized"):
                 scan_apk(apk)
+
+    def test_rejects_ambiguous_asset_paths(self):
+        for unsafe in ("assets//config.txt", "assets/./config.txt", "assets/../config.txt", "./assets/config.txt"):
+            with self.subTest(path=unsafe), TemporaryDirectory() as directory:
+                apk = Path(directory) / "sample.apk"
+                with zipfile.ZipFile(apk, "w") as archive:
+                    archive.writestr(unsafe, "safe")
+                with self.assertRaisesRegex(ValueError, "Unsafe"):
+                    scan_apk(apk)
 
     def test_rejects_traversal(self):
         with TemporaryDirectory() as directory:

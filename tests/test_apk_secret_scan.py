@@ -18,7 +18,8 @@ KEY = re.compile(rb"AIza[0-9A-Za-z_-]{30,}")
 # arbitrary binary blobs or exposing matched credentials.
 KEY_UTF16LE = re.compile(rb"A\x00I\x00z\x00a\x00(?:[0-9A-Za-z_-]\x00){30,}")
 SUFFIXES = (".xml", ".json", ".txt", ".html", ".js", ".properties",
-            ".yaml", ".yml", ".toml", ".cfg", ".ini", ".env")
+            ".yaml", ".yml", ".toml", ".cfg", ".ini", ".env",
+            ".svg", ".css", ".mjs", ".webmanifest", ".map")
 FORBIDDEN_ASSET_SUFFIXES = (".pem", ".p12", ".pfx", ".jks", ".keystore", ".key")
 MAX_ENTRY = 4_000_000
 MAX_TOTAL = 32_000_000
@@ -89,6 +90,22 @@ class ApkSecretScanTests(unittest.TestCase):
                 archive.writestr("assets/config.json", "AIza" + "A" * 35)
                 archive.writestr("assets/normal.txt", "safe")
             self.assertEqual(["assets/config.json"], scan_apk(apk))
+
+    def test_literal_key_in_web_assets_is_detected(self):
+        for suffix in (".svg", ".css", ".mjs", ".webmanifest", ".map"):
+            with self.subTest(suffix=suffix), TemporaryDirectory() as directory:
+                apk = Path(directory) / "sample.apk"
+                name = "assets/ui/theme" + suffix
+                with zipfile.ZipFile(apk, "w") as archive:
+                    archive.writestr(name, "AIza" + "Z" * 35)
+                self.assertEqual([name], scan_apk(apk))
+
+    def test_utf16le_key_in_web_asset_is_detected(self):
+        with TemporaryDirectory() as directory:
+            apk = Path(directory) / "sample.apk"
+            with zipfile.ZipFile(apk, "w") as archive:
+                archive.writestr("assets/ui/theme.svg", ("AIza" + "Q" * 35).encode("utf-16le"))
+            self.assertEqual(["assets/ui/theme.svg"], scan_apk(apk))
 
     def test_literal_key_in_dex_is_detected(self):
         with TemporaryDirectory() as directory:

@@ -37,6 +37,7 @@ def scan_apk(apk_path):
             # consistently; one trailing slash is legitimate for a ZIP directory.
             parts = name[:-1].split("/") if name.endswith("/") else name.split("/")
             if (not name or name.startswith("/") or "\\" in name
+                    or re.match(r"^[A-Za-z]:", name)
                     or any(part in ("", ".", "..") for part in parts)):
                 raise ValueError("Unsafe APK entry path")
             # Directory entries are valid ZIP members, but symlinks and other
@@ -231,6 +232,15 @@ class ApkSecretScanTests(unittest.TestCase):
                 archive.writestr("assets/", "")
             with self.assertRaisesRegex(ValueError, "Duplicate APK entry"):
                 scan_apk(apk)
+
+    def test_rejects_windows_drive_paths(self):
+        for unsafe in ("C:/assets/config.txt", "D:assets/config.txt"):
+            with self.subTest(path=unsafe), TemporaryDirectory() as directory:
+                apk = Path(directory) / "sample.apk"
+                with zipfile.ZipFile(apk, "w") as archive:
+                    archive.writestr(unsafe, "safe")
+                with self.assertRaisesRegex(ValueError, "Unsafe APK entry path"):
+                    scan_apk(apk)
 
     def test_rejects_traversal(self):
         with TemporaryDirectory() as directory:

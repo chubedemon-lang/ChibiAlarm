@@ -112,6 +112,11 @@ class GuidedWorkoutActivity:Activity() {
             text="💬 Nhập yêu cầu tập luyện"
             setOnClickListener { requestTypedCommand() }
         })
+        root.addView(Button(this).apply {
+            text="⚙️ Điều chỉnh buổi tập ngay"
+            contentDescription="Tăng thời gian nghỉ, rút ngắn động tác hoặc nghe hướng dẫn dễ hơn"
+            setOnClickListener { adjustCurrentMove() }
+        })
         val actions=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
         actions.addView(Button(this).apply { text="← Trước";setOnClickListener {
             if(!pausedForSafety && index>0) { pause();index--;displayStep(); }
@@ -204,6 +209,43 @@ class GuidedWorkoutActivity:Activity() {
                     .setPositiveButton("Đóng",null).show()
             }
         }
+    }
+    /** Explicit local adjustments; never changes other moves or silently claims AI advice. */
+    private fun adjustCurrentMove() {
+        val options=arrayOf(
+            "🌿 Giảm thời gian động tác còn một nửa",
+            "⏱ Thêm 30 giây nghỉ",
+            "📖 Xem cách tập dễ hơn",
+            "⏸ Tạm dừng buổi tập"
+        )
+        AlertDialog.Builder(this).setTitle("Chibi điều chỉnh theo sức của bạn")
+            .setItems(options) { _, choice ->
+                when(choice) {
+                    0 -> {
+                        pause()
+                        remainingMs=(remainingMs/2).coerceAtLeast(5_000L)
+                        val seconds=(remainingMs/1000).toInt()
+                        counter.text=String.format(Locale.US,"%02d:%02d",seconds/60,seconds%60)
+                        control.text="▶ Tiếp tục bài nhẹ hơn"
+                        speak("Đã rút ngắn thời gian động tác. Hãy tập vừa sức.")
+                    }
+                    1 -> {
+                        pause()
+                        remainingMs=(remainingMs+30_000L).coerceAtMost(600_000L)
+                        val seconds=(remainingMs/1000).toInt()
+                        counter.text=String.format(Locale.US,"%02d:%02d",seconds/60,seconds%60)
+                        speak("Đã thêm ba mươi giây. Bạn có thể nghỉ lâu hơn nếu cần.")
+                    }
+                    2 -> {
+                        pause()
+                        AlertDialog.Builder(this).setTitle("Cách tập dễ hơn")
+                            .setMessage(moves[index].easier+"\\n\\nDừng tập nếu thấy đau.")
+                            .setPositiveButton("Đã hiểu",null).show()
+                        speak(moves[index].easier)
+                    }
+                    3 -> { pause();speak("Đã tạm dừng buổi tập.") }
+                }
+            }.setNegativeButton("Đóng",null).show()
     }
     private fun videoKey():String=program.id+"_"+moves[index].name
     private fun saveVideoLink() {

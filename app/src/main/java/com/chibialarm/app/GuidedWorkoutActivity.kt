@@ -5,6 +5,7 @@ import android.webkit.URLUtil
 import android.content.*
 import android.net.Uri
 import android.provider.Settings
+import android.speech.RecognizerIntent
 import android.view.WindowInsets
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
@@ -34,6 +35,7 @@ class GuidedWorkoutActivity:Activity() {
     private var ready=false
     private val videoPrefs by lazy { getSharedPreferences("workout_videos",0) }
     private val pickVideoRequest=889
+    private val voiceRequest=890
     private val tick=object:Runnable {
         override fun run() {
             if(paused)return
@@ -100,6 +102,15 @@ class GuidedWorkoutActivity:Activity() {
         })
         control=Button(this).apply { text="▶ Bắt đầu";setOnClickListener { if(paused)resume() else pause() } }
         root.addView(control)
+        root.addView(Button(this).apply {
+            text="🎤 Nói với Chibi (nhấn để nói)"
+            contentDescription="Nhấn để yêu cầu Android nhận giọng nói, không ghi âm nền"
+            setOnClickListener { requestVoiceCommand() }
+        })
+        root.addView(Button(this).apply {
+            text="💬 Nhập yêu cầu tập luyện"
+            setOnClickListener { requestTypedCommand() }
+        })
         val actions=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
         actions.addView(Button(this).apply { text="← Trước";setOnClickListener {
             if(index>0) { pause();index--;displayStep(); }
@@ -137,6 +148,54 @@ class GuidedWorkoutActivity:Activity() {
             }
         }
         displayStep()
+    }
+    private fun requestVoiceCommand() {
+        AlertDialog.Builder(this).setTitle("🎤 Điều khiển bằng giọng nói")
+            .setMessage("Chỉ bắt đầu nghe sau khi bạn nhấn Tiếp tục. Android sẽ mở dịch vụ nhận dạng giọng nói của máy; tùy nhà cung cấp, âm thanh có thể được xử lý trực tuyến. Chibi không tự bật micro và không lưu bản ghi âm. Bạn cũng có thể nhập chữ thay thế.")
+            .setPositiveButton("Tiếp tục"){_,_->
+                val request=Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                    putExtra(RecognizerIntent.EXTRA_LANGUAGE,"vi-VN")
+                    putExtra(RecognizerIntent.EXTRA_PROMPT,"Ví dụ: nghỉ thêm, bài tiếp theo, dễ hơn, dừng lại")
+                }
+                try { startActivityForResult(request,voiceRequest) }
+                catch (_:Exception) { Toast.makeText(this,"Thiết bị chưa có dịch vụ nhận giọng nói. Hãy nhập yêu cầu bằng chữ.",Toast.LENGTH_LONG).show() }
+            }.setNegativeButton("Hủy",null).show()
+    }
+    private fun requestTypedCommand() {
+        val field=EditText(this).apply { hint="Ví dụ: nghỉ thêm, dễ hơn, tiếp tục";setSingleLine(false) }
+        AlertDialog.Builder(this).setTitle("💬 Chibi Coach • lệnh offline")
+            .setMessage("Điều khiển buổi tập bằng chữ, không gửi dữ liệu lên mạng.")
+            .setView(field).setPositiveButton("Gửi"){_,_->handleCoachCommand(field.text.toString())}
+            .setNegativeButton("Hủy",null).show()
+    }
+    private fun handleCoachCommand(utterance:String) {
+        when(WorkoutVoiceCommands.parse(utterance)) {
+            WorkoutVoiceCommands.Command.PAUSE -> { pause();speak("Đã tạm dừng. Nếu đau hoặc khó chịu, hãy dừng tập và tìm trợ giúp phù hợp.") }
+            WorkoutVoiceCommands.Command.RESUME -> resume()
+            WorkoutVoiceCommands.Command.NEXT -> nextMove()
+            WorkoutVoiceCommands.Command.PREVIOUS -> { pause();if(index>0)index--;displayStep();speak("Bài "+moves[index].name) }
+            WorkoutVoiceCommands.Command.REPEAT -> speak(moves[index].steps)
+            WorkoutVoiceCommands.Command.EASIER -> {
+                pause()
+                AlertDialog.Builder(this).setTitle("🌿 Cách tập dễ hơn")
+                    .setMessage(moves[index].easier+"\\n\\nChỉ tiếp tục khi bạn thấy thoải mái.")
+                    .setPositiveButton("Đã hiểu",null).show()
+                speak(moves[index].easier)
+            }
+            WorkoutVoiceCommands.Command.REST -> {
+                pause()
+                remainingMs=Math.addExact(remainingMs,30_000L).coerceAtMost(600_000L)
+                val seconds=(remainingMs/1000).toInt()
+                counter.text=String.format(Locale.US,"%02d:%02d",seconds/60,seconds%60)
+                speak("Đã thêm ba mươi giây nghỉ. Khi sẵn sàng hãy nói tiếp tục.")
+            }
+            WorkoutVoiceCommands.Command.UNKNOWN -> {
+                AlertDialog.Builder(this).setTitle("Chibi chưa hiểu yêu cầu")
+                    .setMessage("Bạn có thể nói: tạm dừng, tiếp tục, bài tiếp theo, bài trước, nhắc lại, dễ hơn hoặc nghỉ thêm. Đây là bộ lệnh offline, chưa phải hội thoại AI tự do.")
+                    .setPositiveButton("Đóng",null).show()
+            }
+        }
     }
     private fun videoKey():String=program.id+"_"+moves[index].name
     private fun saveVideoLink() {
@@ -225,6 +284,10 @@ class GuidedWorkoutActivity:Activity() {
     @Deprecated("Android activity result compatibility")
     override fun onActivityResult(requestCode:Int,resultCode:Int,data:Intent?) {
         super.onActivityResult(requestCode,resultCode,data)
+        if(requestCode==voiceRequest && resultCode==RESULT_OK) {
+            val phrase=data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
+            if (!phrase.isNullOrBlank()) handleCoachCommand(phrase)
+        }
         if(requestCode==pickVideoRequest && resultCode==RESULT_OK) {
             val uri=data?.data ?: return
             try {

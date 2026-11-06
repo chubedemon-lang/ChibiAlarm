@@ -154,6 +154,34 @@ class GuidedWorkoutActivity:Activity() {
             }
         }
         displayStep()
+        // Restore the active exercise after rotation, but never auto-resume.
+        if(savedInstanceState!=null &&
+            savedInstanceState.getString("workout_program")==program.id) {
+            index=savedInstanceState.getInt("workout_index",0).coerceIn(0,moves.lastIndex)
+            displayStep()
+            remainingMs=savedInstanceState.getLong("workout_remaining",remainingMs)
+                .coerceIn(0L,600_000L)
+            pausedForSafety=savedInstanceState.getBoolean("workout_safety",false)
+            val elapsed=savedInstanceState.getLong("workout_elapsed",0L).coerceAtLeast(0L)
+            if(savedInstanceState.getBoolean("workout_started",false)) {
+                startedAt=SystemClock.elapsedRealtime()-elapsed.coerceAtMost(SystemClock.elapsedRealtime())
+            }
+            val seconds=(remainingMs/1000).toInt()
+            counter.text=String.format(Locale.US,"%02d:%02d",seconds/60,seconds%60)
+            control.text=if(pausedForSafety) "⚠️ Đã dừng vì đau" else "▶ Tiếp tục"
+        }
+    }
+    override fun onSaveInstanceState(outState:Bundle) {
+        // Save monotonic elapsed duration, not an absolute deadline.
+        pause()
+        outState.putString("workout_program",program.id)
+        outState.putInt("workout_index",index)
+        outState.putLong("workout_remaining",remainingMs)
+        outState.putBoolean("workout_safety",pausedForSafety)
+        outState.putBoolean("workout_started",startedAt!=0L)
+        outState.putLong("workout_elapsed",if(startedAt==0L) 0L
+            else (SystemClock.elapsedRealtime()-startedAt).coerceAtLeast(0L))
+        super.onSaveInstanceState(outState)
     }
     private fun requestVoiceCommand() {
         AlertDialog.Builder(this).setTitle("🎤 Điều khiển bằng giọng nói")

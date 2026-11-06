@@ -18,8 +18,8 @@ class WorkoutVoiceCommandsTest {
     }
 
     @Test fun safetyTakesPriorityOverStartAndNext() {
-        assertEquals(C.PAUSE, WorkoutVoiceCommands.parse("Tôi đang đau, cho bài tiếp theo"))
-        assertEquals(C.PAUSE, WorkoutVoiceCommands.parse("bị chấn thương, bắt đầu"))
+        assertEquals(C.PAIN, WorkoutVoiceCommands.parse("Tôi đang đau, cho bài tiếp theo"))
+        assertEquals(C.PAIN, WorkoutVoiceCommands.parse("bị chấn thương, bắt đầu"))
         assertEquals(C.PAUSE, WorkoutVoiceCommands.parse("dừng tập"))
     }
 

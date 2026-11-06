@@ -276,7 +276,7 @@ class Handler(BaseHTTPRequestHandler):
                 raise ValueError("truncated request body")
             # Accept only UTF-8 JSON; json.loads(bytes) otherwise auto-detects UTF-16/32.
             # A single wire encoding avoids ambiguous parsing across gateways.
-            payload = json.loads(raw_body.decode("utf-8-sig"), object_pairs_hook=reject_duplicate_json_keys,
+            payload = json.loads(raw_body.decode("utf-8"), object_pairs_hook=reject_duplicate_json_keys,
                                  parse_constant=reject_nonfinite_json_constant,
                                  parse_float=reject_nonfinite_json_float)
             if not isinstance(payload, dict):

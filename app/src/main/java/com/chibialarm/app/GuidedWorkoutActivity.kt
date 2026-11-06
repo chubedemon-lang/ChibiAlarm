@@ -34,6 +34,38 @@ class GuidedWorkoutActivity:Activity() {
     private var accumulated=0L
     private var spoken:TextToSpeech?=null
     private var ready=false
+    // Guest-only checkpoint; authenticated profiles must use isolated storage.
+    private val checkpoint by lazy { getSharedPreferences("chibi_workout_checkpoint_guest", MODE_PRIVATE) }
+    private var completed=false
+    private fun saveCheckpoint() {
+        if (completed || moves.isEmpty()) return
+        checkpoint.edit().putString("program",program.id)
+            .putInt("index",index).putLong("remaining",remainingMs.coerceIn(0L,600_000L))
+            .putBoolean("safety",pausedForSafety)
+            .putLong("savedAt",System.currentTimeMillis()).apply()
+    }
+    private fun offerCheckpoint() {
+        if (checkpoint.getString("program",null)!=program.id) return
+        val age=System.currentTimeMillis()-checkpoint.getLong("savedAt",0L)
+        if (age !in 0L..604_800_000L) {
+            checkpoint.edit().clear().apply()
+            return
+        }
+        AlertDialog.Builder(this).setTitle("Tiếp tục buổi tập đã lưu?")
+            .setMessage("Đã lưu bước và thời gian còn lại trên máy. Khôi phục luôn ở trạng thái tạm dừng.")
+            .setPositiveButton("Khôi phục") { _,_ ->
+                index=checkpoint.getInt("index",0).coerceIn(0,moves.lastIndex)
+                displayStep()
+                remainingMs=checkpoint.getLong("remaining",remainingMs).coerceIn(0L,600_000L)
+                pausedForSafety=checkpoint.getBoolean("safety",false)
+                val seconds=(remainingMs/1000).toInt()
+                counter.text=String.format(Locale.US,"%02d:%02d",seconds/60,seconds%60)
+                control.text=if(pausedForSafety) "⚠️ Đã dừng vì đau" else "▶ Tiếp tục"
+            }
+            .setNegativeButton("Bắt đầu lại") { _,_ -> checkpoint.edit().clear().apply() }
+            .setCancelable(false).show()
+    }
+
     private val videoPrefs by lazy { getSharedPreferences("workout_videos",0) }
     private val pickVideoRequest=889
     private val voiceRequest=890
@@ -154,6 +186,7 @@ class GuidedWorkoutActivity:Activity() {
             }
         }
         displayStep()
+        if (savedInstanceState == null) offerCheckpoint()
         // Restore the active exercise after rotation, but never auto-resume.
         if(savedInstanceState!=null &&
             savedInstanceState.getString("workout_program")==program.id) {
@@ -453,6 +486,8 @@ class GuidedWorkoutActivity:Activity() {
     }
     private fun finishWorkout() {
         pause()
+        completed=true
+        checkpoint.edit().clear().apply()
         val elapsed=if(startedAt==0L)0 else ((SystemClock.elapsedRealtime()-startedAt)/60000L).toInt()
         val mins=elapsed.coerceAtLeast(1)
         WorkoutData.save(this,WorkoutData.history(this)+Workout(
@@ -461,7 +496,9 @@ class GuidedWorkoutActivity:Activity() {
         finish()
     }
     override fun onPause() {
-        pause();super.onPause()
+        pause()
+        saveCheckpoint()
+        super.onPause()
     }
     override fun onDestroy() {
         handler.removeCallbacks(tick)

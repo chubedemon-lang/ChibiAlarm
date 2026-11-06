@@ -71,6 +71,35 @@ class ProxyTests(unittest.TestCase):
         conn.close()
         return result
 
+    def test_json_charset_must_match_utf8_wire_encoding(self):
+        # Never accept a misleading charset that another HTTP hop could decode
+        # differently. Reject before reserving quota or contacting Gemini.
+        with patch.object(proxy, "open_gemini") as upstream:
+            for content_type in (
+                "application/json; charset=utf-16",
+                "application/json; charset=utf-32",
+                "application/json; charset=latin1",
+                "application/json; charset=utf-8; charset=utf-16",
+                "application/json; boundary=ignored",
+            ):
+                with self.subTest(content_type=content_type):
+                    self.assertEqual(
+                        self.request(content_type=content_type),
+                        (415, {"error": "unsupported_media_type"}),
+                    )
+            upstream.assert_not_called()
+            self.assertFalse(os.path.exists(proxy.QUOTA_DB))
+
+    def test_explicit_utf8_charset_is_accepted(self):
+        valid = FakeResponse(
+            b'{"candidates":[{"content":{"parts":[{"text":"Xin chao"}]}}]}'
+        )
+        with patch.object(proxy, "open_gemini", return_value=valid):
+            self.assertEqual(
+                self.request(content_type="Application/JSON; Charset=UTF-8"),
+                (200, {"message": "Xin chao"}),
+            )
+
     def test_utf8_bom_is_rejected_before_quota_or_upstream(self):
         # Strict UTF-8 JSON framing: reject BOM rather than silently stripping it.
         # A rejected request must not reserve money or create quota state.

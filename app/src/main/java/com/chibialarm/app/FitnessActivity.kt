@@ -61,27 +61,47 @@ class FitnessActivity:Activity() {
             setSelection(prefs.getInt("recommendEnergy",1).coerceIn(0,2))
         }
         root.addView(energySpinner)
+        root.addView(txt("🏋️ Dụng cụ hiện có",19f))
+        val equipmentOptions=arrayOf("Không có dụng cụ","Có thảm tập","Có tạ hoặc dây kháng lực")
+        val equipmentSpinner=Spinner(this).apply {
+            adapter=ArrayAdapter(this@FitnessActivity,android.R.layout.simple_spinner_dropdown_item,equipmentOptions)
+            setSelection(prefs.getInt("recommendEquipment",0).coerceIn(0,2))
+        }
+        root.addView(equipmentSpinner)
+        root.addView(txt("🦵 Mức độ vận động phù hợp",19f))
+        val impactOptions=arrayOf("Không có hạn chế được báo","Ưu tiên bài ít tác động, không nhảy","Đang đau hoặc có chấn thương")
+        val impactSpinner=Spinner(this).apply {
+            adapter=ArrayAdapter(this@FitnessActivity,android.R.layout.simple_spinner_dropdown_item,impactOptions)
+            setSelection(prefs.getInt("recommendImpact",0).coerceIn(0,2))
+        }
+        root.addView(impactSpinner)
         root.addView(Button(this).apply {
             text="🐰 Gợi ý chương trình phù hợp"
             setOnClickListener {
                 val goal=goalSpinner.selectedItemPosition
                 val energy=energySpinner.selectedItemPosition
-                prefs.edit().putInt("recommendGoal",goal).putInt("recommendEnergy",energy).apply()
-                val id=when {
-                    energy==0->"recovery"
-                    goal==0 && level.selectedItemPosition==2->"advanced"
-                    goal==0->"full"
-                    goal==1->"lowcardio"
-                    goal==2->"mobility"
-                    goal==3->"desk"
-                    goal==4->"starter"
-                    level.selectedItemPosition==0->"starter"
-                    else->"advanced"
-                }
+                val equipment=equipmentSpinner.selectedItemPosition
+                val impact=impactSpinner.selectedItemPosition
+                prefs.edit().putInt("recommendGoal",goal).putInt("recommendEnergy",energy)
+                    .putInt("recommendEquipment",equipment).putInt("recommendImpact",impact).apply()
+                val recommendation=FitnessPlanAdvisor.recommend(FitnessPlanAdvisor.Preferences(
+                    goal,energy,level.selectedItemPosition,mins[length.selectedItemPosition],equipment,impact))
+                val id=recommendation.programId
                 val p=TrainingCatalog.byId(id)
                 AlertDialog.Builder(this@FitnessActivity).setTitle("🐰 Chibi đề xuất: "+p.name)
-                    .setMessage("Vì bạn chọn '${goals[goal]}' và '${energyLevels[energy]}', hãy thử ${p.subtitle.lowercase()}.\n\nĐây là gợi ý từ quy tắc trên máy, không phải AI chẩn đoán hay đánh giá sức khỏe.")
-                    .setPositiveButton("▶ Bắt đầu"){_,_->startProgram(p)}
+                    .setMessage("Mục tiêu: "+goals[goal]+" • "+energyLevels[energy]+"\n"+
+                        "Dụng cụ: "+equipmentOptions[equipment]+"\n"+
+                        "Vận động: "+impactOptions[impact]+"\n\n"+
+                        recommendation.explanation+
+                        "\n\nGợi ý offline theo quy tắc trên máy, không phải AI chẩn đoán hay tư vấn y khoa.")
+                    .setPositiveButton("▶ Bắt đầu"){_,_->
+                        if (impact==2) {
+                            AlertDialog.Builder(this@FitnessActivity).setTitle("Ưu tiên an toàn")
+                                .setMessage("Khi đang đau hoặc chấn thương, chỉ tập nếu được chuyên gia xác nhận phù hợp. Dừng ngay nếu triệu chứng tăng.")
+                                .setPositiveButton("Tôi đã hiểu"){_,_->startProgram(p)}
+                                .setNegativeButton("Hủy",null).show()
+                        } else startProgram(p)
+                    }
                     .setNegativeButton("Chọn bài khác",null).show()
             }
         })

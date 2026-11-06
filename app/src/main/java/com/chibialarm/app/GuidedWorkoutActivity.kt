@@ -31,7 +31,10 @@ class GuidedWorkoutActivity:Activity() {
     private var paused=true
     private var pausedForSafety=false
     private var startedAt=0L
+    // Track active time only, excluding pauses and time spent outside the app.
     private var accumulated=0L
+    private fun activeElapsedMs():Long = accumulated + if(!paused && startedAt!=0L)
+        (SystemClock.elapsedRealtime()-startedAt).coerceAtLeast(0L) else 0L
     private var spoken:TextToSpeech?=null
     private var ready=false
     // Guest-only checkpoint; authenticated profiles must use isolated storage.
@@ -44,8 +47,8 @@ class GuidedWorkoutActivity:Activity() {
         checkpoint.edit().putString("program",program.id)
             .putInt("index",index).putLong("remaining",remainingMs.coerceIn(0L,600_000L))
             .putBoolean("safety",pausedForSafety)
-            .putBoolean("started",startedAt!=0L)
-            .putLong("elapsed",if(startedAt==0L) 0L else (SystemClock.elapsedRealtime()-startedAt).coerceAtLeast(0L))
+            .putBoolean("started",activeElapsedMs()>0L)
+            .putLong("elapsed",activeElapsedMs())
             .putLong("savedAt",System.currentTimeMillis()).apply()
     }
     private fun offerCheckpoint() {
@@ -65,9 +68,8 @@ class GuidedWorkoutActivity:Activity() {
                 remainingMs=checkpoint.getLong("remaining",remainingMs).coerceIn(0L,600_000L)
                 pausedForSafety=checkpoint.getBoolean("safety",false)
                 val elapsed=checkpoint.getLong("elapsed",0L).coerceIn(0L,86_400_000L)
-                if(checkpoint.getBoolean("started",false)) {
-                    startedAt=SystemClock.elapsedRealtime()-elapsed.coerceAtMost(SystemClock.elapsedRealtime())
-                }
+                accumulated=elapsed
+                startedAt=0L
                 val seconds=(remainingMs/1000).toInt()
                 counter.text=String.format(Locale.US,"%02d:%02d",seconds/60,seconds%60)
                 control.text=if(pausedForSafety) "⚠️ Đã dừng vì đau" else "▶ Tiếp tục"
@@ -209,9 +211,8 @@ class GuidedWorkoutActivity:Activity() {
                 .coerceIn(0L,600_000L)
             pausedForSafety=savedInstanceState.getBoolean("workout_safety",false)
             val elapsed=savedInstanceState.getLong("workout_elapsed",0L).coerceAtLeast(0L)
-            if(savedInstanceState.getBoolean("workout_started",false)) {
-                startedAt=SystemClock.elapsedRealtime()-elapsed.coerceAtMost(SystemClock.elapsedRealtime())
-            }
+            accumulated=elapsed.coerceAtMost(86_400_000L)
+            startedAt=0L
             val seconds=(remainingMs/1000).toInt()
             counter.text=String.format(Locale.US,"%02d:%02d",seconds/60,seconds%60)
             control.text=if(pausedForSafety) "⚠️ Đã dừng vì đau" else "▶ Tiếp tục"
@@ -224,9 +225,8 @@ class GuidedWorkoutActivity:Activity() {
         outState.putInt("workout_index",index)
         outState.putLong("workout_remaining",remainingMs)
         outState.putBoolean("workout_safety",pausedForSafety)
-        outState.putBoolean("workout_started",startedAt!=0L)
-        outState.putLong("workout_elapsed",if(startedAt==0L) 0L
-            else (SystemClock.elapsedRealtime()-startedAt).coerceAtLeast(0L))
+        outState.putBoolean("workout_started",activeElapsedMs()>0L)
+        outState.putLong("workout_elapsed",activeElapsedMs())
         super.onSaveInstanceState(outState)
     }
     private fun requestVoiceCommand() {
@@ -468,7 +468,7 @@ class GuidedWorkoutActivity:Activity() {
         }
         if(!paused)return
         paused=false
-        if(startedAt==0L) startedAt=SystemClock.elapsedRealtime()
+        startedAt=SystemClock.elapsedRealtime()
         deadline=SystemClock.elapsedRealtime()+remainingMs
         control.text="⏸ Tạm dừng"
         speak("Bài ${index+1}: ${moves[index].name}. ${moves[index].dose}. ${moves[index].steps}")
@@ -476,7 +476,10 @@ class GuidedWorkoutActivity:Activity() {
     }
     private fun pause() {
         if(paused)return
-        remainingMs=(deadline-SystemClock.elapsedRealtime()).coerceAtLeast(0L)
+        val now=SystemClock.elapsedRealtime()
+        remainingMs=(deadline-now).coerceAtLeast(0L)
+        if(startedAt!=0L) accumulated+=(now-startedAt).coerceAtLeast(0L)
+        startedAt=0L
         paused=true;handler.removeCallbacks(tick)
         spoken?.stop()
         control.text="▶ Tiếp tục"
@@ -501,7 +504,7 @@ class GuidedWorkoutActivity:Activity() {
         pause()
         completed=true
         checkpoint.edit().clear().apply()
-        val elapsed=if(startedAt==0L)0 else ((SystemClock.elapsedRealtime()-startedAt)/60000L).toInt()
+        val elapsed=(activeElapsedMs()/60000L).toInt()
         val mins=elapsed.coerceAtLeast(1)
         WorkoutData.save(this,WorkoutData.history(this)+Workout(
             LifeData.today(),program.name,mins,"Tập theo Chibi Coach, ${index+1}/${moves.size} bước; thời lượng ước tính"))

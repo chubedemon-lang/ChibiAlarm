@@ -127,7 +127,7 @@ class GuidedWorkoutActivity:Activity() {
         }
         root.addView(progress)
         guide=TextView(this).apply { textSize=16f;setPadding(10,22,10,20);setTextColor(Color.rgb(70,61,85)) }
-        root.addView(ScrollView(this).apply { addView(guide) },LinearLayout.LayoutParams(-1,0,1f))
+        root.addView(ScrollView(this).apply { addView(guide) },LinearLayout.LayoutParams(-1,(220*resources.displayMetrics.density).toInt()))
         val online=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
         online.addView(Button(this).apply { text="▶ YouTube";setOnClickListener { searchVideo("youtube") } },LinearLayout.LayoutParams(0,-2,1f))
         online.addView(Button(this).apply { text="♫ TikTok";setOnClickListener { searchVideo("tiktok") } },LinearLayout.LayoutParams(0,-2,1f))
@@ -181,7 +181,12 @@ class GuidedWorkoutActivity:Activity() {
             text="Giọng đọc dùng engine TTS cài trên Android. Thời gian từng động tác chỉ là nhắc nhở; nghỉ thêm khi cần. Dừng ngay nếu thấy đau hoặc khó chịu."
             textSize=12f
         })
-        setContentView(root)
+        // Keep every workout control reachable on small phones and with large accessibility fonts.
+        val page=ScrollView(this).apply {
+            isFillViewport=true
+            addView(root)
+        }
+        setContentView(page)
         if(Build.VERSION.SDK_INT>=35) {
             root.setOnApplyWindowInsetsListener { view,insets ->
                 val bars=insets.getInsets(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout())

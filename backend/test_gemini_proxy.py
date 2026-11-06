@@ -71,6 +71,17 @@ class ProxyTests(unittest.TestCase):
         conn.close()
         return result
 
+    def test_utf8_bom_is_rejected_before_quota_or_upstream(self):
+        # Strict UTF-8 JSON framing: reject BOM rather than silently stripping it.
+        # A rejected request must not reserve money or create quota state.
+        body = b"\\xef\\xbb\\xbf" + b'{"topic":"morning","profile":1}'
+        with patch.object(proxy, "open_gemini") as upstream:
+            status, response = self.request_raw(body)
+            self.assertEqual(status, 400)
+            self.assertEqual(response, {"error": "invalid_request"})
+            upstream.assert_not_called()
+            self.assertFalse(os.path.exists(proxy.QUOTA_DB))
+
     def test_invisible_and_bidi_topic_controls_rejected_before_quota(self):
         # These characters can disguise instructions in a prompt or alarm UI.
         # A rejected request must not create quota storage or call Gemini.

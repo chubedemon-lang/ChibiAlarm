@@ -347,6 +347,23 @@ class ProxyTests(unittest.TestCase):
                                 for h in builder.call_args.args))
             self.assertEqual(builder.return_value.open.call_args.kwargs["timeout"], 25)
 
+    def test_ambiguous_upstream_json_fails_closed_and_server_recovers(self):
+        # Treat provider JSON as untrusted: duplicate fields and non-finite
+        # numbers must not be silently accepted as a valid coach response.
+        cases = (
+            b'{"candidates":[{"content":{"parts":[{"text":"safe"}]}}],"candidates":[{"content":{"parts":[{"text":"override"}]}}]}',
+            b'{"candidates":[{"content":{"parts":[{"text":"safe"}]}}],"unused":NaN}',
+            b'{"candidates":[{"content":{"parts":[{"text":"safe"}]}}],"unused":1e999}',
+        )
+        with patch.object(proxy, "DAILY_LIMIT", 20):
+            for raw in cases:
+                with self.subTest(raw=raw):
+                    with patch.object(proxy, "open_gemini", return_value=FakeResponse(raw)):
+                        self.assertEqual(self.request(), (502, {"error": "upstream_unavailable"}))
+            valid = b'{"candidates":[{"content":{"parts":[{"text":"Good morning"}]}}]}'
+            with patch.object(proxy, "open_gemini", return_value=FakeResponse(valid)):
+                self.assertEqual(self.request(), (200, {"message": "Good morning"}))
+
     def test_invalid_upstream_utf8_fails_closed(self):
         with patch.object(proxy, "open_gemini", return_value=FakeResponse(b"\xff\xfe")):
             status, data = self.request()

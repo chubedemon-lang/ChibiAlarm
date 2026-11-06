@@ -39,6 +39,19 @@ class GeminiTextSafetyTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     proxy.extract_safe_message(self.candidate(parts))
 
+    def test_malformed_part_cannot_hide_inside_valid_response(self):
+        for bad in (None, 42, {}, {"text": None}, {"text": 7}, {"other": "x"}):
+            with self.subTest(part=bad):
+                with self.assertRaises(ValueError):
+                    proxy.extract_safe_message(self.candidate([
+                        {"text": "Valid beginning"}, bad, {"text": "valid ending"}]))
+
+    def test_multiple_valid_text_parts_are_joined_without_data_loss(self):
+        self.assertEqual(
+            proxy.extract_safe_message(self.candidate([
+                {"text": "Chào "}, {"text": "bạn 🌞"}])),
+            "Chào bạn 🌞")
+
     def test_response_length_is_bounded(self):
         self.assertEqual(len(proxy.extract_safe_message(
             self.candidate([{"text": "a" * 800}]))), 500)

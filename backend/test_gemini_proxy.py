@@ -473,8 +473,9 @@ class ProxyTests(unittest.TestCase):
         }).encode("utf-8"))
         with patch.object(proxy, "open_gemini", return_value=fake):
             status, body = self.request()
-        self.assertEqual(status, 200)
-        self.assertEqual(body, {"message": "Xin chào!"})
+        # Mixed/unknown upstream parts must fail closed, not silently skip data.
+        self.assertEqual(status, 502)
+        self.assertEqual(body, {"error": "upstream_unavailable"})
         self.assertNotIn("secret", json.dumps(body))
 
     def test_upstream_parts_must_be_list(self):

@@ -37,11 +37,15 @@ class GuidedWorkoutActivity:Activity() {
     // Guest-only checkpoint; authenticated profiles must use isolated storage.
     private val checkpoint by lazy { getSharedPreferences("chibi_workout_checkpoint_guest", MODE_PRIVATE) }
     private var completed=false
+    // Do not overwrite a saved session before the user chooses Restore or Start over.
+    private var checkpointDecisionPending=false
     private fun saveCheckpoint() {
-        if (completed || moves.isEmpty()) return
+        if (completed || checkpointDecisionPending || moves.isEmpty()) return
         checkpoint.edit().putString("program",program.id)
             .putInt("index",index).putLong("remaining",remainingMs.coerceIn(0L,600_000L))
             .putBoolean("safety",pausedForSafety)
+            .putBoolean("started",startedAt!=0L)
+            .putLong("elapsed",if(startedAt==0L) 0L else (SystemClock.elapsedRealtime()-startedAt).coerceAtLeast(0L))
             .putLong("savedAt",System.currentTimeMillis()).apply()
     }
     private fun offerCheckpoint() {
@@ -51,18 +55,27 @@ class GuidedWorkoutActivity:Activity() {
             checkpoint.edit().clear().apply()
             return
         }
+        checkpointDecisionPending=true
         AlertDialog.Builder(this).setTitle("Tiếp tục buổi tập đã lưu?")
             .setMessage("Đã lưu bước và thời gian còn lại trên máy. Khôi phục luôn ở trạng thái tạm dừng.")
             .setPositiveButton("Khôi phục") { _,_ ->
+                checkpointDecisionPending=false
                 index=checkpoint.getInt("index",0).coerceIn(0,moves.lastIndex)
                 displayStep()
                 remainingMs=checkpoint.getLong("remaining",remainingMs).coerceIn(0L,600_000L)
                 pausedForSafety=checkpoint.getBoolean("safety",false)
+                val elapsed=checkpoint.getLong("elapsed",0L).coerceIn(0L,86_400_000L)
+                if(checkpoint.getBoolean("started",false)) {
+                    startedAt=SystemClock.elapsedRealtime()-elapsed.coerceAtMost(SystemClock.elapsedRealtime())
+                }
                 val seconds=(remainingMs/1000).toInt()
                 counter.text=String.format(Locale.US,"%02d:%02d",seconds/60,seconds%60)
                 control.text=if(pausedForSafety) "⚠️ Đã dừng vì đau" else "▶ Tiếp tục"
             }
-            .setNegativeButton("Bắt đầu lại") { _,_ -> checkpoint.edit().clear().apply() }
+            .setNegativeButton("Bắt đầu lại") { _,_ ->
+                checkpointDecisionPending=false
+                checkpoint.edit().clear().apply()
+            }
             .setCancelable(false).show()
     }
 

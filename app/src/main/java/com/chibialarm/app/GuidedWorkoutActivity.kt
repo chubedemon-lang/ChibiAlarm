@@ -29,6 +29,7 @@ class GuidedWorkoutActivity:Activity() {
     private var deadline=0L
     private var remainingMs=0L
     private var paused=true
+    private var pausedForSafety=false
     private var startedAt=0L
     private var accumulated=0L
     private var spoken:TextToSpeech?=null
@@ -113,7 +114,7 @@ class GuidedWorkoutActivity:Activity() {
         })
         val actions=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
         actions.addView(Button(this).apply { text="← Trước";setOnClickListener {
-            if(index>0) { pause();index--;displayStep(); }
+            if(!pausedForSafety && index>0) { pause();index--;displayStep(); }
         } },LinearLayout.LayoutParams(0,-2,1f))
         actions.addView(Button(this).apply { text="Bước tiếp →";setOnClickListener { nextMove() } },
             LinearLayout.LayoutParams(0,-2,1f))
@@ -171,10 +172,17 @@ class GuidedWorkoutActivity:Activity() {
     }
     private fun handleCoachCommand(utterance:String) {
         when(WorkoutVoiceCommands.parse(utterance)) {
-            WorkoutVoiceCommands.Command.PAUSE -> { pause();speak("Đã tạm dừng. Nếu đau hoặc khó chịu, hãy dừng tập và tìm trợ giúp phù hợp.") }
+            WorkoutVoiceCommands.Command.PAIN -> {
+                pause();pausedForSafety=true
+                AlertDialog.Builder(this).setTitle("⚠️ Đã dừng vì bạn báo đau")
+                    .setMessage("Không cố tập khi đau. Hãy kết thúc buổi tập nếu triệu chứng tiếp diễn; tìm trợ giúp y tế phù hợp nếu đau nhiều hoặc có dấu hiệu bất thường. Chibi sẽ không tự tiếp tục bằng giọng nói.")
+                    .setPositiveButton("Đã hiểu",null).show()
+                speak("Đã dừng tập vì bạn báo đau. Hãy ưu tiên an toàn.")
+            }
+            WorkoutVoiceCommands.Command.PAUSE -> { pause();speak("Đã tạm dừng.") }
             WorkoutVoiceCommands.Command.RESUME -> resume()
             WorkoutVoiceCommands.Command.NEXT -> nextMove()
-            WorkoutVoiceCommands.Command.PREVIOUS -> { pause();if(index>0)index--;displayStep();speak("Bài "+moves[index].name) }
+            WorkoutVoiceCommands.Command.PREVIOUS -> { if(!pausedForSafety) { pause();if(index>0)index--;displayStep();speak("Bài "+moves[index].name) } }
             WorkoutVoiceCommands.Command.REPEAT -> speak(moves[index].steps)
             WorkoutVoiceCommands.Command.EASIER -> {
                 pause()
@@ -335,6 +343,13 @@ class GuidedWorkoutActivity:Activity() {
         if(ready)spoken?.speak(message.take(350),TextToSpeech.QUEUE_FLUSH,null,"fitness-${index}")
     }
     private fun resume() {
+        if(pausedForSafety) {
+            AlertDialog.Builder(this).setTitle("Xác nhận trước khi tập lại")
+                .setMessage("Bạn đã báo đau. Chỉ tiếp tục nếu triệu chứng đã hết và bạn thấy an toàn. Nếu còn đau, hãy dừng buổi tập.")
+                .setPositiveButton("Tôi đã ổn, tiếp tục"){_,_->pausedForSafety=false;resume()}
+                .setNegativeButton("Tiếp tục nghỉ",null).show()
+            return
+        }
         if(!paused)return
         paused=false
         if(startedAt==0L) startedAt=SystemClock.elapsedRealtime()
@@ -351,6 +366,10 @@ class GuidedWorkoutActivity:Activity() {
         control.text="▶ Tiếp tục"
     }
     private fun nextMove() {
+        if(pausedForSafety) {
+            Toast.makeText(this,"Đang dừng vì báo đau. Hãy xác nhận an toàn trước khi tiếp tục.",Toast.LENGTH_LONG).show()
+            return
+        }
         pause()
         if(index==moves.lastIndex) {
             AlertDialog.Builder(this).setTitle("🎉 Đã đi hết chương trình!")

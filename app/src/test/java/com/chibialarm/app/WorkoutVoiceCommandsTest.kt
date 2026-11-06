@@ -2,10 +2,9 @@ package com.chibialarm.app
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import com.chibialarm.app.WorkoutVoiceCommands.Command as C
 
 class WorkoutVoiceCommandsTest {
-    private val C = WorkoutVoiceCommands.Command
-
     @Test fun vietnameseDiacriticsAndEnglishCommands() {
         assertEquals(C.PAUSE, WorkoutVoiceCommands.parse("Tạm dừng"))
         assertEquals(C.PAUSE, WorkoutVoiceCommands.parse("pause"))

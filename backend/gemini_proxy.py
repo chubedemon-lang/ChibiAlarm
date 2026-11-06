@@ -152,10 +152,13 @@ def extract_safe_message(result):
     parts = result["candidates"][0]["content"]["parts"]
     if not isinstance(parts, list):
         raise ValueError("invalid upstream parts")
-    message = "".join(
-        part["text"] for part in parts
-        if isinstance(part, dict) and isinstance(part.get("text"), str)
-    )
+    # Never silently discard malformed parts and return a misleading partial
+    # answer. This endpoint accepts only plain text from the upstream model.
+    if not parts or any(
+            not isinstance(part, dict) or not isinstance(part.get("text"), str)
+            for part in parts):
+        raise ValueError("invalid upstream text part")
+    message = "".join(part["text"] for part in parts)
     # Validate before stripping: str.strip() silently removes Unicode line
     # separators (U+2028/U+2029), masking unsafe upstream content.
     if not message:

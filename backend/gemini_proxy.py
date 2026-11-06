@@ -250,7 +250,9 @@ class Handler(BaseHTTPRequestHandler):
             self.reply(401, {"error": "unauthorized"})
             return
         content_types = self.headers.get_all("Content-Type", [])
-        if (len(content_types) != 1 or not re.fullmatch(\n                r"application/json(?:\\s*;\\s*charset\\s*=\\s*utf-8)?\\s*",\n                content_types[0], flags=re.IGNORECASE)):
+        if (len(content_types) != 1 or not re.fullmatch(
+                r"application/json(?:\s*;\s*charset\s*=\s*utf-8)?\s*",
+                content_types[0], flags=re.IGNORECASE)):
             self.close_connection = True
             self.reply(415, {"error": "unsupported_media_type"})
             return

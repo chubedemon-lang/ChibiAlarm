@@ -334,7 +334,10 @@ class Handler(BaseHTTPRequestHandler):
                     raw = resp.read(16385)
                 if len(raw) > 16384:
                     raise ValueError("upstream response too large")
-                result = json.loads(raw)
+                result = json.loads(raw.decode("utf-8"),
+                                    object_pairs_hook=reject_duplicate_json_keys,
+                                    parse_constant=reject_nonfinite_json_constant,
+                                    parse_float=reject_nonfinite_json_float)
                 self.reply(200, {"message": extract_safe_message(result)})
             except urllib.error.HTTPError as exc:
                 self.reply(429 if exc.code == 429 else 502, {"error": "upstream_unavailable"})

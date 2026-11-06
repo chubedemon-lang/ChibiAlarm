@@ -502,10 +502,24 @@ class GuidedWorkoutActivity:Activity() {
     }
     private fun finishWorkout() {
         pause()
+        // A skipped or immediately abandoned session is not a completed workout.
+        // Never manufacture one minute of exercise (and downstream RPG progress).
+        val elapsedMs=activeElapsedMs()
+        if (elapsedMs < 60_000L) {
+            AlertDialog.Builder(this)
+                .setTitle("Chưa đủ thời gian vận động")
+                .setMessage("Buổi tập có dưới 1 phút hoạt động thực tế. Chibi chưa ghi nhật ký hoặc trao tiến độ nhiệm vụ. Bạn có thể tập tiếp hoặc thoát mà không lưu.")
+                .setPositiveButton("Tập tiếp", null)
+                .setNegativeButton("Thoát không lưu") { _, _ ->
+                    completed=true
+                    checkpoint.edit().clear().apply()
+                    finish()
+                }.show()
+            return
+        }
         completed=true
         checkpoint.edit().clear().apply()
-        val elapsed=(activeElapsedMs()/60000L).toInt()
-        val mins=elapsed.coerceAtLeast(1)
+        val mins=(elapsedMs/60000L).toInt()
         WorkoutData.save(this,WorkoutData.history(this)+Workout(
             LifeData.today(),program.name,mins,"Tập theo Chibi Coach, ${index+1}/${moves.size} bước; thời lượng ước tính"))
         Toast.makeText(this,"Đã ghi $mins phút vào nhật ký",Toast.LENGTH_LONG).show()

@@ -374,7 +374,7 @@ class GuidedWorkoutActivity:Activity() {
         }
         fun format(ms: Long): String = "${(ms / 60000)} phút ${(ms / 1000) % 60} giây"
         AlertDialog.Builder(this).setTitle("Xem trước giáo án rút ngắn")
-            .setMessage("Thời gian còn lại dự kiến:\\nTrước: ${format(before)}\\nSau: ${format(after)}\\n\\n" +
+            .setMessage("Thời gian còn lại dự kiến:\nTrước: ${format(before)}\nSau: ${format(after)}\n\n" +
                 "Giảm thời lượng động tác hiện tại và các động tác phía sau. " +
                 "Những bước đã hoàn thành được giữ nguyên. Đây là ước tính, không bao gồm nghỉ thêm.")
             .setPositiveButton("Xác nhận thay đổi") { _, _ ->

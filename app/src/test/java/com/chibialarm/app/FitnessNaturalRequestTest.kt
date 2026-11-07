@@ -35,4 +35,16 @@ class FitnessNaturalRequestTest {
     @Test fun handlesLowImpactWithoutInjury() {
         assertEquals(1, FitnessNaturalRequest.parse("Không nhảy, tập nhẹ nhàng").impact)
     }
+
+    @Test fun understandsWeightLossAndEnduranceGoals() {
+        assertEquals(1, FitnessNaturalRequest.parse("Tao muốn giảm cân 20 phút").goal)
+        assertEquals(1, FitnessNaturalRequest.parse("Tập tăng sức bền").goal)
+        assertEquals(1, FitnessNaturalRequest.parse("Giảm mỡ không dụng cụ").goal)
+    }
+
+    @Test fun weightLossRequestStillHonorsInjurySafety() {
+        val result = FitnessNaturalRequest.parse("Muốn giảm cân nhưng đang đau khớp")
+        assertEquals(1, result.goal)
+        assertEquals(2, result.impact)
+    }
 }

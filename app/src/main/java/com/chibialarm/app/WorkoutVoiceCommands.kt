@@ -26,13 +26,16 @@ object WorkoutVoiceCommands {
             .replace(Regex("\\p{M}+"), "").replace('đ', 'd')
             .replace(Regex("[^a-z0-9 ]"), " ").trim().replace(Regex("\\s+"), " ")
         if (normalized.isEmpty() || normalized.length > 160) return Command.UNKNOWN
+        // 'bắt đầu' contains the unaccented token 'dau'; it is not a pain report.
+        // Remove only this phrase for safety-token detection, preserving any actual 'đau' later.
+        val safetyWords = normalized.replace(Regex("\\bbat dau\\b"), " ").split(' ').toSet()
         val words = normalized.split(' ').toSet()
         return when {
             normalized.contains("bi dau") || normalized.contains("dang dau") ||
                 normalized.contains("chan thuong") || normalized.contains("kho tho") ||
                 normalized.contains("chong mat") || normalized.contains("choang vang") ||
                 normalized.contains("dau nguc") || normalized.contains("dau dau") ||
-                ("dau" in words && !normalized.contains("o dau")) || "ngat" in words -> Command.PAIN
+                ("dau" in safetyWords && !normalized.contains("o dau")) || "ngat" in words -> Command.PAIN
             normalized.contains("tam dung") || normalized.contains("dung lai") ||
                 normalized.contains("dung tap") || "pause" in words -> Command.PAUSE
             normalized.contains("nghi them") || normalized.contains("nghi mot chut") ||

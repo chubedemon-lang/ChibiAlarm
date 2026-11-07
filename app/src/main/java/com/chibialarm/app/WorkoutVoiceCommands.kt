@@ -15,7 +15,10 @@ object WorkoutVoiceCommands {
         val words = normalized.split(' ').toSet()
         return when {
             normalized.contains("bi dau") || normalized.contains("dang dau") ||
-                normalized.contains("chan thuong") -> Command.PAIN
+                normalized.contains("chan thuong") || normalized.contains("kho tho") ||
+                normalized.contains("chong mat") || normalized.contains("choang vang") ||
+                normalized.contains("dau nguc") || normalized.contains("dau dau") ||
+                "dau" in words || "ngat" in words -> Command.PAIN
             normalized.contains("tam dung") || normalized.contains("dung lai") ||
                 normalized.contains("dung tap") || "pause" in words -> Command.PAUSE
             normalized.contains("nghi them") || normalized.contains("nghi mot chut") ||

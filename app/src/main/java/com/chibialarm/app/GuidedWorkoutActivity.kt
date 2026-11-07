@@ -373,10 +373,18 @@ class GuidedWorkoutActivity:Activity() {
             RemainingWorkoutDuration.seconds(moves[position].seconds, position, proposedFrom) * 1000L
         }
         fun format(ms: Long): String = "${(ms / 60000)} phút ${(ms / 1000) % 60} giây"
+        val stepPreview = RemainingWorkoutDuration.preview(
+            moves.map { it.name }, moves.map { it.seconds }, index,
+            (remainingMs / 1000L).toInt(), shorterFromIndex
+        )
+        val details = stepPreview.take(4).joinToString("\\n") { step ->
+            "• ${step.name}: ${step.beforeSeconds}s → ${step.afterSeconds}s"
+        } + if (stepPreview.size > 4) "\\n… và ${stepPreview.size - 4} bước tiếp theo" else ""
+
         AlertDialog.Builder(this).setTitle("Xem trước giáo án rút ngắn")
             .setMessage("Thời gian còn lại dự kiến:\nTrước: ${format(before)}\nSau: ${format(after)}\n\n" +
                 "Giảm thời lượng động tác hiện tại và các động tác phía sau. " +
-                "Những bước đã hoàn thành được giữ nguyên. Đây là ước tính, không bao gồm nghỉ thêm.")
+                "Những bước đã hoàn thành được giữ nguyên. Đây là ước tính, không bao gồm nghỉ thêm.\\n\\n" + details)
             .setPositiveButton("Xác nhận thay đổi") { _, _ ->
                 if (pausedForSafety || completed || index >= moves.size) return@setPositiveButton
                 shorterFromIndex = proposedFrom

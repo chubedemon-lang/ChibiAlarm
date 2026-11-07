@@ -29,4 +29,16 @@ class GuidedWorkoutScrollingTest {
         assertTrue(buttons.any { it.contains("Kết thúc buổi tập") })
         activity.finish()
     }
+
+    @Test fun spokenPainPersistsSafetyLockForRestore() {
+        val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup().get()
+        val method = GuidedWorkoutActivity::class.java.getDeclaredMethod(
+            "handleCoachCommand", String::class.java
+        )
+        method.isAccessible = true
+        method.invoke(activity, "tôi đau chân")
+        val checkpoint = activity.getSharedPreferences("chibi_workout_checkpoint_guest", 0)
+        assertTrue("Safety pause must survive process death", checkpoint.getBoolean("safety", false))
+        activity.finish()
+    }
 }

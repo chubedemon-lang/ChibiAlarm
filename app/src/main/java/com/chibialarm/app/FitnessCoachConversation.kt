@@ -5,6 +5,32 @@ package com.chibialarm.app
  * no health-related free text is persisted or sent to a server.
  */
 object FitnessCoachConversation {
+    /**
+     * Interpret short answers only in the context of the question Chibi last asked.
+     * Never infer that a bare "không" means there is no injury: safety constraints
+     * must be reviewed explicitly in the form.
+     */
+    fun parseReply(previous: FitnessNaturalRequest.Result?, input: String): FitnessNaturalRequest.Result {
+        val parsed = FitnessNaturalRequest.parse(input)
+        if (previous == null) return parsed
+        val answer = input.trim().lowercase()
+        val question = FitnessCoachFollowUp.nextQuestion(previous)
+        val shortMinutes = Regex("^([0-9]{1,3})$").matchEntire(answer)
+            ?.groupValues?.get(1)?.toIntOrNull()?.takeIf { it in 5..120 }
+        return when {
+            previous.impact == 2 -> parsed
+            previous.minutes == null && question.contains("bao nhiêu phút") && shortMinutes != null ->
+                parsed.copy(minutes = shortMinutes)
+            previous.equipment == null && question.contains("thảm, tạ") &&
+                answer in setOf("không", "khong", "không có", "khong co", "tay không", "tay khong") ->
+                parsed.copy(equipment = 0)
+            previous.energy == null && question.contains("mệt") &&
+                answer in setOf("bình thường", "binh thuong", "vừa", "vua") ->
+                parsed.copy(energy = 1)
+            else -> parsed
+        }
+    }
+
     fun merge(previous: FitnessNaturalRequest.Result?, next: FitnessNaturalRequest.Result): FitnessNaturalRequest.Result {
         if (previous == null) return next
         return FitnessNaturalRequest.Result(

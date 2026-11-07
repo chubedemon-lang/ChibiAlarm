@@ -30,6 +30,18 @@ object FitnessCoachConversation {
             previous.equipment == null && question.contains("thảm, tạ") &&
                 answer in setOf("tạ", "ta", "tạ đơn", "ta don", "dây", "day", "dây kháng lực", "day khang luc") ->
                 parsed.copy(equipment = 2, reply = "Đã ghi nhận có tạ hoặc dây kháng lực. Hãy kiểm tra dụng cụ được chọn.")
+            previous.impact == null && question.contains("hạn chế vận động") &&
+                answer in setOf("không", "khong", "không có", "khong co", "không hạn chế", "khong han che") ->
+                parsed.copy(impact = 0, reply = "Đã ghi nhận mày không khai báo hạn chế vận động. Nếu thấy đau hoặc chóng mặt, hãy dừng tập.")
+            previous.impact == null && question.contains("hạn chế vận động") &&
+                answer in setOf("tránh nhảy", "tranh nhay", "không nhảy", "khong nhay", "ít tác động", "it tac dong") ->
+                parsed.copy(impact = 1, reply = "Đã ghi nhận ưu tiên bài ít tác động, không nhảy.")
+            previous.energy == null && question.contains("mệt") &&
+                answer in setOf("mệt", "met", "hơi mệt", "hoi met", "ít năng lượng", "it nang luong") ->
+                parsed.copy(energy = 0, reply = "Đã ghi nhận mức năng lượng thấp. Tao sẽ ưu tiên buổi tập nhẹ.")
+            previous.energy == null && question.contains("mệt") &&
+                answer in setOf("khỏe", "khoe", "nhiều năng lượng", "nhieu nang luong") ->
+                parsed.copy(energy = 2, reply = "Đã ghi nhận mày còn nhiều năng lượng.")
             previous.energy == null && question.contains("mệt") &&
                 answer in setOf("bình thường", "binh thuong", "vừa", "vua") ->
                 parsed.copy(energy = 1, reply = "Đã ghi nhận mức năng lượng bình thường.")

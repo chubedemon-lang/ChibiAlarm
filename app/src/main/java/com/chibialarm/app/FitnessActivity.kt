@@ -91,7 +91,7 @@ class FitnessActivity:Activity() {
                 if (request.isBlank()) {
                     naturalRequest.error="Hãy mô tả buổi tập bạn muốn"
                 } else {
-                    val parsed=FitnessCoachConversation.merge(conversation, FitnessNaturalRequest.parse(request))
+                    val parsed=FitnessCoachConversation.merge(conversation, FitnessCoachConversation.parseReply(conversation, request))
                     conversation=parsed
                     parsed.goal?.let { goalSpinner.setSelection(it) }
                     parsed.energy?.let { energySpinner.setSelection(it) }

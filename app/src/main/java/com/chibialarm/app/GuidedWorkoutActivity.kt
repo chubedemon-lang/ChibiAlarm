@@ -364,13 +364,30 @@ class GuidedWorkoutActivity:Activity() {
     private fun shortenRemainingWorkout() {
         if (pausedForSafety || completed) return
         pause()
-        shorterFromIndex = minOf(shorterFromIndex, index)
-        remainingMs = (remainingMs / 2).coerceAtLeast(5_000L)
-        val seconds = (remainingMs / 1000).toInt()
-        counter.text = String.format(Locale.US,"%02d:%02d",seconds/60,seconds%60)
-        control.text = "▶ Tiếp tục giáo án ngắn hơn"
-        saveCheckpoint()
-        speak("Đã rút ngắn động tác hiện tại và các động tác còn lại. Các bước đã tập không thay đổi.")
+        val before = remainingMs + moves.drop(index + 1).sumOf {
+            RemainingWorkoutDuration.seconds(it.seconds, index + 1 + moves.drop(index + 1).indexOf(it), shorterFromIndex) * 1000L
+        }
+        val proposedFrom = minOf(shorterFromIndex, index)
+        val afterCurrent = (remainingMs / 2).coerceAtLeast(5_000L)
+        val after = afterCurrent + moves.indices.drop(index + 1).sumOf { position ->
+            RemainingWorkoutDuration.seconds(moves[position].seconds, position, proposedFrom) * 1000L
+        }
+        fun format(ms: Long): String = "${(ms / 60000)} phút ${(ms / 1000) % 60} giây"
+        AlertDialog.Builder(this).setTitle("Xem trước giáo án rút ngắn")
+            .setMessage("Thời gian còn lại dự kiến:\\nTrước: ${format(before)}\\nSau: ${format(after)}\\n\\n" +
+                "Giảm thời lượng động tác hiện tại và các động tác phía sau. " +
+                "Những bước đã hoàn thành được giữ nguyên. Đây là ước tính, không bao gồm nghỉ thêm.")
+            .setPositiveButton("Xác nhận thay đổi") { _, _ ->
+                if (pausedForSafety || completed || index >= moves.size) return@setPositiveButton
+                shorterFromIndex = proposedFrom
+                remainingMs = afterCurrent
+                val seconds = (remainingMs / 1000).toInt()
+                counter.text = String.format(Locale.US, "%02d:%02d", seconds / 60, seconds % 60)
+                control.text = "▶ Tiếp tục giáo án ngắn hơn"
+                saveCheckpoint()
+                speak("Đã rút ngắn phần tập còn lại. Các bước đã hoàn thành không thay đổi.")
+            }
+            .setNegativeButton("Giữ giáo án cũ", null).show()
     }
     private fun videoKey():String=program.id+"_"+moves[index].name
     private fun saveVideoLink() {

@@ -22,12 +22,16 @@ class WorkoutVoiceCommandsTest {
         assertEquals(C.REST, WorkoutVoiceCommands.parse("Nghỉ thêm"))
         assertEquals(C.SHORTER, WorkoutVoiceCommands.parse("Rút ngắn bài tập"))
         assertEquals(C.SHORTER, WorkoutVoiceCommands.parse("giam thoi gian"))
+        assertEquals(C.SHORTER_REMAINING, WorkoutVoiceCommands.parse("Rút ngắn tất cả động tác còn lại"))
+        assertEquals(C.SHORTER_REMAINING, WorkoutVoiceCommands.parse("Giảm thời gian toàn bộ phần sau"))
+        assertEquals(C.SHORTER_REMAINING, WorkoutVoiceCommands.parse("rut ngan ca buoi"))
     }
 
     @Test fun safetyTakesPriorityOverStartAndNext() {
         assertEquals(C.PAIN, WorkoutVoiceCommands.parse("Tôi đang đau, cho bài tiếp theo"))
         assertEquals(C.PAIN, WorkoutVoiceCommands.parse("bị chấn thương, bắt đầu"))
         assertEquals(C.PAIN, WorkoutVoiceCommands.parse("đang đau, rút ngắn bài tập"))
+        assertEquals(C.PAIN, WorkoutVoiceCommands.parse("đau chân, rút ngắn tất cả còn lại"))
         assertEquals(C.PAUSE, WorkoutVoiceCommands.parse("dừng tập"))
     }
 

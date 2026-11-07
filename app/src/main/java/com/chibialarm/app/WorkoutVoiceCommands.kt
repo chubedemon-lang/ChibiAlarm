@@ -44,11 +44,12 @@ object WorkoutVoiceCommands {
                 normalized.contains("giam thoi gian") -> Command.SHORTER
             normalized.contains("de hon") || normalized.contains("giam do kho") ||
                 normalized.contains("nhe hon") -> Command.EASIER
-            normalized.contains("lap lai") || normalized.contains("noi lai") ||
+            normalized.contains("lap lai") || normalized.contains("nhac lai") || normalized.contains("noi lai") ||
                 "repeat" in words -> Command.REPEAT
             normalized.contains("bai truoc") || normalized.contains("quay lai") ||
                 "previous" in words -> Command.PREVIOUS
             normalized.contains("bai tiep") || normalized.contains("tiep theo") ||
+                normalized.contains("bo qua bai") || normalized.contains("chuyen bai") ||
                 "next" in words -> Command.NEXT
             normalized.contains("tiep tuc") || normalized.contains("bat dau") ||
                 "resume" in words -> Command.RESUME

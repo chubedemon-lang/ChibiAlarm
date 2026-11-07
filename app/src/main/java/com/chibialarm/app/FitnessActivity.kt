@@ -5,6 +5,9 @@ import android.content.*
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.speech.RecognizerIntent
+import android.speech.tts.TextToSpeech
+import java.util.Locale
 import android.view.Gravity
 import android.widget.*
 
@@ -12,6 +15,34 @@ import android.widget.*
 class FitnessActivity:Activity() {
     private val prefs by lazy { getSharedPreferences("chibi_fitness_offline",0) }
     private var conversation: FitnessNaturalRequest.Result? = null
+    private var speechInput: EditText? = null
+    private var speechOutput: TextToSpeech? = null
+    private var speechReady = false
+    private val speechRequestCode = 4107
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != speechRequestCode || resultCode != RESULT_OK) return
+        val recognized = data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+            ?.firstOrNull()?.trim().orEmpty()
+        if (recognized.isNotEmpty()) {
+            speechInput?.setText(recognized)
+            speechInput?.setSelection(recognized.length)
+            Toast.makeText(this, "Kiểm tra lời nhận dạng rồi nhấn Chibi hiểu yêu cầu", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    override fun onDestroy() {
+        speechOutput?.stop()
+        speechOutput?.shutdown()
+        speechOutput = null
+        super.onDestroy()
+    }
+
+    private fun sayFollowUp(message: String) {
+        if (speechReady) speechOutput?.speak(message, TextToSpeech.QUEUE_FLUSH, null, "fitness-follow-up")
+    }
+
     private lateinit var root:LinearLayout
     private lateinit var level:Spinner
     private lateinit var length:Spinner
@@ -57,6 +88,50 @@ class FitnessActivity:Activity() {
             contentDescription="Yêu cầu giáo án bằng tiếng Việt"
         }
         root.addView(naturalRequest)
+        speechInput = naturalRequest
+        root.addView(Button(this).apply {
+            text = "🎙 Nhập bằng giọng nói (dịch vụ nhận dạng trên máy)"
+            isAllCaps = false
+            setOnClickListener {
+                // An external recognizer owns microphone access; this Activity never records audio.
+                // Depending on the installed recognizer, speech may be processed online.
+                AlertDialog.Builder(this@FitnessActivity)
+                    .setTitle("Quyền riêng tư giọng nói")
+                    .setMessage("Chibi sẽ mở dịch vụ nhận dạng giọng nói của thiết bị. Dịch vụ đó có thể yêu cầu quyền micro và có thể gửi âm thanh lên mạng tùy cài đặt. Chibi chỉ nhận văn bản trả về; hãy kiểm tra trước khi áp dụng giáo án.")
+                    .setPositiveButton("Tiếp tục") { _, _ ->
+                        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "vi-VN")
+                            putExtra(RecognizerIntent.EXTRA_PROMPT, "Nói yêu cầu tập luyện của bạn")
+                        }
+                        try { startActivityForResult(intent, speechRequestCode) }
+                        catch (_: android.content.ActivityNotFoundException) {
+                            Toast.makeText(this@FitnessActivity, "Thiết bị chưa có dịch vụ nhận dạng giọng nói. Hãy nhập bằng bàn phím.", Toast.LENGTH_LONG).show()
+                        }
+                    }.setNegativeButton("Hủy", null).show()
+            }
+        })
+        root.addView(Button(this).apply {
+            text = "🔊 Bật giọng Chibi đọc câu hỏi"
+            isAllCaps = false
+            setOnClickListener {
+                if (speechOutput == null) {
+                    speechOutput = TextToSpeech(this@FitnessActivity) { status ->
+                        speechReady = status == TextToSpeech.SUCCESS &&
+                            speechOutput?.setLanguage(Locale("vi", "VN")) != TextToSpeech.LANG_MISSING_DATA &&
+                            speechOutput?.language != null
+                        if (!speechReady) runOnUiThread {
+                            Toast.makeText(this@FitnessActivity, "Chưa có giọng tiếng Việt TTS trên thiết bị", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                    text = "🔊 Đọc câu hỏi: bật (nhấn để tắt)"
+                } else {
+                    speechOutput?.stop(); speechOutput?.shutdown(); speechOutput = null
+                    speechReady = false
+                    text = "🔊 Bật giọng Chibi đọc câu hỏi"
+                }
+            }
+        })
         root.addView(txt("🤖 Chibi gợi ý buổi tập hôm nay",20f))
         val goals= arrayOf("Tăng sức mạnh","Tăng vận động tim mạch","Giãn cơ & linh hoạt","Giảm mỏi do ngồi nhiều","Mới bắt đầu","Thử thách mới")
         val energyLevels=arrayOf("Hôm nay hơi mệt","Cảm thấy bình thường","Rất nhiều năng lượng")
@@ -101,6 +176,7 @@ class FitnessActivity:Activity() {
                     }
                     parsed.equipment?.let { equipmentSpinner.setSelection(it) }
                     parsed.impact?.let { impactSpinner.setSelection(it) }
+                    sayFollowUp(FitnessCoachFollowUp.nextQuestion(parsed))
                     AlertDialog.Builder(this@FitnessActivity)
                         .setTitle("🐰 Chibi đã nghe")
                         .setMessage(parsed.reply + "\n\n🐰 Chibi hỏi tiếp: " + FitnessCoachFollowUp.nextQuestion(parsed))

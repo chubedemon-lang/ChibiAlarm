@@ -151,7 +151,11 @@ class CoachActivity:Activity() {
         super.onActivityResult(requestCode,resultCode,data)
         if(requestCode==speechRequest && resultCode==RESULT_OK) {
             val recognized=data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
-            if(!recognized.isNullOrBlank()) {\n                prompt.setText(recognized)\n                prompt.setSelection(prompt.text.length)\n                Toast.makeText(this,"Kiểm tra nội dung nhận dạng rồi bấm gửi.",Toast.LENGTH_LONG).show()\n            }
+            if(!recognized.isNullOrBlank()) {
+                prompt.setText(recognized)
+                prompt.setSelection(prompt.text.length)
+                Toast.makeText(this,"Kiểm tra nội dung nhận dạng rồi bấm gửi.",Toast.LENGTH_LONG).show()
+            }
         }
     }
     override fun onDestroy() { speaker?.stop();speaker?.shutdown();super.onDestroy() }

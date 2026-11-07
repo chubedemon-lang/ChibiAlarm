@@ -286,6 +286,7 @@ class GuidedWorkoutActivity:Activity() {
                     .setPositiveButton("Đã hiểu",null).show()
                 speak(moves[index].easier)
             }
+            WorkoutVoiceCommands.Command.SHORTER_REMAINING -> shortenRemainingWorkout()
             WorkoutVoiceCommands.Command.SHORTER -> {
                 if (!pausedForSafety) {
                     pause()

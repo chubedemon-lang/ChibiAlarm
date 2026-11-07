@@ -39,4 +39,15 @@ class WorkoutVoiceCommandsTest {
         assertEquals(C.UNKNOWN, WorkoutVoiceCommands.parse("thời tiết hôm nay thế nào"))
         assertEquals(C.UNKNOWN, WorkoutVoiceCommands.parse("a".repeat(161)))
     }
+    @Test fun spokenActionPreviewCoversEveryCommand() {
+        for (command in C.values()) {
+            val preview = WorkoutVoiceCommands.describe(command)
+            org.junit.Assert.assertTrue(command.name, preview.isNotBlank())
+            org.junit.Assert.assertTrue(command.name, preview.length < 100)
+        }
+        assertEquals("Chưa hiểu yêu cầu; không tự thay đổi buổi tập",
+            WorkoutVoiceCommands.describe(C.UNKNOWN))
+        assertEquals("Dừng tập vì cảnh báo an toàn",
+            WorkoutVoiceCommands.describe(WorkoutVoiceCommands.parse("đau ngực, tiếp tục")))
+    }
 }

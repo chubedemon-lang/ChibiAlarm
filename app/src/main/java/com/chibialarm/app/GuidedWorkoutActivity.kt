@@ -364,8 +364,8 @@ class GuidedWorkoutActivity:Activity() {
     private fun shortenRemainingWorkout() {
         if (pausedForSafety || completed) return
         pause()
-        val before = remainingMs + moves.drop(index + 1).sumOf {
-            RemainingWorkoutDuration.seconds(it.seconds, index + 1 + moves.drop(index + 1).indexOf(it), shorterFromIndex) * 1000L
+        val before = remainingMs + moves.indices.drop(index + 1).sumOf { position ->
+            RemainingWorkoutDuration.seconds(moves[position].seconds, position, shorterFromIndex) * 1000L
         }
         val proposedFrom = minOf(shorterFromIndex, index)
         val afterCurrent = (remainingMs / 2).coerceAtLeast(5_000L)

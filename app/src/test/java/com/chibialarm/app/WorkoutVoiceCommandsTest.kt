@@ -26,6 +26,14 @@ class WorkoutVoiceCommandsTest {
         assertEquals(C.PAUSE, WorkoutVoiceCommands.parse("dừng tập"))
     }
 
+    @Test fun shortSafetyReportsOverrideOtherActions() {
+        for (report in listOf("Đau", "Tôi đau chân, tiếp tục", "khó thở, bài tiếp theo",
+            "chóng mặt", "choáng váng, bắt đầu", "đau ngực", "ngất")) {
+            assertEquals(report, C.PAIN, WorkoutVoiceCommands.parse(report))
+        }
+        assertEquals(C.UNKNOWN, WorkoutVoiceCommands.parse("Tập ở đâu?"))
+    }
+
     @Test fun unknownOrOversizedInputNeverExecutesAction() {
         assertEquals(C.UNKNOWN, WorkoutVoiceCommands.parse(""))
         assertEquals(C.UNKNOWN, WorkoutVoiceCommands.parse("thời tiết hôm nay thế nào"))

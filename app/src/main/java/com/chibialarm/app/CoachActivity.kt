@@ -23,6 +23,7 @@ class CoachActivity:Activity() {
     private var speaker:TextToSpeech?=null
     private var speakerReady=false
     private var autoSpeak=false
+    private var fitnessContext: FitnessNaturalRequest.Result? = null
     private val speechRequest=4401
     private fun text(s:String,size:Float=16f)=TextView(this).apply { text=s;textSize=size;setTextColor(Color.rgb(82,55,99));setPadding(7,7,7,7) }
     private fun key():String? {
@@ -41,7 +42,7 @@ class CoachActivity:Activity() {
         val buttons=LinearLayout(this).apply { orientation=0 }
         buttons.addView(Button(this).apply { text="🗓 Tạo lịch AI";setOnClickListener { askPlan() } },LinearLayout.LayoutParams(0,-2,1f))
         buttons.addView(Button(this).apply { text="🗑 Xóa chat";setOnClickListener {
-            history=JSONArray();memory.edit().remove("messages").apply();redraw()
+            history=JSONArray();fitnessContext=null;memory.edit().remove("messages").apply();redraw()
         } })
         root.addView(buttons)
         val voiceTools=LinearLayout(this).apply { orientation=0 }
@@ -101,7 +102,9 @@ class CoachActivity:Activity() {
         prompt.setText("")
         append("user",question)
         if(k.isNullOrBlank()) {
-            append("assistant",CoachBrain.reply(this,question)+" (Huấn luyện viên ngoại tuyến)")
+            val next=FitnessCoachConversation.parseReply(fitnessContext,question)
+            fitnessContext=FitnessCoachConversation.merge(fitnessContext,next)
+            append("assistant",next.reply+"\n\n"+FitnessCoachFollowUp.nextQuestion(fitnessContext!!)+"\n(Chế độ Fitness ngoại tuyến)")
             return
         }
         send.isEnabled=false

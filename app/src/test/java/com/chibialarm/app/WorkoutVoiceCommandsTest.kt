@@ -9,6 +9,8 @@ class WorkoutVoiceCommandsTest {
         assertEquals(C.PAUSE, WorkoutVoiceCommands.parse("Tạm dừng"))
         assertEquals(C.PAUSE, WorkoutVoiceCommands.parse("pause"))
         assertEquals(C.RESUME, WorkoutVoiceCommands.parse("Bắt đầu"))
+        assertEquals(C.RESUME, WorkoutVoiceCommands.parse("bat dau"))
+        assertEquals(C.PAIN, WorkoutVoiceCommands.parse("Bắt đầu nhưng tôi đau chân"))
         assertEquals(C.RESUME, WorkoutVoiceCommands.parse("tiếp tục"))
         assertEquals(C.NEXT, WorkoutVoiceCommands.parse("Bài tiếp theo"))
         assertEquals(C.PREVIOUS, WorkoutVoiceCommands.parse("quay lại"))

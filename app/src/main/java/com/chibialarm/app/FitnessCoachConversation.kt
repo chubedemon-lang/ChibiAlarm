@@ -19,6 +19,15 @@ object FitnessCoachConversation {
             ?.groupValues?.get(1)?.toIntOrNull()?.takeIf { it in 5..120 }
         return when {
             previous.impact == 2 -> parsed
+            previous.goal == null && question.contains("sức mạnh, tim mạch") &&
+                answer in setOf("sức mạnh", "suc manh", "tăng cơ", "tang co") ->
+                parsed.copy(goal = 0, reply = "Đã ghi nhận mục tiêu sức mạnh. Tao sẽ gợi ý bài phù hợp với thể lực.")
+            previous.goal == null && question.contains("sức mạnh, tim mạch") &&
+                answer in setOf("tim mạch", "tim mach", "cardio", "giảm cân", "giam can") ->
+                parsed.copy(goal = 1, reply = "Đã ghi nhận mục tiêu tim mạch. Tao sẽ hỏi thêm về thời gian và dụng cụ.")
+            previous.goal == null && question.contains("sức mạnh, tim mạch") &&
+                answer in setOf("giãn cơ", "gian co", "yoga") ->
+                parsed.copy(goal = 2, reply = "Đã ghi nhận mục tiêu giãn cơ. Tao sẽ ưu tiên vận động nhẹ.")
             previous.minutes == null && question.contains("bao nhiêu phút") && shortMinutes != null ->
                 parsed.copy(minutes = shortMinutes, reply = "Tao đã ghi nhận $shortMinutes phút cho buổi tập. Mày có thể trả lời câu hỏi tiếp theo.")
             previous.equipment == null && question.contains("thảm, tạ") &&

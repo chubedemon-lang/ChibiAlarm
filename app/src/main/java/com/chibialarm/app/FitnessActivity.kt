@@ -101,8 +101,14 @@ class FitnessActivity:Activity() {
                     parsed.impact?.let { impactSpinner.setSelection(it) }
                     AlertDialog.Builder(this@FitnessActivity)
                         .setTitle("🐰 Chibi đã nghe")
-                        .setMessage(parsed.reply)
-                        .setPositiveButton("Xem giáo án",null).show()
+                        .setMessage(parsed.reply + "\n\n🐰 Chibi hỏi tiếp: " + FitnessCoachFollowUp.nextQuestion(parsed))
+                        .setPositiveButton("Xem giáo án",null)
+                        .setNeutralButton("Trả lời tiếp") { _, _ ->
+                            naturalRequest.requestFocus()
+                            naturalRequest.setSelection(naturalRequest.text.length)
+                            (getSystemService(INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager)
+                                ?.showSoftInput(naturalRequest, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+                        }.show()
                 }
             }
         })

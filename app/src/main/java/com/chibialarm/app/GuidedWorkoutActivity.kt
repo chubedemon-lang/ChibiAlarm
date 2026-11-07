@@ -286,11 +286,16 @@ class GuidedWorkoutActivity:Activity() {
                 }
             }
             WorkoutVoiceCommands.Command.REST -> {
-                pause()
-                remainingMs=Math.addExact(remainingMs,30_000L).coerceAtMost(600_000L)
-                val seconds=(remainingMs/1000).toInt()
-                counter.text=String.format(Locale.US,"%02d:%02d",seconds/60,seconds%60)
-                speak("Đã thêm ba mươi giây nghỉ. Khi sẵn sàng hãy nói tiếp tục.")
+                if (pausedForSafety) {
+                    Toast.makeText(this,"Buổi tập đang dừng vì báo đau; không thay đổi thời gian.",Toast.LENGTH_LONG).show()
+                } else {
+                    pause()
+                    remainingMs=(remainingMs+30_000L).coerceAtMost(600_000L)
+                    val seconds=(remainingMs/1000).toInt()
+                    counter.text=String.format(Locale.US,"%02d:%02d",seconds/60,seconds%60)
+                    saveCheckpoint()
+                    speak("Đã thêm ba mươi giây nghỉ. Khi sẵn sàng hãy nói tiếp tục.")
+                }
             }
             WorkoutVoiceCommands.Command.UNKNOWN -> {
                 AlertDialog.Builder(this).setTitle("Chibi chưa hiểu yêu cầu")
@@ -301,6 +306,12 @@ class GuidedWorkoutActivity:Activity() {
     }
     /** Explicit local adjustments; never changes other moves or silently claims AI advice. */
     private fun adjustCurrentMove() {
+        if (pausedForSafety) {
+            AlertDialog.Builder(this).setTitle("⚠️ Buổi tập đã dừng")
+                .setMessage("Bạn đã báo đau. Chibi sẽ không điều chỉnh hoặc tiếp tục bài tập cho tới khi bạn xác nhận tình trạng an toàn bằng nút Tiếp tục.")
+                .setPositiveButton("Đã hiểu",null).show()
+            return
+        }
         val options=arrayOf(
             "🌿 Giảm thời gian động tác còn một nửa",
             "⏱ Thêm 30 giây nghỉ",

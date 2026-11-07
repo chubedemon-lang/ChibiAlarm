@@ -257,7 +257,12 @@ class GuidedWorkoutActivity:Activity() {
     private fun handleCoachCommand(utterance:String) {
         when(WorkoutVoiceCommands.parse(utterance)) {
             WorkoutVoiceCommands.Command.PAIN -> {
-                pause();pausedForSafety=true
+                pause()
+                pausedForSafety=true
+                control.text="⚠️ Đã dừng vì đau"
+                // Persist the safety lock after setting it, including when recognition
+                // arrives while the workout is already paused.
+                saveCheckpoint()
                 AlertDialog.Builder(this).setTitle("⚠️ Đã dừng vì bạn báo đau")
                     .setMessage("Không cố tập khi đau. Hãy kết thúc buổi tập nếu triệu chứng tiếp diễn; tìm trợ giúp y tế phù hợp nếu đau nhiều hoặc có dấu hiệu bất thường. Chibi sẽ không tự tiếp tục bằng giọng nói.")
                     .setPositiveButton("Đã hiểu",null).show()

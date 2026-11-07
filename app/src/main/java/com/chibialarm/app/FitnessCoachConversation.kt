@@ -24,6 +24,12 @@ object FitnessCoachConversation {
             previous.equipment == null && question.contains("thảm, tạ") &&
                 answer in setOf("không", "khong", "không có", "khong co", "tay không", "tay khong") ->
                 parsed.copy(equipment = 0)
+            previous.equipment == null && question.contains("thảm, tạ") &&
+                answer in setOf("thảm", "tham", "thảm tập", "tham tap") ->
+                parsed.copy(equipment = 1)
+            previous.equipment == null && question.contains("thảm, tạ") &&
+                answer in setOf("tạ", "ta", "tạ đơn", "ta don", "dây", "day", "dây kháng lực", "day khang luc") ->
+                parsed.copy(equipment = 2)
             previous.energy == null && question.contains("mệt") &&
                 answer in setOf("bình thường", "binh thuong", "vừa", "vua") ->
                 parsed.copy(energy = 1)

@@ -128,6 +128,8 @@ class CoachActivity:Activity() {
      * network processing. Require an explicit tap before each recording.
      */
     private fun explainMicrophoneThenListen() {
+        // Avoid transcribing Chibi's own TTS reply.
+        speaker?.stop()
         AlertDialog.Builder(this)
             .setTitle("🎤 Nhận dạng giọng nói")
             .setMessage("Chibi sẽ mở dịch vụ nhận dạng giọng nói trên máy. Dịch vụ này có thể dùng Internet và xử lý âm thanh theo chính sách của nhà cung cấp. Chibi chỉ nhận văn bản được trả về. Bạn sẽ được xem và sửa văn bản trước khi gửi. Bạn cũng có thể gõ thay vì dùng mic.")
@@ -137,6 +139,8 @@ class CoachActivity:Activity() {
     }
 
     private fun listen() {
+        // Listening is user-initiated, never restarted by TTS callbacks.
+        speaker?.stop()
         try {
             val i=Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)

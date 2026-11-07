@@ -176,7 +176,7 @@ class FitnessActivity:Activity() {
                     }
                     parsed.equipment?.let { equipmentSpinner.setSelection(it) }
                     parsed.impact?.let { impactSpinner.setSelection(it) }
-                    sayFollowUp(FitnessCoachFollowUp.nextQuestion(parsed))
+                    sayFollowUp(parsed.reply + " " + FitnessCoachFollowUp.nextQuestion(parsed))
                     AlertDialog.Builder(this@FitnessActivity)
                         .setTitle("🐰 Chibi đã nghe")
                         .setMessage(parsed.reply + "\n\n🐰 Chibi hỏi tiếp: " + FitnessCoachFollowUp.nextQuestion(parsed))

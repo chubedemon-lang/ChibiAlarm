@@ -24,30 +24,80 @@ object LifeData {
     fun today():String=SimpleDateFormat("yyyy-MM-dd",Locale.US).format(Date())
     private fun prefs(ctx:Context)=ctx.getSharedPreferences(FILE,Context.MODE_PRIVATE)
     fun routines(ctx:Context):List<Routine> {
-        val raw=prefs(ctx).getString("routines","[]") ?: "[]"
+        // A single damaged legacy record must not hide every valid routine.
+        // Read-only recovery: never overwrite the original preference on parse failure.
         return try {
-            val data=JSONArray(raw)
-            (0 until data.length()).map { i ->
-                val o=data.getJSONObject(i)
-                Routine(o.getInt("id"),o.getString("title"),o.optString("category","📚 Học tập"),
-                    o.getInt("hour"),o.getInt("minute"),o.optInt("duration",30),o.optInt("repeatMask",127))
-            }.sortedWith(compareBy({it.hour},{it.minute}))
-        } catch(_:Exception) { emptyList() }
+            val data=JSONArray(prefs(ctx).getString("routines","[]") ?: "[]")
+            val recovered=mutableListOf<Routine>()
+            for (i in 0 until data.length()) {
+                val o=data.optJSONObject(i) ?: continue
+                try {
+                    recovered.add(Routine(o.getInt("id"),o.getString("title"),
+                        o.optString("category","📚 Học tập"),o.getInt("hour"),
+                        o.getInt("minute"),o.optInt("duration",30),
+                        o.optInt("repeatMask",127)))
+                } catch (_:Exception) {
+                    // Skip only this record; preserve its raw JSON for diagnostics.
+                }
+            }
+            recovered.sortedWith(compareBy({it.hour},{it.minute}))
+        } catch (_:Exception) { emptyList() }
     }
-    fun save(ctx:Context,routines:List<Routine>) {
+    private fun protectDamagedLegacyRoutines(ctx:Context) {
+        val current=prefs(ctx).all["routines"] ?: return
+        val raw=current as? String
+        val damaged = if (raw == null) true else try {
+            val data=JSONArray(raw)
+            (0 until data.length()).any { i ->
+                val item=data.optJSONObject(i)
+                if (item == null) true else try {
+                    item.getInt("id")
+                    item.getString("title")
+                    item.getInt("hour")
+                    item.getInt("minute")
+                    false
+                } catch (_:Exception) { true }
+            }
+        } catch (_:Exception) { true }
+        if (damaged && !prefs(ctx).contains("routines_corrupt_backup")) {
+            // Preserve the first damaged payload before an explicit user edit.
+            // Never overwrite the recovery copy on subsequent saves.
+            check(prefs(ctx).edit().putString("routines_corrupt_backup",current.toString()).commit()) {
+                "Cannot preserve damaged legacy routines"
+            }
+        }
+    }
+    @Synchronized fun save(ctx:Context,routines:List<Routine>) {
+        protectDamagedLegacyRoutines(ctx)
+        // Snapshot the previous IDs before persisting, so removed alarms can be
+        // cancelled only AFTER the replacement is durable. A failed disk write
+        // must not silently delete a user's working reminder schedule.
+        val previous = this.routines(ctx)
         val array=JSONArray()
         routines.forEach { r ->
             array.put(JSONObject().put("id",r.id).put("title",r.title).put("category",r.category)
                 .put("hour",r.hour).put("minute",r.minute).put("duration",r.duration).put("repeatMask",r.repeatMask))
         }
-        prefs(ctx).edit().putString("routines",array.toString()).apply()
+        check(prefs(ctx).edit().putString("routines",array.toString()).commit()) {
+            "Cannot save routines"
+        }
+        val retainedIds = routines.map { it.id }.toSet()
+        previous.filterNot { it.id in retainedIds }
+            .forEach { RoutineReminder.cancel(ctx, it) }
         RoutineReminder.rescheduleAll(ctx)
         ChibiWidget.updateAll(ctx)
     }
-    fun isDone(ctx:Context,id:Int,date:String=today()):Boolean=prefs(ctx).getBoolean("done:$date:$id",false)
-    fun mark(ctx:Context,id:Int,done:Boolean) {
-        prefs(ctx).edit().putBoolean("done:${today()}:$id",done).apply()
-        ChibiWidget.updateAll(ctx)
+    // A malformed legacy checkbox must not crash Routine or erase other check-ins.
+    // Keep its raw value untouched until the user explicitly changes that checkbox.
+    fun isDone(ctx:Context,id:Int,date:String=today()):Boolean = try {
+        prefs(ctx).getBoolean("done:$date:$id",false)
+    } catch (_: ClassCastException) { false }
+
+    /** Return false on a failed durable write; never claim a check-in was saved. */
+    fun mark(ctx:Context,id:Int,done:Boolean):Boolean {
+        val saved = prefs(ctx).edit().putBoolean("done:${today()}:$id",done).commit()
+        if (saved) ChibiWidget.updateAll(ctx)
+        return saved
     }
     fun count(ctx:Context,date:String=today()):Int=routines(ctx).count { isDone(ctx,it.id,date) }
     fun nextId():Int=(System.currentTimeMillis()%1800000000L).toInt()
@@ -82,11 +132,24 @@ object LifeData {
 
 object RoutineReminder {
     private fun requestCode(id:Int)=id xor 0x382819
+
+    // A disabled or corrupted legacy routine must not create a notification.
+    // Keep the saved record untouched so an upgrade never destroys user data.
+    internal fun canSchedule(r:Routine):Boolean =
+        r.hour in 0..23 && r.minute in 0..59 && r.repeatMask in 1..127
+
+    // A delayed broadcast for an edited routine must not ring at its old time.
+    // Older pending intents without a signature are still accepted on upgrade.
+    internal fun scheduleSignature(r:Routine):String =
+        "${r.hour}:${r.minute}:${r.repeatMask}"
+
     private fun pending(ctx:Context,r:Routine):PendingIntent=PendingIntent.getBroadcast(
-        ctx,requestCode(r.id),Intent(ctx,RoutineReminderReceiver::class.java).putExtra("routine_id",r.id),
+        ctx,requestCode(r.id),Intent(ctx,RoutineReminderReceiver::class.java)
+            .putExtra("routine_id",r.id).putExtra("routine_signature",scheduleSignature(r)),
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     fun cancel(ctx:Context,r:Routine) { ctx.getSystemService(AlarmManager::class.java).cancel(pending(ctx,r)) }
     fun schedule(ctx:Context,r:Routine) {
+        if(!canSchedule(r)) { cancel(ctx,r);return }
         val c=Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY,r.hour);set(Calendar.MINUTE,r.minute);set(Calendar.SECOND,0);set(Calendar.MILLISECOND,0)
         }
@@ -94,9 +157,17 @@ object RoutineReminder {
             val offset=c.get(Calendar.DAY_OF_WEEK)-1
             if(c.timeInMillis>System.currentTimeMillis() && (r.repeatMask and (1 shl offset))!=0) {
                 val am=ctx.getSystemService(AlarmManager::class.java)
-                if(Build.VERSION.SDK_INT>=31 && !am.canScheduleExactAlarms()) {
-                    am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,c.timeInMillis,pending(ctx,r))
-                } else am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,c.timeInMillis,pending(ctx,r))
+                val alarm = pending(ctx, r)
+                if (Build.VERSION.SDK_INT >= 31 && !am.canScheduleExactAlarms()) {
+                    am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, c.timeInMillis, alarm)
+                } else {
+                    try {
+                        am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, c.timeInMillis, alarm)
+                    } catch (_: SecurityException) {
+                        // Exact-alarm permission can be revoked between the check and scheduling.
+                        am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, c.timeInMillis, alarm)
+                    }
+                }
                 return
             }
             c.add(Calendar.DATE,1)
@@ -111,6 +182,12 @@ class RoutineReminderReceiver:BroadcastReceiver() {
     override fun onReceive(ctx:Context,intent:Intent) {
         val id=intent.getIntExtra("routine_id",-1)
         val r=LifeData.routines(ctx).firstOrNull { it.id==id } ?: return
+        if(!RoutineReminder.canSchedule(r)) {
+            RoutineReminder.cancel(ctx,r)
+            return
+        }
+        val scheduledSignature=intent.getStringExtra("routine_signature")
+        if(scheduledSignature!=null && scheduledSignature!=RoutineReminder.scheduleSignature(r)) return
         RoutineReminder.schedule(ctx,r)
         if(LifeData.isDone(ctx,id)) return
         val nm=ctx.getSystemService(NotificationManager::class.java)

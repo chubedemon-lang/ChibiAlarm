@@ -2,7 +2,7 @@
 
 Android **native Kotlin** personal alarm + daily routine + AI assistant. Build on GitHub Actions; **no VPS or PC needed**.
 
-## Main modules
+> **Chibi Life 3.0 R1 beta (Draft PR #1):** Android RPG progress, daily quests, achievements, Focus/Fitness/Growth integration and account-scoped Room storage groundwork are under development. The existing app still uses its legacy guest profile by default; multi-user login, full account isolation, and a production Gemini backend are **not implemented**. Existing direct-to-Google BYOK AI flows are legacy development features, **not approved for public release**. See [R1 account privacy and migration boundaries](docs/R1_ACCOUNT_ISOLATION.md) and [latest PR CI/APK artifacts](https://github.com/chubedemon-lang/ChibiAlarm/actions). Never publish the debug APK as a production release.\n\n## Main modules
 
 **NEW v1.3:** 12 offline workout programs with guided Vietnamese TTS and adjustable difficulty, 7-day meal journal and Vietnamese meal suggestions, 15 user-owned audio clips (MP3/M4A/WAV/OGG/FLAC), microphone recording and offline alarm playback. **CapCut proprietary voices are not bundled**; users import their own authorized audio exports. No API key required for those features.
 

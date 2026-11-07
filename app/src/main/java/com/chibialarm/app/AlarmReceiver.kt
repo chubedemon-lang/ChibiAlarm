@@ -5,8 +5,21 @@ import android.content.*
 class AlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val id = intent.getIntExtra("id", 0)
-        val fields = context.getSharedPreferences("alarms", 0).getString(id.toString(), null)?.split(",")
-        if (!intent.getBooleanExtra("snooze", false) && fields != null && fields.size >= 2) Scheduler.schedule(context, id, fields[0].toInt(), fields[1].toInt())
+        val record = AlarmTimeCodec.parse(
+            context.getSharedPreferences("alarms", 0).all[id.toString()] as? String)
+        if (record == null || record.weekdayMask == 0) {
+            // A stale broadcast must not ring a deleted, disabled or corrupt alarm.
+            Scheduler.cancel(context, id)
+            return
+        }
+        // A broadcast already in flight may belong to a time/day setting the
+        // user has since changed. Ignore it without cancelling the new alarm.
+        // Legacy intents without a marker remain supported after app upgrade.
+        val scheduledSignature = intent.getStringExtra("alarm_signature")
+        if (scheduledSignature != null &&
+            scheduledSignature != AlarmTimeCodec.signature(record)) return
+        if (!intent.getBooleanExtra("snooze", false))
+            Scheduler.schedule(context, id, record.hour, record.minute)
         val manager = context.getSystemService(NotificationManager::class.java)
         val channel = "alarms"
         manager.createNotificationChannel(NotificationChannel(channel, "Báo thức", NotificationManager.IMPORTANCE_HIGH).apply {
@@ -33,12 +46,13 @@ class BootReceiver : BroadcastReceiver() {
         RoutineReminder.rescheduleAll(context)
         FocusTimer.restore(context)
         ChibiWidget.updateAll(context)
-        val growth=context.getSharedPreferences("growth",Context.MODE_PRIVATE)
-        if(growth.contains("remindHour")) GrowthReminder.schedule(context,growth.getInt("remindHour",8),growth.getInt("remindMinute",0))
+        // A damaged legacy Growth preference must not crash boot restoration.
+        GrowthReminder.restore(context)
         for ((key, value) in context.getSharedPreferences("alarms", 0).all) {
             val id = key.toIntOrNull() ?: continue
-            val p = (value as? String)?.split(",") ?: continue
-            if (p.size >= 2) Scheduler.schedule(context, id, p[0].toInt(), p[1].toInt())
+            val record = AlarmTimeCodec.parse(value as? String)
+            if (record == null) Scheduler.cancel(context, id)
+            else Scheduler.schedule(context, id, record.hour, record.minute)
         }
     }
 }

@@ -5,12 +5,44 @@ import android.content.*
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.speech.RecognizerIntent
+import android.speech.tts.TextToSpeech
+import java.util.Locale
 import android.view.Gravity
 import android.widget.*
 
 /** Catalog-driven free coach: selectable tracks, difficulty, guided session, weekly reminder. */
 class FitnessActivity:Activity() {
     private val prefs by lazy { getSharedPreferences("chibi_fitness_offline",0) }
+    private var conversation: FitnessNaturalRequest.Result? = null
+    private var speechInput: EditText? = null
+    private var speechOutput: TextToSpeech? = null
+    private var speechReady = false
+    private val speechRequestCode = 4107
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != speechRequestCode || resultCode != RESULT_OK) return
+        val recognized = data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+            ?.firstOrNull()?.trim().orEmpty()
+        if (recognized.isNotEmpty()) {
+            speechInput?.setText(recognized)
+            speechInput?.setSelection(recognized.length)
+            Toast.makeText(this, "Kiểm tra lời nhận dạng rồi nhấn Chibi hiểu yêu cầu", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    override fun onDestroy() {
+        speechOutput?.stop()
+        speechOutput?.shutdown()
+        speechOutput = null
+        super.onDestroy()
+    }
+
+    private fun sayFollowUp(message: String) {
+        if (speechReady) speechOutput?.speak(message, TextToSpeech.QUEUE_FLUSH, null, "fitness-follow-up")
+    }
+
     private lateinit var root:LinearLayout
     private lateinit var level:Spinner
     private lateinit var length:Spinner
@@ -48,6 +80,58 @@ class FitnessActivity:Activity() {
             setSelection(prefs.getInt("fitTime",2).coerceIn(0,mins.lastIndex))
         }
         root.addView(length)
+        root.addView(txt("💬 Nói với Chibi về buổi tập",19f))
+        val naturalRequest=EditText(this).apply {
+            hint="Ví dụ: Hôm nay mệt, muốn giãn cơ 10 phút, không dụng cụ"
+            minLines=2
+            inputType=android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
+            contentDescription="Yêu cầu giáo án bằng tiếng Việt"
+        }
+        root.addView(naturalRequest)
+        speechInput = naturalRequest
+        root.addView(Button(this).apply {
+            text = "🎙 Nhập bằng giọng nói (dịch vụ nhận dạng trên máy)"
+            isAllCaps = false
+            setOnClickListener {
+                // An external recognizer owns microphone access; this Activity never records audio.
+                // Depending on the installed recognizer, speech may be processed online.
+                AlertDialog.Builder(this@FitnessActivity)
+                    .setTitle("Quyền riêng tư giọng nói")
+                    .setMessage("Chibi sẽ mở dịch vụ nhận dạng giọng nói của thiết bị. Dịch vụ đó có thể yêu cầu quyền micro và có thể gửi âm thanh lên mạng tùy cài đặt. Chibi chỉ nhận văn bản trả về; hãy kiểm tra trước khi áp dụng giáo án.")
+                    .setPositiveButton("Tiếp tục") { _, _ ->
+                        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "vi-VN")
+                            putExtra(RecognizerIntent.EXTRA_PROMPT, "Nói yêu cầu tập luyện của bạn")
+                        }
+                        try { startActivityForResult(intent, speechRequestCode) }
+                        catch (_: android.content.ActivityNotFoundException) {
+                            Toast.makeText(this@FitnessActivity, "Thiết bị chưa có dịch vụ nhận dạng giọng nói. Hãy nhập bằng bàn phím.", Toast.LENGTH_LONG).show()
+                        }
+                    }.setNegativeButton("Hủy", null).show()
+            }
+        })
+        root.addView(Button(this).apply {
+            text = "🔊 Bật giọng Chibi đọc câu hỏi"
+            isAllCaps = false
+            setOnClickListener {
+                if (speechOutput == null) {
+                    speechOutput = TextToSpeech(this@FitnessActivity) { status ->
+                        speechReady = status == TextToSpeech.SUCCESS &&
+                            speechOutput?.setLanguage(Locale("vi", "VN")) != TextToSpeech.LANG_MISSING_DATA &&
+                            speechOutput?.language != null
+                        if (!speechReady) runOnUiThread {
+                            Toast.makeText(this@FitnessActivity, "Chưa có giọng tiếng Việt TTS trên thiết bị", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                    text = "🔊 Đọc câu hỏi: bật (nhấn để tắt)"
+                } else {
+                    speechOutput?.stop(); speechOutput?.shutdown(); speechOutput = null
+                    speechReady = false
+                    text = "🔊 Bật giọng Chibi đọc câu hỏi"
+                }
+            }
+        })
         root.addView(txt("🤖 Chibi gợi ý buổi tập hôm nay",20f))
         val goals= arrayOf("Tăng sức mạnh","Tăng vận động tim mạch","Giãn cơ & linh hoạt","Giảm mỏi do ngồi nhiều","Mới bắt đầu","Thử thách mới")
         val energyLevels=arrayOf("Hôm nay hơi mệt","Cảm thấy bình thường","Rất nhiều năng lượng")
@@ -61,27 +145,80 @@ class FitnessActivity:Activity() {
             setSelection(prefs.getInt("recommendEnergy",1).coerceIn(0,2))
         }
         root.addView(energySpinner)
+        root.addView(txt("🏋️ Dụng cụ hiện có",19f))
+        val equipmentOptions=arrayOf("Không có dụng cụ","Có thảm tập","Có tạ hoặc dây kháng lực")
+        val equipmentSpinner=Spinner(this).apply {
+            adapter=ArrayAdapter(this@FitnessActivity,android.R.layout.simple_spinner_dropdown_item,equipmentOptions)
+            setSelection(prefs.getInt("recommendEquipment",0).coerceIn(0,2))
+        }
+        root.addView(equipmentSpinner)
+        root.addView(txt("🦵 Mức độ vận động phù hợp",19f))
+        val impactOptions=arrayOf("Không có hạn chế được báo","Ưu tiên bài ít tác động, không nhảy","Đang đau hoặc có chấn thương")
+        val impactSpinner=Spinner(this).apply {
+            adapter=ArrayAdapter(this@FitnessActivity,android.R.layout.simple_spinner_dropdown_item,impactOptions)
+            setSelection(prefs.getInt("recommendImpact",0).coerceIn(0,2))
+        }
+        root.addView(impactSpinner)
+        root.addView(Button(this).apply {
+            text="💬 Chibi hiểu yêu cầu của tôi"
+            setOnClickListener {
+                val request=naturalRequest.text.toString()
+                if (request.isBlank()) {
+                    naturalRequest.error="Hãy mô tả buổi tập bạn muốn"
+                } else {
+                    val parsed=FitnessCoachConversation.merge(conversation, FitnessCoachConversation.parseReply(conversation, request))
+                    conversation=parsed
+                    parsed.goal?.let { goalSpinner.setSelection(it) }
+                    parsed.energy?.let { energySpinner.setSelection(it) }
+                    parsed.minutes?.let { requested ->
+                        val closest=mins.indices.minByOrNull { kotlin.math.abs(mins[it]-requested) } ?: 0
+                        length.setSelection(closest)
+                    }
+                    parsed.equipment?.let { equipmentSpinner.setSelection(it) }
+                    parsed.impact?.let { impactSpinner.setSelection(it) }
+                    sayFollowUp(parsed.reply + " " + FitnessCoachFollowUp.nextQuestion(parsed))
+                    AlertDialog.Builder(this@FitnessActivity)
+                        .setTitle("🐰 Chibi đã nghe")
+                        .setMessage(parsed.reply + "\n\n🐰 Chibi hỏi tiếp: " + FitnessCoachFollowUp.nextQuestion(parsed))
+                        .setPositiveButton("Xem giáo án",null)
+                        .setNeutralButton("Trả lời tiếp") { _, _ ->
+                            naturalRequest.text.clear()
+                            naturalRequest.hint=FitnessCoachFollowUp.nextQuestion(parsed)
+                            naturalRequest.requestFocus()
+                            naturalRequest.setSelection(naturalRequest.text.length)
+                            (getSystemService(INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager)
+                                ?.showSoftInput(naturalRequest, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+                        }.show()
+                }
+            }
+        })
         root.addView(Button(this).apply {
             text="🐰 Gợi ý chương trình phù hợp"
             setOnClickListener {
                 val goal=goalSpinner.selectedItemPosition
                 val energy=energySpinner.selectedItemPosition
-                prefs.edit().putInt("recommendGoal",goal).putInt("recommendEnergy",energy).apply()
-                val id=when {
-                    energy==0->"recovery"
-                    goal==0 && level.selectedItemPosition==2->"advanced"
-                    goal==0->"full"
-                    goal==1->"lowcardio"
-                    goal==2->"mobility"
-                    goal==3->"desk"
-                    goal==4->"starter"
-                    level.selectedItemPosition==0->"starter"
-                    else->"advanced"
-                }
+                val equipment=equipmentSpinner.selectedItemPosition
+                val impact=impactSpinner.selectedItemPosition
+                prefs.edit().putInt("recommendGoal",goal).putInt("recommendEnergy",energy)
+                    .putInt("recommendEquipment",equipment).putInt("recommendImpact",impact).apply()
+                val recommendation=FitnessPlanAdvisor.recommend(FitnessPlanAdvisor.Preferences(
+                    goal,energy,level.selectedItemPosition,mins[length.selectedItemPosition],equipment,impact))
+                val id=recommendation.programId
                 val p=TrainingCatalog.byId(id)
                 AlertDialog.Builder(this@FitnessActivity).setTitle("🐰 Chibi đề xuất: "+p.name)
-                    .setMessage("Vì bạn chọn '${goals[goal]}' và '${energyLevels[energy]}', hãy thử ${p.subtitle.lowercase()}.\n\nĐây là gợi ý từ quy tắc trên máy, không phải AI chẩn đoán hay đánh giá sức khỏe.")
-                    .setPositiveButton("▶ Bắt đầu"){_,_->startProgram(p)}
+                    .setMessage("Mục tiêu: "+goals[goal]+" • "+energyLevels[energy]+"\n"+
+                        "Dụng cụ: "+equipmentOptions[equipment]+"\n"+
+                        "Vận động: "+impactOptions[impact]+"\n\n"+
+                        recommendation.explanation+
+                        "\n\nGợi ý offline theo quy tắc trên máy, không phải AI chẩn đoán hay tư vấn y khoa.")
+                    .setPositiveButton("▶ Bắt đầu"){_,_->
+                        if (impact==2) {
+                            AlertDialog.Builder(this@FitnessActivity).setTitle("Ưu tiên an toàn")
+                                .setMessage("Khi đang đau hoặc chấn thương, chỉ tập nếu được chuyên gia xác nhận phù hợp. Dừng ngay nếu triệu chứng tăng.")
+                                .setPositiveButton("Tôi đã hiểu"){_,_->startProgram(p)}
+                                .setNegativeButton("Hủy",null).show()
+                        } else startProgram(p)
+                    }
                     .setNegativeButton("Chọn bài khác",null).show()
             }
         })

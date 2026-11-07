@@ -5,6 +5,7 @@ import android.webkit.URLUtil
 import android.content.*
 import android.net.Uri
 import android.provider.Settings
+import android.speech.RecognizerIntent
 import android.view.WindowInsets
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
@@ -13,6 +14,7 @@ import android.speech.tts.TextToSpeech
 import android.view.Gravity
 import android.widget.*
 import java.util.Locale
+import com.chibialarm.app.fitness.RemainingWorkoutDuration
 
 /** Entirely offline guided workout; spoken instructions depend on installed Vietnamese Android TTS. */
 class GuidedWorkoutActivity:Activity() {
@@ -28,12 +30,64 @@ class GuidedWorkoutActivity:Activity() {
     private var deadline=0L
     private var remainingMs=0L
     private var paused=true
+    private var pausedForSafety=false
+    private var shorterFromIndex=Int.MAX_VALUE
     private var startedAt=0L
+    // Track active time only, excluding pauses and time spent outside the app.
     private var accumulated=0L
+    private fun activeElapsedMs():Long = accumulated + if(!paused && startedAt!=0L)
+        (SystemClock.elapsedRealtime()-startedAt).coerceAtLeast(0L) else 0L
     private var spoken:TextToSpeech?=null
     private var ready=false
+    // Guest-only checkpoint; authenticated profiles must use isolated storage.
+    private val checkpoint by lazy { getSharedPreferences("chibi_workout_checkpoint_guest", MODE_PRIVATE) }
+    private var completed=false
+    // Do not overwrite a saved session before the user chooses Restore or Start over.
+    private var checkpointDecisionPending=false
+    private fun saveCheckpoint() {
+        if (completed || checkpointDecisionPending || moves.isEmpty()) return
+        checkpoint.edit().putString("program",program.id)
+            .putInt("index",index).putLong("remaining",remainingMs.coerceIn(0L,600_000L))
+            .putBoolean("safety",pausedForSafety)
+            .putInt("shorterFrom",shorterFromIndex)
+            .putBoolean("started",activeElapsedMs()>0L)
+            .putLong("elapsed",activeElapsedMs())
+            .putLong("savedAt",System.currentTimeMillis()).apply()
+    }
+    private fun offerCheckpoint() {
+        if (checkpoint.getString("program",null)!=program.id) return
+        val age=System.currentTimeMillis()-checkpoint.getLong("savedAt",0L)
+        if (age !in 0L..604_800_000L) {
+            checkpoint.edit().clear().apply()
+            return
+        }
+        checkpointDecisionPending=true
+        AlertDialog.Builder(this).setTitle("Tiếp tục buổi tập đã lưu?")
+            .setMessage("Đã lưu bước và thời gian còn lại trên máy. Khôi phục luôn ở trạng thái tạm dừng.")
+            .setPositiveButton("Khôi phục") { _,_ ->
+                checkpointDecisionPending=false
+                index=checkpoint.getInt("index",0).coerceIn(0,moves.lastIndex)
+                shorterFromIndex=checkpoint.getInt("shorterFrom",Int.MAX_VALUE).coerceIn(0, moves.size)
+                displayStep()
+                remainingMs=checkpoint.getLong("remaining",remainingMs).coerceIn(0L,600_000L)
+                pausedForSafety=checkpoint.getBoolean("safety",false)
+                val elapsed=checkpoint.getLong("elapsed",0L).coerceIn(0L,86_400_000L)
+                accumulated=elapsed
+                startedAt=0L
+                val seconds=(remainingMs/1000).toInt()
+                counter.text=String.format(Locale.US,"%02d:%02d",seconds/60,seconds%60)
+                control.text=if(pausedForSafety) "⚠️ Đã dừng vì đau" else "▶ Tiếp tục"
+            }
+            .setNegativeButton("Bắt đầu lại") { _,_ ->
+                checkpointDecisionPending=false
+                checkpoint.edit().clear().apply()
+            }
+            .setCancelable(false).show()
+    }
+
     private val videoPrefs by lazy { getSharedPreferences("workout_videos",0) }
     private val pickVideoRequest=889
+    private val voiceRequest=890
     private val tick=object:Runnable {
         override fun run() {
             if(paused)return
@@ -77,7 +131,7 @@ class GuidedWorkoutActivity:Activity() {
         }
         root.addView(progress)
         guide=TextView(this).apply { textSize=16f;setPadding(10,22,10,20);setTextColor(Color.rgb(70,61,85)) }
-        root.addView(ScrollView(this).apply { addView(guide) },LinearLayout.LayoutParams(-1,0,1f))
+        root.addView(ScrollView(this).apply { addView(guide) },LinearLayout.LayoutParams(-1,(220*resources.displayMetrics.density).toInt()))
         val online=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
         online.addView(Button(this).apply { text="▶ YouTube";setOnClickListener { searchVideo("youtube") } },LinearLayout.LayoutParams(0,-2,1f))
         online.addView(Button(this).apply { text="♫ TikTok";setOnClickListener { searchVideo("tiktok") } },LinearLayout.LayoutParams(0,-2,1f))
@@ -100,9 +154,23 @@ class GuidedWorkoutActivity:Activity() {
         })
         control=Button(this).apply { text="▶ Bắt đầu";setOnClickListener { if(paused)resume() else pause() } }
         root.addView(control)
+        root.addView(Button(this).apply {
+            text="🎤 Nói với Chibi (nhấn để nói)"
+            contentDescription="Nhấn để yêu cầu Android nhận giọng nói, không ghi âm nền"
+            setOnClickListener { requestVoiceCommand() }
+        })
+        root.addView(Button(this).apply {
+            text="💬 Nhập yêu cầu tập luyện"
+            setOnClickListener { requestTypedCommand() }
+        })
+        root.addView(Button(this).apply {
+            text="⚙️ Điều chỉnh buổi tập ngay"
+            contentDescription="Tăng thời gian nghỉ, rút ngắn động tác hoặc nghe hướng dẫn dễ hơn"
+            setOnClickListener { adjustCurrentMove() }
+        })
         val actions=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
         actions.addView(Button(this).apply { text="← Trước";setOnClickListener {
-            if(index>0) { pause();index--;displayStep(); }
+            if(!pausedForSafety && index>0) { pause();index--;displayStep(); }
         } },LinearLayout.LayoutParams(0,-2,1f))
         actions.addView(Button(this).apply { text="Bước tiếp →";setOnClickListener { nextMove() } },
             LinearLayout.LayoutParams(0,-2,1f))
@@ -117,7 +185,12 @@ class GuidedWorkoutActivity:Activity() {
             text="Giọng đọc dùng engine TTS cài trên Android. Thời gian từng động tác chỉ là nhắc nhở; nghỉ thêm khi cần. Dừng ngay nếu thấy đau hoặc khó chịu."
             textSize=12f
         })
-        setContentView(root)
+        // Keep every workout control reachable on small phones and with large accessibility fonts.
+        val page=ScrollView(this).apply {
+            isFillViewport=true
+            addView(root)
+        }
+        setContentView(page)
         if(Build.VERSION.SDK_INT>=35) {
             root.setOnApplyWindowInsetsListener { view,insets ->
                 val bars=insets.getInsets(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout())
@@ -137,6 +210,192 @@ class GuidedWorkoutActivity:Activity() {
             }
         }
         displayStep()
+        if (savedInstanceState == null) offerCheckpoint()
+        // Restore the active exercise after rotation, but never auto-resume.
+        if(savedInstanceState!=null &&
+            savedInstanceState.getString("workout_program")==program.id) {
+            index=savedInstanceState.getInt("workout_index",0).coerceIn(0,moves.lastIndex)
+            displayStep()
+            remainingMs=savedInstanceState.getLong("workout_remaining",remainingMs)
+                .coerceIn(0L,600_000L)
+            pausedForSafety=savedInstanceState.getBoolean("workout_safety",false)
+            shorterFromIndex=savedInstanceState.getInt("workout_shorter_from",Int.MAX_VALUE).coerceIn(0,moves.size)
+            val elapsed=savedInstanceState.getLong("workout_elapsed",0L).coerceAtLeast(0L)
+            accumulated=elapsed.coerceAtMost(86_400_000L)
+            startedAt=0L
+            val seconds=(remainingMs/1000).toInt()
+            counter.text=String.format(Locale.US,"%02d:%02d",seconds/60,seconds%60)
+            control.text=if(pausedForSafety) "⚠️ Đã dừng vì đau" else "▶ Tiếp tục"
+        }
+    }
+    override fun onSaveInstanceState(outState:Bundle) {
+        // Save monotonic elapsed duration, not an absolute deadline.
+        pause()
+        outState.putString("workout_program",program.id)
+        outState.putInt("workout_index",index)
+        outState.putLong("workout_remaining",remainingMs)
+        outState.putBoolean("workout_safety",pausedForSafety)
+        outState.putInt("workout_shorter_from",shorterFromIndex)
+        outState.putBoolean("workout_started",activeElapsedMs()>0L)
+        outState.putLong("workout_elapsed",activeElapsedMs())
+        super.onSaveInstanceState(outState)
+    }
+    private fun requestVoiceCommand() {
+        AlertDialog.Builder(this).setTitle("🎤 Điều khiển bằng giọng nói")
+            .setMessage("Chỉ bắt đầu nghe sau khi bạn nhấn Tiếp tục. Android sẽ mở dịch vụ nhận dạng giọng nói của máy; tùy nhà cung cấp, âm thanh có thể được xử lý trực tuyến. Chibi không tự bật micro và không lưu bản ghi âm. Bạn cũng có thể nhập chữ thay thế.")
+            .setPositiveButton("Tiếp tục"){_,_->
+                val request=Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                    putExtra(RecognizerIntent.EXTRA_LANGUAGE,"vi-VN")
+                    putExtra(RecognizerIntent.EXTRA_PROMPT,"Ví dụ: nghỉ thêm, bài tiếp theo, dễ hơn, dừng lại")
+                }
+                try { startActivityForResult(request,voiceRequest) }
+                catch (_:Exception) { Toast.makeText(this,"Thiết bị chưa có dịch vụ nhận giọng nói. Hãy nhập yêu cầu bằng chữ.",Toast.LENGTH_LONG).show() }
+            }.setNegativeButton("Hủy",null).show()
+    }
+    private fun requestTypedCommand() {
+        val field=EditText(this).apply { hint="Ví dụ: nghỉ thêm, dễ hơn, tiếp tục";setSingleLine(false) }
+        AlertDialog.Builder(this).setTitle("💬 Chibi Coach • lệnh offline")
+            .setMessage("Điều khiển buổi tập bằng chữ, không gửi dữ liệu lên mạng.")
+            .setView(field).setPositiveButton("Gửi"){_,_->handleCoachCommand(field.text.toString())}
+            .setNegativeButton("Hủy",null).show()
+    }
+    private fun handleCoachCommand(utterance:String) {
+        when(WorkoutVoiceCommands.parse(utterance)) {
+            WorkoutVoiceCommands.Command.PAIN -> {
+                pause()
+                pausedForSafety=true
+                control.text="⚠️ Đã dừng vì đau"
+                // Persist the safety lock after setting it, including when recognition
+                // arrives while the workout is already paused.
+                saveCheckpoint()
+                AlertDialog.Builder(this).setTitle("⚠️ Đã dừng vì bạn báo đau")
+                    .setMessage("Không cố tập khi đau. Hãy kết thúc buổi tập nếu triệu chứng tiếp diễn; tìm trợ giúp y tế phù hợp nếu đau nhiều hoặc có dấu hiệu bất thường. Chibi sẽ không tự tiếp tục bằng giọng nói.")
+                    .setPositiveButton("Đã hiểu",null).show()
+                speak("Đã dừng tập vì bạn báo đau. Hãy ưu tiên an toàn.")
+            }
+            WorkoutVoiceCommands.Command.PAUSE -> { pause();speak("Đã tạm dừng.") }
+            WorkoutVoiceCommands.Command.RESUME -> resume()
+            WorkoutVoiceCommands.Command.NEXT -> nextMove()
+            WorkoutVoiceCommands.Command.PREVIOUS -> { if(!pausedForSafety) { pause();if(index>0)index--;displayStep();speak("Bài "+moves[index].name) } }
+            WorkoutVoiceCommands.Command.REPEAT -> speak(moves[index].steps)
+            WorkoutVoiceCommands.Command.EASIER -> {
+                pause()
+                AlertDialog.Builder(this).setTitle("🌿 Cách tập dễ hơn")
+                    .setMessage(moves[index].easier+"\\n\\nChỉ tiếp tục khi bạn thấy thoải mái.")
+                    .setPositiveButton("Đã hiểu",null).show()
+                speak(moves[index].easier)
+            }
+            WorkoutVoiceCommands.Command.SHORTER_REMAINING -> shortenRemainingWorkout()
+            WorkoutVoiceCommands.Command.SHORTER -> {
+                if (!pausedForSafety) {
+                    pause()
+                    remainingMs=(remainingMs/2).coerceAtLeast(5_000L)
+                    val seconds=(remainingMs/1000).toInt()
+                    counter.text=String.format(Locale.US,"%02d:%02d",seconds/60,seconds%60)
+                    control.text="▶ Tiếp tục bài ngắn hơn"
+                    speak("Đã rút ngắn động tác còn một nửa. Hãy tiếp tục khi sẵn sàng.")
+                }
+            }
+            WorkoutVoiceCommands.Command.REST -> {
+                if (pausedForSafety) {
+                    Toast.makeText(this,"Buổi tập đang dừng vì báo đau; không thay đổi thời gian.",Toast.LENGTH_LONG).show()
+                } else {
+                    pause()
+                    remainingMs=(remainingMs+30_000L).coerceAtMost(600_000L)
+                    val seconds=(remainingMs/1000).toInt()
+                    counter.text=String.format(Locale.US,"%02d:%02d",seconds/60,seconds%60)
+                    saveCheckpoint()
+                    speak("Đã thêm ba mươi giây nghỉ. Khi sẵn sàng hãy nói tiếp tục.")
+                }
+            }
+            WorkoutVoiceCommands.Command.UNKNOWN -> {
+                AlertDialog.Builder(this).setTitle("Chibi chưa hiểu yêu cầu")
+                    .setMessage("Bạn có thể nói: tạm dừng, tiếp tục, bài tiếp theo, bài trước, nhắc lại, dễ hơn, rút ngắn hoặc nghỉ thêm. Đây là bộ lệnh offline, chưa phải hội thoại AI tự do.")
+                    .setPositiveButton("Đóng",null).show()
+            }
+        }
+    }
+    /** Explicit local adjustments; never changes other moves or silently claims AI advice. */
+    private fun adjustCurrentMove() {
+        if (pausedForSafety) {
+            AlertDialog.Builder(this).setTitle("⚠️ Buổi tập đã dừng")
+                .setMessage("Bạn đã báo đau. Chibi sẽ không điều chỉnh hoặc tiếp tục bài tập cho tới khi bạn xác nhận tình trạng an toàn bằng nút Tiếp tục.")
+                .setPositiveButton("Đã hiểu",null).show()
+            return
+        }
+        val options=arrayOf(
+            "🌿 Giảm thời gian động tác còn một nửa",
+            "⏱ Thêm 30 giây nghỉ",
+            "📖 Xem cách tập dễ hơn",
+            "⏸ Tạm dừng buổi tập",
+            "⏱ Rút ngắn tất cả động tác còn lại"
+        )
+        AlertDialog.Builder(this).setTitle("Chibi điều chỉnh theo sức của bạn")
+            .setItems(options) { _, choice ->
+                when(choice) {
+                    0 -> {
+                        pause()
+                        remainingMs=(remainingMs/2).coerceAtLeast(5_000L)
+                        val seconds=(remainingMs/1000).toInt()
+                        counter.text=String.format(Locale.US,"%02d:%02d",seconds/60,seconds%60)
+                        control.text="▶ Tiếp tục bài nhẹ hơn"
+                        speak("Đã rút ngắn thời gian động tác. Hãy tập vừa sức.")
+                    }
+                    1 -> {
+                        pause()
+                        remainingMs=(remainingMs+30_000L).coerceAtMost(600_000L)
+                        val seconds=(remainingMs/1000).toInt()
+                        counter.text=String.format(Locale.US,"%02d:%02d",seconds/60,seconds%60)
+                        speak("Đã thêm ba mươi giây. Bạn có thể nghỉ lâu hơn nếu cần.")
+                    }
+                    2 -> {
+                        pause()
+                        AlertDialog.Builder(this).setTitle("Cách tập dễ hơn")
+                            .setMessage(moves[index].easier+"\\n\\nDừng tập nếu thấy đau.")
+                            .setPositiveButton("Đã hiểu",null).show()
+                        speak(moves[index].easier)
+                    }
+                    3 -> { pause();speak("Đã tạm dừng buổi tập.") }
+                    4 -> shortenRemainingWorkout()
+                }
+            }.setNegativeButton("Đóng",null).show()
+    }
+    private fun shortenRemainingWorkout() {
+        if (pausedForSafety || completed) return
+        pause()
+        val before = remainingMs + moves.indices.drop(index + 1).sumOf { position ->
+            RemainingWorkoutDuration.seconds(moves[position].seconds, position, shorterFromIndex) * 1000L
+        }
+        val proposedFrom = minOf(shorterFromIndex, index)
+        val afterCurrent = (remainingMs / 2).coerceAtLeast(5_000L)
+        val after = afterCurrent + moves.indices.drop(index + 1).sumOf { position ->
+            RemainingWorkoutDuration.seconds(moves[position].seconds, position, proposedFrom) * 1000L
+        }
+        fun format(ms: Long): String = "${(ms / 60000)} phút ${(ms / 1000) % 60} giây"
+        val stepPreview = RemainingWorkoutDuration.preview(
+            moves.map { it.name }, moves.map { it.seconds }, index,
+            (remainingMs / 1000L).toInt(), shorterFromIndex
+        )
+        val details = stepPreview.take(4).joinToString("\\n") { step ->
+            "• ${step.name}: ${step.beforeSeconds}s → ${step.afterSeconds}s"
+        } + if (stepPreview.size > 4) "\\n… và ${stepPreview.size - 4} bước tiếp theo" else ""
+
+        AlertDialog.Builder(this).setTitle("Xem trước giáo án rút ngắn")
+            .setMessage("Thời gian còn lại dự kiến:\nTrước: ${format(before)}\nSau: ${format(after)}\n\n" +
+                "Giảm thời lượng động tác hiện tại và các động tác phía sau. " +
+                "Những bước đã hoàn thành được giữ nguyên. Đây là ước tính, không bao gồm nghỉ thêm.\\n\\n" + details)
+            .setPositiveButton("Xác nhận thay đổi") { _, _ ->
+                if (pausedForSafety || completed || index >= moves.size) return@setPositiveButton
+                shorterFromIndex = proposedFrom
+                remainingMs = afterCurrent
+                val seconds = (remainingMs / 1000).toInt()
+                counter.text = String.format(Locale.US, "%02d:%02d", seconds / 60, seconds % 60)
+                control.text = "▶ Tiếp tục giáo án ngắn hơn"
+                saveCheckpoint()
+                speak("Đã rút ngắn phần tập còn lại. Các bước đã hoàn thành không thay đổi.")
+            }
+            .setNegativeButton("Giữ giáo án cũ", null).show()
     }
     private fun videoKey():String=program.id+"_"+moves[index].name
     private fun saveVideoLink() {
@@ -225,6 +484,23 @@ class GuidedWorkoutActivity:Activity() {
     @Deprecated("Android activity result compatibility")
     override fun onActivityResult(requestCode:Int,resultCode:Int,data:Intent?) {
         super.onActivityResult(requestCode,resultCode,data)
+        if(requestCode==voiceRequest && resultCode==RESULT_OK) {
+            val phrase=data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
+            if (!phrase.isNullOrBlank()) {
+                // Speech recognition is fallible: preview before changing workout state.
+                // A reported safety symptom is the exception: stop immediately.
+                val command=WorkoutVoiceCommands.parse(phrase)
+                if (command==WorkoutVoiceCommands.Command.PAIN) {
+                    handleCoachCommand(phrase)
+                } else {
+                    AlertDialog.Builder(this).setTitle("🐰 Chibi nghe được")
+                        .setMessage("“"+phrase.take(160)+"”\\n\\n"+WorkoutVoiceCommands.describe(command)+
+                            "\\n\\nKiểm tra câu nhận dạng trước khi điều khiển buổi tập.")
+                        .setPositiveButton("Áp dụng") { _,_ -> handleCoachCommand(phrase) }
+                        .setNegativeButton("Không đúng",null).show()
+                }
+            }
+        }
         if(requestCode==pickVideoRequest && resultCode==RESULT_OK) {
             val uri=data?.data ?: return
             try {
@@ -259,7 +535,7 @@ class GuidedWorkoutActivity:Activity() {
     private fun displayStep() {
         paused=true;handler.removeCallbacks(tick)
         val move=moves[index]
-        remainingMs=move.seconds*1000L
+        remainingMs=RemainingWorkoutDuration.seconds(move.seconds,index,shorterFromIndex)*1000L
         heading.text="${index+1}/${moves.size} • ${move.name}"
         guide.text="🎯 ${move.dose}\n\n📖 Cách thực hiện:\n${move.steps}\n\n🌿 Giảm độ khó:\n${move.easier}\n\n⚠️ Lưu ý:\n${move.avoid}"
         progress.progress=index
@@ -272,9 +548,16 @@ class GuidedWorkoutActivity:Activity() {
         if(ready)spoken?.speak(message.take(350),TextToSpeech.QUEUE_FLUSH,null,"fitness-${index}")
     }
     private fun resume() {
+        if(pausedForSafety) {
+            AlertDialog.Builder(this).setTitle("Xác nhận trước khi tập lại")
+                .setMessage("Bạn đã báo đau. Chỉ tiếp tục nếu triệu chứng đã hết và bạn thấy an toàn. Nếu còn đau, hãy dừng buổi tập.")
+                .setPositiveButton("Tôi đã ổn, tiếp tục"){_,_->pausedForSafety=false;resume()}
+                .setNegativeButton("Tiếp tục nghỉ",null).show()
+            return
+        }
         if(!paused)return
         paused=false
-        if(startedAt==0L) startedAt=SystemClock.elapsedRealtime()
+        startedAt=SystemClock.elapsedRealtime()
         deadline=SystemClock.elapsedRealtime()+remainingMs
         control.text="⏸ Tạm dừng"
         speak("Bài ${index+1}: ${moves[index].name}. ${moves[index].dose}. ${moves[index].steps}")
@@ -282,12 +565,19 @@ class GuidedWorkoutActivity:Activity() {
     }
     private fun pause() {
         if(paused)return
-        remainingMs=(deadline-SystemClock.elapsedRealtime()).coerceAtLeast(0L)
+        val now=SystemClock.elapsedRealtime()
+        remainingMs=(deadline-now).coerceAtLeast(0L)
+        if(startedAt!=0L) accumulated+=(now-startedAt).coerceAtLeast(0L)
+        startedAt=0L
         paused=true;handler.removeCallbacks(tick)
         spoken?.stop()
         control.text="▶ Tiếp tục"
     }
     private fun nextMove() {
+        if(pausedForSafety) {
+            Toast.makeText(this,"Đang dừng vì báo đau. Hãy xác nhận an toàn trước khi tiếp tục.",Toast.LENGTH_LONG).show()
+            return
+        }
         pause()
         if(index==moves.lastIndex) {
             AlertDialog.Builder(this).setTitle("🎉 Đã đi hết chương trình!")
@@ -301,15 +591,33 @@ class GuidedWorkoutActivity:Activity() {
     }
     private fun finishWorkout() {
         pause()
-        val elapsed=if(startedAt==0L)0 else ((SystemClock.elapsedRealtime()-startedAt)/60000L).toInt()
-        val mins=elapsed.coerceAtLeast(1)
+        // A skipped or immediately abandoned session is not a completed workout.
+        // Never manufacture one minute of exercise (and downstream RPG progress).
+        val elapsedMs=activeElapsedMs()
+        if (elapsedMs < 60_000L) {
+            AlertDialog.Builder(this)
+                .setTitle("Chưa đủ thời gian vận động")
+                .setMessage("Buổi tập có dưới 1 phút hoạt động thực tế. Chibi chưa ghi nhật ký hoặc trao tiến độ nhiệm vụ. Bạn có thể tập tiếp hoặc thoát mà không lưu.")
+                .setPositiveButton("Tập tiếp", null)
+                .setNegativeButton("Thoát không lưu") { _, _ ->
+                    completed=true
+                    checkpoint.edit().clear().apply()
+                    finish()
+                }.show()
+            return
+        }
+        completed=true
+        checkpoint.edit().clear().apply()
+        val mins=(elapsedMs/60000L).toInt()
         WorkoutData.save(this,WorkoutData.history(this)+Workout(
             LifeData.today(),program.name,mins,"Tập theo Chibi Coach, ${index+1}/${moves.size} bước; thời lượng ước tính"))
         Toast.makeText(this,"Đã ghi $mins phút vào nhật ký",Toast.LENGTH_LONG).show()
         finish()
     }
     override fun onPause() {
-        pause();super.onPause()
+        pause()
+        saveCheckpoint()
+        super.onPause()
     }
     override fun onDestroy() {
         handler.removeCallbacks(tick)

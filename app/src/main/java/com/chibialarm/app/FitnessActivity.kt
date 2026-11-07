@@ -11,6 +11,7 @@ import android.widget.*
 /** Catalog-driven free coach: selectable tracks, difficulty, guided session, weekly reminder. */
 class FitnessActivity:Activity() {
     private val prefs by lazy { getSharedPreferences("chibi_fitness_offline",0) }
+    private var conversation: FitnessNaturalRequest.Result? = null
     private lateinit var root:LinearLayout
     private lateinit var level:Spinner
     private lateinit var length:Spinner
@@ -90,7 +91,8 @@ class FitnessActivity:Activity() {
                 if (request.isBlank()) {
                     naturalRequest.error="Hãy mô tả buổi tập bạn muốn"
                 } else {
-                    val parsed=FitnessNaturalRequest.parse(request)
+                    val parsed=FitnessCoachConversation.merge(conversation, FitnessNaturalRequest.parse(request))
+                    conversation=parsed
                     parsed.goal?.let { goalSpinner.setSelection(it) }
                     parsed.energy?.let { energySpinner.setSelection(it) }
                     parsed.minutes?.let { requested ->
@@ -104,6 +106,8 @@ class FitnessActivity:Activity() {
                         .setMessage(parsed.reply + "\n\n🐰 Chibi hỏi tiếp: " + FitnessCoachFollowUp.nextQuestion(parsed))
                         .setPositiveButton("Xem giáo án",null)
                         .setNeutralButton("Trả lời tiếp") { _, _ ->
+                            naturalRequest.text.clear()
+                            naturalRequest.hint=FitnessCoachFollowUp.nextQuestion(parsed)
                             naturalRequest.requestFocus()
                             naturalRequest.setSelection(naturalRequest.text.length)
                             (getSystemService(INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager)

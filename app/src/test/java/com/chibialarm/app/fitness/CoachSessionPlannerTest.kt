@@ -43,4 +43,27 @@ class CoachSessionPlannerTest {
     fun rejectsInvalidRepetitions() {
         CoachSessionPlanner.SetPlan("walk", 0, 30)
     }
+
+    @Test fun midSessionEasierPreservesCompletedSets() {
+        val changed = CoachSessionPlanner.adjustRemaining(initial, 1, CoachSessionPlanner.Request.EASIER)
+        assertEquals(initial.sets.first(), changed.sets.first())
+        assertEquals(listOf(12, 6, 7), changed.sets.map { it.reps })
+        assertEquals(listOf(45, 80, 40), changed.sets.map { it.restSeconds })
+    }
+
+    @Test fun midSessionShorterKeepsCompletedAndNextSet() {
+        val changed = CoachSessionPlanner.adjustRemaining(initial, 1, CoachSessionPlanner.Request.SHORTER)
+        assertEquals(listOf("squat", "pushup"), changed.sets.map { it.exerciseId })
+    }
+
+    @Test fun painStillPausesWhenAllSetsFinished() {
+        val changed = CoachSessionPlanner.adjustRemaining(initial, 3, CoachSessionPlanner.Request.PAIN)
+        assertTrue(changed.pausedForSafety)
+        assertEquals(initial.sets, changed.sets)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun invalidCompletedCountIsRejected() {
+        CoachSessionPlanner.adjustRemaining(initial, 4, CoachSessionPlanner.Request.EASIER)
+    }
 }

@@ -18,7 +18,7 @@ object WorkoutVoiceCommands {
                 normalized.contains("chan thuong") || normalized.contains("kho tho") ||
                 normalized.contains("chong mat") || normalized.contains("choang vang") ||
                 normalized.contains("dau nguc") || normalized.contains("dau dau") ||
-                "dau" in words || "ngat" in words -> Command.PAIN
+                ("dau" in words && !normalized.contains("o dau")) || "ngat" in words -> Command.PAIN
             normalized.contains("tam dung") || normalized.contains("dung lai") ||
                 normalized.contains("dung tap") || "pause" in words -> Command.PAUSE
             normalized.contains("nghi them") || normalized.contains("nghi mot chut") ||

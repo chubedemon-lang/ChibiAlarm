@@ -45,7 +45,7 @@ class CoachActivity:Activity() {
         } })
         root.addView(buttons)
         val voiceTools=LinearLayout(this).apply { orientation=0 }
-        voiceTools.addView(Button(this).apply { text="🎤 Nói";setOnClickListener { listen() } },LinearLayout.LayoutParams(0,-2,1f))
+        voiceTools.addView(Button(this).apply { text="🎤 Nói";setOnClickListener { explainMicrophoneThenListen() } },LinearLayout.LayoutParams(0,-2,1f))
         voiceTools.addView(Button(this).apply { text="🔊 Bật đọc";setOnClickListener {
             autoSpeak=!autoSpeak;text=if(autoSpeak)"🔇 Tắt đọc" else "🔊 Bật đọc"
             if(!autoSpeak)speaker?.stop()
@@ -123,6 +123,19 @@ class CoachActivity:Activity() {
             } }
         }.start()
     }
+    /**
+     * Android's speech recognizer may be provided by another app and may use
+     * network processing. Require an explicit tap before each recording.
+     */
+    private fun explainMicrophoneThenListen() {
+        AlertDialog.Builder(this)
+            .setTitle("🎤 Nhận dạng giọng nói")
+            .setMessage("Chibi sẽ mở dịch vụ nhận dạng giọng nói trên máy. Dịch vụ này có thể dùng Internet và xử lý âm thanh theo chính sách của nhà cung cấp. Chibi chỉ nhận văn bản được trả về. Bạn sẽ được xem và sửa văn bản trước khi gửi. Bạn cũng có thể gõ thay vì dùng mic.")
+            .setPositiveButton("Tiếp tục dùng mic") { _, _ -> listen() }
+            .setNegativeButton("Để tôi gõ", null)
+            .show()
+    }
+
     private fun listen() {
         try {
             val i=Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
@@ -138,7 +151,7 @@ class CoachActivity:Activity() {
         super.onActivityResult(requestCode,resultCode,data)
         if(requestCode==speechRequest && resultCode==RESULT_OK) {
             val recognized=data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
-            if(!recognized.isNullOrBlank()) { prompt.setText(recognized);chat() }
+            if(!recognized.isNullOrBlank()) {\n                prompt.setText(recognized)\n                prompt.setSelection(prompt.text.length)\n                Toast.makeText(this,"Kiểm tra nội dung nhận dạng rồi bấm gửi.",Toast.LENGTH_LONG).show()\n            }
         }
     }
     override fun onDestroy() { speaker?.stop();speaker?.shutdown();super.onDestroy() }

@@ -44,4 +44,25 @@ class FitnessCoachConversationTest {
         val previous = FitnessCoachConversation.merge(null, FitnessNaturalRequest.parse("giãn cơ"))
         assertNull(FitnessCoachConversation.parseReply(previous, "999").minutes)
     }
+    @Test fun shortMatAnswerUsesEquipmentQuestion() {
+        val previous = FitnessCoachConversation.merge(null, FitnessNaturalRequest.parse("giãn cơ 15 phút"))
+        val reply = FitnessCoachConversation.parseReply(previous, "thảm")
+        assertEquals(1, FitnessCoachConversation.merge(previous, reply).equipment)
+    }
+    @Test fun shortResistanceBandAnswerUsesEquipmentQuestion() {
+        val previous = FitnessCoachConversation.merge(null, FitnessNaturalRequest.parse("giãn cơ 15 phút"))
+        val reply = FitnessCoachConversation.parseReply(previous, "dây kháng lực")
+        assertEquals(2, FitnessCoachConversation.merge(previous, reply).equipment)
+    }
+    @Test fun shortEquipmentAnswerCannotOverrideSafetyWarning() {
+        val previous = FitnessCoachConversation.merge(null, FitnessNaturalRequest.parse("đang đau khớp"))
+        val reply = FitnessCoachConversation.parseReply(previous, "tạ")
+        assertNull(reply.equipment)
+        assertEquals(2, FitnessCoachConversation.merge(previous, reply).impact)
+    }
+    @Test fun equipmentReplyWithoutEquipmentQuestionIsNotGuessed() {
+        val previous = FitnessCoachConversation.merge(null, FitnessNaturalRequest.parse("giãn cơ"))
+        assertNull(FitnessCoachConversation.parseReply(previous, "thảm").equipment)
+    }
 }
+

@@ -48,6 +48,14 @@ class FitnessActivity:Activity() {
             setSelection(prefs.getInt("fitTime",2).coerceIn(0,mins.lastIndex))
         }
         root.addView(length)
+        root.addView(txt("💬 Nói với Chibi về buổi tập",19f))
+        val naturalRequest=EditText(this).apply {
+            hint="Ví dụ: Hôm nay mệt, muốn giãn cơ 10 phút, không dụng cụ"
+            minLines=2
+            inputType=android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
+            contentDescription="Yêu cầu giáo án bằng tiếng Việt"
+        }
+        root.addView(naturalRequest)
         root.addView(txt("🤖 Chibi gợi ý buổi tập hôm nay",20f))
         val goals= arrayOf("Tăng sức mạnh","Tăng vận động tim mạch","Giãn cơ & linh hoạt","Giảm mỏi do ngồi nhiều","Mới bắt đầu","Thử thách mới")
         val energyLevels=arrayOf("Hôm nay hơi mệt","Cảm thấy bình thường","Rất nhiều năng lượng")
@@ -75,6 +83,29 @@ class FitnessActivity:Activity() {
             setSelection(prefs.getInt("recommendImpact",0).coerceIn(0,2))
         }
         root.addView(impactSpinner)
+        root.addView(Button(this).apply {
+            text="💬 Chibi hiểu yêu cầu của tôi"
+            setOnClickListener {
+                val request=naturalRequest.text.toString()
+                if (request.isBlank()) {
+                    naturalRequest.error="Hãy mô tả buổi tập bạn muốn"
+                } else {
+                    val parsed=FitnessNaturalRequest.parse(request)
+                    parsed.goal?.let { goalSpinner.setSelection(it) }
+                    parsed.energy?.let { energySpinner.setSelection(it) }
+                    parsed.minutes?.let { requested ->
+                        val closest=mins.indices.minByOrNull { kotlin.math.abs(mins[it]-requested) } ?: 0
+                        length.setSelection(closest)
+                    }
+                    parsed.equipment?.let { equipmentSpinner.setSelection(it) }
+                    parsed.impact?.let { impactSpinner.setSelection(it) }
+                    AlertDialog.Builder(this@FitnessActivity)
+                        .setTitle("🐰 Chibi đã nghe")
+                        .setMessage(parsed.reply)
+                        .setPositiveButton("Xem giáo án",null).show()
+                }
+            }
+        })
         root.addView(Button(this).apply {
             text="🐰 Gợi ý chương trình phù hợp"
             setOnClickListener {

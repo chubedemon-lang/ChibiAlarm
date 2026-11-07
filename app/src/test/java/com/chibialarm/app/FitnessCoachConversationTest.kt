@@ -77,4 +77,32 @@ class FitnessCoachConversationTest {
         assertEquals(1, reply.equipment)
         assertTrue(reply.reply.contains("thảm"))
     }
+
+    @Test fun shortNoRestrictionsAnswerOnlyAfterSafetyQuestion() {
+        val previous = FitnessNaturalRequest.parse("giãn cơ 15 phút không dụng cụ")
+        val reply = FitnessCoachConversation.parseReply(previous, "không")
+        assertEquals(0, reply.impact)
+        assertTrue(reply.reply.contains("hạn chế"))
+    }
+
+    @Test fun lowImpactShortAnswerIsRemembered() {
+        val previous = FitnessNaturalRequest.parse("giãn cơ 15 phút không dụng cụ")
+        val reply = FitnessCoachConversation.parseReply(previous, "tránh nhảy")
+        assertEquals(1, FitnessCoachConversation.merge(previous, reply).impact)
+    }
+
+    @Test fun energyAnswerWorksAfterSafetyPreference() {
+        val previous = FitnessCoachConversation.merge(
+            FitnessNaturalRequest.parse("giãn cơ 15 phút không dụng cụ"),
+            FitnessNaturalRequest.parse("tránh nhảy")
+        )
+        val reply = FitnessCoachConversation.parseReply(previous, "hơi mệt")
+        assertEquals(0, FitnessCoachConversation.merge(previous, reply).energy)
+    }
+
+    @Test fun shortNoCannotDismissExistingInjury() {
+        val previous = FitnessNaturalRequest.parse("đang đau khớp")
+        val reply = FitnessCoachConversation.parseReply(previous, "không")
+        assertEquals(2, FitnessCoachConversation.merge(previous, reply).impact)
+    }
 }

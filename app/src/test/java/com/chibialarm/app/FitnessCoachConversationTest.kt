@@ -64,5 +64,17 @@ class FitnessCoachConversationTest {
         val previous = FitnessCoachConversation.merge(null, FitnessNaturalRequest.parse("giãn cơ"))
         assertNull(FitnessCoachConversation.parseReply(previous, "thảm").equipment)
     }
+    @Test fun shortDurationGetsAcknowledgedInsteadOfGenericFailure() {
+        val previous = FitnessNaturalRequest.parse("giãn cơ")
+        val reply = FitnessCoachConversation.parseReply(previous, "15")
+        assertEquals(15, reply.minutes)
+        assertTrue(reply.reply.contains("15 phút"))
+        assertFalse(reply.reply.contains("chưa hiểu"))
+    }
+    @Test fun contextualEquipmentReplyIsAcknowledged() {
+        val previous = FitnessNaturalRequest.parse("giãn cơ 15 phút")
+        val reply = FitnessCoachConversation.parseReply(previous, "thảm")
+        assertEquals(1, reply.equipment)
+        assertTrue(reply.reply.contains("thảm"))
+    }
 }
-

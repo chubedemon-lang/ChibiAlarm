@@ -425,7 +425,20 @@ class GuidedWorkoutActivity:Activity() {
         super.onActivityResult(requestCode,resultCode,data)
         if(requestCode==voiceRequest && resultCode==RESULT_OK) {
             val phrase=data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
-            if (!phrase.isNullOrBlank()) handleCoachCommand(phrase)
+            if (!phrase.isNullOrBlank()) {
+                // Speech recognition is fallible: preview before changing workout state.
+                // A reported safety symptom is the exception: stop immediately.
+                val command=WorkoutVoiceCommands.parse(phrase)
+                if (command==WorkoutVoiceCommands.Command.PAIN) {
+                    handleCoachCommand(phrase)
+                } else {
+                    AlertDialog.Builder(this).setTitle("🐰 Chibi nghe được")
+                        .setMessage("“"+phrase.take(160)+"”\\n\\n"+WorkoutVoiceCommands.describe(command)+
+                            "\\n\\nKiểm tra câu nhận dạng trước khi điều khiển buổi tập.")
+                        .setPositiveButton("Áp dụng") { _,_ -> handleCoachCommand(phrase) }
+                        .setNegativeButton("Không đúng",null).show()
+                }
+            }
         }
         if(requestCode==pickVideoRequest && resultCode==RESULT_OK) {
             val uri=data?.data ?: return

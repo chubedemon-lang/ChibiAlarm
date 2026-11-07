@@ -20,19 +20,19 @@ object FitnessCoachConversation {
         return when {
             previous.impact == 2 -> parsed
             previous.minutes == null && question.contains("bao nhiêu phút") && shortMinutes != null ->
-                parsed.copy(minutes = shortMinutes)
+                parsed.copy(minutes = shortMinutes, reply = "Tao đã ghi nhận $shortMinutes phút cho buổi tập. Mày có thể trả lời câu hỏi tiếp theo.")
             previous.equipment == null && question.contains("thảm, tạ") &&
                 answer in setOf("không", "khong", "không có", "khong co", "tay không", "tay khong") ->
-                parsed.copy(equipment = 0)
+                parsed.copy(equipment = 0, reply = "Đã ghi nhận tập không dụng cụ. Tao sẽ ưu tiên bài phù hợp.")
             previous.equipment == null && question.contains("thảm, tạ") &&
                 answer in setOf("thảm", "tham", "thảm tập", "tham tap") ->
-                parsed.copy(equipment = 1)
+                parsed.copy(equipment = 1, reply = "Đã ghi nhận có thảm tập.")
             previous.equipment == null && question.contains("thảm, tạ") &&
                 answer in setOf("tạ", "ta", "tạ đơn", "ta don", "dây", "day", "dây kháng lực", "day khang luc") ->
-                parsed.copy(equipment = 2)
+                parsed.copy(equipment = 2, reply = "Đã ghi nhận có tạ hoặc dây kháng lực. Hãy kiểm tra dụng cụ được chọn.")
             previous.energy == null && question.contains("mệt") &&
                 answer in setOf("bình thường", "binh thuong", "vừa", "vua") ->
-                parsed.copy(energy = 1)
+                parsed.copy(energy = 1, reply = "Đã ghi nhận mức năng lượng bình thường.")
             else -> parsed
         }
     }

@@ -5,7 +5,7 @@ import java.util.Locale
 
 /** Small, offline command interpreter. Unrecognized speech never controls a workout. */
 object WorkoutVoiceCommands {
-    enum class Command { PAIN, PAUSE, RESUME, NEXT, PREVIOUS, REPEAT, EASIER, REST, UNKNOWN }
+    enum class Command { PAIN, PAUSE, RESUME, NEXT, PREVIOUS, REPEAT, EASIER, SHORTER, REST, UNKNOWN }
 
     fun parse(utterance: String): Command {
         val normalized = Normalizer.normalize(utterance.lowercase(Locale.ROOT), Normalizer.Form.NFD)
@@ -20,6 +20,8 @@ object WorkoutVoiceCommands {
                 normalized.contains("dung tap") || "pause" in words -> Command.PAUSE
             normalized.contains("nghi them") || normalized.contains("nghi mot chut") ||
                 "rest" in words -> Command.REST
+            normalized.contains("rut ngan") || normalized.contains("ngan hon") ||
+                normalized.contains("giam thoi gian") -> Command.SHORTER
             normalized.contains("de hon") || normalized.contains("giam do kho") ||
                 normalized.contains("nhe hon") -> Command.EASIER
             normalized.contains("lap lai") || normalized.contains("noi lai") ||

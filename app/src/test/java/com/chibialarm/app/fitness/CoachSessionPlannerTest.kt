@@ -66,4 +66,17 @@ class CoachSessionPlannerTest {
     fun invalidCompletedCountIsRejected() {
         CoachSessionPlanner.adjustRemaining(initial, 4, CoachSessionPlanner.Request.EASIER)
     }
+
+    @Test fun safetyPauseBlocksAllMidSessionAdjustments() {
+        val stopped = CoachSessionPlanner.adjustRemaining(initial, 1, CoachSessionPlanner.Request.PAIN)
+        for (request in CoachSessionPlanner.Request.values()) {
+            assertEquals(stopped, CoachSessionPlanner.adjustRemaining(stopped, 1, request))
+        }
+    }
+
+    @Test fun completedSessionCannotBeRewritten() {
+        for (request in CoachSessionPlanner.Request.values().filter { it != CoachSessionPlanner.Request.PAIN }) {
+            assertEquals(initial, CoachSessionPlanner.adjustRemaining(initial, initial.sets.size, request))
+        }
+    }
 }

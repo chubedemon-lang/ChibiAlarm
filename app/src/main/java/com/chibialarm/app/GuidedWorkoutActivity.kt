@@ -275,6 +275,16 @@ class GuidedWorkoutActivity:Activity() {
                     .setPositiveButton("Đã hiểu",null).show()
                 speak(moves[index].easier)
             }
+            WorkoutVoiceCommands.Command.SHORTER -> {
+                if (!pausedForSafety) {
+                    pause()
+                    remainingMs=(remainingMs/2).coerceAtLeast(5_000L)
+                    val seconds=(remainingMs/1000).toInt()
+                    counter.text=String.format(Locale.US,"%02d:%02d",seconds/60,seconds%60)
+                    control.text="▶ Tiếp tục bài ngắn hơn"
+                    speak("Đã rút ngắn động tác còn một nửa. Hãy tiếp tục khi sẵn sàng.")
+                }
+            }
             WorkoutVoiceCommands.Command.REST -> {
                 pause()
                 remainingMs=Math.addExact(remainingMs,30_000L).coerceAtMost(600_000L)
@@ -284,7 +294,7 @@ class GuidedWorkoutActivity:Activity() {
             }
             WorkoutVoiceCommands.Command.UNKNOWN -> {
                 AlertDialog.Builder(this).setTitle("Chibi chưa hiểu yêu cầu")
-                    .setMessage("Bạn có thể nói: tạm dừng, tiếp tục, bài tiếp theo, bài trước, nhắc lại, dễ hơn hoặc nghỉ thêm. Đây là bộ lệnh offline, chưa phải hội thoại AI tự do.")
+                    .setMessage("Bạn có thể nói: tạm dừng, tiếp tục, bài tiếp theo, bài trước, nhắc lại, dễ hơn, rút ngắn hoặc nghỉ thêm. Đây là bộ lệnh offline, chưa phải hội thoại AI tự do.")
                     .setPositiveButton("Đóng",null).show()
             }
         }

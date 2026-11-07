@@ -36,8 +36,8 @@ object FitnessNaturalRequest {
         val goal = when {
             has("gian co", "linh hoat", "yoga") -> 2
             has("ngoi lau", "van phong", "moi lung") -> 3
-            has("tim mach", "cardio", "dot mo") -> 1
-            has("suc manh", "tang co", "co bap") -> 0
+            has("tim mach", "cardio", "dot mo", "giam can", "giam mo", "suc ben", "ben bi") -> 1
+            has("suc manh", "tang co", "co bap", "tang suc manh", "phat trien co") -> 0
             has("moi bat dau", "tan thu") -> 4
             else -> null
         }

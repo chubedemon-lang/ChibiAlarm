@@ -18,6 +18,21 @@ object CoachSessionPlanner {
     }
 
     /**
+     * Adjust only the unfinished part of a workout. Completed sets are immutable:
+     * changing the plan mid-session must not rewrite what the user already did.
+     * [completedSets] is the count of fully finished sets, not the current set index.
+     */
+    fun adjustRemaining(session: Session, completedSets: Int, request: Request): Session {
+        require(completedSets in 0..session.sets.size)
+        if (request == Request.PAIN) return session.copy(pausedForSafety = true)
+        if (session.pausedForSafety || completedSets == session.sets.size) return session
+        val completed = session.sets.take(completedSets)
+        val pending = Session(session.sets.drop(completedSets))
+        val changed = adjust(pending, request)
+        return session.copy(sets = completed + changed.sets)
+    }
+
+    /**
      * A pain report always pauses the session. No subsequent voice command may
      * automatically resume it: explicit user acknowledgement is required in UI.
      */

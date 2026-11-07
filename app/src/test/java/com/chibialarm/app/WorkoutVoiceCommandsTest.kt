@@ -15,11 +15,14 @@ class WorkoutVoiceCommandsTest {
         assertEquals(C.REPEAT, WorkoutVoiceCommands.parse("nhắc lại".replace("nhắc", "lặp")))
         assertEquals(C.EASIER, WorkoutVoiceCommands.parse("Nhẹ hơn"))
         assertEquals(C.REST, WorkoutVoiceCommands.parse("Nghỉ thêm"))
+        assertEquals(C.SHORTER, WorkoutVoiceCommands.parse("Rút ngắn bài tập"))
+        assertEquals(C.SHORTER, WorkoutVoiceCommands.parse("giam thoi gian"))
     }
 
     @Test fun safetyTakesPriorityOverStartAndNext() {
         assertEquals(C.PAIN, WorkoutVoiceCommands.parse("Tôi đang đau, cho bài tiếp theo"))
         assertEquals(C.PAIN, WorkoutVoiceCommands.parse("bị chấn thương, bắt đầu"))
+        assertEquals(C.PAIN, WorkoutVoiceCommands.parse("đang đau, rút ngắn bài tập"))
         assertEquals(C.PAUSE, WorkoutVoiceCommands.parse("dừng tập"))
     }
 

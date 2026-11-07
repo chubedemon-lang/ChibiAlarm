@@ -105,4 +105,25 @@ class FitnessCoachConversationTest {
         val reply = FitnessCoachConversation.parseReply(previous, "không")
         assertEquals(2, FitnessCoachConversation.merge(previous, reply).impact)
     }
+
+    @Test fun shortStrengthGoalIsAcknowledgedInContext() {
+        val previous = FitnessNaturalRequest.parse("xin chào")
+        val reply = FitnessCoachConversation.parseReply(previous, "sức mạnh")
+        assertEquals(0, FitnessCoachConversation.merge(previous, reply).goal)
+        assertTrue(reply.reply.contains("sức mạnh"))
+    }
+
+    @Test fun shortCardioGoalIsAcknowledgedInContext() {
+        val previous = FitnessNaturalRequest.parse("xin chào")
+        val reply = FitnessCoachConversation.parseReply(previous, "tim mạch")
+        assertEquals(1, reply.goal)
+        assertTrue(reply.reply.contains("tim mạch"))
+    }
+
+    @Test fun goalAnswerCannotBypassPainWarning() {
+        val previous = FitnessNaturalRequest.parse("đang đau khớp")
+        val reply = FitnessCoachConversation.parseReply(previous, "sức mạnh")
+        assertEquals(2, FitnessCoachConversation.merge(previous, reply).impact)
+        assertFalse(reply.reply.contains("Đã ghi nhận mục tiêu"))
+    }
 }

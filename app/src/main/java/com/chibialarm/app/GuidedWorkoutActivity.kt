@@ -14,6 +14,7 @@ import android.speech.tts.TextToSpeech
 import android.view.Gravity
 import android.widget.*
 import java.util.Locale
+import com.chibialarm.app.fitness.RemainingWorkoutDuration
 
 /** Entirely offline guided workout; spoken instructions depend on installed Vietnamese Android TTS. */
 class GuidedWorkoutActivity:Activity() {
@@ -30,6 +31,7 @@ class GuidedWorkoutActivity:Activity() {
     private var remainingMs=0L
     private var paused=true
     private var pausedForSafety=false
+    private var shorterFromIndex=Int.MAX_VALUE
     private var startedAt=0L
     // Track active time only, excluding pauses and time spent outside the app.
     private var accumulated=0L
@@ -47,6 +49,7 @@ class GuidedWorkoutActivity:Activity() {
         checkpoint.edit().putString("program",program.id)
             .putInt("index",index).putLong("remaining",remainingMs.coerceIn(0L,600_000L))
             .putBoolean("safety",pausedForSafety)
+            .putInt("shorterFrom",shorterFromIndex)
             .putBoolean("started",activeElapsedMs()>0L)
             .putLong("elapsed",activeElapsedMs())
             .putLong("savedAt",System.currentTimeMillis()).apply()
@@ -64,6 +67,7 @@ class GuidedWorkoutActivity:Activity() {
             .setPositiveButton("Khôi phục") { _,_ ->
                 checkpointDecisionPending=false
                 index=checkpoint.getInt("index",0).coerceIn(0,moves.lastIndex)
+                shorterFromIndex=checkpoint.getInt("shorterFrom",Int.MAX_VALUE).coerceIn(0, moves.size)
                 displayStep()
                 remainingMs=checkpoint.getLong("remaining",remainingMs).coerceIn(0L,600_000L)
                 pausedForSafety=checkpoint.getBoolean("safety",false)
@@ -215,6 +219,7 @@ class GuidedWorkoutActivity:Activity() {
             remainingMs=savedInstanceState.getLong("workout_remaining",remainingMs)
                 .coerceIn(0L,600_000L)
             pausedForSafety=savedInstanceState.getBoolean("workout_safety",false)
+            shorterFromIndex=savedInstanceState.getInt("workout_shorter_from",Int.MAX_VALUE).coerceIn(0,moves.size)
             val elapsed=savedInstanceState.getLong("workout_elapsed",0L).coerceAtLeast(0L)
             accumulated=elapsed.coerceAtMost(86_400_000L)
             startedAt=0L
@@ -230,6 +235,7 @@ class GuidedWorkoutActivity:Activity() {
         outState.putInt("workout_index",index)
         outState.putLong("workout_remaining",remainingMs)
         outState.putBoolean("workout_safety",pausedForSafety)
+        outState.putInt("workout_shorter_from",shorterFromIndex)
         outState.putBoolean("workout_started",activeElapsedMs()>0L)
         outState.putLong("workout_elapsed",activeElapsedMs())
         super.onSaveInstanceState(outState)
@@ -321,7 +327,8 @@ class GuidedWorkoutActivity:Activity() {
             "🌿 Giảm thời gian động tác còn một nửa",
             "⏱ Thêm 30 giây nghỉ",
             "📖 Xem cách tập dễ hơn",
-            "⏸ Tạm dừng buổi tập"
+            "⏸ Tạm dừng buổi tập",
+            "⏱ Rút ngắn tất cả động tác còn lại"
         )
         AlertDialog.Builder(this).setTitle("Chibi điều chỉnh theo sức của bạn")
             .setItems(options) { _, choice ->
@@ -349,8 +356,20 @@ class GuidedWorkoutActivity:Activity() {
                         speak(moves[index].easier)
                     }
                     3 -> { pause();speak("Đã tạm dừng buổi tập.") }
+                    4 -> shortenRemainingWorkout()
                 }
             }.setNegativeButton("Đóng",null).show()
+    }
+    private fun shortenRemainingWorkout() {
+        if (pausedForSafety || completed) return
+        pause()
+        shorterFromIndex = minOf(shorterFromIndex, index)
+        remainingMs = (remainingMs / 2).coerceAtLeast(5_000L)
+        val seconds = (remainingMs / 1000).toInt()
+        counter.text = String.format(Locale.US,"%02d:%02d",seconds/60,seconds%60)
+        control.text = "▶ Tiếp tục giáo án ngắn hơn"
+        saveCheckpoint()
+        speak("Đã rút ngắn động tác hiện tại và các động tác còn lại. Các bước đã tập không thay đổi.")
     }
     private fun videoKey():String=program.id+"_"+moves[index].name
     private fun saveVideoLink() {
@@ -490,7 +509,7 @@ class GuidedWorkoutActivity:Activity() {
     private fun displayStep() {
         paused=true;handler.removeCallbacks(tick)
         val move=moves[index]
-        remainingMs=move.seconds*1000L
+        remainingMs=RemainingWorkoutDuration.seconds(move.seconds,index,shorterFromIndex)*1000L
         heading.text="${index+1}/${moves.size} • ${move.name}"
         guide.text="🎯 ${move.dose}\n\n📖 Cách thực hiện:\n${move.steps}\n\n🌿 Giảm độ khó:\n${move.easier}\n\n⚠️ Lưu ý:\n${move.avoid}"
         progress.progress=index

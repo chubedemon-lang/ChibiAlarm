@@ -5,7 +5,7 @@ import java.util.Locale
 
 /** Small, offline command interpreter. Unrecognized speech never controls a workout. */
 object WorkoutVoiceCommands {
-    enum class Command { PAIN, PAUSE, RESUME, NEXT, PREVIOUS, REPEAT, EASIER, SHORTER, REST, UNKNOWN }
+    enum class Command { PAIN, PAUSE, RESUME, NEXT, PREVIOUS, REPEAT, EASIER, SHORTER, SHORTER_REMAINING, REST, UNKNOWN }
 
     /** Human-readable action shown before applying fallible speech recognition. */
     fun describe(command: Command): String = when (command) {
@@ -17,6 +17,7 @@ object WorkoutVoiceCommands {
         Command.REPEAT -> "Đọc lại hướng dẫn"
         Command.EASIER -> "Hiển thị cách tập dễ hơn"
         Command.SHORTER -> "Rút ngắn thời gian động tác hiện tại"
+        Command.SHORTER_REMAINING -> "Rút ngắn động tác hiện tại và tất cả động tác còn lại"
         Command.REST -> "Thêm 30 giây nghỉ"
         Command.UNKNOWN -> "Chưa hiểu yêu cầu; không tự thay đổi buổi tập"
     }
@@ -40,6 +41,8 @@ object WorkoutVoiceCommands {
                 normalized.contains("dung tap") || "pause" in words -> Command.PAUSE
             normalized.contains("nghi them") || normalized.contains("nghi mot chut") ||
                 "rest" in words -> Command.REST
+            (normalized.contains("rut ngan") || normalized.contains("ngan hon") || normalized.contains("giam thoi gian")) &&
+                listOf("con lai", "tat ca", "ca buoi", "toan bo", "phan sau").any { normalized.contains(it) } -> Command.SHORTER_REMAINING
             normalized.contains("rut ngan") || normalized.contains("ngan hon") ||
                 normalized.contains("giam thoi gian") -> Command.SHORTER
             normalized.contains("de hon") || normalized.contains("giam do kho") ||

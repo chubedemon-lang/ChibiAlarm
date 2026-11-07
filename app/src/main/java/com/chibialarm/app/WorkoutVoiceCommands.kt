@@ -7,6 +7,20 @@ import java.util.Locale
 object WorkoutVoiceCommands {
     enum class Command { PAIN, PAUSE, RESUME, NEXT, PREVIOUS, REPEAT, EASIER, SHORTER, REST, UNKNOWN }
 
+    /** Human-readable action shown before applying fallible speech recognition. */
+    fun describe(command: Command): String = when (command) {
+        Command.PAIN -> "Dừng tập vì cảnh báo an toàn"
+        Command.PAUSE -> "Tạm dừng buổi tập"
+        Command.RESUME -> "Tiếp tục buổi tập"
+        Command.NEXT -> "Chuyển sang động tác tiếp theo"
+        Command.PREVIOUS -> "Quay lại động tác trước"
+        Command.REPEAT -> "Đọc lại hướng dẫn"
+        Command.EASIER -> "Hiển thị cách tập dễ hơn"
+        Command.SHORTER -> "Rút ngắn thời gian động tác hiện tại"
+        Command.REST -> "Thêm 30 giây nghỉ"
+        Command.UNKNOWN -> "Chưa hiểu yêu cầu; không tự thay đổi buổi tập"
+    }
+
     fun parse(utterance: String): Command {
         val normalized = Normalizer.normalize(utterance.lowercase(Locale.ROOT), Normalizer.Form.NFD)
             .replace(Regex("\\p{M}+"), "").replace('đ', 'd')

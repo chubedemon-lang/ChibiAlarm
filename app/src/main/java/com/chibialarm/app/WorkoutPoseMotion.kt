@@ -11,6 +11,10 @@ object WorkoutPoseMotion {
         WorkoutPoseGuide.Pose.STANDING -> false
     }
 
+    /** Screen-reader description for the current illustration, without claiming form assessment. */
+    fun accessibilityCue(pose: WorkoutPoseGuide.Pose, lowered: Boolean): String =
+        "${WorkoutPoseGuide.label(pose)}. ${phaseCue(pose, lowered)}. Hình minh họa, không đánh giá tư thế."
+
     /** Short, explicit phase cues to accompany the two-frame drawing. */
     fun phaseCue(pose: WorkoutPoseGuide.Pose, lowered: Boolean): String = when (pose) {
         WorkoutPoseGuide.Pose.SQUAT -> if (lowered) "Hạ hông" else "Đứng lên"

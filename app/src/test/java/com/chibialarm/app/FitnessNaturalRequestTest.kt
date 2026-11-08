@@ -47,4 +47,16 @@ class FitnessNaturalRequestTest {
         assertEquals(1, result.goal)
         assertEquals(2, result.impact)
     }
+
+    @Test fun safetySymptomsOverrideRequestedWorkout() {
+        for (symptom in listOf("đau gối", "đau lưng", "buồn nôn", "muốn ngất", "tê tay", "tê chân")) {
+            val result = FitnessNaturalRequest.parse("Tôi $symptom nhưng muốn tập sức mạnh 20 phút")
+            assertEquals("Failed for $symptom", 2, result.impact)
+            assertTrue(result.reply.contains("Không bắt đầu tập"))
+        }
+    }
+
+    @Test fun ordinaryStartRequestDoesNotTriggerPainWarning() {
+        assertNull(FitnessNaturalRequest.parse("Bắt đầu tập 15 phút").impact)
+    }
 }

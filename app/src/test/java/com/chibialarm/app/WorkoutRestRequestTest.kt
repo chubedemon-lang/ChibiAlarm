@@ -11,6 +11,15 @@ class WorkoutRestRequestTest {
         assertEquals(45, WorkoutRestRequest.seconds("rest 45 s"))
     }
 
+    @Test fun understandsSpokenVietnameseDurationsWithoutDigits() {
+        assertEquals(60, WorkoutRestRequest.seconds("cho tao nghỉ một phút"))
+        assertEquals(90, WorkoutRestRequest.seconds("nghỉ thêm một phút rưỡi"))
+        assertEquals(120, WorkoutRestRequest.seconds("nghỉ hai phút"))
+        assertEquals(90, WorkoutRestRequest.seconds("nghỉ chín mươi giây"))
+        assertEquals(30, WorkoutRestRequest.seconds("nghỉ ba mươi giây"))
+        assertEquals(30, WorkoutRestRequest.seconds("bài một phút rưỡi"))
+    }
+
     @Test fun ambiguousOrUnsafeDurationsFallBackToThirtySeconds() {
         assertEquals(30, WorkoutRestRequest.seconds("mệt quá, cần nghỉ"))
         assertEquals(30, WorkoutRestRequest.seconds("nghỉ 999 phút"))

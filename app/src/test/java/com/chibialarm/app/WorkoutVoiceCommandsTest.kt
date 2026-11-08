@@ -44,13 +44,13 @@ class WorkoutVoiceCommandsTest {
     }
 
     @Test fun tirednessAndSafetyAreActionableOffline() {
-        for (phrase in listOf("Mệt rồi", "Hơi mệt", "Tôi cần nghỉ")) {
+        for (phrase in listOf("Mệt rồi", "Hơi mệt", "Mệt quá", "Mệt lắm", "Tôi cần nghỉ")) {
             assertEquals(phrase, C.REST, WorkoutVoiceCommands.parse(phrase))
         }
         for (phrase in listOf("Không tập nổi", "Hết sức rồi")) {
             assertEquals(phrase, C.PAUSE, WorkoutVoiceCommands.parse(phrase))
         }
-        for (phrase in listOf("Đau ở đầu gối", "Đau quá, bài tiếp theo", "Tê tay", "Tê chân")) {
+        for (phrase in listOf("Đau ở đầu gối", "Đau gối", "Đau lưng, tiếp tục", "Buồn nôn", "Muốn ngất", "Đau quá, bài tiếp theo", "Tê tay", "Tê chân")) {
             assertEquals(phrase, C.PAIN, WorkoutVoiceCommands.parse(phrase))
         }
         assertEquals(C.RESUME, WorkoutVoiceCommands.parse("Bắt đầu"))

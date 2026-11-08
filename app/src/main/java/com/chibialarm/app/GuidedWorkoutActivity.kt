@@ -355,11 +355,12 @@ class GuidedWorkoutActivity:Activity() {
                     Toast.makeText(this,"Buổi tập đang dừng vì báo đau; không thay đổi thời gian.",Toast.LENGTH_LONG).show()
                 } else {
                     pause()
-                    remainingMs=(remainingMs+30_000L).coerceAtMost(600_000L)
+                    val addedSeconds=WorkoutRestRequest.seconds(utterance)
+                    remainingMs=(remainingMs+addedSeconds*1000L).coerceAtMost(600_000L)
                     val seconds=(remainingMs/1000).toInt()
                     counter.text=String.format(Locale.US,"%02d:%02d",seconds/60,seconds%60)
                     saveCheckpoint()
-                    speak("Đã thêm ba mươi giây nghỉ. Khi sẵn sàng hãy nói tiếp tục.")
+                    speak("Đã thêm $addedSeconds giây nghỉ. Khi sẵn sàng hãy nói tiếp tục.")
                 }
             }
             WorkoutVoiceCommands.Command.UNKNOWN -> {

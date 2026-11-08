@@ -47,7 +47,9 @@ object WorkoutVoiceCommands {
             normalized.contains("nghi them") || normalized.contains("nghi mot chut") || normalized.contains("met roi") ||
                 normalized.contains("hoi met") || normalized.contains("met qua") ||
                 normalized.contains("met lam") || normalized.matches(Regex(".*\\\\bnghi\\\\s+[0-9]{1,3}\\\\s*(giay|gi|s|phut)\\\\b.*")) ||
-                normalized.contains("can nghi") ||
+                normalized.contains("nghi mot phut") || normalized.contains("nghi hai phut") ||
+                normalized.contains("nghi chin muoi giay") || normalized.contains("nghi sau muoi giay") ||
+                normalized.contains("nghi ba muoi giay") || normalized.contains("can nghi") ||
                 "rest" in words -> Command.REST
             (normalized.contains("rut ngan") || normalized.contains("ngan hon") || normalized.contains("giam thoi gian")) &&
                 listOf("con lai", "tat ca", "ca buoi", "toan bo", "phan sau").any { normalized.contains(it) } -> Command.SHORTER_REMAINING

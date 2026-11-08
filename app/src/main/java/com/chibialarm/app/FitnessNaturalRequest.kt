@@ -26,7 +26,15 @@ object FitnessNaturalRequest {
     fun parse(input: String): Result {
         val text = normalize(input.take(1000))
         fun has(vararg phrases: String) = phrases.any { text.contains(it) }
-        val injury = has("dau nguc", "chan thuong", "dang dau", "bi dau", "dau khop", "chong mat", "kho tho")
+        // Match complete normalized phrases rather than fragments of unrelated words.
+        val symptoms = listOf(
+            "dau nguc", "chan thuong", "dang dau", "bi dau", "dau khop",
+            "dau goi", "dau lung", "dau vai", "dau co", "dau chan", "dau tay",
+            "chong mat", "kho tho", "buon non", "muon ngat", "te tay", "te chan"
+        )
+        val injury = symptoms.any { phrase ->
+            Regex("(^| )" + Regex.escape(phrase) + "( |$)").containsMatchIn(text)
+        }
         val lowImpact = has("khong nhay", "it tac dong", "nhe nhang", "tranh nhay")
         val energy = when {
             has("met", "het suc", "it nang luong") -> 0

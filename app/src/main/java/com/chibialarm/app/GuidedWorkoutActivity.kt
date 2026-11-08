@@ -137,14 +137,26 @@ class GuidedWorkoutActivity:Activity() {
         }
         root.addView(poseView)
         root.addView(Button(this).apply {
-            text="🔊 Nghe nhịp chuyển động minh họa"
-            contentDescription="Nghe một lần hướng dẫn chuyển động minh họa, không tự động đọc lặp"
+            text="🔊 Nghe huấn luyện động tác hiện tại"
+            contentDescription="Nghe một lần hướng dẫn, số hiệp, cách tập và lưu ý cho động tác hiện tại"
             setOnClickListener {
                 if (pausedForSafety) {
                     Toast.makeText(this@GuidedWorkoutActivity,
                         "Đã dừng vì đau. Không tiếp tục hướng dẫn vận động.", Toast.LENGTH_LONG).show()
                 } else {
-                    speak(WorkoutPoseMotion.spokenWalkthrough(WorkoutPoseGuide.classify(moves[index].name)))
+                    speak(WorkoutContextCoach.script(moves[index]))
+                }
+            }
+        })
+        root.addView(Button(this).apply {
+            text="🌿 Nghe cách tập nhẹ hơn"
+            contentDescription="Nghe phương án giảm độ khó cho động tác hiện tại"
+            setOnClickListener {
+                if (pausedForSafety) {
+                    Toast.makeText(this@GuidedWorkoutActivity,
+                        "Đã dừng vì đau. Hãy nghỉ và cân nhắc hỗ trợ y tế nếu cần.", Toast.LENGTH_LONG).show()
+                } else {
+                    speak(WorkoutContextCoach.script(moves[index], preferEasier = true))
                 }
             }
         })

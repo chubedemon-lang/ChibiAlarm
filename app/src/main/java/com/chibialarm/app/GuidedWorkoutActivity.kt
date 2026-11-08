@@ -51,6 +51,7 @@ class GuidedWorkoutActivity:Activity() {
         checkpoint.edit().putString("program",program.id)
             .putInt("index",index).putLong("remaining",remainingMs.coerceIn(0L,600_000L))
             .putBoolean("safety",pausedForSafety)
+            .putBoolean("tenSecondCueGiven",tenSecondCueGiven)
             .putInt("shorterFrom",shorterFromIndex)
             .putBoolean("started",activeElapsedMs()>0L)
             .putLong("elapsed",activeElapsedMs())
@@ -72,7 +73,7 @@ class GuidedWorkoutActivity:Activity() {
                 shorterFromIndex=checkpoint.getInt("shorterFrom",Int.MAX_VALUE).coerceIn(0, moves.size)
                 displayStep()
                 remainingMs=checkpoint.getLong("remaining",remainingMs).coerceIn(0L,600_000L)
-                tenSecondCueGiven=remainingMs<=10_000L
+                tenSecondCueGiven=checkpoint.getBoolean("tenSecondCueGiven",remainingMs<=10_000L)
                 pausedForSafety=checkpoint.getBoolean("safety",false)
                 val elapsed=checkpoint.getLong("elapsed",0L).coerceIn(0L,86_400_000L)
                 accumulated=elapsed
@@ -96,7 +97,7 @@ class GuidedWorkoutActivity:Activity() {
             if(paused)return
             val left=(deadline-SystemClock.elapsedRealtime()).coerceAtLeast(0L)
             remainingMs=left
-            if (left in 1L..10_000L && !tenSecondCueGiven) {
+            if (left in 1L..10_000L && !tenSecondCueGiven && !pausedForSafety) {
                 tenSecondCueGiven=true
                 speak("Còn mười giây. Chuẩn bị chuyển động tác.")
             }

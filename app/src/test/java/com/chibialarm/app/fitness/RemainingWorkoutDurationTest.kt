@@ -24,6 +24,22 @@ class RemainingWorkoutDurationTest {
         RemainingWorkoutDuration.seconds(-1, 1, 0)
     }
 
+    @Test fun shorteningActiveStepNeverExtendsTime() {
+        for (seconds in 0L..10L) {
+            val remaining = seconds * 1000L
+            val shortened = RemainingWorkoutDuration.shortenActiveMs(remaining)
+            assertEquals(minOf(remaining, (remaining / 2).coerceAtLeast(5_000L)), shortened)
+            org.junit.Assert.assertTrue(shortened <= remaining)
+        }
+        assertEquals(12_000L, RemainingWorkoutDuration.shortenActiveMs(24_000L))
+        assertEquals(5_000L, RemainingWorkoutDuration.shortenActiveMs(8_000L))
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun shorteningRejectsNegativeTime() {
+        RemainingWorkoutDuration.shortenActiveMs(-1L)
+    }
+
     @Test fun previewUsesActualRemainingTimeAndLeavesCompletedStepsOut() {
         val steps = RemainingWorkoutDuration.preview(
             listOf("warmup", "squat", "stretch"), listOf(40, 60, 30),

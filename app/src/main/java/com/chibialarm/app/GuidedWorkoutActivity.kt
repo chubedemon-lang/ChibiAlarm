@@ -99,7 +99,8 @@ class GuidedWorkoutActivity:Activity() {
             remainingMs=left
             if (left in 1L..10_000L && !tenSecondCueGiven && !pausedForSafety) {
                 tenSecondCueGiven=true
-                speak("Còn mười giây. Chuẩn bị chuyển động tác.")
+                val upcoming = moves.getOrNull(index + 1)?.name
+                speak(if (upcoming != null) "Còn mười giây. Tiếp theo: $upcoming." else "Còn mười giây. Sắp hoàn thành buổi tập.")
             }
             val seconds=(left/1000).toInt()
             counter.text=String.format(Locale.US,"%02d:%02d",seconds/60,seconds%60)

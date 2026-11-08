@@ -31,6 +31,8 @@ class GuidedWorkoutActivity:Activity() {
     private var remainingMs=0L
     private var paused=true
     private var pausedForSafety=false
+    // One spoken cue per exercise; never speak while paused or during microphone input.
+    private var tenSecondCueGiven=false
     private var shorterFromIndex=Int.MAX_VALUE
     private var startedAt=0L
     // Track active time only, excluding pauses and time spent outside the app.
@@ -70,6 +72,7 @@ class GuidedWorkoutActivity:Activity() {
                 shorterFromIndex=checkpoint.getInt("shorterFrom",Int.MAX_VALUE).coerceIn(0, moves.size)
                 displayStep()
                 remainingMs=checkpoint.getLong("remaining",remainingMs).coerceIn(0L,600_000L)
+                tenSecondCueGiven=remainingMs<=10_000L
                 pausedForSafety=checkpoint.getBoolean("safety",false)
                 val elapsed=checkpoint.getLong("elapsed",0L).coerceIn(0L,86_400_000L)
                 accumulated=elapsed
@@ -93,6 +96,10 @@ class GuidedWorkoutActivity:Activity() {
             if(paused)return
             val left=(deadline-SystemClock.elapsedRealtime()).coerceAtLeast(0L)
             remainingMs=left
+            if (left in 1L..10_000L && !tenSecondCueGiven) {
+                tenSecondCueGiven=true
+                speak("Còn mười giây. Chuẩn bị chuyển động tác.")
+            }
             val seconds=(left/1000).toInt()
             counter.text=String.format(Locale.US,"%02d:%02d",seconds/60,seconds%60)
             if(left==0L) nextMove() else handler.postDelayed(this,300)
@@ -218,6 +225,7 @@ class GuidedWorkoutActivity:Activity() {
             displayStep()
             remainingMs=savedInstanceState.getLong("workout_remaining",remainingMs)
                 .coerceIn(0L,600_000L)
+            tenSecondCueGiven=savedInstanceState.getBoolean("workout_ten_second_cue",remainingMs<=10_000L)
             pausedForSafety=savedInstanceState.getBoolean("workout_safety",false)
             shorterFromIndex=savedInstanceState.getInt("workout_shorter_from",Int.MAX_VALUE).coerceIn(0,moves.size)
             val elapsed=savedInstanceState.getLong("workout_elapsed",0L).coerceAtLeast(0L)
@@ -234,6 +242,7 @@ class GuidedWorkoutActivity:Activity() {
         outState.putString("workout_program",program.id)
         outState.putInt("workout_index",index)
         outState.putLong("workout_remaining",remainingMs)
+        outState.putBoolean("workout_ten_second_cue",tenSecondCueGiven)
         outState.putBoolean("workout_safety",pausedForSafety)
         outState.putInt("workout_shorter_from",shorterFromIndex)
         outState.putBoolean("workout_started",activeElapsedMs()>0L)
@@ -553,6 +562,7 @@ class GuidedWorkoutActivity:Activity() {
     private fun displayStep() {
         paused=true;handler.removeCallbacks(tick)
         val move=moves[index]
+        tenSecondCueGiven=false
         remainingMs=RemainingWorkoutDuration.seconds(move.seconds,index,shorterFromIndex)*1000L
         heading.text="${index+1}/${moves.size} • ${move.name}"
         guide.text="🎯 ${move.dose}\n\n📖 Cách thực hiện:\n${move.steps}\n\n🌿 Giảm độ khó:\n${move.easier}\n\n⚠️ Lưu ý:\n${move.avoid}"

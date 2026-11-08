@@ -497,6 +497,20 @@ class GuidedWorkoutActivity:Activity() {
                         .setMessage("“"+phrase.take(160)+"”\\n\\n"+WorkoutVoiceCommands.describe(command)+
                             "\\n\\nKiểm tra câu nhận dạng trước khi điều khiển buổi tập.")
                         .setPositiveButton("Áp dụng") { _,_ -> handleCoachCommand(phrase) }
+                        .setNeutralButton("Sửa câu nhận dạng") { _, _ ->
+                            val corrected=EditText(this).apply {
+                                setText(phrase.take(160))
+                                setSelection(text.length)
+                                setSingleLine(false)
+                            }
+                            AlertDialog.Builder(this).setTitle("Sửa yêu cầu gửi Chibi")
+                                .setMessage("Chibi chỉ áp dụng câu đã sửa sau khi bạn xác nhận. Nếu đang đau hoặc khó chịu, hãy dừng tập ngay.")
+                                .setView(corrected)
+                                .setPositiveButton("Gửi câu đã sửa") { _, _ ->
+                                    handleCoachCommand(corrected.text.toString())
+                                }
+                                .setNegativeButton("Hủy",null).show()
+                        }
                         .setNegativeButton("Không đúng",null).show()
                 }
             }

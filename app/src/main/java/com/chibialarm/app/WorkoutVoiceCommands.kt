@@ -37,13 +37,16 @@ object WorkoutVoiceCommands {
                 normalized.contains("chong mat") || normalized.contains("choang vang") ||
                 normalized.contains("dau nguc") || normalized.contains("dau dau") ||
                 normalized.contains("dau o ") || normalized.contains("dau qua") ||
+                normalized.contains("dau goi") || normalized.contains("dau lung") ||
+                normalized.contains("buon non") || normalized.contains("muon ngat") ||
                 normalized.contains("te tay") || normalized.contains("te chan") ||
                 ("dau" in safetyWords && !normalized.contains("o dau")) || "ngat" in words -> Command.PAIN
             normalized.contains("tam dung") || normalized.contains("dung lai") ||
                 normalized.contains("dung tap") || normalized.contains("khong tap noi") ||
                 normalized.contains("het suc") || "pause" in words -> Command.PAUSE
             normalized.contains("nghi them") || normalized.contains("nghi mot chut") || normalized.contains("met roi") ||
-                normalized.contains("hoi met") || normalized.contains("can nghi") ||
+                normalized.contains("hoi met") || normalized.contains("met qua") ||
+                normalized.contains("met lam") || normalized.contains("can nghi") ||
                 "rest" in words -> Command.REST
             (normalized.contains("rut ngan") || normalized.contains("ngan hon") || normalized.contains("giam thoi gian")) &&
                 listOf("con lai", "tat ca", "ca buoi", "toan bo", "phan sau").any { normalized.contains(it) } -> Command.SHORTER_REMAINING

@@ -31,5 +31,9 @@ class WorkoutRestRequestTest {
     @Test fun interpreterStillRoutesRestRequests() {
         assertEquals(WorkoutVoiceCommands.Command.REST,
             WorkoutVoiceCommands.parse("nghỉ thêm 60 giây"))
+        assertEquals(WorkoutVoiceCommands.Command.REST,
+            WorkoutVoiceCommands.parse("nghỉ một phút rưỡi"))
+        assertEquals(WorkoutVoiceCommands.Command.REST,
+            WorkoutVoiceCommands.parse("nghỉ hai phút"))
     }
 }

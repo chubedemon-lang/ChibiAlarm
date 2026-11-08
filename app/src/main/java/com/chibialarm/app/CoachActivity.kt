@@ -25,9 +25,35 @@ class CoachActivity:Activity() {
     private var autoSpeak=false
     private var fitnessContext: FitnessNaturalRequest.Result? = null
     private val speechRequest=4401
+    // Preserve the active coaching form across rotation, without persisting it to disk.
+    private fun restoreFitnessContext(state: Bundle?): FitnessNaturalRequest.Result? {
+        if (state?.getBoolean("fitness_context_present") != true) return null
+        fun value(key: String): Int? = if (state.containsKey(key)) state.getInt(key) else null
+        return FitnessNaturalRequest.Result(
+            goal = value("fitness_goal"),
+            energy = value("fitness_energy"),
+            minutes = value("fitness_minutes"),
+            equipment = value("fitness_equipment"),
+            impact = value("fitness_impact"),
+            reply = ""
+        )
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        fitnessContext?.let { context ->
+            outState.putBoolean("fitness_context_present", true)
+            context.goal?.let { outState.putInt("fitness_goal", it) }
+            context.energy?.let { outState.putInt("fitness_energy", it) }
+            context.minutes?.let { outState.putInt("fitness_minutes", it) }
+            context.equipment?.let { outState.putInt("fitness_equipment", it) }
+            context.impact?.let { outState.putInt("fitness_impact", it) }
+        }
+        super.onSaveInstanceState(outState)
+    }
     private fun text(s:String,size:Float=16f)=TextView(this).apply { text=s;textSize=size;setTextColor(Color.rgb(82,55,99));setPadding(7,7,7,7) }
     override fun onCreate(savedInstanceState:Bundle?) {
         super.onCreate(savedInstanceState)
+        fitnessContext = restoreFitnessContext(savedInstanceState)
         history=try { JSONArray(memory.getString("messages","[]")) }catch(_:Exception){ JSONArray() }
         val root=LinearLayout(this).apply { orientation=1;setPadding(17,18,17,14);setBackgroundColor(Color.rgb(250,241,255)) }
         root.addView(text("🐰 Chibi • Huấn luyện viên cá nhân",26f))

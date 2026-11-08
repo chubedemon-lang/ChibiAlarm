@@ -22,6 +22,7 @@ class GuidedWorkoutActivity:Activity() {
     private lateinit var counter:TextView
     private lateinit var heading:TextView
     private lateinit var guide:TextView
+    private lateinit var poseView:WorkoutPoseView
     private lateinit var progress:ProgressBar
     private lateinit var control:Button
     private lateinit var program:TrainingProgram
@@ -131,6 +132,14 @@ class GuidedWorkoutActivity:Activity() {
             textSize=23f;gravity=Gravity.CENTER;setPadding(5,20,5,18);setTextColor(Color.rgb(75,55,95))
         }
         root.addView(heading)
+        poseView=WorkoutPoseView(this).apply {
+            importantForAccessibility=android.view.View.IMPORTANT_FOR_ACCESSIBILITY_YES
+        }
+        root.addView(poseView)
+        root.addView(TextView(this).apply {
+            text="Hình minh họa tư thế đơn giản, không đánh giá kỹ thuật. Luôn đọc hướng dẫn từng bước."
+            textSize=12f
+        })
         counter=TextView(this).apply {
             textSize=54f;gravity=Gravity.CENTER;setTextColor(Color.rgb(100,70,140))
         }
@@ -630,6 +639,7 @@ class GuidedWorkoutActivity:Activity() {
         tenSecondCueGiven=false
         remainingMs=RemainingWorkoutDuration.seconds(move.seconds,index,shorterFromIndex)*1000L
         heading.text="${index+1}/${moves.size} • ${move.name}"
+        poseView.pose=WorkoutPoseGuide.classify(move.name)
         guide.text="🎯 ${move.dose}\n\n📖 Cách thực hiện:\n${move.steps}\n\n🌿 Giảm độ khó:\n${move.easier}\n\n⚠️ Lưu ý:\n${move.avoid}"
         progress.progress=index
         val sec=(remainingMs/1000).toInt()

@@ -304,7 +304,7 @@ class GuidedWorkoutActivity:Activity() {
             WorkoutVoiceCommands.Command.SHORTER -> {
                 if (!pausedForSafety) {
                     pause()
-                    remainingMs=(remainingMs/2).coerceAtLeast(5_000L)
+                    remainingMs=RemainingWorkoutDuration.shortenActiveMs(remainingMs)
                     val seconds=(remainingMs/1000).toInt()
                     counter.text=String.format(Locale.US,"%02d:%02d",seconds/60,seconds%60)
                     control.text="▶ Tiếp tục bài ngắn hơn"
@@ -350,7 +350,7 @@ class GuidedWorkoutActivity:Activity() {
                 when(choice) {
                     0 -> {
                         pause()
-                        remainingMs=(remainingMs/2).coerceAtLeast(5_000L)
+                        remainingMs=RemainingWorkoutDuration.shortenActiveMs(remainingMs)
                         val seconds=(remainingMs/1000).toInt()
                         counter.text=String.format(Locale.US,"%02d:%02d",seconds/60,seconds%60)
                         control.text="▶ Tiếp tục bài nhẹ hơn"
@@ -382,7 +382,7 @@ class GuidedWorkoutActivity:Activity() {
             RemainingWorkoutDuration.seconds(moves[position].seconds, position, shorterFromIndex) * 1000L
         }
         val proposedFrom = minOf(shorterFromIndex, index)
-        val afterCurrent = (remainingMs / 2).coerceAtLeast(5_000L)
+        val afterCurrent = RemainingWorkoutDuration.shortenActiveMs(remainingMs)
         val after = afterCurrent + moves.indices.drop(index + 1).sumOf { position ->
             RemainingWorkoutDuration.seconds(moves[position].seconds, position, proposedFrom) * 1000L
         }

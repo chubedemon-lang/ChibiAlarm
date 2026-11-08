@@ -29,3 +29,13 @@ def test_voice_listening_pauses_timer_and_tts_before_launch():
     launch = voice.index("startActivityForResult(request,voiceRequest)", stop)
     assert consent < pause < stop < launch
     assert "resume()" not in voice
+
+
+def test_ten_second_voice_cue_previews_next_move_and_finisher():
+    source = SOURCE.read_text(encoding="utf-8")
+    tick = source[source.index("private val tick=object:Runnable"):source.index("override fun onCreate(")]
+    assert "left in 1L..10_000L && !tenSecondCueGiven && !pausedForSafety" in tick
+    assert "tenSecondCueGiven=true" in tick
+    assert "moves.getOrNull(index + 1)?.name" in tick
+    assert "Tiếp theo: $upcoming." in tick
+    assert "Sắp hoàn thành buổi tập." in tick

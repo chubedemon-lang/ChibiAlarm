@@ -244,6 +244,10 @@ class GuidedWorkoutActivity:Activity() {
         AlertDialog.Builder(this).setTitle("🎤 Điều khiển bằng giọng nói")
             .setMessage("Chỉ bắt đầu nghe sau khi bạn nhấn Tiếp tục. Android sẽ mở dịch vụ nhận dạng giọng nói của máy; tùy nhà cung cấp, âm thanh có thể được xử lý trực tuyến. Chibi không tự bật micro và không lưu bản ghi âm. Bạn cũng có thể nhập chữ thay thế.")
             .setPositiveButton("Tiếp tục"){_,_->
+                // A voice command must never compete with spoken instructions or a running timer.
+                // Keep the workout paused even if recognition is cancelled or unavailable.
+                pause()
+                spoken?.stop()
                 val request=Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                     putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                     putExtra(RecognizerIntent.EXTRA_LANGUAGE,"vi-VN")

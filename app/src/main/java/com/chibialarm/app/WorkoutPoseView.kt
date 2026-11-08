@@ -5,11 +5,51 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.view.View
+import android.animation.ValueAnimator
+import android.animation.ValueAnimator.areAnimatorsEnabled
 
 /** Original vector stick-figure cue, rendered entirely on device without network or camera. */
 class WorkoutPoseView(context: Context) : View(context) {
     var pose: WorkoutPoseGuide.Pose = WorkoutPoseGuide.Pose.STANDING
-        set(value) { field = value; contentDescription = WorkoutPoseGuide.label(value); invalidate() }
+        set(value) { field = value; contentDescription = WorkoutPoseGuide.label(value); refreshMotion() }
+
+    private var movementPhase = false
+    private var animator: ValueAnimator? = null
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        refreshMotion()
+    }
+
+    override fun onDetachedFromWindow() {
+        animator?.cancel()
+        animator = null
+        super.onDetachedFromWindow()
+    }
+
+    private fun refreshMotion() {
+        animator?.cancel()
+        animator = null
+        movementPhase = false
+        if (!isAttachedToWindow || !WorkoutPoseMotion.hasMotion(pose) ||
+            !areAnimatorsEnabled()) {
+            invalidate()
+            return
+        }
+        animator = ValueAnimator.ofInt(0, 1).apply {
+            duration = 1800L
+            repeatCount = ValueAnimator.INFINITE
+            repeatMode = ValueAnimator.REVERSE
+            addUpdateListener {
+                val next = (it.animatedValue as Int) == 1
+                if (next != movementPhase) {
+                    movementPhase = next
+                    invalidate()
+                }
+            }
+            start()
+        }
+    }
 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.rgb(94, 65, 145)
@@ -35,18 +75,20 @@ class WorkoutPoseView(context: Context) : View(context) {
         fun head(x: Float, y: Float) = canvas.drawCircle(x, y, 10f, paint)
         when (pose) {
             WorkoutPoseGuide.Pose.SQUAT -> {
-                head(120f, 22f); line(120f, 33f, 118f, 66f)
+                head(120f, if (movementPhase) 12f else 22f); line(120f, if (movementPhase) 23f else 33f, 118f, 66f)
                 line(118f, 46f, 93f, 62f); line(118f, 46f, 145f, 61f)
                 line(118f, 66f, 91f, 83f); line(91f, 83f, 91f, 108f)
                 line(118f, 66f, 149f, 83f); line(149f, 83f, 149f, 108f)
             }
             WorkoutPoseGuide.Pose.PLANK, WorkoutPoseGuide.Pose.PUSH_UP -> {
-                head(54f, 66f); line(66f, 70f, 178f, 67f)
-                line(85f, 70f, 85f, 106f); line(85f, 106f, 68f, 106f)
-                line(178f, 67f, 204f, 104f); line(204f, 104f, 218f, 104f)
+                val upperY = if (pose == WorkoutPoseGuide.Pose.PUSH_UP && movementPhase) 87f else 67f
+                head(54f, upperY); line(66f, upperY + 3f, 178f, upperY)
+                line(85f, upperY + 3f, 85f, 106f); line(85f, 106f, 68f, 106f)
+                line(178f, upperY, 204f, 104f); line(204f, 104f, 218f, 104f)
             }
             WorkoutPoseGuide.Pose.LUNGE -> {
-                head(116f, 20f); line(116f, 32f, 116f, 69f)
+                val headY = if (movementPhase) 30f else 20f
+                head(116f, headY); line(116f, headY + 12f, 116f, 69f)
                 line(116f, 44f, 95f, 64f); line(116f, 44f, 138f, 64f)
                 line(116f, 69f, 83f, 86f); line(83f, 86f, 83f, 109f)
                 line(116f, 69f, 151f, 89f); line(151f, 89f, 185f, 89f)

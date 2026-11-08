@@ -27,6 +27,16 @@ class WorkoutPoseMotionTest {
         }
     }
 
+    @Test fun screenReaderDescriptionTracksMovementWithoutClaimingFormAssessment() {
+        val upright = WorkoutPoseMotion.accessibilityCue(WorkoutPoseGuide.Pose.SQUAT, false)
+        val lowered = WorkoutPoseMotion.accessibilityCue(WorkoutPoseGuide.Pose.SQUAT, true)
+        assertTrue(upright.contains("Đứng lên"))
+        assertTrue(lowered.contains("Hạ hông"))
+        assertTrue(upright.contains("không đánh giá tư thế"))
+        assertTrue(lowered.contains("không đánh giá tư thế"))
+        assertFalse(upright == lowered)
+    }
+
     @Test fun staticAndFallbackCuesNeverAnimate() {
         assertFalse(WorkoutPoseMotion.hasMotion(WorkoutPoseGuide.Pose.PLANK))
         assertFalse(WorkoutPoseMotion.hasMotion(WorkoutPoseGuide.Pose.REST))

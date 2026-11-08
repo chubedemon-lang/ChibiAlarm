@@ -6,6 +6,12 @@ object RemainingWorkoutDuration {
         require(baseSeconds >= 0)
         return if (stepIndex >= shorterFromIndex) (baseSeconds / 2).coerceAtLeast(5) else baseSeconds
     }
+    /** Never extend an almost-finished active step when the user requests shorter time. */
+    fun shortenActiveMs(remainingMs: Long): Long {
+        require(remainingMs >= 0L)
+        return minOf(remainingMs, (remainingMs / 2).coerceAtLeast(5_000L))
+    }
+
     data class PreviewStep(val name: String, val beforeSeconds: Int, val afterSeconds: Int)
 
     /**

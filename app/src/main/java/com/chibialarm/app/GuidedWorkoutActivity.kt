@@ -141,6 +141,11 @@ class GuidedWorkoutActivity:Activity() {
         root.addView(progress)
         guide=TextView(this).apply { textSize=16f;setPadding(10,22,10,20);setTextColor(Color.rgb(70,61,85)) }
         root.addView(ScrollView(this).apply { addView(guide) },LinearLayout.LayoutParams(-1,(220*resources.displayMetrics.density).toInt()))
+        root.addView(Button(this).apply {
+            text="📖 Hướng dẫn từng bước • nghe lại"
+            contentDescription="Xem từng bước của động tác hiện tại và nghe hướng dẫn từng bước"
+            setOnClickListener { showStepByStepGuide() }
+        })
         val online=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
         online.addView(Button(this).apply { text="▶ YouTube";setOnClickListener { searchVideo("youtube") } },LinearLayout.LayoutParams(0,-2,1f))
         online.addView(Button(this).apply { text="♫ TikTok";setOnClickListener { searchVideo("tiktok") } },LinearLayout.LayoutParams(0,-2,1f))
@@ -561,6 +566,43 @@ class GuidedWorkoutActivity:Activity() {
         try { startActivity(Intent(Intent.ACTION_VIEW,Uri.parse(url))) }
         catch(_:Exception) { Toast.makeText(this,"Không tìm thấy ứng dụng mở liên kết",Toast.LENGTH_LONG).show() }
     }
+    private fun showStepByStepGuide() {
+        // Keep the exercise paused while reading; never let a dialog silently consume workout time.
+        pause()
+        spoken?.stop()
+        val move=moves.getOrNull(index) ?: return
+        val steps=WorkoutStepGuide.split(move.steps)
+        var current=0
+        val label=TextView(this).apply {
+            textSize=18f
+            setPadding(36,28,36,28)
+            setTextColor(Color.rgb(70,61,85))
+        }
+        val dialog=AlertDialog.Builder(this)
+            .setTitle("📖 ${move.name}")
+            .setView(label)
+            .setNegativeButton("Đóng",null)
+            .setNeutralButton("🔊 Nghe bước này",null)
+            .setPositiveButton("Bước tiếp →",null)
+            .create()
+        fun renderStep() {
+            label.text="Bước ${current+1}/${steps.size}\\n\\n${steps[current]}\\n\\n🌿 Dễ hơn: ${move.easier}\\n⚠️ ${move.avoid}"
+        }
+        dialog.setOnShowListener {
+            renderStep()
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                current=(current+1)%steps.size
+                spoken?.stop()
+                renderStep()
+            }
+            dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
+                speak("Bước ${current+1}. ${steps[current]}")
+            }
+        }
+        dialog.setOnDismissListener { spoken?.stop() }
+        dialog.show()
+    }
+
     private fun displayStep() {
         paused=true;handler.removeCallbacks(tick)
         val move=moves[index]

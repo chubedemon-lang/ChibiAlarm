@@ -15,9 +15,24 @@ class WorkoutPoseView(context: Context) : View(context) {
 
     private var movementPhase = false
     private var animator: ValueAnimator? = null
+    private val cuePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.rgb(65, 43, 105)
+        textSize = 11f
+        typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
+    }
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
+        refreshMotion()
+    }
+
+    override fun onVisibilityChanged(changedView: View, visibility: Int) {
+        super.onVisibilityChanged(changedView, visibility)
+        if (changedView === this) refreshMotion()
+    }
+
+    override fun onWindowVisibilityChanged(visibility: Int) {
+        super.onWindowVisibilityChanged(visibility)
         refreshMotion()
     }
 
@@ -31,7 +46,8 @@ class WorkoutPoseView(context: Context) : View(context) {
         animator?.cancel()
         animator = null
         movementPhase = false
-        if (!isAttachedToWindow || !WorkoutPoseMotion.hasMotion(pose) ||
+        if (!isAttachedToWindow || visibility != VISIBLE || windowVisibility != VISIBLE ||
+            !WorkoutPoseMotion.hasMotion(pose) ||
             !areAnimatorsEnabled()) {
             invalidate()
             return
@@ -99,6 +115,7 @@ class WorkoutPoseView(context: Context) : View(context) {
                 line(120f, 71f, 100f, 108f); line(120f, 71f, 140f, 108f)
             }
         }
+        canvas.drawText(WorkoutPoseMotion.phaseCue(pose, movementPhase), 8f, 16f, cuePaint)
         canvas.restoreToCount(checkpoint)
     }
 }

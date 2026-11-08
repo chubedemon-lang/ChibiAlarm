@@ -42,6 +42,18 @@ class RemainingWorkoutDurationTest {
         assertEquals(listOf(10, 30), steps.map { it.afterSeconds })
     }
 
+    @Test fun previewNeverAddsTimeToNearlyFinishedExercise() {
+        for (remaining in 0..5) {
+            val steps = RemainingWorkoutDuration.preview(
+                listOf("current", "next"), listOf(30, 40),
+                0, remaining, Int.MAX_VALUE
+            )
+            assertEquals(remaining, steps.first().beforeSeconds)
+            assertEquals(remaining.coerceAtMost((remaining / 2).coerceAtLeast(5)), steps.first().afterSeconds)
+            assertEquals(20, steps.last().afterSeconds)
+        }
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun previewRejectsMismatchedInputs() {
         RemainingWorkoutDuration.preview(listOf("a"), emptyList(), 0, 10, 0)

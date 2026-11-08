@@ -159,6 +159,19 @@ class FitnessActivity:Activity() {
             setSelection(prefs.getInt("recommendImpact",0).coerceIn(0,2))
         }
         root.addView(impactSpinner)
+        // Session-only handoff: no health preferences are written to SharedPreferences.
+        // Review all selections before asking for a recommendation.
+        if (intent.hasExtra("coach_goal")) goalSpinner.setSelection(intent.getIntExtra("coach_goal",0).coerceIn(0,goals.lastIndex))
+        if (intent.hasExtra("coach_energy")) energySpinner.setSelection(intent.getIntExtra("coach_energy",1).coerceIn(0,energyLevels.lastIndex))
+        if (intent.hasExtra("coach_equipment")) equipmentSpinner.setSelection(intent.getIntExtra("coach_equipment",0).coerceIn(0,equipmentOptions.lastIndex))
+        if (intent.hasExtra("coach_impact")) impactSpinner.setSelection(intent.getIntExtra("coach_impact",0).coerceIn(0,impactOptions.lastIndex))
+        if (intent.hasExtra("coach_minutes")) {
+            val requested=intent.getIntExtra("coach_minutes",20).coerceIn(5,120)
+            length.setSelection(mins.indices.minByOrNull { kotlin.math.abs(mins[it]-requested) } ?: 0)
+        }
+        if (intent.hasExtra("coach_goal") || intent.hasExtra("coach_impact")) {
+            root.addView(txt("🐰 Đã điền thông tin từ cuộc trò chuyện. Kiểm tra mục tiêu, thời lượng và hạn chế vận động trước khi chọn giáo án.",14f))
+        }
         root.addView(Button(this).apply {
             text="💬 Chibi hiểu yêu cầu của tôi"
             setOnClickListener {

@@ -27,7 +27,7 @@ object RemainingWorkoutDuration {
         return names.indices.drop(currentIndex).map { i ->
             val before = if (i == currentIndex) remainingSeconds
                 else seconds(durations[i], i, existingShorterFrom)
-            val after = if (i == currentIndex) (remainingSeconds / 2).coerceAtLeast(5)
+            val after = if (i == currentIndex) minOf(remainingSeconds, (remainingSeconds / 2).coerceAtLeast(5))
                 else seconds(durations[i], i, proposedFrom)
             PreviewStep(names[i], before, after)
         }

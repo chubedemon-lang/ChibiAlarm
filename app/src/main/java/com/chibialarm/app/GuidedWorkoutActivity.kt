@@ -136,6 +136,18 @@ class GuidedWorkoutActivity:Activity() {
             importantForAccessibility=android.view.View.IMPORTANT_FOR_ACCESSIBILITY_YES
         }
         root.addView(poseView)
+        root.addView(Button(this).apply {
+            text="🔊 Nghe nhịp chuyển động minh họa"
+            contentDescription="Nghe một lần hướng dẫn chuyển động minh họa, không tự động đọc lặp"
+            setOnClickListener {
+                if (pausedForSafety) {
+                    Toast.makeText(this@GuidedWorkoutActivity,
+                        "Đã dừng vì đau. Không tiếp tục hướng dẫn vận động.", Toast.LENGTH_LONG).show()
+                } else {
+                    speak(WorkoutPoseMotion.spokenWalkthrough(WorkoutPoseGuide.classify(moves[index].name)))
+                }
+            }
+        })
         root.addView(TextView(this).apply {
             text="Hình minh họa tư thế đơn giản, không đánh giá kỹ thuật. Luôn đọc hướng dẫn từng bước."
             textSize=12f

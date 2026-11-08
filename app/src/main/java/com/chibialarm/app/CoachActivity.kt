@@ -34,6 +34,16 @@ class CoachActivity:Activity() {
         root.addView(text("Nói chuyện bằng giọng Việt hoặc nhập tin nhắn. Huấn luyện offline trên thiết bị; AI trực tuyến chỉ mở khi có backend bảo vệ tài khoản.",13f))
         val buttons=LinearLayout(this).apply { orientation=0 }
         buttons.addView(Button(this).apply { text="🗓 Tạo lịch AI";setOnClickListener { askPlan() } },LinearLayout.LayoutParams(0,-2,1f))
+        buttons.addView(Button(this).apply { text="🏃 Xem bài tập";setOnClickListener {
+            val current=fitnessContext
+            val intent=Intent(this@CoachActivity,FitnessActivity::class.java)
+            current?.goal?.let { intent.putExtra("coach_goal",it) }
+            current?.energy?.let { intent.putExtra("coach_energy",it) }
+            current?.minutes?.let { intent.putExtra("coach_minutes",it) }
+            current?.equipment?.let { intent.putExtra("coach_equipment",it) }
+            current?.impact?.let { intent.putExtra("coach_impact",it) }
+            startActivity(intent)
+        } })
         buttons.addView(Button(this).apply { text="🗑 Xóa chat";setOnClickListener {
             history=JSONArray();fitnessContext=null;memory.edit().remove("messages").apply();redraw()
         } })

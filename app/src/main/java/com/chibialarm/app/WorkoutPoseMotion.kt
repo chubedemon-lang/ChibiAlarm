@@ -15,6 +15,16 @@ object WorkoutPoseMotion {
     fun accessibilityCue(pose: WorkoutPoseGuide.Pose, lowered: Boolean): String =
         "${WorkoutPoseGuide.label(pose)}. ${phaseCue(pose, lowered)}. Hình minh họa, không đánh giá tư thế."
 
+    /** One user-requested spoken walkthrough, never automatically repeated with animation. */
+    fun spokenWalkthrough(pose: WorkoutPoseGuide.Pose): String = when (pose) {
+        WorkoutPoseGuide.Pose.SQUAT -> "Minh họa squat. Hạ hông từ từ, sau đó đứng lên. Giữ nhịp thở đều và chỉ xuống sâu trong mức thoải mái."
+        WorkoutPoseGuide.Pose.PUSH_UP -> "Minh họa chống đẩy. Hạ ngực có kiểm soát, sau đó đẩy lên. Có thể chống gối để giảm độ khó."
+        WorkoutPoseGuide.Pose.LUNGE -> "Minh họa chùng chân. Bước chân trước, hạ gối từ từ rồi đứng lên. Có thể vịn vào điểm tựa chắc chắn."
+        WorkoutPoseGuide.Pose.PLANK -> "Minh họa plank. Giữ thân thẳng, thở đều và dừng nếu đau hoặc khó chịu."
+        WorkoutPoseGuide.Pose.REST -> "Đang nghỉ. Hít thở bình thường, nghỉ thêm nếu cần."
+        WorkoutPoseGuide.Pose.STANDING -> "Chưa có minh họa riêng cho động tác này. Hãy đọc hướng dẫn từng bước bên dưới trước khi tập."
+    }
+
     /** Short, explicit phase cues to accompany the two-frame drawing. */
     fun phaseCue(pose: WorkoutPoseGuide.Pose, lowered: Boolean): String = when (pose) {
         WorkoutPoseGuide.Pose.SQUAT -> if (lowered) "Hạ hông" else "Đứng lên"

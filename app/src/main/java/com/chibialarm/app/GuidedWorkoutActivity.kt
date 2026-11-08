@@ -567,33 +567,54 @@ class GuidedWorkoutActivity:Activity() {
         catch(_:Exception) { Toast.makeText(this,"Không tìm thấy ứng dụng mở liên kết",Toast.LENGTH_LONG).show() }
     }
     private fun showStepByStepGuide() {
-        // Keep the exercise paused while reading; never let a dialog silently consume workout time.
+        // A step-by-step walkthrough is opt-in and never consumes workout time.
         pause()
         spoken?.stop()
         val move=moves.getOrNull(index) ?: return
         val steps=WorkoutStepGuide.split(move.steps)
         var current=0
+        val container=LinearLayout(this).apply {
+            orientation=LinearLayout.VERTICAL
+            setPadding(28,20,28,12)
+        }
+        val stepProgress=ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal).apply {
+            max=steps.size
+            progress=1
+            contentDescription="Tiến độ hướng dẫn động tác"
+        }
         val label=TextView(this).apply {
             textSize=18f
-            setPadding(36,28,36,28)
+            setPadding(8,24,8,24)
             setTextColor(Color.rgb(70,61,85))
         }
+        container.addView(stepProgress)
+        container.addView(ScrollView(this).apply {
+            addView(label)
+        },LinearLayout.LayoutParams(-1,(250*resources.displayMetrics.density).toInt()))
         val dialog=AlertDialog.Builder(this)
             .setTitle("📖 ${move.name}")
-            .setView(label)
+            .setView(container)
             .setNegativeButton("Đóng",null)
             .setNeutralButton("🔊 Nghe bước này",null)
             .setPositiveButton("Bước tiếp →",null)
             .create()
         fun renderStep() {
-            label.text="Bước ${current+1}/${steps.size}\\n\\n${steps[current]}\\n\\n🌿 Dễ hơn: ${move.easier}\\n⚠️ ${move.avoid}"
+            label.text="Bước ${current+1}/${steps.size}\n\n${steps[current]}\n\n🌿 Dễ hơn: ${move.easier}\n⚠️ ${move.avoid}"
+            label.contentDescription="Bước ${current+1} trên ${steps.size}. ${steps[current]}"
+            stepProgress.progress=current+1
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.apply {
+                isEnabled=current<steps.lastIndex
+                text=if(current==steps.lastIndex) "Đã xem hết" else "Bước tiếp →"
+            }
         }
         dialog.setOnShowListener {
             renderStep()
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                current=(current+1)%steps.size
-                spoken?.stop()
-                renderStep()
+                if(current<steps.lastIndex) {
+                    current++
+                    spoken?.stop()
+                    renderStep()
+                }
             }
             dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
                 speak("Bước ${current+1}. ${steps[current]}")

@@ -43,6 +43,20 @@ class WorkoutVoiceCommandsTest {
         assertEquals(C.UNKNOWN, WorkoutVoiceCommands.parse("Tập ở đâu?"))
     }
 
+    @Test fun tirednessAndSafetyAreActionableOffline() {
+        for (phrase in listOf("Mệt rồi", "Hơi mệt", "Tôi cần nghỉ")) {
+            assertEquals(phrase, C.REST, WorkoutVoiceCommands.parse(phrase))
+        }
+        for (phrase in listOf("Không tập nổi", "Hết sức rồi")) {
+            assertEquals(phrase, C.PAUSE, WorkoutVoiceCommands.parse(phrase))
+        }
+        for (phrase in listOf("Đau ở đầu gối", "Đau quá, bài tiếp theo", "Tê tay", "Tê chân")) {
+            assertEquals(phrase, C.PAIN, WorkoutVoiceCommands.parse(phrase))
+        }
+        assertEquals(C.RESUME, WorkoutVoiceCommands.parse("Bắt đầu"))
+        assertEquals(C.UNKNOWN, WorkoutVoiceCommands.parse("Tập ở đâu?"))
+    }
+
     @Test fun unknownOrOversizedInputNeverExecutesAction() {
         assertEquals(C.UNKNOWN, WorkoutVoiceCommands.parse(""))
         assertEquals(C.UNKNOWN, WorkoutVoiceCommands.parse("thời tiết hôm nay thế nào"))

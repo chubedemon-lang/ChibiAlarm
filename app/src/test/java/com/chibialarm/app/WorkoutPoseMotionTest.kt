@@ -37,6 +37,17 @@ class WorkoutPoseMotionTest {
         assertFalse(upright == lowered)
     }
 
+    @Test fun spokenWalkthroughIsAvailableOfflineAndNeverClaimsFormAnalysis() {
+        for (pose in WorkoutPoseGuide.Pose.values()) {
+            val cue = WorkoutPoseMotion.spokenWalkthrough(pose)
+            assertTrue(cue.isNotBlank())
+            assertTrue(cue.length < 350)
+            assertFalse(cue.contains("đã đánh giá"))
+        }
+        assertTrue(WorkoutPoseMotion.spokenWalkthrough(WorkoutPoseGuide.Pose.SQUAT).contains("Hạ hông"))
+        assertTrue(WorkoutPoseMotion.spokenWalkthrough(WorkoutPoseGuide.Pose.STANDING).contains("Chưa có minh họa riêng"))
+    }
+
     @Test fun staticAndFallbackCuesNeverAnimate() {
         assertFalse(WorkoutPoseMotion.hasMotion(WorkoutPoseGuide.Pose.PLANK))
         assertFalse(WorkoutPoseMotion.hasMotion(WorkoutPoseGuide.Pose.REST))

@@ -11,7 +11,7 @@ import android.animation.ValueAnimator.areAnimatorsEnabled
 /** Original vector stick-figure cue, rendered entirely on device without network or camera. */
 class WorkoutPoseView(context: Context) : View(context) {
     var pose: WorkoutPoseGuide.Pose = WorkoutPoseGuide.Pose.STANDING
-        set(value) { field = value; contentDescription = WorkoutPoseGuide.label(value); refreshMotion() }
+        set(value) { field = value; contentDescription = WorkoutPoseMotion.accessibilityCue(value, false); refreshMotion() }
 
     private var movementPhase = false
     private var animator: ValueAnimator? = null
@@ -46,6 +46,7 @@ class WorkoutPoseView(context: Context) : View(context) {
         animator?.cancel()
         animator = null
         movementPhase = false
+        contentDescription = WorkoutPoseMotion.accessibilityCue(pose, false)
         if (!isAttachedToWindow || visibility != VISIBLE || windowVisibility != VISIBLE ||
             !WorkoutPoseMotion.hasMotion(pose) ||
             !areAnimatorsEnabled()) {
@@ -60,6 +61,7 @@ class WorkoutPoseView(context: Context) : View(context) {
                 val next = (it.animatedValue as Int) == 1
                 if (next != movementPhase) {
                     movementPhase = next
+                    contentDescription = WorkoutPoseMotion.accessibilityCue(pose, next)
                     invalidate()
                 }
             }

@@ -36,6 +36,27 @@ class GuidedWorkoutShortenConfirmationTest {
         return ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
     }
 
+    @Test fun staleWholeWorkoutPreviewCannotRewriteChangedStep() {
+        val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup().get()
+        val shorten = GuidedWorkoutActivity::class.java.getDeclaredMethod("shortenRemainingWorkout")
+        shorten.isAccessible = true
+        shorten.invoke(activity)
+        val dialog = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
+        assertTrue(dialog.isShowing)
+        val indexField = GuidedWorkoutActivity::class.java.getDeclaredField("index")
+        indexField.isAccessible = true
+        indexField.setInt(activity, 1)
+        val cutoffField = GuidedWorkoutActivity::class.java.getDeclaredField("shorterFromIndex")
+        cutoffField.isAccessible = true
+        val originalCutoff = cutoffField.getInt(activity)
+        val originalRemaining = remaining(activity)
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(originalCutoff, cutoffField.getInt(activity))
+        assertEquals(originalRemaining, remaining(activity))
+        activity.finish()
+    }
+
     @Test fun cancellingPreviewDoesNotShortenExercise() {
         val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup().get()
         val before = remaining(activity)

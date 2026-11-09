@@ -396,7 +396,7 @@ class GuidedWorkoutActivity:Activity() {
         val proposedMs = RemainingWorkoutDuration.shortenActiveMs(originalMs)
         val moveName = moves.getOrNull(index)?.name ?: return
         AlertDialog.Builder(this).setTitle("Xác nhận rút ngắn động tác")
-            .setMessage("Bài: $moveName\\nThời gian còn lại: ${originalMs / 1000} giây → ${proposedMs / 1000} giây.\\n\\nCác động tác sau không thay đổi. Bạn có thể nghỉ thêm nếu cần.")
+            .setMessage("Bài: $moveName\nThời gian còn lại: ${originalMs / 1000} giây → ${proposedMs / 1000} giây.\n\nCác động tác sau không thay đổi. Bạn có thể nghỉ thêm nếu cần.")
             .setPositiveButton("Áp dụng") { _, _ ->
                 if (pausedForSafety || completed || index !in moves.indices) return@setPositiveButton
                 remainingMs = proposedMs

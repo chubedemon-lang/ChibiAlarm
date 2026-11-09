@@ -3,6 +3,9 @@ package com.chibialarm.app
 import android.app.AlertDialog
 import android.content.Context
 import android.os.Looper
+import android.view.View
+import android.view.ViewGroup
+import android.widget.EditText
 import org.robolectric.Shadows.shadowOf
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -69,4 +72,49 @@ class GuidedWorkoutRestConfirmationTest {
         assertEquals(changed, remaining(activity))
         activity.finish()
     }
+    private fun editText(view: View): EditText? {
+        if (view is EditText) return view
+        if (view is ViewGroup) for (i in 0 until view.childCount) {
+            editText(view.getChildAt(i))?.let { return it }
+        }
+        return null
+    }
+
+    @Test fun customRestRejectsInvalidSecondsWithoutClosingDialog() {
+        val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup().get()
+        val before = remaining(activity)
+        val method = GuidedWorkoutActivity::class.java.getDeclaredMethod("requestCustomRest")
+        method.isAccessible = true
+        method.invoke(activity)
+        val dialog = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
+        val field = editText(dialog.window!!.decorView)!!
+        field.setText("601")
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+        assertTrue(dialog.isShowing)
+        assertEquals(before, remaining(activity))
+        field.setText("abc")
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+        assertTrue(dialog.isShowing)
+        assertEquals(before, remaining(activity))
+        dialog.dismiss()
+        activity.finish()
+    }
+
+    @Test fun customRestRequiresSecondExplicitConfirmation() {
+        val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup().get()
+        val before = remaining(activity)
+        val method = GuidedWorkoutActivity::class.java.getDeclaredMethod("requestCustomRest")
+        method.isAccessible = true
+        method.invoke(activity)
+        val inputDialog = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
+        editText(inputDialog.window!!.decorView)!!.setText("45")
+        inputDialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+        val confirmation = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
+        assertTrue(confirmation.isShowing)
+        assertEquals(before, remaining(activity))
+        confirmation.getButton(AlertDialog.BUTTON_NEGATIVE).performClick()
+        assertEquals(before, remaining(activity))
+        activity.finish()
+    }
+
 }

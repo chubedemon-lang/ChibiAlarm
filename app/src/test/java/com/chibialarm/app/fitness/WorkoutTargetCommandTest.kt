@@ -71,4 +71,24 @@ class WorkoutTargetCommandTest {
             WorkoutTargetCommand.propose("Tập mười phút", "squat", session, 0))
     }
 
+    @Test fun understandsCompoundVietnameseNumbersAndMixedRestUnits() {
+        val proposal = WorkoutTargetCommand.propose(
+            "Giảm xuống hai mươi lăm lần và nghỉ một phút ba mươi giây",
+            "squat", session, 1)
+        assertTrue(proposal is WorkoutTargetCommand.Result.Proposed)
+        val after = (proposal as WorkoutTargetCommand.Result.Proposed).preview.after
+        assertEquals(session.sets[0], after.sets[0])
+        assertEquals(25, after.sets[2].reps)
+        assertEquals(90, after.sets[2].restSeconds)
+    }
+
+    @Test fun acceptsTeenCountsAndRejectsInvalidSeconds() {
+        val teen = WorkoutTargetCommand.propose("Còn mười lăm lần", "squat", session, 0)
+        assertEquals(15, (teen as WorkoutTargetCommand.Result.Proposed).preview.after.sets[0].reps)
+        assertSame(WorkoutTargetCommand.Result.Unsupported,
+            WorkoutTargetCommand.propose("Nghỉ hai phút bảy mươi giây", "squat", session, 0))
+        assertSame(WorkoutTargetCommand.Result.SafetyStop,
+            WorkoutTargetCommand.propose("Đau gối, nghỉ một phút ba mươi giây", "squat", session, 0))
+    }
+
 }

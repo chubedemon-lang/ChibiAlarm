@@ -148,4 +148,23 @@ class GuidedWorkoutRestConfirmationTest {
         activity.finish()
     }
 
+    @Test fun spokenRepPreviewRejectsChangedTimer() {
+        val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup().get()
+        val command = GuidedWorkoutActivity::class.java
+            .getDeclaredMethod("handleCoachCommand", String::class.java)
+        command.isAccessible = true
+        command.invoke(activity, "giảm còn 6 lần")
+        val dialog = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
+        assertTrue(dialog.isShowing)
+        val timer = GuidedWorkoutActivity::class.java.getDeclaredField("remainingMs")
+        timer.isAccessible = true
+        timer.setLong(activity, remaining(activity) + 2_000L)
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+        shadowOf(Looper.getMainLooper()).idle()
+        val targets = GuidedWorkoutActivity::class.java.getDeclaredField("repTargets")
+        targets.isAccessible = true
+        assertTrue((targets.get(activity) as Map<*, *>).isEmpty())
+        activity.finish()
+    }
+
 }

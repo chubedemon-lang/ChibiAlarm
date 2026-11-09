@@ -182,6 +182,7 @@ class FitnessActivity:Activity() {
                     val parsed=FitnessCoachConversation.merge(conversation, FitnessCoachConversation.parseReply(conversation, request))
                     conversation=parsed
                     parsed.goal?.let { goalSpinner.setSelection(it) }
+                    parsed.level?.let { level.setSelection(it) }
                     parsed.energy?.let { energySpinner.setSelection(it) }
                     parsed.minutes?.let { requested ->
                         val closest=mins.indices.minByOrNull { kotlin.math.abs(mins[it]-requested) } ?: 0

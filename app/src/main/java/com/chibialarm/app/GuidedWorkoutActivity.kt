@@ -414,6 +414,37 @@ class GuidedWorkoutActivity:Activity() {
             .setNegativeButton("Giữ nguyên", null).show()
     }
 
+    /** Custom rest duration is user-selected, bounded and confirmed before changing the timer. */
+    private fun requestCustomRest() {
+        if (pausedForSafety || completed) return
+        pause()
+        val field = EditText(this).apply {
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER
+            hint = "Số giây (1–600)"
+            setText("60")
+            selectAll()
+        }
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("⏱ Chọn thời gian nghỉ thêm")
+            .setMessage("Nhập từ 1 đến 600 giây. Chibi sẽ cho xem trước trước khi áp dụng.")
+            .setView(field)
+            .setPositiveButton("Xem trước", null)
+            .setNegativeButton("Hủy", null)
+            .create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val seconds = field.text.toString().trim().toIntOrNull()
+                if (seconds == null || seconds !in 1..600) {
+                    field.error = "Hãy nhập số giây từ 1 đến 600"
+                } else {
+                    dialog.dismiss()
+                    confirmExtraRest(seconds)
+                }
+            }
+        }
+        dialog.show()
+    }
+
     /** Show the exact impact before changing the active exercise; cancel leaves its timer untouched. */
     private fun confirmShortenCurrentMove() {
         if (pausedForSafety || completed) return
@@ -450,6 +481,7 @@ class GuidedWorkoutActivity:Activity() {
         val options=arrayOf(
             "🌿 Giảm thời gian động tác còn một nửa",
             "⏱ Thêm 30 giây nghỉ",
+            "⏱ Tự chọn số giây nghỉ",
             "📖 Xem cách tập dễ hơn",
             "⏸ Tạm dừng buổi tập",
             "⏱ Rút ngắn tất cả động tác còn lại"
@@ -459,15 +491,16 @@ class GuidedWorkoutActivity:Activity() {
                 when(choice) {
                     0 -> confirmShortenCurrentMove()
                     1 -> confirmExtraRest(30)
-                    2 -> {
+                    2 -> requestCustomRest()
+                    3 -> {
                         pause()
                         AlertDialog.Builder(this).setTitle("Cách tập dễ hơn")
                             .setMessage(moves[index].easier+"\\n\\nDừng tập nếu thấy đau.")
                             .setPositiveButton("Đã hiểu",null).show()
                         speak(moves[index].easier)
                     }
-                    3 -> { pause();speak("Đã tạm dừng buổi tập.") }
-                    4 -> shortenRemainingWorkout()
+                    4 -> { pause();speak("Đã tạm dừng buổi tập.") }
+                    5 -> shortenRemainingWorkout()
                 }
             }.setNegativeButton("Đóng",null).show()
     }

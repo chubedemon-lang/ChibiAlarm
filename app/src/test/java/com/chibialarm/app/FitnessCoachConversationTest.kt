@@ -5,7 +5,7 @@ import org.junit.Test
 
 class FitnessCoachConversationTest {
     @Test fun accumulatesAcrossTurnsWithoutErasingPreviousAnswers() {
-        val first = FitnessCoachConversation.merge(null, FitnessNaturalRequest.parse("giãn cơ 15 phút"))
+        val first = FitnessCoachConversation.merge(null, FitnessNaturalRequest.parse("giãn cơ 15 phút, đang tập đều"))
         val second = FitnessCoachConversation.merge(first, FitnessNaturalRequest.parse("không dụng cụ"))
         assertEquals(2, second.goal)
         assertEquals(15, second.minutes)
@@ -24,12 +24,12 @@ class FitnessCoachConversationTest {
         assertEquals(20, second.minutes)
     }
     @Test fun shortDurationAnswerUsesLastQuestion() {
-        val previous = FitnessCoachConversation.merge(null, FitnessNaturalRequest.parse("giãn cơ"))
+        val previous = FitnessCoachConversation.merge(null, FitnessNaturalRequest.parse("giãn cơ, đang tập đều"))
         val reply = FitnessCoachConversation.parseReply(previous, "15")
         assertEquals(15, FitnessCoachConversation.merge(previous, reply).minutes)
     }
     @Test fun bareNoOnlyMeansNoEquipmentWhenAskedAboutEquipment() {
-        val previous = FitnessCoachConversation.merge(null, FitnessNaturalRequest.parse("giãn cơ 15 phút"))
+        val previous = FitnessCoachConversation.merge(null, FitnessNaturalRequest.parse("giãn cơ 15 phút, đang tập đều"))
         val reply = FitnessCoachConversation.parseReply(previous, "không")
         assertEquals(0, FitnessCoachConversation.merge(previous, reply).equipment)
         assertNull(reply.impact)
@@ -41,16 +41,16 @@ class FitnessCoachConversationTest {
         assertNull(reply.equipment)
     }
     @Test fun outOfRangeBareNumberIsNotAccepted() {
-        val previous = FitnessCoachConversation.merge(null, FitnessNaturalRequest.parse("giãn cơ"))
+        val previous = FitnessCoachConversation.merge(null, FitnessNaturalRequest.parse("giãn cơ, đang tập đều"))
         assertNull(FitnessCoachConversation.parseReply(previous, "999").minutes)
     }
     @Test fun shortMatAnswerUsesEquipmentQuestion() {
-        val previous = FitnessCoachConversation.merge(null, FitnessNaturalRequest.parse("giãn cơ 15 phút"))
+        val previous = FitnessCoachConversation.merge(null, FitnessNaturalRequest.parse("giãn cơ 15 phút, đang tập đều"))
         val reply = FitnessCoachConversation.parseReply(previous, "thảm")
         assertEquals(1, FitnessCoachConversation.merge(previous, reply).equipment)
     }
     @Test fun shortResistanceBandAnswerUsesEquipmentQuestion() {
-        val previous = FitnessCoachConversation.merge(null, FitnessNaturalRequest.parse("giãn cơ 15 phút"))
+        val previous = FitnessCoachConversation.merge(null, FitnessNaturalRequest.parse("giãn cơ 15 phút, đang tập đều"))
         val reply = FitnessCoachConversation.parseReply(previous, "dây kháng lực")
         assertEquals(2, FitnessCoachConversation.merge(previous, reply).equipment)
     }
@@ -61,39 +61,39 @@ class FitnessCoachConversationTest {
         assertEquals(2, FitnessCoachConversation.merge(previous, reply).impact)
     }
     @Test fun equipmentReplyWithoutEquipmentQuestionIsNotGuessed() {
-        val previous = FitnessCoachConversation.merge(null, FitnessNaturalRequest.parse("giãn cơ"))
+        val previous = FitnessCoachConversation.merge(null, FitnessNaturalRequest.parse("giãn cơ, đang tập đều"))
         assertNull(FitnessCoachConversation.parseReply(previous, "thảm").equipment)
     }
     @Test fun shortDurationGetsAcknowledgedInsteadOfGenericFailure() {
-        val previous = FitnessNaturalRequest.parse("giãn cơ")
+        val previous = FitnessNaturalRequest.parse("giãn cơ, đang tập đều")
         val reply = FitnessCoachConversation.parseReply(previous, "15")
         assertEquals(15, reply.minutes)
         assertTrue(reply.reply.contains("15 phút"))
         assertFalse(reply.reply.contains("chưa hiểu"))
     }
     @Test fun contextualEquipmentReplyIsAcknowledged() {
-        val previous = FitnessNaturalRequest.parse("giãn cơ 15 phút")
+        val previous = FitnessNaturalRequest.parse("giãn cơ 15 phút, đang tập đều")
         val reply = FitnessCoachConversation.parseReply(previous, "thảm")
         assertEquals(1, reply.equipment)
         assertTrue(reply.reply.contains("thảm"))
     }
 
     @Test fun shortNoRestrictionsAnswerOnlyAfterSafetyQuestion() {
-        val previous = FitnessNaturalRequest.parse("giãn cơ 15 phút không dụng cụ")
+        val previous = FitnessNaturalRequest.parse("giãn cơ 15 phút không dụng cụ, đang tập đều")
         val reply = FitnessCoachConversation.parseReply(previous, "không")
         assertEquals(0, reply.impact)
         assertTrue(reply.reply.contains("hạn chế"))
     }
 
     @Test fun lowImpactShortAnswerIsRemembered() {
-        val previous = FitnessNaturalRequest.parse("giãn cơ 15 phút không dụng cụ")
+        val previous = FitnessNaturalRequest.parse("giãn cơ 15 phút không dụng cụ, đang tập đều")
         val reply = FitnessCoachConversation.parseReply(previous, "tránh nhảy")
         assertEquals(1, FitnessCoachConversation.merge(previous, reply).impact)
     }
 
     @Test fun energyAnswerWorksAfterSafetyPreference() {
         val previous = FitnessCoachConversation.merge(
-            FitnessNaturalRequest.parse("giãn cơ 15 phút không dụng cụ"),
+            FitnessNaturalRequest.parse("giãn cơ 15 phút không dụng cụ, đang tập đều"),
             FitnessNaturalRequest.parse("tránh nhảy")
         )
         val reply = FitnessCoachConversation.parseReply(previous, "hơi mệt")
@@ -104,6 +104,24 @@ class FitnessCoachConversationTest {
         val previous = FitnessNaturalRequest.parse("đang đau khớp")
         val reply = FitnessCoachConversation.parseReply(previous, "không")
         assertEquals(2, FitnessCoachConversation.merge(previous, reply).impact)
+    }
+
+    @Test fun contextualBeginnerLevelDoesNotOverwriteChosenGoal() {
+        val previous = FitnessNaturalRequest.parse("giãn cơ 15 phút")
+        assertTrue(FitnessCoachFollowUp.nextQuestion(previous).contains("trình độ"))
+        val reply = FitnessCoachConversation.parseReply(previous, "mới bắt đầu")
+        val merged = FitnessCoachConversation.merge(previous, reply)
+        assertEquals(2, merged.goal)
+        assertEquals(0, merged.level)
+        assertTrue(reply.reply.contains("mới bắt đầu"))
+    }
+
+    @Test fun laterExperienceAnswerUpdatesOnlyTheLevel() {
+        val previous = FitnessNaturalRequest.parse("tăng sức mạnh 20 phút, mới bắt đầu")
+        val reply = FitnessCoachConversation.parseReply(previous, "đang tập đều")
+        val merged = FitnessCoachConversation.merge(previous, reply)
+        assertEquals(0, merged.goal)
+        assertEquals(1, merged.level)
     }
 
     @Test fun shortStrengthGoalIsAcknowledgedInContext() {

@@ -15,12 +15,30 @@ object WorkoutTargetCommand {
     }
 
     private val painWords = Regex("""\b(đau|nhức|chấn thương|choáng|chóng mặt|khó thở)\b""")
-    private val repsPattern = Regex("""(?:\b(?:còn|xuống|thành|giảm xuống|tăng lên|đổi thành)\s*)?(\d{1,3}|một|hai|ba|bốn|tư|năm|lăm|sáu|bảy|tám|chín|mười)\s*(?:lần|cái|reps?)\b""")
-    private val restPattern = Regex("""(?:nghỉ|thời gian nghỉ)\s*(?:thêm|lên|thành|còn)?\s*(\d{1,3}|một|hai|ba|bốn|tư|năm|lăm|sáu|bảy|tám|chín|mười)\s*(giây|phút)\b""")
-    private val vietnameseNumbers = mapOf("một" to 1, "hai" to 2, "ba" to 3, "bốn" to 4,
+    // Recognize common STT forms, including compound numbers ("hai mươi lăm")
+    // and mixed units ("một phút ba mươi giây"), without a network dependency.
+    private val numeral = """(?:\d{1,3}|một|hai|ba|bốn|tư|năm|lăm|sáu|bảy|tám|chín|mười|mươi|linh|lẻ|trăm)(?:\s+(?:\d{1,3}|một|hai|ba|bốn|tư|năm|lăm|sáu|bảy|tám|chín|mười|mươi|linh|lẻ|trăm))*"""
+    private val repsPattern = Regex("""(?:\b(?:còn|xuống|thành|giảm xuống|tăng lên|đổi thành)\s*)?($numeral)\s*(?:lần|cái|reps?)\b""")
+    private val restPattern = Regex("""(?:nghỉ|thời gian nghỉ)\s*(?:thêm|lên|thành|còn)?\s*($numeral)\s*(giây|phút)\b""")
+    private val secondsAfterMinutes = Regex("""^\s*($numeral)\s*giây\b""")
+    private val units = mapOf("một" to 1, "hai" to 2, "ba" to 3, "bốn" to 4,
         "tư" to 4, "năm" to 5, "lăm" to 5, "sáu" to 6, "bảy" to 7,
-        "tám" to 8, "chín" to 9, "mười" to 10)
-    private fun number(value: String?): Int? = value?.toIntOrNull() ?: vietnameseNumbers[value]
+        "tám" to 8, "chín" to 9)
+    private fun number(value: String?): Int? {
+        if (value == null) return null
+        value.toIntOrNull()?.let { return it }
+        val words = value.trim().split(Regex("""\s+"""))
+        if (words.size == 1) return if (words[0] == "mười") 10 else units[words[0]]
+        // Supported speech numbers: 11–99. Reject ambiguous/partial phrases.
+        val tens = when (words[0]) {
+            "mười" -> 10
+            else -> units[words[0]]?.times(10)?.takeIf { words.getOrNull(1) == "mươi" }
+        } ?: return null
+        val remainder = if (words[0] == "mười") words.drop(1) else words.drop(2)
+        if (remainder.size > 1) return null
+        val unit = if (remainder.isEmpty()) 0 else units[remainder[0]] ?: return null
+        return tens + unit
+    }
 
     fun propose(
         spokenText: String,
@@ -37,7 +55,13 @@ object WorkoutTargetCommand {
         val restMatch = restPattern.find(normalized)
         val rawRest = number(restMatch?.groupValues?.get(1))
         val rest = if (rawRest != null) {
-            if (restMatch?.groupValues?.get(2) == "phút") rawRest * 60 else rawRest
+            if (restMatch?.groupValues?.get(2) == "phút") {
+                val tail = normalized.substring(restMatch.range.last + 1)
+                val secondsMatch = secondsAfterMinutes.find(tail)
+                val extra = if (secondsMatch != null) number(secondsMatch.groupValues[1]) else 0
+                if (extra == null || extra !in 0..59) return Result.Unsupported
+                rawRest * 60 + extra
+            } else rawRest
         } else null
         if (reps == null && rest == null) return Result.Unsupported
         if (reps != null && reps !in 1..100) return Result.Unsupported

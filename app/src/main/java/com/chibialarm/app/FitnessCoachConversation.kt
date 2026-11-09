@@ -28,6 +28,15 @@ object FitnessCoachConversation {
             previous.goal == null && question.contains("sức mạnh, tim mạch") &&
                 answer in setOf("giãn cơ", "gian co", "yoga") ->
                 parsed.copy(goal = 2, reply = "Đã ghi nhận mục tiêu giãn cơ. Tao sẽ ưu tiên vận động nhẹ.")
+            previous.level == null && question.contains("trình độ") && parsed.level != null ->
+                parsed.copy(
+                    goal = null,
+                    reply = when (parsed.level) {
+                        0 -> "Đã ghi nhận mày mới bắt đầu. Tao sẽ ưu tiên cách tập cơ bản."
+                        1 -> "Đã ghi nhận mày đang tập đều. Tao sẽ chọn mức vừa sức."
+                        else -> "Đã ghi nhận mày có kinh nghiệm. Tao sẽ vẫn để mày kiểm tra cường độ trước khi tập."
+                    }
+                )
             previous.minutes == null && question.contains("bao nhiêu phút") && shortMinutes != null ->
                 parsed.copy(minutes = shortMinutes, reply = "Tao đã ghi nhận $shortMinutes phút cho buổi tập. Mày có thể trả lời câu hỏi tiếp theo.")
             previous.equipment == null && question.contains("thảm, tạ") &&
@@ -62,6 +71,7 @@ object FitnessCoachConversation {
         if (previous == null) return next
         return FitnessNaturalRequest.Result(
             goal = next.goal ?: previous.goal,
+            level = next.level ?: previous.level,
             energy = next.energy ?: previous.energy,
             minutes = next.minutes ?: previous.minutes,
             equipment = next.equipment ?: previous.equipment,

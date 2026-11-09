@@ -57,6 +57,14 @@ class WorkoutVoiceCommandsTest {
         assertEquals(C.UNKNOWN, WorkoutVoiceCommands.parse("Tập ở đâu?"))
     }
 
+    @Test fun combinedRestAndEasierIsOneExplicitPreviewedAction() {
+        assertEquals(C.EASIER_AND_REST, WorkoutVoiceCommands.parse("Giảm độ khó squat và nghỉ thêm một phút"))
+        assertEquals(C.EASIER_AND_REST, WorkoutVoiceCommands.parse("Nhẹ hơn và nghỉ 60 giây"))
+        assertEquals(C.PAIN, WorkoutVoiceCommands.parse("Đau gối, giảm độ khó và nghỉ một phút"))
+        assertEquals(C.EASIER, WorkoutVoiceCommands.parse("Giảm độ khó"))
+        assertEquals(C.REST, WorkoutVoiceCommands.parse("Nghỉ thêm 60 giây"))
+    }
+
     @Test fun unknownOrOversizedInputNeverExecutesAction() {
         assertEquals(C.UNKNOWN, WorkoutVoiceCommands.parse(""))
         assertEquals(C.UNKNOWN, WorkoutVoiceCommands.parse("thời tiết hôm nay thế nào"))

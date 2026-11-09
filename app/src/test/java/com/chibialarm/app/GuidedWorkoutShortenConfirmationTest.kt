@@ -10,6 +10,8 @@ import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.shadows.ShadowAlertDialog
+import org.robolectric.Shadows.shadowOf
+import android.os.Looper
 
 @RunWith(RobolectricTestRunner::class)
 class GuidedWorkoutShortenConfirmationTest {
@@ -51,6 +53,7 @@ class GuidedWorkoutShortenConfirmationTest {
         val dialog = askToShorten(activity)
         assertEquals(before, remaining(activity))
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+        shadowOf(Looper.getMainLooper()).idle()
         assertEquals(com.chibialarm.app.fitness.RemainingWorkoutDuration.shortenActiveMs(before), remaining(activity))
         activity.finish()
     }

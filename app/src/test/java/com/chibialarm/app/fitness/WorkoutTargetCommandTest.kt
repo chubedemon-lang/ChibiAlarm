@@ -4,6 +4,14 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class WorkoutTargetCommandTest {
+    @Test fun spokenRepsAcceptsVietnameseWordsAndRejectsPainOrInvalidNumbers() {
+        assertEquals(25, WorkoutTargetCommand.spokenReps("Giảm xuống hai mươi lăm lần"))
+        assertEquals(6, WorkoutTargetCommand.spokenReps("Đổi thành 6 lần"))
+        assertNull(WorkoutTargetCommand.spokenReps("Tôi đau, giảm xuống 6 lần"))
+        assertNull(WorkoutTargetCommand.spokenReps("Tăng lên 101 lần"))
+        assertNull(WorkoutTargetCommand.spokenReps("Nghỉ thêm 30 giây"))
+    }
+
     private val session = CoachSessionPlanner.Session(listOf(
         CoachSessionPlanner.SetPlan("squat", 12, 45),
         CoachSessionPlanner.SetPlan("walk", 20, 30),

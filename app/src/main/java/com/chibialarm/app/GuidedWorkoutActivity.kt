@@ -327,7 +327,35 @@ class GuidedWorkoutActivity:Activity() {
             .setView(field).setPositiveButton("Gửi"){_,_->handleCoachCommand(field.text.toString())}
             .setNegativeButton("Hủy",null).show()
     }
+    /** Spoken repetition changes use the same preview/confirmation as manual edits. */
+    private fun confirmSpokenRepTarget(reps: Int) {
+        if (pausedForSafety || completed || index !in moves.indices) return
+        pause()
+        val selected = index
+        val before = repTargets[selected]
+        val oldDose = targetDose(selected)
+        AlertDialog.Builder(this).setTitle("🎯 Xác nhận số lần tập")
+            .setMessage("${moves[selected].name}: $oldDose → $reps lần.\\nChỉ thay đổi hướng dẫn, không tự đếm lần tập.")
+            .setPositiveButton("Áp dụng") { _, _ ->
+                if (pausedForSafety || completed || index != selected || repTargets[selected] != before) {
+                    Toast.makeText(this, "Buổi tập đã thay đổi. Hãy xem trước lại.", Toast.LENGTH_LONG).show()
+                } else {
+                    repTargets[selected] = reps
+                    renderDose()
+                    saveCheckpoint()
+                    speak("Đã đổi mục tiêu thành $reps lần. Tập trong khả năng của bạn.")
+                }
+            }.setNegativeButton("Giữ nguyên", null).show()
+    }
+
     private fun handleCoachCommand(utterance:String) {
+        // Safety words always take precedence over any numeric exercise request.
+        val spokenReps = com.chibialarm.app.fitness.WorkoutTargetCommand.spokenReps(utterance)
+        if (spokenReps != null && WorkoutVoiceCommands.parse(utterance) != WorkoutVoiceCommands.Command.PAIN) {
+            confirmSpokenRepTarget(spokenReps)
+            return
+        }
+
         when(WorkoutVoiceCommands.parse(utterance)) {
             WorkoutVoiceCommands.Command.PAIN -> {
                 pause()

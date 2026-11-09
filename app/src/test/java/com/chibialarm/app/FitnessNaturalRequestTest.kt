@@ -11,6 +11,14 @@ class FitnessNaturalRequestTest {
         assertEquals(15, result.minutes)
         assertEquals(0, result.equipment)
         assertNull(result.impact)
+        assertNull(result.level)
+    }
+
+    @Test fun parsesTrainingExperienceLevels() {
+        assertEquals(0, FitnessNaturalRequest.parse("Mới bắt đầu, muốn tập nhẹ").level)
+        assertEquals(1, FitnessNaturalRequest.parse("Tôi đang tập đều mỗi tuần").level)
+        assertEquals(2, FitnessNaturalRequest.parse("Tôi có kinh nghiệm, muốn nâng cao").level)
+        assertEquals(2, FitnessNaturalRequest.parse("advanced").level)
     }
 
     @Test fun injuryTakesPriorityOverExerciseGoals() {

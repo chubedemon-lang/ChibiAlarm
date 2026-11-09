@@ -393,12 +393,16 @@ class GuidedWorkoutActivity:Activity() {
         if (pausedForSafety || completed) return
         pause()
         val originalMs = remainingMs
+        val previewIndex = index
         val proposedMs = RemainingWorkoutDuration.shortenActiveMs(originalMs)
         val moveName = moves.getOrNull(index)?.name ?: return
         AlertDialog.Builder(this).setTitle("Xác nhận rút ngắn động tác")
             .setMessage("Bài: $moveName\nThời gian còn lại: ${originalMs / 1000} giây → ${proposedMs / 1000} giây.\n\nCác động tác sau không thay đổi. Bạn có thể nghỉ thêm nếu cần.")
             .setPositiveButton("Áp dụng") { _, _ ->
-                if (pausedForSafety || completed || index !in moves.indices) return@setPositiveButton
+                // A dialog can outlive a step change (e.g. after a lifecycle event).
+                // Never apply an old preview to a different exercise or timer.
+                if (pausedForSafety || completed || index != previewIndex ||
+                    remainingMs != originalMs || index !in moves.indices) return@setPositiveButton
                 remainingMs = proposedMs
                 val seconds = (remainingMs / 1000).toInt()
                 counter.text = String.format(Locale.US, "%02d:%02d", seconds / 60, seconds % 60)

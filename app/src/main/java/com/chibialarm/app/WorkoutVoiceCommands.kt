@@ -46,7 +46,7 @@ object WorkoutVoiceCommands {
                 normalized.contains("het suc") || "pause" in words -> Command.PAUSE
             normalized.contains("nghi them") || normalized.contains("nghi mot chut") || normalized.contains("met roi") ||
                 normalized.contains("hoi met") || normalized.contains("met qua") ||
-                normalized.contains("met lam") || normalized.matches(Regex(".*\\\\bnghi\\\\s+[0-9]{1,3}\\\\s*(giay|gi|s|phut)\\\\b.*")) ||
+                normalized.contains("met lam") || Regex("""\bnghi(?: them)?\s+[0-9]{1,3}\s*(?:giay|gi|s|phut)\b""").containsMatchIn(normalized) ||
                 normalized.contains("nghi mot phut") || normalized.contains("nghi hai phut") ||
                 normalized.contains("nghi chin muoi giay") || normalized.contains("nghi sau muoi giay") ||
                 normalized.contains("nghi ba muoi giay") || normalized.contains("can nghi") ||

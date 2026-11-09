@@ -332,6 +332,24 @@ class GuidedWorkoutActivity:Activity() {
             WorkoutVoiceCommands.Command.NEXT -> nextMove()
             WorkoutVoiceCommands.Command.PREVIOUS -> { if(!pausedForSafety) { pause();if(index>0)index--;displayStep();speak("Bài "+moves[index].name) } }
             WorkoutVoiceCommands.Command.REPEAT -> speak(moves[index].steps)
+            WorkoutVoiceCommands.Command.EASIER_AND_REST -> {
+                if (pausedForSafety) {
+                    Toast.makeText(this,"Buổi tập đã dừng vì báo đau.",Toast.LENGTH_LONG).show()
+                } else {
+                    pause()
+                    val addedSeconds=WorkoutRestRequest.seconds(utterance)
+                    remainingMs=(remainingMs+addedSeconds*1000L).coerceAtMost(600_000L)
+                    val seconds=(remainingMs/1000).toInt()
+                    counter.text=String.format(Locale.US,"%02d:%02d",seconds/60,seconds%60)
+                    control.text="▶ Tiếp tục khi sẵn sàng"
+                    saveCheckpoint()
+                    AlertDialog.Builder(this).setTitle("🌿 Nghỉ và tập nhẹ hơn")
+                        .setMessage("Đã thêm $addedSeconds giây nghỉ.\\n\\n"+moves[index].easier+
+                            "\\n\\nChibi chưa tự đổi kỹ thuật hay số hiệp; hãy chọn cách tập nhẹ hơn nếu phù hợp.")
+                        .setPositiveButton("Đã hiểu",null).show()
+                    speak("Đã thêm $addedSeconds giây nghỉ. "+moves[index].easier)
+                }
+            }
             WorkoutVoiceCommands.Command.EASIER -> {
                 pause()
                 AlertDialog.Builder(this).setTitle("🌿 Cách tập dễ hơn")

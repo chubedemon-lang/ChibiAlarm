@@ -340,15 +340,22 @@ class GuidedWorkoutActivity:Activity() {
                     // Pause first, then require an explicit user decision; cancel keeps the timer intact.
                     pause()
                     val addedSeconds=WorkoutRestRequest.seconds(utterance)
+                    val previewIndex=index
+                    val originalMs=remainingMs
+                    val proposedMs=(originalMs+addedSeconds*1000L).coerceAtMost(600_000L)
                     val exerciseName=moves[index].name
                     val easierCue=moves[index].easier
                     AlertDialog.Builder(this).setTitle("🐰 Xác nhận điều chỉnh buổi tập")
-                        .setMessage("Bạn muốn nghỉ thêm $addedSeconds giây và xem cách tập nhẹ hơn cho $exerciseName?"+
+                        .setMessage("Bạn muốn nghỉ thêm $addedSeconds giây (${originalMs / 1000} → ${proposedMs / 1000} giây) và xem cách tập nhẹ hơn cho $exerciseName?"+
                             "\n\n$easierCue"+
                             "\n\nChibi chỉ tăng thời gian nghỉ và gợi ý cách tập; chưa tự đổi số hiệp hoặc kỹ thuật.")
                         .setPositiveButton("Đồng ý điều chỉnh") { _, _ ->
-                            if (pausedForSafety || completed) return@setPositiveButton
-                            remainingMs=(remainingMs+addedSeconds*1000L).coerceAtMost(600_000L)
+                            if (pausedForSafety || completed || index != previewIndex ||
+                                remainingMs != originalMs || index !in moves.indices) {
+                                Toast.makeText(this, "Buổi tập đã thay đổi. Hãy xem trước lại.", Toast.LENGTH_LONG).show()
+                                return@setPositiveButton
+                            }
+                            remainingMs=proposedMs
                             val seconds=(remainingMs/1000).toInt()
                             counter.text=String.format(Locale.US,"%02d:%02d",seconds/60,seconds%60)
                             control.text="▶ Tiếp tục khi sẵn sàng"

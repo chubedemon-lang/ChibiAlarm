@@ -54,4 +54,21 @@ class WorkoutTargetCommandTest {
         assertNull(WorkoutTargetEdit.accept(proposal, session, 1))
         assertNull(WorkoutTargetEdit.accept(proposal, session.copy(pausedForSafety = true), 0))
     }
+    @Test fun spokenVietnameseNumbersWorkOffline() {
+        val result = WorkoutTargetCommand.propose(
+            "Giảm xuống sáu lần và nghỉ hai phút", "squat", session, 1)
+        assertTrue(result is WorkoutTargetCommand.Result.Proposed)
+        val after = (result as WorkoutTargetCommand.Result.Proposed).preview.after
+        assertEquals(session.sets[0], after.sets[0])
+        assertEquals(6, after.sets[2].reps)
+        assertEquals(120, after.sets[2].restSeconds)
+    }
+
+    @Test fun spokenNumbersRespectSafetyAndRange() {
+        assertSame(WorkoutTargetCommand.Result.SafetyStop,
+            WorkoutTargetCommand.propose("Đau gối, nghỉ hai phút", "squat", session, 0))
+        assertSame(WorkoutTargetCommand.Result.Unsupported,
+            WorkoutTargetCommand.propose("Tập mười phút", "squat", session, 0))
+    }
+
 }

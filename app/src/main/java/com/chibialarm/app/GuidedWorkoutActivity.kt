@@ -477,6 +477,11 @@ class GuidedWorkoutActivity:Activity() {
         val before = remainingMs + moves.indices.drop(index + 1).sumOf { position ->
             RemainingWorkoutDuration.seconds(moves[position].seconds, position, shorterFromIndex) * 1000L
         }
+        // Bind the proposal to the exact paused workout snapshot. A stale dialog
+        // must not shorten a different step or overwrite a newer timer adjustment.
+        val previewIndex = index
+        val previewRemainingMs = remainingMs
+        val previewShorterFrom = shorterFromIndex
         val proposedFrom = minOf(shorterFromIndex, index)
         val afterCurrent = RemainingWorkoutDuration.shortenActiveMs(remainingMs)
         val after = afterCurrent + moves.indices.drop(index + 1).sumOf { position ->
@@ -496,7 +501,12 @@ class GuidedWorkoutActivity:Activity() {
                 "Giảm thời lượng động tác hiện tại và các động tác phía sau. " +
                 "Những bước đã hoàn thành được giữ nguyên. Đây là ước tính, không bao gồm nghỉ thêm.\\n\\n" + details)
             .setPositiveButton("Xác nhận thay đổi") { _, _ ->
-                if (pausedForSafety || completed || index >= moves.size) return@setPositiveButton
+                if (pausedForSafety || completed || index != previewIndex ||
+                    index !in moves.indices || remainingMs != previewRemainingMs ||
+                    shorterFromIndex != previewShorterFrom) {
+                    Toast.makeText(this, "Giáo án đã thay đổi. Hãy xem trước lại.", Toast.LENGTH_LONG).show()
+                    return@setPositiveButton
+                }
                 shorterFromIndex = proposedFrom
                 remainingMs = afterCurrent
                 val seconds = (remainingMs / 1000).toInt()

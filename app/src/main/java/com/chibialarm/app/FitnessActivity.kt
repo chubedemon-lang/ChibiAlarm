@@ -201,6 +201,29 @@ class FitnessActivity:Activity() {
                             naturalRequest.setSelection(naturalRequest.text.length)
                             (getSystemService(INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager)
                                 ?.showSoftInput(naturalRequest, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+                        }
+                        .setNegativeButton("🎙 Trả lời bằng giọng nói") { _, _ ->
+                            naturalRequest.text.clear()
+                            naturalRequest.hint = FitnessCoachFollowUp.nextQuestion(parsed)
+                            // The external recognizer may use the network; disclose this again
+                            // before every microphone handoff, including follow-up questions.
+                            AlertDialog.Builder(this@FitnessActivity)
+                                .setTitle("Quyền riêng tư giọng nói")
+                                .setMessage("Dịch vụ nhận dạng trên thiết bị có thể yêu cầu micro và xử lý âm thanh trực tuyến. Chibi chỉ nhận văn bản; bạn có thể sửa trước khi gửi.")
+                                .setPositiveButton("Tiếp tục") { _, _ ->
+                                    val speechIntent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                                        putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                                        putExtra(RecognizerIntent.EXTRA_LANGUAGE, "vi-VN")
+                                        putExtra(RecognizerIntent.EXTRA_PROMPT, FitnessCoachFollowUp.nextQuestion(parsed))
+                                    }
+                                    try { startActivityForResult(speechIntent, speechRequestCode) }
+                                    catch (_: android.content.ActivityNotFoundException) {
+                                        Toast.makeText(this@FitnessActivity, "Không có dịch vụ nhận dạng. Hãy nhập câu trả lời bằng bàn phím.", Toast.LENGTH_LONG).show()
+                                        naturalRequest.requestFocus()
+                                    }
+                                }
+                                .setNegativeButton("Hủy", null)
+                                .show()
                         }.show()
                 }
             }

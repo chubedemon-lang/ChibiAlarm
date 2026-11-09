@@ -23,6 +23,14 @@ object WorkoutVoiceCommands {
         Command.UNKNOWN -> "Chưa hiểu yêu cầu; không tự thay đổi buổi tập"
     }
 
+    /**
+     * A repetition target may be applied only when the utterance has no other
+     * recognized action. In particular, "dừng tập và giảm còn 10 lần" must
+     * pause rather than opening a repetition editor. Mixed commands remain
+     * single-action until an explicit multi-action confirmation is supported.
+     */
+    fun mayEditReps(utterance: String): Boolean = parse(utterance) == Command.UNKNOWN
+
     fun parse(utterance: String): Command {
         val normalized = Normalizer.normalize(utterance.lowercase(Locale.ROOT), Normalizer.Form.NFD)
             .replace(Regex("\\p{M}+"), "").replace('đ', 'd')

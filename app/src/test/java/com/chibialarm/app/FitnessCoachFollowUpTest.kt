@@ -9,8 +9,14 @@ class FitnessCoachFollowUpTest {
         assertTrue(question.contains("sức mạnh"))
     }
 
+    @Test fun missingExperiencePromptsTrainingLevel() {
+        val question = FitnessCoachFollowUp.nextQuestion(FitnessNaturalRequest.parse("giãn cơ 15 phút"))
+        assertTrue(question.contains("trình độ"))
+        assertTrue(question.contains("mới bắt đầu"))
+    }
+
     @Test fun missingDurationPromptsTime() {
-        val question = FitnessCoachFollowUp.nextQuestion(FitnessNaturalRequest.parse("giãn cơ không dụng cụ"))
+        val question = FitnessCoachFollowUp.nextQuestion(FitnessNaturalRequest.parse("giãn cơ không dụng cụ, đang tập đều"))
         assertTrue(question.contains("bao nhiêu phút"))
     }
 
@@ -20,7 +26,7 @@ class FitnessCoachFollowUpTest {
     }
 
     @Test fun missingEquipmentPromptsEquipment() {
-        val question = FitnessCoachFollowUp.nextQuestion(FitnessNaturalRequest.parse("giãn cơ 15 phút"))
+        val question = FitnessCoachFollowUp.nextQuestion(FitnessNaturalRequest.parse("giãn cơ 15 phút, đang tập đều"))
         assertTrue(question.contains("thảm"))
     }
 }

@@ -336,18 +336,27 @@ class GuidedWorkoutActivity:Activity() {
                 if (pausedForSafety) {
                     Toast.makeText(this,"Buổi tập đã dừng vì báo đau.",Toast.LENGTH_LONG).show()
                 } else {
+                    // Never silently mutate the session on a potentially misheard compound command.
+                    // Pause first, then require an explicit user decision; cancel keeps the timer intact.
                     pause()
                     val addedSeconds=WorkoutRestRequest.seconds(utterance)
-                    remainingMs=(remainingMs+addedSeconds*1000L).coerceAtMost(600_000L)
-                    val seconds=(remainingMs/1000).toInt()
-                    counter.text=String.format(Locale.US,"%02d:%02d",seconds/60,seconds%60)
-                    control.text="▶ Tiếp tục khi sẵn sàng"
-                    saveCheckpoint()
-                    AlertDialog.Builder(this).setTitle("🌿 Nghỉ và tập nhẹ hơn")
-                        .setMessage("Đã thêm $addedSeconds giây nghỉ.\\n\\n"+moves[index].easier+
-                            "\\n\\nChibi chưa tự đổi kỹ thuật hay số hiệp; hãy chọn cách tập nhẹ hơn nếu phù hợp.")
-                        .setPositiveButton("Đã hiểu",null).show()
-                    speak("Đã thêm $addedSeconds giây nghỉ. "+moves[index].easier)
+                    val exerciseName=moves[index].name
+                    val easierCue=moves[index].easier
+                    AlertDialog.Builder(this).setTitle("🐰 Xác nhận điều chỉnh buổi tập")
+                        .setMessage("Bạn muốn nghỉ thêm $addedSeconds giây và xem cách tập nhẹ hơn cho $exerciseName?"+
+                            "\n\n$easierCue"+
+                            "\n\nChibi chỉ tăng thời gian nghỉ và gợi ý cách tập; chưa tự đổi số hiệp hoặc kỹ thuật.")
+                        .setPositiveButton("Đồng ý điều chỉnh") { _, _ ->
+                            if (pausedForSafety || completed) return@setPositiveButton
+                            remainingMs=(remainingMs+addedSeconds*1000L).coerceAtMost(600_000L)
+                            val seconds=(remainingMs/1000).toInt()
+                            counter.text=String.format(Locale.US,"%02d:%02d",seconds/60,seconds%60)
+                            control.text="▶ Tiếp tục khi sẵn sàng"
+                            saveCheckpoint()
+                            speak("Đã thêm $addedSeconds giây nghỉ. $easierCue")
+                        }
+                        .setNegativeButton("Giữ nguyên",null)
+                        .show()
                 }
             }
             WorkoutVoiceCommands.Command.EASIER -> {

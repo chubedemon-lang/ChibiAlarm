@@ -5,7 +5,7 @@ import java.util.Locale
 
 /** Small, offline command interpreter. Unrecognized speech never controls a workout. */
 object WorkoutVoiceCommands {
-    enum class Command { PAIN, PAUSE, RESUME, NEXT, PREVIOUS, REPEAT, EASIER, SHORTER, SHORTER_REMAINING, REST, UNKNOWN }
+    enum class Command { PAIN, PAUSE, RESUME, NEXT, PREVIOUS, REPEAT, EASIER, EASIER_AND_REST, SHORTER, SHORTER_REMAINING, REST, UNKNOWN }
 
     /** Human-readable action shown before applying fallible speech recognition. */
     fun describe(command: Command): String = when (command) {
@@ -16,6 +16,7 @@ object WorkoutVoiceCommands {
         Command.PREVIOUS -> "Quay lại động tác trước"
         Command.REPEAT -> "Đọc lại hướng dẫn"
         Command.EASIER -> "Hiển thị cách tập dễ hơn"
+        Command.EASIER_AND_REST -> "Hiển thị cách tập dễ hơn và thêm thời gian nghỉ"
         Command.SHORTER -> "Rút ngắn thời gian động tác hiện tại"
         Command.SHORTER_REMAINING -> "Rút ngắn động tác hiện tại và tất cả động tác còn lại"
         Command.REST -> "Thêm 30 giây nghỉ"
@@ -44,6 +45,8 @@ object WorkoutVoiceCommands {
             normalized.contains("tam dung") || normalized.contains("dung lai") ||
                 normalized.contains("dung tap") || normalized.contains("khong tap noi") ||
                 normalized.contains("het suc") || "pause" in words -> Command.PAUSE
+            (normalized.contains("de hon") || normalized.contains("giam do kho") || normalized.contains("nhe hon")) &&
+                (normalized.contains("nghi") || normalized.contains("can nghi")) -> Command.EASIER_AND_REST
             normalized.contains("nghi them") || normalized.contains("nghi mot chut") || normalized.contains("met roi") ||
                 normalized.contains("hoi met") || normalized.contains("met qua") ||
                 normalized.contains("met lam") || Regex("""\bnghi(?: them)?\s+[0-9]{1,3}\s*(?:giay|gi|s|phut)\b""").containsMatchIn(normalized) ||

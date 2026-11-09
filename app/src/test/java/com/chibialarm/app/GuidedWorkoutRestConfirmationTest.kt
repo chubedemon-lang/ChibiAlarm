@@ -117,4 +117,35 @@ class GuidedWorkoutRestConfirmationTest {
         activity.finish()
     }
 
+    @Test fun compoundEasierRestRejectsStaleTimer() {
+        val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup().get()
+        val command = GuidedWorkoutActivity::class.java
+            .getDeclaredMethod("handleCoachCommand", String::class.java)
+        command.isAccessible = true
+        command.invoke(activity, "dễ hơn và nghỉ thêm 30 giây")
+        val dialog = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
+        assertTrue(dialog.isShowing)
+        val field = GuidedWorkoutActivity::class.java.getDeclaredField("remainingMs")
+        field.isAccessible = true
+        field.setLong(activity, remaining(activity) + 2_000L)
+        val changed = remaining(activity)
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(changed, remaining(activity))
+        activity.finish()
+    }
+
+    @Test fun compoundEasierRestCancellationLeavesTimerUntouched() {
+        val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup().get()
+        val before = remaining(activity)
+        val command = GuidedWorkoutActivity::class.java
+            .getDeclaredMethod("handleCoachCommand", String::class.java)
+        command.isAccessible = true
+        command.invoke(activity, "dễ hơn và nghỉ thêm 30 giây")
+        val dialog = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
+        dialog.getButton(AlertDialog.BUTTON_NEGATIVE).performClick()
+        assertEquals(before, remaining(activity))
+        activity.finish()
+    }
+
 }

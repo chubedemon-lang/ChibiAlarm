@@ -15,8 +15,12 @@ object WorkoutTargetCommand {
     }
 
     private val painWords = Regex("""\b(đau|nhức|chấn thương|choáng|chóng mặt|khó thở)\b""")
-    private val repsPattern = Regex("""(?:\b(?:còn|xuống|thành|giảm xuống|tăng lên|đổi thành)\s*)?(\d{1,3})\s*(?:lần|cái|reps?)\b""")
-    private val restPattern = Regex("""(?:nghỉ|thời gian nghỉ)\s*(?:thêm|lên|thành|còn)?\s*(\d{1,3})\s*(giây|phút)\b""")
+    private val repsPattern = Regex("""(?:\b(?:còn|xuống|thành|giảm xuống|tăng lên|đổi thành)\s*)?(\d{1,3}|một|hai|ba|bốn|tư|năm|lăm|sáu|bảy|tám|chín|mười)\s*(?:lần|cái|reps?)\b""")
+    private val restPattern = Regex("""(?:nghỉ|thời gian nghỉ)\s*(?:thêm|lên|thành|còn)?\s*(\d{1,3}|một|hai|ba|bốn|tư|năm|lăm|sáu|bảy|tám|chín|mười)\s*(giây|phút)\b""")
+    private val vietnameseNumbers = mapOf("một" to 1, "hai" to 2, "ba" to 3, "bốn" to 4,
+        "tư" to 4, "năm" to 5, "lăm" to 5, "sáu" to 6, "bảy" to 7,
+        "tám" to 8, "chín" to 9, "mười" to 10)
+    private fun number(value: String?): Int? = value?.toIntOrNull() ?: vietnameseNumbers[value]
 
     fun propose(
         spokenText: String,
@@ -29,9 +33,9 @@ object WorkoutTargetCommand {
         if (selectedExerciseId.isBlank() || completedSets !in 0..session.sets.size) return Result.Unsupported
         if (session.sets.drop(completedSets).none { it.exerciseId == selectedExerciseId }) return Result.Unsupported
 
-        val reps = repsPattern.find(normalized)?.groupValues?.get(1)?.toIntOrNull()
+        val reps = number(repsPattern.find(normalized)?.groupValues?.get(1))
         val restMatch = restPattern.find(normalized)
-        val rawRest = restMatch?.groupValues?.get(1)?.toIntOrNull()
+        val rawRest = number(restMatch?.groupValues?.get(1))
         val rest = if (rawRest != null) {
             if (restMatch?.groupValues?.get(2) == "phút") rawRest * 60 else rawRest
         } else null

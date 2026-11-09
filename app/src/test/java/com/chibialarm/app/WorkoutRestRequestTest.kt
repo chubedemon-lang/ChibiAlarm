@@ -35,5 +35,15 @@ class WorkoutRestRequestTest {
             WorkoutVoiceCommands.parse("nghỉ một phút rưỡi"))
         assertEquals(WorkoutVoiceCommands.Command.REST,
             WorkoutVoiceCommands.parse("nghỉ hai phút"))
+        assertEquals(WorkoutVoiceCommands.Command.REST,
+            WorkoutVoiceCommands.parse("nghỉ 90 giây"))
+        assertEquals(WorkoutVoiceCommands.Command.REST,
+            WorkoutVoiceCommands.parse("cho tôi nghỉ 2 phút"))
+        assertEquals(WorkoutVoiceCommands.Command.REST,
+            WorkoutVoiceCommands.parse("nghỉ thêm 45 s"))
+        assertEquals(WorkoutVoiceCommands.Command.PAIN,
+            WorkoutVoiceCommands.parse("đau gối, nghỉ 60 giây"))
+        assertEquals(WorkoutVoiceCommands.Command.UNKNOWN,
+            WorkoutVoiceCommands.parse("bài 60 giây"))
     }
 }

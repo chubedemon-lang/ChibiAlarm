@@ -40,6 +40,13 @@ object WorkoutTargetCommand {
         return tens + unit
     }
 
+    /** Parse a spoken repetition target without changing the workout. */
+    fun spokenReps(spokenText: String): Int? {
+        val normalized = spokenText.lowercase(Locale.ROOT).trim()
+        if (painWords.containsMatchIn(normalized)) return null
+        return number(repsPattern.find(normalized)?.groupValues?.get(1))?.takeIf { it in 1..100 }
+    }
+
     fun propose(
         spokenText: String,
         selectedExerciseId: String,

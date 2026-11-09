@@ -14,9 +14,9 @@ object WorkoutTargetCommand {
         object SafetyStop : Result()
     }
 
-    private val painWords = Regex("""\\b(đau|nhức|chấn thương|choáng|chóng mặt|khó thở)\\b""")
-    private val repsPattern = Regex("""(?:\\b(?:còn|xuống|thành|giảm xuống|tăng lên|đổi thành)\\s*)?(\\d{1,3})\\s*(?:lần|cái|reps?)\\b""")
-    private val restPattern = Regex("""(?:nghỉ|thời gian nghỉ)\\s*(?:thêm|lên|thành|còn)?\\s*(\\d{1,3})\\s*(giây|phút)\\b""")
+    private val painWords = Regex("""\b(đau|nhức|chấn thương|choáng|chóng mặt|khó thở)\b""")
+    private val repsPattern = Regex("""(?:\b(?:còn|xuống|thành|giảm xuống|tăng lên|đổi thành)\s*)?(\d{1,3})\s*(?:lần|cái|reps?)\b""")
+    private val restPattern = Regex("""(?:nghỉ|thời gian nghỉ)\s*(?:thêm|lên|thành|còn)?\s*(\d{1,3})\s*(giây|phút)\b""")
 
     fun propose(
         spokenText: String,
@@ -33,7 +33,7 @@ object WorkoutTargetCommand {
         val restMatch = restPattern.find(normalized)
         val rawRest = restMatch?.groupValues?.get(1)?.toIntOrNull()
         val rest = if (rawRest != null) {
-            if (restMatch.groupValues[2] == "phút") rawRest * 60 else rawRest
+            if (restMatch?.groupValues?.get(2) == "phút") rawRest * 60 else rawRest
         } else null
         if (reps == null && rest == null) return Result.Unsupported
         if (reps != null && reps !in 1..100) return Result.Unsupported

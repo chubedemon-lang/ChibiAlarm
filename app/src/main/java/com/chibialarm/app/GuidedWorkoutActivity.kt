@@ -44,6 +44,9 @@ class GuidedWorkoutActivity:Activity() {
     private var ready=false
     // Guest-only checkpoint; authenticated profiles must use isolated storage.
     private val checkpoint by lazy { getSharedPreferences("chibi_workout_checkpoint_guest", MODE_PRIVATE) }
+    // Index-scoped rep guidance: completed steps are never retroactively edited.
+    private val repTargets=mutableMapOf<Int,Int>()
+    private fun targetDose(position:Int):String = repTargets[position]?.let { "$it lần (mục tiêu đã chỉnh)" } ?: moves[position].dose
     private var completed=false
     // Do not overwrite a saved session before the user chooses Restore or Start over.
     private var checkpointDecisionPending=false
@@ -54,6 +57,7 @@ class GuidedWorkoutActivity:Activity() {
             .putBoolean("safety",pausedForSafety)
             .putBoolean("tenSecondCueGiven",tenSecondCueGiven)
             .putInt("shorterFrom",shorterFromIndex)
+            .putString("repTargets",repTargets.entries.joinToString(",") { "${it.key}:${it.value}" })
             .putBoolean("started",activeElapsedMs()>0L)
             .putLong("elapsed",activeElapsedMs())
             .putLong("savedAt",System.currentTimeMillis()).apply()
@@ -72,6 +76,8 @@ class GuidedWorkoutActivity:Activity() {
                 checkpointDecisionPending=false
                 index=checkpoint.getInt("index",0).coerceIn(0,moves.lastIndex)
                 shorterFromIndex=checkpoint.getInt("shorterFrom",Int.MAX_VALUE).coerceIn(0, moves.size)
+                repTargets.clear()
+                repTargets.putAll(WorkoutRepTargets.decode(checkpoint.getString("repTargets",null),moves.size,index))
                 displayStep()
                 remainingMs=checkpoint.getLong("remaining",remainingMs).coerceIn(0L,600_000L)
                 tenSecondCueGiven=checkpoint.getBoolean("tenSecondCueGiven",remainingMs<=10_000L)
@@ -211,6 +217,11 @@ class GuidedWorkoutActivity:Activity() {
             setOnClickListener { requestTypedCommand() }
         })
         root.addView(Button(this).apply {
+            text="🔢 Chỉnh số lần tập động tác hiện tại"
+            contentDescription="Đặt mục tiêu số lần cho bước hiện tại, xem trước và xác nhận"
+            setOnClickListener { requestRepTarget() }
+        })
+        root.addView(Button(this).apply {
             text="⚙️ Điều chỉnh buổi tập ngay"
             contentDescription="Tăng thời gian nghỉ, rút ngắn động tác hoặc nghe hướng dẫn dễ hơn"
             setOnClickListener { adjustCurrentMove() }
@@ -262,6 +273,8 @@ class GuidedWorkoutActivity:Activity() {
         if(savedInstanceState!=null &&
             savedInstanceState.getString("workout_program")==program.id) {
             index=savedInstanceState.getInt("workout_index",0).coerceIn(0,moves.lastIndex)
+            repTargets.clear()
+            repTargets.putAll(WorkoutRepTargets.decode(savedInstanceState.getString("workout_rep_targets"),moves.size,index))
             displayStep()
             remainingMs=savedInstanceState.getLong("workout_remaining",remainingMs)
                 .coerceIn(0L,600_000L)
@@ -280,6 +293,7 @@ class GuidedWorkoutActivity:Activity() {
         // Save monotonic elapsed duration, not an absolute deadline.
         pause()
         outState.putString("workout_program",program.id)
+        outState.putString("workout_rep_targets",repTargets.entries.joinToString(",") { "${it.key}:${it.value}" })
         outState.putInt("workout_index",index)
         outState.putLong("workout_remaining",remainingMs)
         outState.putBoolean("workout_ten_second_cue",tenSecondCueGiven)
@@ -419,6 +433,46 @@ class GuidedWorkoutActivity:Activity() {
                 speak("Đã thêm thời gian nghỉ. Hãy tiếp tục khi sẵn sàng.")
             }
             .setNegativeButton("Giữ nguyên", null).show()
+    }
+
+    /** Repetition guidance for the current step, without pretending to count actual reps. */
+    private fun requestRepTarget() {
+        if (pausedForSafety || completed || index !in moves.indices) return
+        pause()
+        val selected=index
+        val before=repTargets[selected]
+        val field=EditText(this).apply {
+            inputType=android.text.InputType.TYPE_CLASS_NUMBER
+            hint="Số lần từ 1 đến 100"
+            setText(before?.toString() ?: "8")
+            selectAll()
+        }
+        val dialog=AlertDialog.Builder(this).setTitle("🔢 Chọn số lần tập")
+            .setMessage("Chỉ thay đổi mục tiêu hướng dẫn của bước hiện tại; Chibi chưa tự đếm số lần tập thực tế.")
+            .setView(field).setPositiveButton("Xem trước",null)
+            .setNegativeButton("Hủy",null).create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val reps=field.text.toString().trim().toIntOrNull()
+                if (reps==null || reps !in 1..100) field.error="Nhập từ 1 đến 100 lần"
+                else {
+                    dialog.dismiss()
+                    AlertDialog.Builder(this).setTitle("Xác nhận số lần tập")
+                        .setMessage("${moves[selected].name}\\n${targetDose(selected)} → $reps lần.\\nKhông sửa các bước đã hoàn thành hoặc thời gian đếm ngược.")
+                        .setPositiveButton("Áp dụng") { _, _ ->
+                            if (completed || pausedForSafety || index!=selected || repTargets[selected]!=before) {
+                                Toast.makeText(this,"Buổi tập đã thay đổi. Hãy xem trước lại.",Toast.LENGTH_LONG).show()
+                            } else {
+                                repTargets[selected]=reps
+                                renderDose()
+                                saveCheckpoint()
+                                speak("Mục tiêu động tác hiện tại là $reps lần. Tập trong khả năng của bạn.")
+                            }
+                        }.setNegativeButton("Giữ nguyên",null).show()
+                }
+            }
+        }
+        dialog.show()
     }
 
     /** Custom rest duration is user-selected, bounded and confirmed before changing the timer. */
@@ -764,6 +818,10 @@ class GuidedWorkoutActivity:Activity() {
         dialog.show()
     }
 
+    private fun renderDose() {
+        val move=moves[index]
+        guide.text="🎯 ${targetDose(index)}\n\n📖 Cách thực hiện:\n${move.steps}\n\n🌿 Giảm độ khó:\n${move.easier}\n\n⚠️ Lưu ý:\n${move.avoid}"
+    }
     private fun displayStep() {
         paused=true;handler.removeCallbacks(tick)
         val move=moves[index]
@@ -771,7 +829,7 @@ class GuidedWorkoutActivity:Activity() {
         remainingMs=RemainingWorkoutDuration.seconds(move.seconds,index,shorterFromIndex)*1000L
         heading.text="${index+1}/${moves.size} • ${move.name}"
         poseView.pose=WorkoutPoseGuide.classify(move.name)
-        guide.text="🎯 ${move.dose}\n\n📖 Cách thực hiện:\n${move.steps}\n\n🌿 Giảm độ khó:\n${move.easier}\n\n⚠️ Lưu ý:\n${move.avoid}"
+        renderDose()
         progress.progress=index
         val sec=(remainingMs/1000).toInt()
         counter.text=String.format(Locale.US,"%02d:%02d",sec/60,sec%60)
@@ -794,7 +852,7 @@ class GuidedWorkoutActivity:Activity() {
         startedAt=SystemClock.elapsedRealtime()
         deadline=SystemClock.elapsedRealtime()+remainingMs
         control.text="⏸ Tạm dừng"
-        speak("Bài ${index+1}: ${moves[index].name}. ${moves[index].dose}. ${moves[index].steps}")
+        speak("Bài ${index+1}: ${moves[index].name}. ${targetDose(index)}. ${moves[index].steps}")
         handler.post(tick)
     }
     private fun pause() {

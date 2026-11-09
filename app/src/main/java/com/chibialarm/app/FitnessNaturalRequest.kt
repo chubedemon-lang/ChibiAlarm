@@ -10,6 +10,7 @@ import java.util.Locale
 object FitnessNaturalRequest {
     data class Result(
         val goal: Int? = null,
+        val level: Int? = null,
         val energy: Int? = null,
         val minutes: Int? = null,
         val equipment: Int? = null,
@@ -49,6 +50,12 @@ object FitnessNaturalRequest {
             has("moi bat dau", "tan thu") -> 4
             else -> null
         }
+        val level = when {
+            has("moi bat dau", "tan thu", "chua tap bao gio", "nguoi moi", "beginner") -> 0
+            has("dang tap deu", "trung cap", "tap thuong xuyen", "intermediate") -> 1
+            has("co kinh nghiem", "nang cao", "tap lau nam", "advanced") -> 2
+            else -> null
+        }
         val equipment = when {
             has("khong dung cu", "khong co dung cu", "tay khong") -> 0
             has("ta don", "day khang luc", "co ta") -> 2
@@ -57,13 +64,21 @@ object FitnessNaturalRequest {
         }
         val duration = Regex("\\b(\\d{1,3})\\s*(phut|minute|min)\\b")
             .find(text)?.groupValues?.get(1)?.toIntOrNull()?.takeIf { it in 5..120 }
-        val detected = listOf(goal, energy, equipment, duration).count { it != null } +
+        val detected = listOf(goal, level, energy, equipment, duration).count { it != null } +
             if (injury || lowImpact) 1 else 0
         val reply = when {
             injury -> "Mày báo đau hoặc có dấu hiệu cần thận trọng. Tao đã chọn mức hạn chế vận động cao nhất. Không bắt đầu tập khi đang có triệu chứng; hãy tham khảo chuyên gia y tế. Kiểm tra các lựa chọn trước khi tiếp tục."
             detected == 0 -> "Tao chưa hiểu rõ mục tiêu. Hãy thử: 'giãn cơ 15 phút không dụng cụ'. Mày vẫn có thể chọn thủ công."
             else -> "Tao đã điền những thông tin nhận ra vào biểu mẫu. Kiểm tra lại mục tiêu, thời gian, dụng cụ và hạn chế vận động rồi bấm 'Gợi ý chương trình phù hợp'. Đây là gợi ý offline, không phải tư vấn y khoa."
         }
-        return Result(goal, energy, duration, equipment, if (injury) 2 else if (lowImpact) 1 else null, reply)
+        return Result(
+            goal = goal,
+            level = level,
+            energy = energy,
+            minutes = duration,
+            equipment = equipment,
+            impact = if (injury) 2 else if (lowImpact) 1 else null,
+            reply = reply
+        )
     }
 }

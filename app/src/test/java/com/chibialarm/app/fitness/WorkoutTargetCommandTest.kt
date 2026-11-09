@@ -99,4 +99,30 @@ class WorkoutTargetCommandTest {
             WorkoutTargetCommand.propose("Đau gối, nghỉ một phút ba mươi giây", "squat", session, 0))
     }
 
+    @Test fun competingNavigationOrPauseNeverOpensTargetEditor() {
+        val utterances = listOf(
+            "Dừng tập và giảm còn 6 lần",
+            "Chuyển bài và giảm còn 6 lần",
+            "Tiếp tục và giảm còn 6 lần",
+            "Bài trước rồi giảm còn 6 lần",
+            "Tập dễ hơn và giảm còn 6 lần"
+        )
+        for (spoken in utterances) {
+            assertNull(spoken, WorkoutTargetCommand.spokenReps(spoken))
+            assertSame(spoken, WorkoutTargetCommand.Result.Unsupported,
+                WorkoutTargetCommand.propose(spoken, "squat", session, 0))
+        }
+        assertSame(WorkoutTargetCommand.Result.SafetyStop,
+            WorkoutTargetCommand.propose("Khó thở và giảm còn 6 lần", "squat", session, 0))
+    }
+
+    @Test fun restAndRepetitionRemainValidTogether() {
+        val result = WorkoutTargetCommand.propose(
+            "Giảm còn 6 lần và nghỉ 90 giây", "squat", session, 0)
+        assertTrue(result is WorkoutTargetCommand.Result.Proposed)
+        val after = (result as WorkoutTargetCommand.Result.Proposed).preview.after
+        assertEquals(6, after.sets[0].reps)
+        assertEquals(90, after.sets[0].restSeconds)
+    }
+
 }

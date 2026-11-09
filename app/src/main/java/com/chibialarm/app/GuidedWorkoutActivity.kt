@@ -367,16 +367,7 @@ class GuidedWorkoutActivity:Activity() {
                 speak(moves[index].easier)
             }
             WorkoutVoiceCommands.Command.SHORTER_REMAINING -> shortenRemainingWorkout()
-            WorkoutVoiceCommands.Command.SHORTER -> {
-                if (!pausedForSafety) {
-                    pause()
-                    remainingMs=RemainingWorkoutDuration.shortenActiveMs(remainingMs)
-                    val seconds=(remainingMs/1000).toInt()
-                    counter.text=String.format(Locale.US,"%02d:%02d",seconds/60,seconds%60)
-                    control.text="▶ Tiếp tục bài ngắn hơn"
-                    speak("Đã rút ngắn động tác còn một nửa. Hãy tiếp tục khi sẵn sàng.")
-                }
-            }
+            WorkoutVoiceCommands.Command.SHORTER -> confirmShortenCurrentMove()
             WorkoutVoiceCommands.Command.REST -> {
                 if (pausedForSafety) {
                     Toast.makeText(this,"Buổi tập đang dừng vì báo đau; không thay đổi thời gian.",Toast.LENGTH_LONG).show()
@@ -397,6 +388,27 @@ class GuidedWorkoutActivity:Activity() {
             }
         }
     }
+    /** Show the exact impact before changing the active exercise; cancel leaves its timer untouched. */
+    private fun confirmShortenCurrentMove() {
+        if (pausedForSafety || completed) return
+        pause()
+        val originalMs = remainingMs
+        val proposedMs = RemainingWorkoutDuration.shortenActiveMs(originalMs)
+        val moveName = moves.getOrNull(index)?.name ?: return
+        AlertDialog.Builder(this).setTitle("Xác nhận rút ngắn động tác")
+            .setMessage("Bài: $moveName\\nThời gian còn lại: ${originalMs / 1000} giây → ${proposedMs / 1000} giây.\\n\\nCác động tác sau không thay đổi. Bạn có thể nghỉ thêm nếu cần.")
+            .setPositiveButton("Áp dụng") { _, _ ->
+                if (pausedForSafety || completed || index !in moves.indices) return@setPositiveButton
+                remainingMs = proposedMs
+                val seconds = (remainingMs / 1000).toInt()
+                counter.text = String.format(Locale.US, "%02d:%02d", seconds / 60, seconds % 60)
+                control.text = "▶ Tiếp tục bài ngắn hơn"
+                saveCheckpoint()
+                speak("Đã rút ngắn động tác còn ${seconds} giây. Hãy tiếp tục khi sẵn sàng.")
+            }
+            .setNegativeButton("Giữ nguyên", null)
+            .show()
+    }
     /** Explicit local adjustments; never changes other moves or silently claims AI advice. */
     private fun adjustCurrentMove() {
         if (pausedForSafety) {
@@ -415,14 +427,7 @@ class GuidedWorkoutActivity:Activity() {
         AlertDialog.Builder(this).setTitle("Chibi điều chỉnh theo sức của bạn")
             .setItems(options) { _, choice ->
                 when(choice) {
-                    0 -> {
-                        pause()
-                        remainingMs=RemainingWorkoutDuration.shortenActiveMs(remainingMs)
-                        val seconds=(remainingMs/1000).toInt()
-                        counter.text=String.format(Locale.US,"%02d:%02d",seconds/60,seconds%60)
-                        control.text="▶ Tiếp tục bài nhẹ hơn"
-                        speak("Đã rút ngắn thời gian động tác. Hãy tập vừa sức.")
-                    }
+                    0 -> confirmShortenCurrentMove()
                     1 -> {
                         pause()
                         remainingMs=(remainingMs+30_000L).coerceAtMost(600_000L)

@@ -1,6 +1,7 @@
 package com.chibialarm.app.fitness
 
 import java.util.Locale
+import com.chibialarm.app.WorkoutVoiceCommands
 
 /**
  * Deterministic Vietnamese offline coach commands for an explicitly selected exercise.
@@ -40,10 +41,26 @@ object WorkoutTargetCommand {
         return tens + unit
     }
 
+    /** Navigation, pause and safety intents must never be hidden by a target edit. */
+    private fun hasCompetingControlIntent(text: String): Boolean = when (WorkoutVoiceCommands.parse(text)) {
+        WorkoutVoiceCommands.Command.PAIN,
+        WorkoutVoiceCommands.Command.PAUSE,
+        WorkoutVoiceCommands.Command.RESUME,
+        WorkoutVoiceCommands.Command.NEXT,
+        WorkoutVoiceCommands.Command.PREVIOUS,
+        WorkoutVoiceCommands.Command.REPEAT,
+        WorkoutVoiceCommands.Command.EASIER,
+        WorkoutVoiceCommands.Command.EASIER_AND_REST,
+        WorkoutVoiceCommands.Command.SHORTER,
+        WorkoutVoiceCommands.Command.SHORTER_REMAINING -> true
+        WorkoutVoiceCommands.Command.REST,
+        WorkoutVoiceCommands.Command.UNKNOWN -> false
+    }
+
     /** Parse a spoken repetition target without changing the workout. */
     fun spokenReps(spokenText: String): Int? {
         val normalized = spokenText.lowercase(Locale.ROOT).trim()
-        if (painWords.containsMatchIn(normalized)) return null
+        if (painWords.containsMatchIn(normalized) || hasCompetingControlIntent(normalized)) return null
         return number(repsPattern.find(normalized)?.groupValues?.get(1))?.takeIf { it in 1..100 }
     }
 
@@ -54,7 +71,9 @@ object WorkoutTargetCommand {
         completedSets: Int
     ): Result {
         val normalized = spokenText.lowercase(Locale.ROOT).trim()
-        if (painWords.containsMatchIn(normalized) || session.pausedForSafety) return Result.SafetyStop
+        if (painWords.containsMatchIn(normalized) || session.pausedForSafety ||
+            WorkoutVoiceCommands.parse(normalized) == WorkoutVoiceCommands.Command.PAIN) return Result.SafetyStop
+        if (hasCompetingControlIntent(normalized)) return Result.Unsupported
         if (selectedExerciseId.isBlank() || completedSets !in 0..session.sets.size) return Result.Unsupported
         if (session.sets.drop(completedSets).none { it.exerciseId == selectedExerciseId }) return Result.Unsupported
 

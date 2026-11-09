@@ -156,7 +156,7 @@ class FitnessActivity:Activity() {
         val impactOptions=arrayOf("Không có hạn chế được báo","Ưu tiên bài ít tác động, không nhảy","Đang đau hoặc có chấn thương")
         val impactSpinner=Spinner(this).apply {
             adapter=ArrayAdapter(this@FitnessActivity,android.R.layout.simple_spinner_dropdown_item,impactOptions)
-            setSelection(prefs.getInt("recommendImpact",0).coerceIn(0,2))
+            setSelection(0) // Sensitive movement limitations are session-only
         }
         root.addView(impactSpinner)
         // Session-only handoff: no health preferences are written to SharedPreferences.
@@ -213,7 +213,7 @@ class FitnessActivity:Activity() {
                 val equipment=equipmentSpinner.selectedItemPosition
                 val impact=impactSpinner.selectedItemPosition
                 prefs.edit().putInt("recommendGoal",goal).putInt("recommendEnergy",energy)
-                    .putInt("recommendEquipment",equipment).putInt("recommendImpact",impact).apply()
+                    .putInt("recommendEquipment",equipment).apply()
                 val recommendation=FitnessPlanAdvisor.recommend(FitnessPlanAdvisor.Preferences(
                     goal,energy,level.selectedItemPosition,mins[length.selectedItemPosition],equipment,impact))
                 val id=recommendation.programId
@@ -231,6 +231,29 @@ class FitnessActivity:Activity() {
                                 .setPositiveButton("Tôi đã hiểu"){_,_->startProgram(p)}
                                 .setNegativeButton("Hủy",null).show()
                         } else startProgram(p)
+                    }
+                    .setNeutralButton("📖 Xem từng bước") { _, _ ->
+                        val steps = TrainingCatalog.adjusted(p, level.selectedItemPosition,
+                            mins[length.selectedItemPosition])
+                            .mapIndexed { i, move ->
+                                "${i + 1}. ${move.name} — ${move.dose}\n" +
+                                    "Cách tập: ${move.steps}\n" +
+                                    "Dễ hơn: ${move.easier}\n" +
+                                    "Lưu ý: ${move.avoid}"
+                            }.joinToString("\n\n")
+                        AlertDialog.Builder(this@FitnessActivity)
+                            .setTitle("📖 ${p.name} • hướng dẫn trước khi tập")
+                            .setMessage(steps + "\n\nBạn có thể quay lại để thay đổi mục tiêu hoặc thời lượng.")
+                            .setPositiveButton("▶ Bắt đầu") { _, _ ->
+                                if (impact == 2) {
+                                    AlertDialog.Builder(this@FitnessActivity)
+                                        .setTitle("Ưu tiên an toàn")
+                                        .setMessage("Khi đang đau hoặc chấn thương, chỉ tập nếu được chuyên gia xác nhận phù hợp. Dừng ngay nếu triệu chứng tăng.")
+                                        .setPositiveButton("Tôi đã hiểu") { _, _ -> startProgram(p) }
+                                        .setNegativeButton("Hủy", null).show()
+                                } else startProgram(p)
+                            }
+                            .setNegativeButton("Đóng", null).show()
                     }
                     .setNegativeButton("Chọn bài khác",null).show()
             }

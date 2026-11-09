@@ -2,6 +2,8 @@ package com.chibialarm.app
 
 import android.app.AlertDialog
 import android.content.Context
+import android.os.Looper
+import org.robolectric.Shadows.shadowOf
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -50,6 +52,7 @@ class GuidedWorkoutRestConfirmationTest {
         val before = remaining(activity)
         val dialog = propose(activity, 30)
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+        shadowOf(Looper.getMainLooper()).idle()
         assertEquals((before + 30_000L).coerceAtMost(600_000L), remaining(activity))
         activity.finish()
     }
@@ -62,6 +65,7 @@ class GuidedWorkoutRestConfirmationTest {
         field.setLong(activity, remaining(activity) + 1_000L)
         val changed = remaining(activity)
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+        shadowOf(Looper.getMainLooper()).idle()
         assertEquals(changed, remaining(activity))
         activity.finish()
     }

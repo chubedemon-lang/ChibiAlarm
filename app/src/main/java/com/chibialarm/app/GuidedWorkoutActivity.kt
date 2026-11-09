@@ -333,11 +333,13 @@ class GuidedWorkoutActivity:Activity() {
         pause()
         val selected = index
         val before = repTargets[selected]
+        val previewRemainingMs = remainingMs
         val oldDose = targetDose(selected)
         AlertDialog.Builder(this).setTitle("🎯 Xác nhận số lần tập")
             .setMessage("${moves[selected].name}: $oldDose → $reps lần.\\nChỉ thay đổi hướng dẫn, không tự đếm lần tập.")
             .setPositiveButton("Áp dụng") { _, _ ->
-                if (pausedForSafety || completed || index != selected || repTargets[selected] != before) {
+                if (pausedForSafety || completed || index != selected ||
+                    repTargets[selected] != before || remainingMs != previewRemainingMs) {
                     Toast.makeText(this, "Buổi tập đã thay đổi. Hãy xem trước lại.", Toast.LENGTH_LONG).show()
                 } else {
                     repTargets[selected] = reps

@@ -65,6 +65,20 @@ class WorkoutVoiceCommandsTest {
         assertEquals(C.REST, WorkoutVoiceCommands.parse("Nghỉ thêm 60 giây"))
     }
 
+    @Test fun spokenRepsCannotOverrideSafetyPauseOrOtherWorkoutActions() {
+        for (phrase in listOf(
+            "Dừng tập và giảm còn 10 lần",
+            "Tôi đau gối, giảm còn 6 lần",
+            "Nghỉ thêm 30 giây và giảm còn 8 lần",
+            "Bài tiếp theo, giảm còn 12 lần",
+            "Tiếp tục và giảm còn 15 lần"
+        )) {
+            org.junit.Assert.assertFalse(phrase, WorkoutVoiceCommands.mayEditReps(phrase))
+        }
+        org.junit.Assert.assertTrue(WorkoutVoiceCommands.mayEditReps("Giảm squat còn 6 lần"))
+        org.junit.Assert.assertTrue(WorkoutVoiceCommands.mayEditReps("Giảm xuống hai mươi lăm lần"))
+    }
+
     @Test fun unknownOrOversizedInputNeverExecutesAction() {
         assertEquals(C.UNKNOWN, WorkoutVoiceCommands.parse(""))
         assertEquals(C.UNKNOWN, WorkoutVoiceCommands.parse("thời tiết hôm nay thế nào"))

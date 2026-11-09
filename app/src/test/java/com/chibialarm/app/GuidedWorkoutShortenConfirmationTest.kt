@@ -4,6 +4,8 @@ import android.app.AlertDialog
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.Before
+import org.robolectric.RuntimeEnvironment
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
@@ -11,6 +13,14 @@ import org.robolectric.shadows.ShadowAlertDialog
 
 @RunWith(RobolectricTestRunner::class)
 class GuidedWorkoutShortenConfirmationTest {
+    @Before fun clearGuestWorkoutCheckpoint() {
+        // Tests share Robolectric application preferences; a prior test may leave
+        // a restore dialog open, preventing this test from exercising the edit dialog.
+        RuntimeEnvironment.getApplication()
+            .getSharedPreferences("chibi_workout_checkpoint_guest", android.content.Context.MODE_PRIVATE)
+            .edit().clear().commit()
+    }
+
     private fun remaining(activity: GuidedWorkoutActivity): Long {
         val field = GuidedWorkoutActivity::class.java.getDeclaredField("remainingMs")
         field.isAccessible = true

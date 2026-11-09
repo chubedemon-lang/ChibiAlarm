@@ -458,13 +458,7 @@ class GuidedWorkoutActivity:Activity() {
             .setItems(options) { _, choice ->
                 when(choice) {
                     0 -> confirmShortenCurrentMove()
-                    1 -> {
-                        pause()
-                        remainingMs=(remainingMs+30_000L).coerceAtMost(600_000L)
-                        val seconds=(remainingMs/1000).toInt()
-                        counter.text=String.format(Locale.US,"%02d:%02d",seconds/60,seconds%60)
-                        speak("Đã thêm ba mươi giây. Bạn có thể nghỉ lâu hơn nếu cần.")
-                    }
+                    1 -> confirmExtraRest(30)
                     2 -> {
                         pause()
                         AlertDialog.Builder(this).setTitle("Cách tập dễ hơn")

@@ -372,13 +372,7 @@ class GuidedWorkoutActivity:Activity() {
                 if (pausedForSafety) {
                     Toast.makeText(this,"Buổi tập đang dừng vì báo đau; không thay đổi thời gian.",Toast.LENGTH_LONG).show()
                 } else {
-                    pause()
-                    val addedSeconds=WorkoutRestRequest.seconds(utterance)
-                    remainingMs=(remainingMs+addedSeconds*1000L).coerceAtMost(600_000L)
-                    val seconds=(remainingMs/1000).toInt()
-                    counter.text=String.format(Locale.US,"%02d:%02d",seconds/60,seconds%60)
-                    saveCheckpoint()
-                    speak("Đã thêm $addedSeconds giây nghỉ. Khi sẵn sàng hãy nói tiếp tục.")
+                    confirmExtraRest(WorkoutRestRequest.seconds(utterance))
                 }
             }
             WorkoutVoiceCommands.Command.UNKNOWN -> {
@@ -388,6 +382,38 @@ class GuidedWorkoutActivity:Activity() {
             }
         }
     }
+    /**
+     * Spoken rest requests are proposals, not immediate timer mutations.
+     * Guard against stale dialogs after moving to another exercise or changing the timer.
+     */
+    private fun confirmExtraRest(addedSeconds: Int) {
+        if (pausedForSafety || completed || index !in moves.indices) return
+        pause()
+        val originalMs = remainingMs
+        val originalIndex = index
+        val proposedMs = (originalMs + addedSeconds.coerceIn(0, 600) * 1000L)
+            .coerceAtMost(600_000L)
+        if (proposedMs == originalMs) {
+            Toast.makeText(this, "Đã đạt giới hạn thời gian 10 phút.", Toast.LENGTH_LONG).show()
+            return
+        }
+        AlertDialog.Builder(this).setTitle("Xác nhận thêm thời gian nghỉ")
+            .setMessage("Động tác: ${moves[originalIndex].name}\\n" +
+                "Thời gian hiện tại: ${originalMs / 1000} giây → ${proposedMs / 1000} giây.\\n" +
+                "Chỉ thay đổi sau khi bạn xác nhận.")
+            .setPositiveButton("Thêm thời gian") { _, _ ->
+                if (pausedForSafety || completed || index != originalIndex ||
+                    remainingMs != originalMs) return@setPositiveButton
+                remainingMs = proposedMs
+                val seconds = (remainingMs / 1000).toInt()
+                counter.text = String.format(Locale.US, "%02d:%02d", seconds / 60, seconds % 60)
+                control.text = "▶ Tiếp tục khi sẵn sàng"
+                saveCheckpoint()
+                speak("Đã thêm thời gian nghỉ. Hãy tiếp tục khi sẵn sàng.")
+            }
+            .setNegativeButton("Giữ nguyên", null).show()
+    }
+
     /** Show the exact impact before changing the active exercise; cancel leaves its timer untouched. */
     private fun confirmShortenCurrentMove() {
         if (pausedForSafety || completed) return

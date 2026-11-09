@@ -351,7 +351,7 @@ class GuidedWorkoutActivity:Activity() {
     private fun handleCoachCommand(utterance:String) {
         // Safety words always take precedence over any numeric exercise request.
         val spokenReps = com.chibialarm.app.fitness.WorkoutTargetCommand.spokenReps(utterance)
-        if (spokenReps != null && WorkoutVoiceCommands.parse(utterance) != WorkoutVoiceCommands.Command.PAIN) {
+        if (spokenReps != null && WorkoutVoiceCommands.mayEditReps(utterance)) {
             confirmSpokenRepTarget(spokenReps)
             return
         }

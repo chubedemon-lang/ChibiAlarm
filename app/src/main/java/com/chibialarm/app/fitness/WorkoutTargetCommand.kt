@@ -50,6 +50,7 @@ object WorkoutTargetCommand {
         WorkoutVoiceCommands.Command.PREVIOUS,
         WorkoutVoiceCommands.Command.REPEAT,
         WorkoutVoiceCommands.Command.EASIER,
+        WorkoutVoiceCommands.Command.SWAP_EASIER,
         WorkoutVoiceCommands.Command.EASIER_AND_REST,
         WorkoutVoiceCommands.Command.SHORTER,
         WorkoutVoiceCommands.Command.SHORTER_REMAINING -> true

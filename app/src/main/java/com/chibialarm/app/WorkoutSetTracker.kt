@@ -46,10 +46,10 @@ object WorkoutSetTracker {
         }.getOrNull()
     }
 
-    /** Adds exactly one self-confirmed set and never exceeds the required minimum. */
+    /** Adds one self-confirmed set, including an optional set when the dose gives a range. */
     fun complete(completedSets: Int, plan: Plan): Int {
-        require(completedSets in 0..plan.requiredSets)
-        return (completedSets + 1).coerceAtMost(plan.requiredSets)
+        require(completedSets in 0..plan.maximumSets)
+        return (completedSets + 1).coerceAtMost(plan.maximumSets)
     }
 
     fun isComplete(completedSets: Int, plan: Plan): Boolean =
@@ -60,7 +60,7 @@ object WorkoutSetTracker {
         return progress.entries.asSequence()
             .filter { (index, count) ->
                 val plan = moves.getOrNull(index)?.let { parse(it.dose) }
-                plan != null && count in 1..plan.requiredSets
+                plan != null && count in 1..plan.maximumSets
             }
             .sortedBy { it.key }
             .joinToString(",") { "${it.key}:${it.value}" }
@@ -78,7 +78,7 @@ object WorkoutSetTracker {
             val count = parts[1].toIntOrNull() ?: return@forEach
             if (index !in moves.indices || index in result) return@forEach
             val plan = parse(moves[index].dose) ?: return@forEach
-            if (count in 1..plan.requiredSets) result[index] = count
+            if (count in 1..plan.maximumSets) result[index] = count
         }
         return result.toSortedMap()
     }

@@ -29,19 +29,24 @@ object WorkoutMoveSubstitution {
         TrainingCatalog.allMoves
     }
 
-    fun alternativesFor(move: TrainingMove): List<TrainingMove> =
+    fun alternativesFor(
+        move: TrainingMove,
+        constraints: WorkoutConstraintProfile = WorkoutConstraintProfile()
+    ): List<TrainingMove> =
         easierNames[move.name].orEmpty()
             .mapNotNull { name -> catalogMoves.firstOrNull { it.name == name } }
+            .filter { WorkoutConstraintFilter.isAllowed(it, constraints) }
             .distinctBy { it.name }
 
     /** Returns a copied list only when the selected replacement is explicitly allowed. */
     fun replace(
         currentMoves: List<TrainingMove>,
         index: Int,
-        replacement: TrainingMove
+        replacement: TrainingMove,
+        constraints: WorkoutConstraintProfile = WorkoutConstraintProfile()
     ): List<TrainingMove>? {
         val current = currentMoves.getOrNull(index) ?: return null
-        val approved = alternativesFor(current).firstOrNull { it.name == replacement.name } ?: return null
+        val approved = alternativesFor(current, constraints).firstOrNull { it.name == replacement.name } ?: return null
         // Insert the canonical catalog object, never caller-supplied exercise instructions.
         return currentMoves.toMutableList().also { it[index] = approved }
     }
@@ -49,13 +54,14 @@ object WorkoutMoveSubstitution {
     /** Store only bounded index/name pairs; no free-form transcript or health text is accepted. */
     fun encode(
         substitutions: Map<Int, TrainingMove>,
-        originalMoves: List<TrainingMove>
+        originalMoves: List<TrainingMove>,
+        constraints: WorkoutConstraintProfile = WorkoutConstraintProfile()
     ): String {
         if (originalMoves.isEmpty() || originalMoves.size > MAX_MOVES) return ""
         return substitutions.entries.asSequence()
             .filter { (index, replacement) ->
                 index in originalMoves.indices &&
-                    alternativesFor(originalMoves[index]).any { it.name == replacement.name }
+                    alternativesFor(originalMoves[index], constraints).any { it.name == replacement.name }
             }
             .sortedBy { it.key }
             .take(MAX_MOVES)
@@ -66,7 +72,11 @@ object WorkoutMoveSubstitution {
     }
 
     /** Invalid, duplicate, stale and unapproved substitutions are ignored on restore. */
-    fun decode(raw: String?, originalMoves: List<TrainingMove>): Map<Int, TrainingMove> {
+    fun decode(
+        raw: String?,
+        originalMoves: List<TrainingMove>,
+        constraints: WorkoutConstraintProfile = WorkoutConstraintProfile()
+    ): Map<Int, TrainingMove> {
         if (raw.isNullOrBlank() || raw.length > MAX_CHECKPOINT_CHARS ||
             originalMoves.isEmpty() || originalMoves.size > MAX_MOVES
         ) return emptyMap()
@@ -80,16 +90,20 @@ object WorkoutMoveSubstitution {
             val name = runCatching {
                 URLDecoder.decode(entry.substring(separator + 1), "UTF-8")
             }.getOrNull() ?: return@forEach
-            val replacement = alternativesFor(originalMoves[index])
+            val replacement = alternativesFor(originalMoves[index], constraints)
                 .firstOrNull { it.name == name } ?: return@forEach
             result[index] = replacement
         }
         return result.toSortedMap()
     }
 
-    fun apply(originalMoves: List<TrainingMove>, raw: String?): List<TrainingMove> {
+    fun apply(
+        originalMoves: List<TrainingMove>,
+        raw: String?,
+        constraints: WorkoutConstraintProfile = WorkoutConstraintProfile()
+    ): List<TrainingMove> {
         val result = originalMoves.toMutableList()
-        decode(raw, originalMoves).forEach { (index, replacement) ->
+        decode(raw, originalMoves, constraints).forEach { (index, replacement) ->
             result[index] = replacement
         }
         return result

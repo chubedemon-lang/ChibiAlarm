@@ -28,6 +28,14 @@ class GuidedWorkoutWalkthroughTest(unittest.TestCase):
         self.assertIn("isEnabled = walkthrough.canGoNext", section)
         self.assertNotIn("(current+1)%steps.size", section)
 
+    def test_guided_session_preserves_full_supported_duration_range(self):
+        source = SOURCE.read_text(encoding="utf-8")
+        self.assertIn(
+            'WorkoutDurationChoices.guidedMinutes(intent.getIntExtra("minutes",15))',
+            source,
+        )
+        self.assertNotIn('.coerceIn(5,45)', source)
+
     def test_navigation_state_is_bounded_at_both_ends(self):
         state = STATE.read_text(encoding="utf-8")
         self.assertIn("val canGoPrevious: Boolean get() = index > 0", state)

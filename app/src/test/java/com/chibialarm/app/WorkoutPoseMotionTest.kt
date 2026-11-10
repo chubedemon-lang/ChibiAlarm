@@ -7,9 +7,17 @@ import org.junit.Test
 
 class WorkoutPoseMotionTest {
     @Test fun dynamicExercisesHaveTwoPhases() {
-        assertTrue(WorkoutPoseMotion.hasMotion(WorkoutPoseGuide.Pose.SQUAT))
-        assertTrue(WorkoutPoseMotion.hasMotion(WorkoutPoseGuide.Pose.PUSH_UP))
-        assertTrue(WorkoutPoseMotion.hasMotion(WorkoutPoseGuide.Pose.LUNGE))
+        for (pose in listOf(
+            WorkoutPoseGuide.Pose.SQUAT,
+            WorkoutPoseGuide.Pose.PUSH_UP,
+            WorkoutPoseGuide.Pose.LUNGE,
+            WorkoutPoseGuide.Pose.BRIDGE,
+            WorkoutPoseGuide.Pose.BIRD_DOG,
+            WorkoutPoseGuide.Pose.DEAD_BUG,
+            WorkoutPoseGuide.Pose.CAT_COW,
+            WorkoutPoseGuide.Pose.MARCH,
+            WorkoutPoseGuide.Pose.CALF_RAISE
+        )) assertTrue("$pose should animate", WorkoutPoseMotion.hasMotion(pose))
     }
 
     @Test fun movementCuesDescribeBothPhases() {
@@ -17,12 +25,23 @@ class WorkoutPoseMotionTest {
         assertEquals("Hạ hông", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.SQUAT, true))
         assertEquals("Đẩy lên", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.PUSH_UP, false))
         assertEquals("Hạ ngực", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.PUSH_UP, true))
-        assertEquals("Đứng lên", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.LUNGE, false))
-        assertEquals("Hạ gối", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.LUNGE, true))
+        assertEquals("Nâng hông", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.BRIDGE, false))
+        assertEquals("Hạ hông", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.BRIDGE, true))
+        assertEquals("Duỗi tay chân đối diện", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.BIRD_DOG, false))
+        assertEquals("Thu tay chân", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.BIRD_DOG, true))
+        assertEquals("Cuộn lưng nhẹ", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.CAT_COW, true))
+        assertEquals("Nhón gót", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.CALF_RAISE, false))
     }
 
     @Test fun staticCuesDoNotDependOnAnimationPhase() {
-        for (pose in listOf(WorkoutPoseGuide.Pose.PLANK, WorkoutPoseGuide.Pose.REST, WorkoutPoseGuide.Pose.STANDING)) {
+        for (pose in listOf(
+            WorkoutPoseGuide.Pose.PLANK,
+            WorkoutPoseGuide.Pose.STRETCH,
+            WorkoutPoseGuide.Pose.SIDE_PLANK,
+            WorkoutPoseGuide.Pose.BALANCE,
+            WorkoutPoseGuide.Pose.REST,
+            WorkoutPoseGuide.Pose.STANDING
+        )) {
             assertEquals(WorkoutPoseMotion.phaseCue(pose, false), WorkoutPoseMotion.phaseCue(pose, true))
         }
     }
@@ -49,8 +68,13 @@ class WorkoutPoseMotionTest {
     }
 
     @Test fun staticAndFallbackCuesNeverAnimate() {
-        assertFalse(WorkoutPoseMotion.hasMotion(WorkoutPoseGuide.Pose.PLANK))
-        assertFalse(WorkoutPoseMotion.hasMotion(WorkoutPoseGuide.Pose.REST))
-        assertFalse(WorkoutPoseMotion.hasMotion(WorkoutPoseGuide.Pose.STANDING))
+        for (pose in listOf(
+            WorkoutPoseGuide.Pose.PLANK,
+            WorkoutPoseGuide.Pose.STRETCH,
+            WorkoutPoseGuide.Pose.SIDE_PLANK,
+            WorkoutPoseGuide.Pose.BALANCE,
+            WorkoutPoseGuide.Pose.REST,
+            WorkoutPoseGuide.Pose.STANDING
+        )) assertFalse("$pose should remain static", WorkoutPoseMotion.hasMotion(pose))
     }
 }

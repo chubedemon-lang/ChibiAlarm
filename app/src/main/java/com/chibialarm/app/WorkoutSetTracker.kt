@@ -27,7 +27,7 @@ object WorkoutSetTracker {
     private const val MAX_MOVES = 500
     private const val MAX_CHECKPOINT_CHARS = 4_096
     private val prescription = Regex(
-        """^\\s*(\\d+)(?:\\s*[–-]\\s*(\\d+))?\\s*(?:hiệp)?\\s*[×x]\\s*(\\d+)(?:\\s*[–-]\\s*(\\d+))?\\s*(lần|nhịp|giây)\\b.*$""",
+        """^\s*(\d+)(?:\s*[–-]\s*(\d+))?\s*(?:hiệp)?\s*[×x]\s*(\d+)(?:\s*[–-]\s*(\d+))?\s*(lần|nhịp|giây)\b.*$""",
         RegexOption.IGNORE_CASE
     )
 
@@ -53,7 +53,7 @@ object WorkoutSetTracker {
     }
 
     fun isComplete(completedSets: Int, plan: Plan): Boolean =
-        completedSets in plan.requiredSets..plan.requiredSets
+        completedSets >= plan.requiredSets
 
     fun encode(progress: Map<Int, Int>, moves: List<TrainingMove>): String {
         require(moves.size in 1..MAX_MOVES)

@@ -35,6 +35,10 @@ class WorkoutMoveSubstitutionTest {
         assertNull(WorkoutMoveSubstitution.replace(base, 0, catalogMove("Chống đẩy tường")))
         assertNull(WorkoutMoveSubstitution.replace(base, -1, catalogMove("Đứng lên – ngồi xuống")))
         assertNull(WorkoutMoveSubstitution.replace(base, 4, catalogMove("Đứng lên – ngồi xuống")))
+        val canonical = catalogMove("Đứng lên – ngồi xuống")
+        val spoofed = canonical.copy(steps = "instructions supplied by caller")
+        val safe = WorkoutMoveSubstitution.replace(base, 0, spoofed)!!
+        assertEquals(canonical.steps, safe[0].steps)
     }
 
     @Test fun checkpointRoundTripRestoresOnlyApprovedSubstitutions() {

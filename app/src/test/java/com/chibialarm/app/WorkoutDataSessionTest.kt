@@ -60,6 +60,26 @@ class WorkoutDataSessionTest {
         assertEquals(guided, history[1])
     }
 
+    @Test fun malformedLegacyJournalIsNeverSilentlyReplaced() {
+        val prefs = context.getSharedPreferences("workouts_v12", Context.MODE_PRIVATE)
+        val corrupt = "{legacy-journal-unreadable"
+        prefs.edit().putString("history", corrupt).commit()
+
+        val guided = Workout(
+            date = "2026-11-10",
+            name = "Toàn thân",
+            minutes = 8,
+            note = "guided",
+            sessionId = "550e8400-e29b-41d4-a716-446655440012",
+            completedMoves = 3,
+            selfReportedSets = 4
+        )
+        assertFalse(WorkoutData.appendSession(context, guided))
+        // The ordinary save path also refuses to overwrite data it cannot parse.
+        WorkoutData.save(context, emptyList())
+        assertEquals(corrupt, prefs.getString("history", null))
+    }
+
     @Test fun invalidOrInsufficientSessionEvidenceIsNotAppended() {
         val invalidId = Workout("2026-11-10", "Toàn thân", 8, "", "not-a-uuid", 3, 4)
         val insufficientMoves = Workout(

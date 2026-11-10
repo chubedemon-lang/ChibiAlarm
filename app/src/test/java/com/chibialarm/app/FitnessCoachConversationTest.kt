@@ -158,4 +158,14 @@ class FitnessCoachConversationTest {
             Locale.setDefault(original)
         }
     }
+
+    @Test fun wristLoadPreferenceSurvivesLaterConversationTurns() {
+        val first = FitnessCoachConversation.merge(null, FitnessNaturalRequest.parse("không chống tay"))
+        val second = FitnessCoachConversation.merge(first, FitnessNaturalRequest.parse("sức mạnh 30 phút"))
+        assertEquals(true, second.avoidWristLoad)
+        assertEquals(0, second.goal)
+        assertEquals(30, second.minutes)
+    }
+
+
 }

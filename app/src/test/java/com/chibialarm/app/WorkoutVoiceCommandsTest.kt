@@ -34,6 +34,7 @@ class WorkoutVoiceCommandsTest {
         assertEquals(C.PAIN, WorkoutVoiceCommands.parse("bị chấn thương, bắt đầu"))
         assertEquals(C.PAIN, WorkoutVoiceCommands.parse("đang đau, rút ngắn bài tập"))
         assertEquals(C.PAIN, WorkoutVoiceCommands.parse("đau chân, rút ngắn tất cả còn lại"))
+        assertEquals(C.PAIN, WorkoutVoiceCommands.parse("đau gối, đổi bài"))
         assertEquals(C.PAUSE, WorkoutVoiceCommands.parse("dừng tập"))
     }
 

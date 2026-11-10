@@ -52,6 +52,7 @@ class GuidedWorkoutActivity:Activity() {
     private var remainingMs=0L
     private var paused=true
     private var pausedForSafety=false
+    private var workoutConstraints = WorkoutConstraintProfile()
     // One spoken cue per exercise; never speak while paused or during microphone input.
     private var tenSecondCueGiven=false
     private var shorterFromIndex=Int.MAX_VALUE
@@ -90,7 +91,7 @@ class GuidedWorkoutActivity:Activity() {
             .putBoolean("tenSecondCueGiven",tenSecondCueGiven)
             .putInt("shorterFrom",shorterFromIndex)
             .putString("repTargets",repTargets.entries.joinToString(",") { "${it.key}:${it.value}" })
-            .putString("substitutions",WorkoutMoveSubstitution.encode(substitutions,originalMoves))
+            .putString("substitutions",WorkoutMoveSubstitution.encode(substitutions,originalMoves,workoutConstraints))
             .putString("completedMoves",WorkoutCompletionTracker.encode(completedMoveIndices,moves.size))
             .putString("completedSets",WorkoutSetTracker.encode(completedSetsByMove,moves))
             .putBoolean("resting",resting)
@@ -122,8 +123,8 @@ class GuidedWorkoutActivity:Activity() {
                 index=checkpoint.getInt("index",0).coerceIn(0,moves.lastIndex)
                 val savedSubstitutions=checkpoint.getString("substitutions",null)
                 substitutions.clear()
-                substitutions.putAll(WorkoutMoveSubstitution.decode(savedSubstitutions,originalMoves))
-                moves=WorkoutMoveSubstitution.apply(originalMoves,savedSubstitutions)
+                substitutions.putAll(WorkoutMoveSubstitution.decode(savedSubstitutions,originalMoves,workoutConstraints))
+                moves=WorkoutMoveSubstitution.apply(originalMoves,savedSubstitutions,workoutConstraints)
                 shorterFromIndex=checkpoint.getInt("shorterFrom",Int.MAX_VALUE).coerceIn(0, moves.size)
                 repTargets.clear()
                 repTargets.putAll(WorkoutRepTargets.decode(checkpoint.getString("repTargets",null),moves.size,index))
@@ -235,7 +236,17 @@ class GuidedWorkoutActivity:Activity() {
     }
     override fun onCreate(savedInstanceState:Bundle?) {
         super.onCreate(savedInstanceState)
-        program=TrainingCatalog.byId(intent.getStringExtra("program") ?: "starter")
+        val baseProgram = TrainingCatalog.byId(intent.getStringExtra("program") ?: "starter")
+        workoutConstraints = WorkoutConstraintProfile(
+            avoidWristLoad = intent.getBooleanExtra("avoid_wrist_load", false)
+        )
+        val constraintResult = WorkoutConstraintFilter.apply(baseProgram, workoutConstraints)
+        if (!constraintResult.canStart) {
+            Toast.makeText(this, "Chưa có động tác chính phù hợp với bộ lọc đã chọn.", Toast.LENGTH_LONG).show()
+            finish()
+            return
+        }
+        program = constraintResult.program
         val level=intent.getIntExtra("level",0).coerceIn(0,2)
         val minutes=WorkoutDurationChoices.guidedMinutes(intent.getIntExtra("minutes",15))
         val planned=WorkoutDurationPlanner.build(program,level,minutes)
@@ -257,6 +268,11 @@ class GuidedWorkoutActivity:Activity() {
             if (planned.exceedsTarget) {
                 append("\nLưu ý: chương trình tối thiểu dài hơn thời lượng đã chọn.")
             }
+        })
+        if (constraintResult.notice.isNotBlank()) root.addView(TextView(this).apply {
+            text = constraintResult.notice
+            textSize = 13f
+            setPadding(4, 6, 4, 10)
         })
         heading=TextView(this).apply {
             textSize=23f;gravity=Gravity.CENTER;setPadding(5,20,5,18);setTextColor(Color.rgb(75,55,95))
@@ -422,8 +438,8 @@ class GuidedWorkoutActivity:Activity() {
             sessionId=validSessionId(savedInstanceState.getString("workout_session_id")) ?: sessionId
             val savedSubstitutions=savedInstanceState.getString("workout_substitutions")
             substitutions.clear()
-            substitutions.putAll(WorkoutMoveSubstitution.decode(savedSubstitutions,originalMoves))
-            moves=WorkoutMoveSubstitution.apply(originalMoves,savedSubstitutions)
+            substitutions.putAll(WorkoutMoveSubstitution.decode(savedSubstitutions,originalMoves,workoutConstraints))
+            moves=WorkoutMoveSubstitution.apply(originalMoves,savedSubstitutions,workoutConstraints)
             index=savedInstanceState.getInt("workout_index",0).coerceIn(0,moves.lastIndex)
             repTargets.clear()
             repTargets.putAll(WorkoutRepTargets.decode(savedInstanceState.getString("workout_rep_targets"),moves.size,index))
@@ -465,7 +481,7 @@ class GuidedWorkoutActivity:Activity() {
         outState.putString("workout_program",program.id)
         outState.putString("workout_session_id",sessionId)
         outState.putString("workout_rep_targets",repTargets.entries.joinToString(",") { "${it.key}:${it.value}" })
-        outState.putString("workout_substitutions",WorkoutMoveSubstitution.encode(substitutions,originalMoves))
+        outState.putString("workout_substitutions",WorkoutMoveSubstitution.encode(substitutions,originalMoves,workoutConstraints))
         outState.putString("workout_completed_moves",WorkoutCompletionTracker.encode(completedMoveIndices,moves.size))
         outState.putString("workout_completed_sets",WorkoutSetTracker.encode(completedSetsByMove,moves))
         outState.putBoolean("workout_resting",resting)
@@ -824,7 +840,7 @@ class GuidedWorkoutActivity:Activity() {
             Toast.makeText(this, "Động tác này đã được thay thế trong phiên. Giữ thay đổi hiện tại để bảo toàn tiến độ.", Toast.LENGTH_LONG).show()
             return
         }
-        val options = WorkoutMoveSubstitution.alternativesFor(moves[index])
+        val options = WorkoutMoveSubstitution.alternativesFor(moves[index],workoutConstraints)
         if (options.isEmpty()) {
             Toast.makeText(this, "Chưa có phương án thay thế được kiểm duyệt cho động tác này.", Toast.LENGTH_LONG).show()
             return
@@ -845,7 +861,7 @@ class GuidedWorkoutActivity:Activity() {
                             Toast.makeText(this, "Buổi tập đã thay đổi. Hãy mở lại phần điều chỉnh.", Toast.LENGTH_LONG).show()
                             return@setPositiveButton
                         }
-                        val updated = WorkoutMoveSubstitution.replace(moves, selectedIndex, replacement)
+                        val updated = WorkoutMoveSubstitution.replace(moves, selectedIndex, replacement, workoutConstraints)
                         if (updated == null) {
                             Toast.makeText(this, "Phương án không còn hợp lệ. Giữ nguyên động tác.", Toast.LENGTH_LONG).show()
                             return@setPositiveButton

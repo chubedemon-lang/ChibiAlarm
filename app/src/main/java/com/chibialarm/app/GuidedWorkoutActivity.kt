@@ -592,32 +592,27 @@ class GuidedWorkoutActivity:Activity() {
      * Spoken rest requests are proposals, not immediate timer mutations.
      * Guard against stale dialogs after moving to another exercise or changing the timer.
      */
+    /**
+     * Spoken/manual rest is a separate countdown. It pauses the exercise timer
+     * without adding rest seconds to the active-exercise duration.
+     */
     private fun confirmExtraRest(addedSeconds: Int) {
-        if (pausedForSafety || completed || index !in moves.indices) return
+        if (pausedForSafety || completed || resting || index !in moves.indices) return
+        val seconds = addedSeconds.coerceIn(1, 600)
         pause()
         val originalMs = remainingMs
         val originalIndex = index
-        val proposedMs = (originalMs + addedSeconds.coerceIn(0, 600) * 1000L)
-            .coerceAtMost(600_000L)
-        if (proposedMs == originalMs) {
-            Toast.makeText(this, "Đã đạt giới hạn thời gian 10 phút.", Toast.LENGTH_LONG).show()
-            return
-        }
-        AlertDialog.Builder(this).setTitle("Xác nhận thêm thời gian nghỉ")
-            .setMessage("Động tác: ${moves[originalIndex].name}\n" +
-                "Thời gian hiện tại: ${originalMs / 1000} giây → ${proposedMs / 1000} giây.\n" +
-                "Chỉ thay đổi sau khi bạn xác nhận.")
-            .setPositiveButton("Thêm thời gian") { _, _ ->
-                if (pausedForSafety || completed || index != originalIndex ||
-                    remainingMs != originalMs) return@setPositiveButton
-                remainingMs = proposedMs
-                val seconds = (remainingMs / 1000).toInt()
-                counter.text = String.format(Locale.US, "%02d:%02d", seconds / 60, seconds % 60)
-                control.text = "▶ Tiếp tục khi sẵn sàng"
-                saveCheckpoint()
-                speak("Đã thêm thời gian nghỉ. Hãy tiếp tục khi sẵn sàng.")
+        AlertDialog.Builder(this).setTitle("Xác nhận nghỉ riêng")
+            .setMessage("Động tác: ${moves[originalIndex].name}\\n" +
+                "Thời gian động tác còn lại: ${originalMs / 1000} giây.\\n" +
+                "Chibi sẽ chạy bộ đếm nghỉ riêng $seconds giây. Thời gian động tác được giữ nguyên; thời gian nghỉ không tính vào phút vận động.")
+            .setPositiveButton("Bắt đầu nghỉ") { _, _ ->
+                if (pausedForSafety || completed || resting || index != originalIndex ||
+                    remainingMs != originalMs || index !in moves.indices) return@setPositiveButton
+                startSetRest(seconds)
             }
-            .setNegativeButton("Giữ nguyên", null).show()
+            .setNegativeButton("Giữ nguyên", null)
+            .show()
     }
 
     /** Repetition guidance for the current step, without pretending to count actual reps. */
@@ -958,7 +953,7 @@ class GuidedWorkoutActivity:Activity() {
                     handleCoachCommand(phrase)
                 } else {
                     AlertDialog.Builder(this).setTitle("🐰 Chibi nghe được")
-                        .setMessage("“"+phrase.take(160)+"”\n\n"+WorkoutVoiceCommands.describe(command)+
+                        .setMessage("“"+phrase.take(160)+"”\n\n"+WorkoutVoiceCommands.describe(command, phrase)+
                             "\n\nKiểm tra câu nhận dạng trước khi điều khiển buổi tập.")
                         .setPositiveButton("Áp dụng") { _,_ -> handleCoachCommand(phrase) }
                         .setNeutralButton("Sửa câu nhận dạng") { _, _ ->
@@ -1187,8 +1182,10 @@ class GuidedWorkoutActivity:Activity() {
     private fun startSetRest(seconds:Int) {
         if(pausedForSafety || completed || resting || seconds !in 1..600) return
         pause()
+        val restState = WorkoutRestSession.start(remainingMs, seconds)
+        remainingMs = restState.exerciseRemainingMs
         resting=true
-        restRemainingMs=seconds*1000L
+        restRemainingMs=restState.restRemainingMs
         restDeadline=SystemClock.elapsedRealtime()+restRemainingMs
         startedAt=0L
         paused=false

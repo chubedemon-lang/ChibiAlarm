@@ -68,7 +68,8 @@ object WorkoutVoiceCommands {
             normalized.contains("rut ngan") || normalized.contains("ngan hon") ||
                 normalized.contains("giam thoi gian") -> Command.SHORTER
             normalized.contains("doi dong tac") || normalized.contains("thay dong tac") ||
-                normalized.contains("doi bai") || normalized.contains("thay bai") ||
+                normalized.contains("doi bai") || normalized.contains("doi sang bai") ||
+                normalized.contains("thay bai") || normalized.contains("thay bang bai") ||
                 normalized.contains("bai khac") -> Command.SWAP_EASIER
             normalized.contains("de hon") || normalized.contains("giam do kho") ||
                 normalized.contains("nhe hon") -> Command.EASIER

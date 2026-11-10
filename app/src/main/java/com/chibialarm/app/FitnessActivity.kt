@@ -360,6 +360,15 @@ class FitnessActivity:Activity() {
             .putExtra("program",p.id).putExtra("level",l).putExtra("minutes",m))
     }
     private fun addRoutine(p:TrainingProgram) {
+        if (impactRestrictionSpinner?.selectedItemPosition == 2) {
+            AlertDialog.Builder(this)
+                .setTitle("🐰 Chưa thể lên lịch tập")
+                .setMessage("Bạn đã báo đang đau hoặc có chấn thương. Chibi không tạo lịch tập định kỳ cho đến khi chuyên gia y tế đánh giá hoạt động phù hợp.")
+                .setPositiveButton("Đã hiểu", null)
+                .setNegativeButton("Đóng", null)
+                .show()
+            return
+        }
         val current=LifeData.routines(this)
         val trainingDays=if(level.selectedItemPosition==0) ((1 shl 2) or (1 shl 5))
             else ((1 shl 1) or (1 shl 4) or (1 shl 6))

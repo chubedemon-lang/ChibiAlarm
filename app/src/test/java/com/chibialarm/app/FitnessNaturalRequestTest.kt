@@ -67,4 +67,39 @@ class FitnessNaturalRequestTest {
     @Test fun ordinaryStartRequestDoesNotTriggerPainWarning() {
         assertNull(FitnessNaturalRequest.parse("Bắt đầu tập 15 phút").impact)
     }
+
+    @Test fun recognizesKneePainWhenTheBodyPartComesFirst() {
+        for (phrase in listOf("đầu gối đau khi squat", "đầu gối đang nhức", "khớp gối bị đau")) {
+            assertEquals("Failed for $phrase", 2, FitnessNaturalRequest.parse(phrase).impact)
+        }
+    }
+
+    @Test fun recognizesPainWithVietnameseLocationConnectors() {
+        for (phrase in listOf("đau ở đầu gối", "đau đầu gối", "đau ở lưng dưới", "cổ tay bị nhức")) {
+            assertEquals("Failed for $phrase", 2, FitnessNaturalRequest.parse(phrase).impact)
+        }
+    }
+
+    @Test fun aBodyPartNameAloneIsNotMistakenForPain() {
+        assertNull(FitnessNaturalRequest.parse("hôm nay muốn tập nhẹ cho đầu gối").impact)
+    }
+
+    @Test fun respectsExplicitlyNegatedPainButStillFindsAnotherPainReport() {
+        assertNull(FitnessNaturalRequest.parse("không đau đầu gối").impact)
+        assertNull(FitnessNaturalRequest.parse("đầu gối không đau").impact)
+        assertEquals(2, FitnessNaturalRequest.parse("không đau đầu gối nhưng đau lưng").impact)
+    }
+
+    @Test fun parsesCommonSpokenVietnameseDurations() {
+        assertEquals(15, FitnessNaturalRequest.parse("mười lăm phút").minutes)
+        assertEquals(25, FitnessNaturalRequest.parse("hai mươi lăm phút").minutes)
+        assertEquals(60, FitnessNaturalRequest.parse("một tiếng").minutes)
+        assertEquals(30, FitnessNaturalRequest.parse("nửa tiếng").minutes)
+        assertEquals(15, FitnessNaturalRequest.parse("15p").minutes)
+    }
+
+    @Test fun spokenDurationParserStillRejectsOutOfRangeAndAmbiguousValues() {
+        assertNull(FitnessNaturalRequest.parse("một trăm ba mươi phút").minutes)
+        assertNull(FitnessNaturalRequest.parse("mười lăm phút rưỡi").minutes)
+    }
 }

@@ -16,4 +16,34 @@ object WorkoutStepGuide {
             .filter { it.isNotEmpty() }
         return lines.ifEmpty { listOf(fallback) }
     }
+    
+    /**
+     * A bounded, in-memory walkthrough for the current exercise. It never changes
+     * workout timing or progress; users can move backward and forward at their pace.
+     */
+    class Walkthrough private constructor(
+        val steps: List<String>,
+        val index: Int
+    ) {
+        init {
+            require(steps.isNotEmpty())
+            require(index in steps.indices)
+        }
+
+        val currentStep: String get() = steps[index]
+        val position: Int get() = index + 1
+        val canGoPrevious: Boolean get() = index > 0
+        val canGoNext: Boolean get() = index < steps.lastIndex
+
+        fun previous(): Walkthrough =
+            if (canGoPrevious) Walkthrough(steps, index - 1) else this
+
+        fun next(): Walkthrough =
+            if (canGoNext) Walkthrough(steps, index + 1) else this
+
+        companion object {
+            fun start(instructions: String): Walkthrough =
+                Walkthrough(WorkoutStepGuide.split(instructions), 0)
+        }
+    }
 }

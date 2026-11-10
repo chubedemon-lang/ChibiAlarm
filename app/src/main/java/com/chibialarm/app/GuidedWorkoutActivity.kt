@@ -46,8 +46,17 @@ class GuidedWorkoutActivity:Activity() {
     private val checkpoint by lazy { getSharedPreferences("chibi_workout_checkpoint_guest", MODE_PRIVATE) }
     // Index-scoped rep guidance: completed steps are never retroactively edited.
     private val repTargets=mutableMapOf<Int,Int>()
-    // Only timer-expired exercise steps count as completed; manual skip/navigation never does.
+    // Timed moves use the timer; set-based moves require explicit user confirmation.
     private val completedMoveIndices=sortedSetOf<Int>()
+    private val completedSetsByMove=mutableMapOf<Int,Int>()
+    private lateinit var setProgress:TextView
+    private lateinit var completeSetButton:Button
+    private lateinit var restSetButton:Button
+    private lateinit var customSetRestButton:Button
+    private var resting=false
+    private var restDeadline=0L
+    private var restRemainingMs=0L
+    private var setTimerExpired=false
     private fun targetDose(position:Int):String = repTargets[position]?.let { "$it lần (mục tiêu đã chỉnh)" } ?: moves[position].dose
     private var completed=false
     // Do not overwrite a saved session before the user chooses Restore or Start over.
@@ -61,6 +70,10 @@ class GuidedWorkoutActivity:Activity() {
             .putInt("shorterFrom",shorterFromIndex)
             .putString("repTargets",repTargets.entries.joinToString(",") { "${it.key}:${it.value}" })
             .putString("completedMoves",WorkoutCompletionTracker.encode(completedMoveIndices,moves.size))
+            .putString("completedSets",WorkoutSetTracker.encode(completedSetsByMove,moves))
+            .putBoolean("resting",resting)
+            .putLong("restRemaining",restRemainingMs.coerceIn(0L,600_000L))
+            .putBoolean("setTimerExpired",setTimerExpired)
             .putBoolean("started",activeElapsedMs()>0L)
             .putLong("elapsed",activeElapsedMs())
             .putLong("savedAt",System.currentTimeMillis()).apply()
@@ -83,16 +96,32 @@ class GuidedWorkoutActivity:Activity() {
                 repTargets.putAll(WorkoutRepTargets.decode(checkpoint.getString("repTargets",null),moves.size,index))
                 completedMoveIndices.clear()
                 completedMoveIndices.addAll(WorkoutCompletionTracker.decode(checkpoint.getString("completedMoves",null),moves.size))
+                completedSetsByMove.clear()
+                completedSetsByMove.putAll(WorkoutSetTracker.decode(checkpoint.getString("completedSets",null),moves))
+                completedMoveIndices.removeAll { position ->
+                    val plan=WorkoutSetTracker.parse(moves[position].dose)
+                    plan!=null && !WorkoutSetTracker.isComplete(completedSetsByMove[position] ?: 0,plan)
+                }
                 displayStep()
                 remainingMs=checkpoint.getLong("remaining",remainingMs).coerceIn(0L,600_000L)
                 tenSecondCueGiven=checkpoint.getBoolean("tenSecondCueGiven",remainingMs<=10_000L)
                 pausedForSafety=checkpoint.getBoolean("safety",false)
+                resting=checkpoint.getBoolean("resting",false)
+                restRemainingMs=checkpoint.getLong("restRemaining",0L).coerceIn(0L,600_000L)
+                restDeadline=0L
+                setTimerExpired=checkpoint.getBoolean("setTimerExpired",remainingMs<=0L)
+                renderSetControls()
                 val elapsed=checkpoint.getLong("elapsed",0L).coerceIn(0L,86_400_000L)
                 accumulated=elapsed
                 startedAt=0L
                 val seconds=(remainingMs/1000).toInt()
-                counter.text=String.format(Locale.US,"%02d:%02d",seconds/60,seconds%60)
-                control.text=if(pausedForSafety) "⚠️ Đã dừng vì đau" else "▶ Tiếp tục"
+                counter.text=if(resting) restCounterText(restRemainingMs)
+                    else String.format(Locale.US,"%02d:%02d",seconds/60,seconds%60)
+                control.text=when {
+                    pausedForSafety -> "⚠️ Đã dừng vì đau"
+                    resting -> "▶ Tiếp tục nghỉ"
+                    else -> "▶ Tiếp tục"
+                }
             }
             .setNegativeButton("Bắt đầu lại") { _,_ ->
                 checkpointDecisionPending=false
@@ -108,6 +137,21 @@ class GuidedWorkoutActivity:Activity() {
     private val tick=object:Runnable {
         override fun run() {
             if(paused)return
+            if(resting) {
+                val left=(restDeadline-SystemClock.elapsedRealtime()).coerceAtLeast(0L)
+                restRemainingMs=left
+                counter.text=restCounterText(left)
+                if(left==0L) {
+                    resting=false
+                    paused=true
+                    restRemainingMs=0L
+                    control.text="▶ Tiếp tục hiệp"
+                    counter.text=clockText(remainingMs)
+                    saveCheckpoint()
+                    speak("Đã hết giờ nghỉ. Tiếp tục khi bạn sẵn sàng.")
+                } else handler.postDelayed(this,300)
+                return
+            }
             val left=(deadline-SystemClock.elapsedRealtime()).coerceAtLeast(0L)
             remainingMs=left
             if (left in 1L..10_000L && !tenSecondCueGiven && !pausedForSafety) {
@@ -117,7 +161,20 @@ class GuidedWorkoutActivity:Activity() {
             }
             val seconds=(left/1000).toInt()
             counter.text=String.format(Locale.US,"%02d:%02d",seconds/60,seconds%60)
-            if(left==0L) nextMove(completedByTimer=true) else handler.postDelayed(this,300)
+            if(left==0L && currentSetPlan()!=null) {
+                // A timebox is only a reminder for rep-based exercises; it cannot prove sets were done.
+                if(!setTimerExpired) {
+                    setTimerExpired=true
+                    renderSetControls()
+                    Toast.makeText(this@GuidedWorkoutActivity,
+                        "Hết thời gian gợi ý. Hãy xác nhận từng hiệp sau khi tập, hoặc bỏ qua mà không nhận tiến độ.",
+                        Toast.LENGTH_LONG).show()
+                    speak("Đã hết thời gian gợi ý. Hãy hoàn thành các hiệp trong khả năng của bạn.")
+                    saveCheckpoint()
+                }
+                handler.postDelayed(this,1000)
+            } else if(left==0L) nextMove(completedByTimer=true)
+            else handler.postDelayed(this,300)
         }
     }
     override fun onCreate(savedInstanceState:Bundle?) {
@@ -180,6 +237,29 @@ class GuidedWorkoutActivity:Activity() {
             textSize=54f;gravity=Gravity.CENTER;setTextColor(Color.rgb(100,70,140))
         }
         root.addView(counter)
+        setProgress=TextView(this).apply {
+            textSize=15f
+            gravity=Gravity.CENTER
+            setPadding(8,8,8,8)
+            setTextColor(Color.rgb(75,55,95))
+        }
+        root.addView(setProgress)
+        completeSetButton=Button(this).apply {
+            text="✓ Xác nhận hoàn thành hiệp"
+            contentDescription="Tự xác nhận đã thực hiện xong hiệp hiện tại; không phải cảm biến đếm lần tập"
+            setOnClickListener { completeCurrentSet() }
+        }
+        root.addView(completeSetButton)
+        restSetButton=Button(this).apply {
+            text="⏱ Nghỉ theo giáo án"
+            setOnClickListener { currentSetPlan()?.let { startSetRest(it.defaultRestSeconds) } }
+        }
+        root.addView(restSetButton)
+        customSetRestButton=Button(this).apply {
+            text="Tùy chỉnh thời gian nghỉ"
+            setOnClickListener { requestSetRest() }
+        }
+        root.addView(customSetRestButton)
         progress=ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal).apply {
             max=moves.size;progress=0
         }
@@ -283,18 +363,34 @@ class GuidedWorkoutActivity:Activity() {
             repTargets.putAll(WorkoutRepTargets.decode(savedInstanceState.getString("workout_rep_targets"),moves.size,index))
             completedMoveIndices.clear()
             completedMoveIndices.addAll(WorkoutCompletionTracker.decode(savedInstanceState.getString("workout_completed_moves"),moves.size))
+            completedSetsByMove.clear()
+            completedSetsByMove.putAll(WorkoutSetTracker.decode(savedInstanceState.getString("workout_completed_sets"),moves))
+            completedMoveIndices.removeAll { position ->
+                val plan=WorkoutSetTracker.parse(moves[position].dose)
+                plan!=null && !WorkoutSetTracker.isComplete(completedSetsByMove[position] ?: 0,plan)
+            }
             displayStep()
             remainingMs=savedInstanceState.getLong("workout_remaining",remainingMs)
                 .coerceIn(0L,600_000L)
             tenSecondCueGiven=savedInstanceState.getBoolean("workout_ten_second_cue",remainingMs<=10_000L)
             pausedForSafety=savedInstanceState.getBoolean("workout_safety",false)
+            resting=savedInstanceState.getBoolean("workout_resting",false)
+            restRemainingMs=savedInstanceState.getLong("workout_rest_remaining",0L).coerceIn(0L,600_000L)
+            restDeadline=0L
+            setTimerExpired=savedInstanceState.getBoolean("workout_set_timer_expired",remainingMs<=0L)
             shorterFromIndex=savedInstanceState.getInt("workout_shorter_from",Int.MAX_VALUE).coerceIn(0,moves.size)
+            renderSetControls()
             val elapsed=savedInstanceState.getLong("workout_elapsed",0L).coerceAtLeast(0L)
             accumulated=elapsed.coerceAtMost(86_400_000L)
             startedAt=0L
             val seconds=(remainingMs/1000).toInt()
-            counter.text=String.format(Locale.US,"%02d:%02d",seconds/60,seconds%60)
-            control.text=if(pausedForSafety) "⚠️ Đã dừng vì đau" else "▶ Tiếp tục"
+            counter.text=if(resting) restCounterText(restRemainingMs)
+                else String.format(Locale.US,"%02d:%02d",seconds/60,seconds%60)
+            control.text=when {
+                pausedForSafety -> "⚠️ Đã dừng vì đau"
+                resting -> "▶ Tiếp tục nghỉ"
+                else -> "▶ Tiếp tục"
+            }
         }
     }
     override fun onSaveInstanceState(outState:Bundle) {
@@ -303,6 +399,10 @@ class GuidedWorkoutActivity:Activity() {
         outState.putString("workout_program",program.id)
         outState.putString("workout_rep_targets",repTargets.entries.joinToString(",") { "${it.key}:${it.value}" })
         outState.putString("workout_completed_moves",WorkoutCompletionTracker.encode(completedMoveIndices,moves.size))
+        outState.putString("workout_completed_sets",WorkoutSetTracker.encode(completedSetsByMove,moves))
+        outState.putBoolean("workout_resting",resting)
+        outState.putLong("workout_rest_remaining",restRemainingMs.coerceIn(0L,600_000L))
+        outState.putBoolean("workout_set_timer_expired",setTimerExpired)
         outState.putInt("workout_index",index)
         outState.putLong("workout_remaining",remainingMs)
         outState.putBoolean("workout_ten_second_cue",tenSecondCueGiven)
@@ -876,18 +976,136 @@ class GuidedWorkoutActivity:Activity() {
     }
     private fun displayStep() {
         paused=true;handler.removeCallbacks(tick)
+        resting=false
+        restDeadline=0L
+        restRemainingMs=0L
+        setTimerExpired=false
         val move=moves[index]
         tenSecondCueGiven=false
         remainingMs=RemainingWorkoutDuration.seconds(move.seconds,index,shorterFromIndex)*1000L
         heading.text="${index+1}/${moves.size} • ${move.name}"
         poseView.pose=WorkoutPoseGuide.classify(move.name)
         renderDose()
+        renderSetControls()
         progress.progress=index
         val sec=(remainingMs/1000).toInt()
         counter.text=String.format(Locale.US,"%02d:%02d",sec/60,sec%60)
         control.text="▶ Tập động tác này"
         spoken?.stop()
     }
+    private fun currentSetPlan():WorkoutSetTracker.Plan? =
+        moves.getOrNull(index)?.let { WorkoutSetTracker.parse(it.dose) }
+
+    private fun clockText(milliseconds:Long):String {
+        val seconds=(milliseconds.coerceAtLeast(0L)/1000L).toInt()
+        return String.format(Locale.US,"%02d:%02d",seconds/60,seconds%60)
+    }
+
+    private fun restCounterText(milliseconds:Long):String = "Nghỉ " + clockText(milliseconds)
+
+    private fun renderSetControls() {
+        val plan=currentSetPlan()
+        val visibility=if(plan==null) android.view.View.GONE else android.view.View.VISIBLE
+        setProgress.visibility=visibility
+        completeSetButton.visibility=visibility
+        if(plan==null) {
+            restSetButton.visibility=android.view.View.GONE
+            customSetRestButton.visibility=android.view.View.GONE
+            return
+        }
+        val done=(completedSetsByMove[index] ?: 0).coerceIn(0,plan.maximumSets)
+        val target=if(plan.targetMin==plan.targetMax) "\${plan.targetMin} \${plan.unit}"
+            else "\${plan.targetMin}–\${plan.targetMax} \${plan.unit}"
+        val setDescription=if(plan.maximumSets>plan.requiredSets)
+            "Tối thiểu \${plan.requiredSets} hiệp, có thể thêm đến \${plan.maximumSets}"
+            else "\${plan.requiredSets} hiệp"
+        setProgress.text="Hiệp tự xác nhận: $done/\${plan.maximumSets} • $setDescription • $target"
+        if(setTimerExpired) setProgress.append("\\nHết thời gian gợi ý; chỉ xác nhận hiệp sau khi bạn thực hiện.")
+        setProgress.contentDescription=setProgress.text
+        completeSetButton.isEnabled=done<plan.maximumSets && !pausedForSafety && !resting
+        completeSetButton.text=when {
+            done<plan.requiredSets -> "✓ Xác nhận hoàn thành hiệp \${done+1}/\${plan.requiredSets}"
+            done<plan.maximumSets -> "＋ Ghi nhận hiệp tùy chọn \${done+1}/\${plan.maximumSets}"
+            else -> "✓ Đã ghi nhận đủ hiệp"
+        }
+        val canRest=done>0 && done<plan.maximumSets && !pausedForSafety && !resting
+        restSetButton.visibility=if(canRest) android.view.View.VISIBLE else android.view.View.GONE
+        customSetRestButton.visibility=if(canRest) android.view.View.VISIBLE else android.view.View.GONE
+        restSetButton.isEnabled=canRest
+        customSetRestButton.isEnabled=canRest
+        restSetButton.text="⏱ Nghỉ theo giáo án (\${plan.defaultRestSeconds} giây)"
+    }
+
+    /** The user confirms a set after doing it; no camera or automatic rep counting is implied. */
+    private fun completeCurrentSet() {
+        if(pausedForSafety || completed || resting || index !in moves.indices) return
+        val plan=currentSetPlan() ?: return
+        if(activeElapsedMs()<=0L) {
+            Toast.makeText(this,"Hãy bắt đầu buổi tập trước khi ghi nhận hiệp.",Toast.LENGTH_LONG).show()
+            return
+        }
+        val before=completedSetsByMove[index] ?: 0
+        if(before>=plan.maximumSets) return
+        pause()
+        val after=WorkoutSetTracker.complete(before,plan)
+        completedSetsByMove[index]=after
+        if(WorkoutSetTracker.isComplete(after,plan)) completedMoveIndices.add(index)
+        renderSetControls()
+        saveCheckpoint()
+        if(after<plan.maximumSets) {
+            val message=if(after>=plan.requiredSets)
+                "Đã đủ hiệp tối thiểu. Bạn có thể nghỉ rồi thêm hiệp tùy chọn nếu còn sức."
+                else "Đã tự xác nhận hiệp $after/\${plan.requiredSets}. Nghỉ trước hiệp tiếp theo."
+            Toast.makeText(this,message,Toast.LENGTH_LONG).show()
+            speak(message)
+            startSetRest(plan.defaultRestSeconds)
+        } else {
+            val message="Đã tự xác nhận đủ $after hiệp cho \${moves[index].name}."
+            Toast.makeText(this,message,Toast.LENGTH_LONG).show()
+            speak(message)
+        }
+    }
+
+    /** Rest is a separate countdown and is excluded from active-exercise time. */
+    private fun startSetRest(seconds:Int) {
+        if(pausedForSafety || completed || resting || seconds !in 1..600) return
+        pause()
+        resting=true
+        restRemainingMs=seconds*1000L
+        restDeadline=SystemClock.elapsedRealtime()+restRemainingMs
+        startedAt=0L
+        paused=false
+        handler.removeCallbacks(tick)
+        control.text="⏸ Dừng nghỉ"
+        counter.text=restCounterText(restRemainingMs)
+        handler.post(tick)
+        saveCheckpoint()
+        speak("Bắt đầu nghỉ $seconds giây.")
+    }
+
+    private fun requestSetRest() {
+        if(pausedForSafety || completed || resting) return
+        val plan=currentSetPlan() ?: return
+        val done=completedSetsByMove[index] ?: 0
+        if(done<=0 || done>=plan.maximumSets) return
+        pause()
+        val field=EditText(this).apply {
+            inputType=android.text.InputType.TYPE_CLASS_NUMBER
+            setText(plan.defaultRestSeconds.toString())
+            selectAll()
+        }
+        AlertDialog.Builder(this).setTitle("⏱ Tùy chỉnh nghỉ giữa hiệp")
+            .setMessage("Nhập thời gian nghỉ từ 1 đến 600 giây. Thời gian nghỉ không tính vào thời gian vận động.")
+            .setView(field)
+            .setPositiveButton("Bắt đầu nghỉ") { _, _ ->
+                val seconds=field.text.toString().trim().toIntOrNull()
+                if(seconds==null || seconds !in 1..600) {
+                    Toast.makeText(this,"Nhập thời gian từ 1 đến 600 giây.",Toast.LENGTH_LONG).show()
+                } else startSetRest(seconds)
+            }
+            .setNegativeButton("Đóng",null).show()
+    }
+
     private fun speak(message:String) {
         if(ready)spoken?.speak(message.take(350),TextToSpeech.QUEUE_FLUSH,null,"fitness-${index}")
     }
@@ -900,6 +1118,15 @@ class GuidedWorkoutActivity:Activity() {
             return
         }
         if(!paused)return
+        if(resting) {
+            paused=false
+            restDeadline=SystemClock.elapsedRealtime()+restRemainingMs
+            startedAt=0L
+            control.text="⏸ Dừng nghỉ"
+            counter.text=restCounterText(restRemainingMs)
+            handler.post(tick)
+            return
+        }
         paused=false
         startedAt=SystemClock.elapsedRealtime()
         deadline=SystemClock.elapsedRealtime()+remainingMs
@@ -910,6 +1137,15 @@ class GuidedWorkoutActivity:Activity() {
     private fun pause() {
         if(paused)return
         val now=SystemClock.elapsedRealtime()
+        if(resting) {
+            restRemainingMs=(restDeadline-now).coerceAtLeast(0L)
+            paused=true
+            handler.removeCallbacks(tick)
+            spoken?.stop()
+            control.text="▶ Tiếp tục nghỉ"
+            counter.text=restCounterText(restRemainingMs)
+            return
+        }
         remainingMs=(deadline-now).coerceAtLeast(0L)
         if(startedAt!=0L) accumulated+=(now-startedAt).coerceAtLeast(0L)
         startedAt=0L
@@ -922,8 +1158,14 @@ class GuidedWorkoutActivity:Activity() {
             Toast.makeText(this,"Đang dừng vì báo đau. Hãy xác nhận an toàn trước khi tiếp tục.",Toast.LENGTH_LONG).show()
             return
         }
+        if(!completedByTimer) {
+            val plan=currentSetPlan()
+            if(plan!=null && !WorkoutSetTracker.isComplete(completedSetsByMove[index] ?: 0,plan)) {
+                Toast.makeText(this,"Bỏ qua động tác này sẽ không được tính hoàn thành. Hãy xác nhận từng hiệp sau khi tập.",Toast.LENGTH_LONG).show()
+            }
+        }
         pause()
-        if(completedByTimer) {
+        if(completedByTimer && currentSetPlan()==null) {
             completedMoveIndices.addAll(WorkoutCompletionTracker.complete(completedMoveIndices,index,moves.size))
         }
         if(index==moves.lastIndex) {
@@ -939,14 +1181,21 @@ class GuidedWorkoutActivity:Activity() {
     }
     private fun finishWorkout() {
         pause()
-        // A manual next/finish tap is not evidence that an exercise was completed.
-        // Only timer-expired, distinct steps plus one active minute can enter the journal
-        // and make the daily Fitness quest eligible for its normal, claim-once RPG reward.
+        // Timed moves require timer expiry; rep-based moves require self-confirmed sets.
+        // This is transparent offline self-report, not camera-verified performance.
         val elapsedMs=activeElapsedMs()
         val completedCount=completedMoveIndices.count { it in moves.indices }
+        val setCompletedMoves=completedMoveIndices.count { position ->
+            val plan=WorkoutSetTracker.parse(moves[position].dose)
+            plan!=null && WorkoutSetTracker.isComplete(completedSetsByMove[position] ?: 0,plan)
+        }
+        val timerCompletedMoves=completedMoveIndices.count { position ->
+            WorkoutSetTracker.parse(moves[position].dose)==null
+        }
+        val selfReportedSets=completedSetsByMove.values.sum()
         if (!WorkoutCompletionTracker.canLog(completedMoveIndices,moves.size,elapsedMs)) {
             val reason=if(completedCount < WorkoutCompletionTracker.MIN_COMPLETED_MOVES_TO_LOG)
-                "Hãy để bộ đếm tự hoàn tất ít nhất 2 động tác khác nhau. Bấm Bước tiếp chỉ chuyển bài, không tính là đã tập xong."
+                "Hãy để bộ đếm hoàn tất động tác theo thời gian hoặc tự xác nhận đủ hiệp cho ít nhất 2 động tác khác nhau. Bỏ qua không được tính."
             else "Cần ít nhất 1 phút hoạt động thực tế, không tính thời gian tạm dừng."
             AlertDialog.Builder(this)
                 .setTitle("Chưa đủ hoạt động để ghi nhật ký")
@@ -963,7 +1212,8 @@ class GuidedWorkoutActivity:Activity() {
         checkpoint.edit().clear().apply()
         val mins=(elapsedMs/60000L).toInt()
         WorkoutData.save(this,WorkoutData.history(this)+Workout(
-            LifeData.today(),program.name,mins,"Chibi Coach: $completedCount/${moves.size} động tác hoàn tất theo bộ đếm; $mins phút hoạt động"))
+            LifeData.today(),program.name,mins,
+            "Chibi Coach: $completedCount/${moves.size} động tác được ghi nhận; $setCompletedMoves động tác tự xác nhận hiệp ($selfReportedSets hiệp); $timerCompletedMoves động tác theo bộ đếm; $mins phút hoạt động. Số hiệp là tự khai báo, không được cảm biến xác minh."))
         Toast.makeText(this,"Đã ghi $mins phút vào nhật ký",Toast.LENGTH_LONG).show()
         finish()
     }

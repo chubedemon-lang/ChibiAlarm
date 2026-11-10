@@ -131,6 +131,8 @@ class GuidedWorkoutActivity:Activity() {
                 }
             }
             .setNegativeButton("Bắt đầu lại") { _,_ ->
+                // Starting over must not silently erase a previously reported pain lock.
+                val keepSafetyLock=checkpoint.getBoolean("safety",false)
                 checkpointDecisionPending=false
                 completedMoveIndices.clear()
                 completedSetsByMove.clear()
@@ -138,11 +140,18 @@ class GuidedWorkoutActivity:Activity() {
                 substitutions.clear()
                 moves=originalMoves
                 index=0
+                shorterFromIndex=Int.MAX_VALUE
                 accumulated=0L
                 startedAt=0L
                 remainingMs=0L
+                resting=false
+                restRemainingMs=0L
+                restDeadline=0L
+                setTimerExpired=false
+                pausedForSafety=keepSafetyLock
                 checkpoint.edit().clear().apply()
                 displayStep()
+                if(pausedForSafety) control.text="⚠️ Đã dừng vì đau"
             }
             .setCancelable(false).show()
     }

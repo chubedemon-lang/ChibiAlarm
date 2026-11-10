@@ -13,16 +13,22 @@ object FitnessPlanAdvisor {
         val equipment: Int,
         val impact: Int
     )
-    data class Recommendation(val programId: String, val explanation: String, val minutes: Int)
+    data class Recommendation(
+        val programId: String,
+        val explanation: String,
+        val minutes: Int,
+        val requiresProfessionalReview: Boolean = false
+    )
 
     /** impact: 0 = no restriction reported, 1 = prefer low impact, 2 = pain/injury. */
     fun recommend(p: Preferences): Recommendation {
         require(p.goal in 0..5 && p.energy in 0..2 && p.level in 0..2)
         require(p.minutes in 5..120 && p.equipment in 0..2 && p.impact in 0..2)
         if (p.impact == 2) return Recommendation(
-            "recovery",
-            "Bạn báo đang đau hoặc có chấn thương. Không tự đề xuất buổi tập cường độ cao; chỉ xem các động tác phục hồi nhẹ nếu phù hợp và hỏi chuyên gia trước khi tập.",
-            minOf(p.minutes, 10)
+            programId = "",
+            explanation = "Bạn báo đang đau hoặc có chấn thương. Chibi tạm dừng việc tạo giáo án và không khởi chạy bài tập. Hãy hỏi chuyên gia y tế để được đánh giá trước khi vận động; nếu có đau ngực, khó thở bất thường, choáng hoặc triệu chứng nghiêm trọng, hãy tìm trợ giúp y tế ngay.",
+            minutes = 0,
+            requiresProfessionalReview = true
         )
         val id = when {
             p.energy == 0 -> "recovery"

@@ -26,7 +26,8 @@ object WorkoutData {
     private val lock = Any()
     private fun prefs(ctx:Context)=ctx.getSharedPreferences("workouts_v12",Context.MODE_PRIVATE)
 
-    fun history(ctx:Context):List<Workout> {
+    /** Null means the stored journal is malformed; callers must not replace it silently. */
+    private fun readHistory(ctx:Context):List<Workout>? {
         return try {
             val arr=JSONArray(prefs(ctx).getString("history","[]"))
             (0 until arr.length()).map { i ->
@@ -41,8 +42,10 @@ object WorkoutData {
                     o.optInt("selfReportedSets", 0)
                 )
             }
-        } catch (_:Exception) { emptyList() }
+        } catch (_:Exception) { null }
     }
+
+    fun history(ctx:Context):List<Workout> = readHistory(ctx) ?: emptyList()
 
     private fun encode(items:List<Workout>):String {
         val arr=JSONArray()
@@ -66,6 +69,8 @@ object WorkoutData {
 
     fun save(ctx:Context,items:List<Workout>) {
         synchronized(lock) {
+            // Do not turn a parse failure into an empty journal and overwrite legacy bytes.
+            if (readHistory(ctx)==null) return
             prefs(ctx).edit().putString("history",encode(items)).apply()
         }
     }
@@ -80,7 +85,9 @@ object WorkoutData {
         if (!validId || workout.minutes !in 1..600 ||
             workout.completedMoves !in 2..500 || workout.selfReportedSets !in 0..2_000) return false
         synchronized(lock) {
-            val existing=history(ctx)
+            // A malformed legacy journal is not an empty journal. Preserve it and ask
+            // the user to recover/export it rather than replacing unknown bytes.
+            val existing=readHistory(ctx) ?: return false
             if (existing.any { it.sessionId==id }) return true
             return prefs(ctx).edit()
                 .putString("history",encode(existing+workout))

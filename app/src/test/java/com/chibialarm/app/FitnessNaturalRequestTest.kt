@@ -139,4 +139,27 @@ class FitnessNaturalRequestTest {
         }
         assertNull(FitnessNaturalRequest.parse("hôm nay hơi khó chịu với lịch tập").impact)
     }
+
+    @Test fun explicitWristLoadAvoidanceIsAPlanPreferenceNotAnInjuryReport() {
+        for (phrase in listOf(
+            "không chống tay",
+            "tránh chống tay khi tập",
+            "không tì cổ tay",
+            "không chịu tải qua cổ tay",
+            "hạn chế cổ tay"
+        )) {
+            val result = FitnessNaturalRequest.parse(phrase)
+            assertEquals("Failed for $phrase", true, result.avoidWristLoad)
+            assertNull("Failed for $phrase", result.impact)
+        }
+    }
+
+    @Test fun activeWristPainStillUsesTheSafetyStopEvenWithAnAvoidancePreference() {
+        val result = FitnessNaturalRequest.parse("không chống tay nhưng cổ tay đang đau")
+        assertEquals(true, result.avoidWristLoad)
+        assertEquals(2, result.impact)
+        assertTrue(result.reply.contains("Không bắt đầu tập"))
+    }
+
+
 }

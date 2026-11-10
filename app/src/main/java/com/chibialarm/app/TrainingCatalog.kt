@@ -96,6 +96,19 @@ object TrainingCatalog {
     private val push=exercise("Chống đẩy sàn","3 hiệp × 6–12 lần",
         "Tay dưới vai, thân thẳng, hạ có kiểm soát, đẩy lên đều.",
         "Chống đẩy gối hoặc tường.","Dừng nếu đau cổ tay hoặc vai.",95)
+    // Resistance-band / light-dumbbell options are offered only when the user reports this equipment.
+    private val resistanceRow=exercise("Kéo tạ đơn hoặc dây kháng lực","2 hiệp × 8–10 lần",
+        "Dùng tạ nhẹ hoặc cố định dây kháng lực dưới hai bàn chân. Gập hông nhẹ, giữ lưng trung lập, kéo khuỷu tay sát thân rồi hạ chậm.",
+        "Dùng dây có lực nhẹ hoặc giảm còn 6 lần; có thể tập từng tay với điểm tựa chắc chắn.",
+        "Không giật tạ, không gù lưng; kiểm tra dây không rách và điểm neo không trượt.",90)
+    private val resistanceHinge=exercise("Gập hông với tạ đơn hoặc dây","2 hiệp × 8–10 lần",
+        "Đứng chân rộng bằng hông, giữ tạ nhẹ trước đùi hoặc đứng trên dây chắc chắn. Đẩy hông ra sau, gối hơi chùng, nghiêng thân trong tầm thoải mái rồi đứng lên.",
+        "Tập động tác gập hông không dụng cụ trước hoặc giảm biên độ.",
+        "Không cong lưng, không hạ sâu khi chưa kiểm soát; không dùng tải nặng.",90)
+    private val resistancePress=exercise("Đẩy vai với tạ đơn hoặc dây","2 hiệp × 6–10 lần",
+        "Ngồi hoặc đứng vững, giữ tạ nhẹ ngang vai hoặc đặt giữa dây dưới bàn chân. Đẩy lên có kiểm soát, không khóa cứng khuỷu, hạ về ngang vai.",
+        "Dùng tải rất nhẹ, tập từng tay hoặc giảm biên độ.",
+        "Không ưỡn lưng hay nín thở; dừng nếu đau vai hoặc tê.",90)
     val programs=listOf(
         TrainingProgram("starter","🌱 Bắt đầu nhẹ nhàng","Mới tập hoặc quay lại sau thời gian nghỉ","Toàn thân",listOf(warm,chairSquat,wallPush,bridge,stretch)),
         TrainingProgram("full","💪 Toàn thân không dụng cụ","Chân, thân trên và cơ trung tâm","Sức mạnh",listOf(warm,squat,wallPush,bridge,bird,plank,cool)),
@@ -108,6 +121,7 @@ object TrainingCatalog {
         TrainingProgram("balance","🌿 Thăng bằng cơ bản","Tập nhẹ có điểm tựa, không phải phục hồi chức năng","Vận động nhẹ",listOf(warm,heelRaise,balance,chairSquat,cool)),
         TrainingProgram("quick","⚡ 10 phút bận rộn","Buổi ngắn để bắt đầu thói quen","Vận động nhẹ",listOf(warm,march,wallPush,stretch)),
         TrainingProgram("advanced","🚀 Thử thách nâng cao","Chỉ chọn khi đã quen kỹ thuật và hồi phục tốt","Thử thách",listOf(warm,tempoSquat,push,reverseLunge,mountain,sidePlank,cool)),
+        TrainingProgram("weighted","🏋️ Sức mạnh với tạ hoặc dây","Cần tạ đơn nhẹ hoặc dây kháng lực • cho người đã quen động tác cơ bản","Sức mạnh",listOf(warm,resistanceRow,resistanceHinge,resistancePress,cool)),
         TrainingProgram("recovery","🌙 Ngày phục hồi tích cực","Nhẹ nhàng, không thay thế điều trị chấn thương","Phục hồi nhẹ",listOf(march,shoulder,catCow,stretch))
     )
     fun byId(id:String)=programs.firstOrNull { it.id==id } ?: programs.first()

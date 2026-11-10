@@ -47,13 +47,13 @@ class WorkoutHistoryAdvisorTest {
     }
 
     @Test fun lighterSessionHintRequiresFiveActiveDaysAndAtLeast180Minutes() {
-        val fiveDays = (0..4).map { workout(today.minusDays(it).toString(), 36) }
+        val fiveDays = (0..4).map { workout(today.minusDays(it.toLong()).toString(), 36) }
         assertTrue(WorkoutHistoryAdvisor.summarize(fiveDays, today).suggestLighterSession)
 
         val belowMinutes = fiveDays.map { it.copy(minutes = 35) }
         assertFalse(WorkoutHistoryAdvisor.summarize(belowMinutes, today).suggestLighterSession)
 
-        val fourDays = (0..3).map { workout(today.minusDays(it).toString(), 60) }
+        val fourDays = (0..3).map { workout(today.minusDays(it.toLong()).toString(), 60) }
         assertFalse(WorkoutHistoryAdvisor.summarize(fourDays, today).suggestLighterSession)
     }
 

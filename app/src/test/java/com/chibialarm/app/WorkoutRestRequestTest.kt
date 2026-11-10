@@ -20,6 +20,24 @@ class WorkoutRestRequestTest {
         assertEquals(30, WorkoutRestRequest.seconds("bài một phút rưỡi"))
     }
 
+
+    @Test fun parsesCompoundMinuteAndSecondDurationsWithoutTruncating() {
+        assertEquals(90, WorkoutRestRequest.seconds("nghỉ 1 phút 30 giây"))
+        assertEquals(75, WorkoutRestRequest.seconds("nghỉ 1 phút 15 giây"))
+        assertEquals(90, WorkoutRestRequest.seconds("nghỉ một phút ba mươi giây"))
+        assertEquals(30, WorkoutRestRequest.seconds("nghỉ 1 phút 90 giây"))
+        assertEquals(30, WorkoutRestRequest.seconds("nghỉ 2 phút 30 giây"))
+    }
+
+    @Test fun voicePreviewUsesTheRecognizedRestDuration() {
+        assertEquals("Bắt đầu nghỉ riêng 90 giây",
+            WorkoutVoiceCommands.describe(WorkoutVoiceCommands.Command.REST, "nghỉ 1 phút 30 giây"))
+        assertEquals("Bắt đầu nghỉ riêng 30 giây",
+            WorkoutVoiceCommands.describe(WorkoutVoiceCommands.Command.REST))
+        assertEquals("Hiển thị cách tập dễ hơn và thêm 60 giây nghỉ",
+            WorkoutVoiceCommands.describe(WorkoutVoiceCommands.Command.EASIER_AND_REST, "nhẹ hơn và nghỉ 60 giây"))
+    }
+
     @Test fun ambiguousOrUnsafeDurationsFallBackToThirtySeconds() {
         assertEquals(30, WorkoutRestRequest.seconds("mệt quá, cần nghỉ"))
         assertEquals(30, WorkoutRestRequest.seconds("nghỉ 999 phút"))

@@ -23,6 +23,10 @@ object WorkoutDurationChoices {
         return values.indices.minByOrNull { kotlin.math.abs(values[it] - bounded) } ?: 0
     }
 
+    /** Keep the exact user-selected duration when handing a plan to the guided session. */
+    fun guidedMinutes(requested: Int): Int =
+        requested.coerceIn(values.first(), values.last())
+
     /** Decode the old fitTime preference, which stored an index rather than minutes. */
     fun legacyMinutesForIndex(index: Int): Int =
         legacyValues[index.coerceIn(legacyValues.indices)]

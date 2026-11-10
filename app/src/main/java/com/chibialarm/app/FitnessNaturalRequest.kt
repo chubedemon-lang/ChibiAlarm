@@ -18,24 +18,109 @@ object FitnessNaturalRequest {
         val reply: String
     )
 
-    private fun normalize(input: String): String =
-        Normalizer.normalize(input.lowercase(Locale.ROOT).replace('đ', 'd'), Normalizer.Form.NFD)
+    private fun normalize(input: String): String {
+        // Keep "đầu" distinct from "đau". Removing Vietnamese diacritics first made
+        // "đầu gối" indistinguishable from "đau gối", causing false injury warnings.
+        val protected = input.lowercase(Locale.ROOT).replace("đầu", "headword").replace('đ', 'd')
+        return Normalizer.normalize(protected, Normalizer.Form.NFD)
             .replace(Regex("\\p{M}+"), "")
             .replace(Regex("[^a-z0-9 ]"), " ")
             .replace(Regex("\\s+"), " ").trim()
+    }
+
+    private const val LOCATION =
+        "(?:headword\\s+goi|khop\\s+goi|lung\\s+duoi|co\\s+tay|co\\s+chan|headword|goi|lung|vai|co|hong|nguc|chan|tay|khop)"
+    private const val PAIN_WORD = "(?:dau|nhuc|te|sung)"
+    private val painBeforeLocation = Regex(
+        "(?:^| )$PAIN_WORD(?:\\s+(?:o|tai|vung))?\\s+$LOCATION(?: |$)"
+    )
+    private val locationBeforePain = Regex(
+        "(?:^| )$LOCATION\\s+(?:(khong(?:\\s+(?:con|bi|co))?|het)\\s+)?" +
+            "(?:(?:dang|bi|rat|hoi)\\s+)?$PAIN_WORD(?: |$)"
+    )
+    private val negationAtEnd = Regex("(?:^| )(?:khong(?:\\s+(?:con|bi|co))?|het)$")
+    private val standalonePain = Regex("(?:^| )$PAIN_WORD(?: |$)")
+
+    /** Recognizes pain/symptoms in either word order while respecting nearby negation. */
+    private fun hasUnnegatedPain(text: String): Boolean {
+        for (match in painBeforeLocation.findAll(text)) {
+            val prefix = text.substring(0, match.range.first).trimEnd()
+            if (!negationAtEnd.containsMatchIn(prefix)) return true
+        }
+        for (match in locationBeforePain.findAll(text)) {
+            // Group 1 is the location; group 2 is an optional negation.
+            if (match.groupValues[2].isBlank()) return true
+        }
+        for (match in standalonePain.findAll(text)) {
+            val prefix = text.substring(0, match.range.first).trimEnd()
+            if (!negationAtEnd.containsMatchIn(prefix)) return true
+        }
+        return false
+    }
+
+    private val smallNumbers = mapOf(
+        "mot" to 1, "hai" to 2, "ba" to 3, "bon" to 4, "tu" to 4,
+        "nam" to 5, "lam" to 5, "sau" to 6, "bay" to 7, "tam" to 8, "chin" to 9
+    )
+
+    /** Parses common Vietnamese spoken numbers used for workout duration (1–120). */
+    private fun spokenNumber(raw: String): Int? {
+        raw.toIntOrNull()?.let { return it }
+        val words = raw.trim().split(Regex("\\s+")).filter { it.isNotBlank() }
+        if (words.isEmpty()) return null
+        if (words.size == 1) return when (words[0]) {
+            "muoi" -> 10
+            else -> smallNumbers[words[0]]
+        }
+
+        var index = 0
+        var total = 0
+        if (words.getOrNull(index) == "mot" && words.getOrNull(index + 1) == "tram") {
+            total = 100
+            index += 2
+            if (words.getOrNull(index) == "linh" || words.getOrNull(index) == "le") index++
+        }
+        if (index >= words.size) return total.takeIf { it > 0 }
+        val first = words[index]
+        val tens = when {
+            first == "muoi" -> 10
+            smallNumbers[first] != null && words.getOrNull(index + 1) == "muoi" ->
+                smallNumbers.getValue(first) * 10
+            else -> return null
+        }
+        index += if (first == "muoi") 1 else 2
+        val unit = if (index < words.size) {
+            if (index != words.lastIndex) return null
+            smallNumbers[words[index]] ?: return null
+        } else 0
+        return (total + tens + unit).takeIf { it in 1..120 }
+    }
+
+    private fun parseDuration(text: String): Int? {
+        if (Regex("(?:^| )nua tieng(?: |$)").containsMatchIn(text)) return 30
+        val number = "(?:[0-9]{1,3}|mot|hai|ba|bon|tu|nam|lam|sau|bay|tam|chin|muoi)(?:\\s+(?:tram|linh|le|muoi|mot|hai|ba|bon|tu|nam|lam|sau|bay|tam|chin))*"
+        val match = Regex("(?:^| )($number)\\s*(phut|minute|min|p|tieng|gio)(?: |$)")
+            .find(text) ?: return null
+        val amount = spokenNumber(match.groupValues[1]) ?: return null
+        val minutes = when (match.groupValues[2]) {
+            "tieng", "gio" -> amount.toLong() * 60L
+            else -> amount.toLong()
+        }
+        return minutes.takeIf { it in 5L..120L }?.toInt()
+    }
 
     fun parse(input: String): Result {
         val text = normalize(input.take(1000))
         fun has(vararg phrases: String) = phrases.any { text.contains(it) }
-        // Match complete normalized phrases rather than fragments of unrelated words.
+        // Acute/non-local symptoms remain conservative stop signals. Musculoskeletal
+        // pain is parsed separately so "đầu gối" alone is not mistaken for "đau gối".
         val symptoms = listOf(
-            "dau nguc", "chan thuong", "dang dau", "bi dau", "dau khop",
-            "dau goi", "dau lung", "dau vai", "dau co", "dau chan", "dau tay",
-            "chong mat", "kho tho", "buon non", "muon ngat", "te tay", "te chan"
+            "chan thuong", "dang dau", "bi dau", "chong mat", "choang",
+            "kho tho", "buon non", "muon ngat"
         )
         val injury = symptoms.any { phrase ->
-            Regex("(^| )" + Regex.escape(phrase) + "( |$)").containsMatchIn(text)
-        }
+            Regex("(?:^| )" + Regex.escape(phrase) + "(?: |$)").containsMatchIn(text)
+        } || hasUnnegatedPain(text)
         val lowImpact = has("khong nhay", "it tac dong", "nhe nhang", "tranh nhay")
         val energy = when {
             has("met", "het suc", "it nang luong") -> 0
@@ -62,8 +147,7 @@ object FitnessNaturalRequest {
             has("tham tap", "co tham") -> 1
             else -> null
         }
-        val duration = Regex("\\b(\\d{1,3})\\s*(phut|minute|min)\\b")
-            .find(text)?.groupValues?.get(1)?.toIntOrNull()?.takeIf { it in 5..120 }
+        val duration = parseDuration(text)
         val detected = listOf(goal, level, energy, equipment, duration).count { it != null } +
             if (injury || lowImpact) 1 else 0
         val reply = when {

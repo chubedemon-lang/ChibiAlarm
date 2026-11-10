@@ -70,6 +70,8 @@ class FitnessActivity:Activity() {
     private lateinit var length:Spinner
     private lateinit var filter:Spinner
     private var impactRestrictionSpinner: Spinner? = null
+    private var wristLoadCheckBox: CheckBox? = null
+    private var programContainer: LinearLayout? = null
     private var historySummaryView: TextView? = null
     private var historySuggestionView: TextView? = null
     private var historyRecoveryButton: Button? = null
@@ -90,7 +92,12 @@ class FitnessActivity:Activity() {
 
     /** The safety selection survives rotation in memory only; it is not written to disk or backup. */
     override fun onRetainNonConfigurationInstance(): Any? =
-        FitnessCoachSessionSnapshot.capture(conversation, impactRestrictionSpinner?.selectedItemPosition)
+        FitnessCoachSessionSnapshot.capture(
+            conversation,
+            impactRestrictionSpinner?.selectedItemPosition,
+            selectedAvoidWristLoad = if (wristLoadCheckBox?.isChecked == true || conversation?.avoidWristLoad != null)
+                wristLoadCheckBox?.isChecked else null
+        )
 
     private fun effectiveImpactRestriction(): Int =
         FitnessCoachSessionSnapshot.effectiveImpact(
@@ -240,6 +247,26 @@ class FitnessActivity:Activity() {
         }
         root.addView(impactSpinner)
         impactRestrictionSpinner = impactSpinner
+        val wristLoadRestriction = CheckBox(this).apply {
+            text = "Tránh động tác chống tay hoặc cầm tải qua cổ tay"
+            contentDescription = "Chỉ áp dụng cho buổi tập hiện tại; không lưu thành hồ sơ sức khỏe"
+            isChecked = conversation?.avoidWristLoad == true
+            setOnCheckedChangeListener { _, checked ->
+                val previous = conversation
+                conversation = if (previous == null) {
+                    if (checked) FitnessNaturalRequest.Result(
+                        reply = "Đã chọn tránh chống tay và tải qua cổ tay.",
+                        avoidWristLoad = true
+                    ) else null
+                } else previous.copy(avoidWristLoad = checked)
+                if (::filter.isInitialized) {
+                    programContainer?.let { drawPrograms(it, categories[filter.selectedItemPosition]) }
+                }
+            }
+        }
+        wristLoadCheckBox = wristLoadRestriction
+        root.addView(wristLoadRestriction)
+        root.addView(txt("Lựa chọn này chỉ áp dụng cho buổi tập hiện tại; không lưu thành hồ sơ sức khỏe. Nếu đang đau, tê hoặc sưng cổ tay, hãy dừng tập và xin tư vấn phù hợp.",12f))
         val historySummary = txt("",14f).apply { visibility = android.view.View.GONE }
         historySummaryView = historySummary
         root.addView(historySummary)
@@ -303,6 +330,7 @@ class FitnessActivity:Activity() {
                     }
                     parsed.equipment?.let { equipmentSpinner.setSelection(it) }
                     parsed.impact?.let { impactSpinner.setSelection(it) }
+                    parsed.avoidWristLoad?.let { wristLoadCheckBox?.isChecked = it }
                     sayFollowUp(coachMessage)
                     AlertDialog.Builder(this@FitnessActivity)
                         .setTitle("🐰 Chibi đã nghe")
@@ -363,8 +391,17 @@ class FitnessActivity:Activity() {
                     return@setOnClickListener
                 }
                 val p=TrainingCatalog.byId(recommendation.programId)
+                val constraintProfile = currentWorkoutConstraintProfile()
+                val constraintResult = WorkoutConstraintFilter.apply(p, constraintProfile)
+                if (!constraintResult.canStart) {
+                    AlertDialog.Builder(this@FitnessActivity)
+                        .setTitle("Chưa có động tác phù hợp")
+                        .setMessage("Bộ lọc hiện tại không còn động tác chính trong chương trình này. Hãy chọn chương trình khác hoặc bỏ bộ lọc; đừng cố tập qua đau.")
+                        .setPositiveButton("Đã hiểu", null).show()
+                    return@setOnClickListener
+                }
                 val planned=WorkoutDurationPlanner.build(
-                    p, level.selectedItemPosition, mins[length.selectedItemPosition]
+                    constraintResult.program, level.selectedItemPosition, mins[length.selectedItemPosition]
                 )
                 val durationSummary = buildString {
                     append("Thời lượng tối đa bạn chọn: ${planned.targetMinutes} phút • ")
@@ -373,6 +410,7 @@ class FitnessActivity:Activity() {
                     if (planned.exceedsTarget) {
                         append("\nChương trình tối thiểu hiện dài hơn thời lượng bạn chọn; hãy cân nhắc chọn chương trình ngắn hơn.")
                     }
+                    if (constraintResult.notice.isNotBlank()) append("\n\n").append(constraintResult.notice)
                 }
                 AlertDialog.Builder(this@FitnessActivity).setTitle("🐰 Chibi đề xuất: "+p.name)
                     .setMessage("Mục tiêu: "+goals[goal]+" • "+energyLevels[energy]+"\n"+
@@ -381,7 +419,7 @@ class FitnessActivity:Activity() {
                         durationSummary+"\n\n"+
                         recommendation.explanation+
                         "\n\nGợi ý offline theo quy tắc trên máy, không phải AI chẩn đoán hay tư vấn y khoa.")
-                    .setPositiveButton("▶ Bắt đầu"){_,_->startProgram(p)}
+                    .setPositiveButton("▶ Bắt đầu"){_,_->startProgram(p, constraintProfile)}
                     .setNeutralButton("📖 Xem từng bước") { _, _ ->
                         val steps = planned.moves
                             .mapIndexed { i, move ->
@@ -393,7 +431,7 @@ class FitnessActivity:Activity() {
                         AlertDialog.Builder(this@FitnessActivity)
                             .setTitle("📖 ${p.name} • hướng dẫn trước khi tập")
                             .setMessage(steps + "\n\nBạn có thể quay lại để thay đổi mục tiêu hoặc thời lượng.")
-                            .setPositiveButton("▶ Bắt đầu") { _, _ -> startProgram(p) }
+                            .setPositiveButton("▶ Bắt đầu") { _, _ -> startProgram(p, constraintProfile) }
                             .setNegativeButton("Đóng", null).show()
                     }
                     .setNegativeButton("Chọn bài khác",null).show()
@@ -419,6 +457,7 @@ class FitnessActivity:Activity() {
         }
         root.addView(filter)
         val container=LinearLayout(this).apply { orientation=1 }
+        programContainer = container
         root.addView(container)
         filter.onItemSelectedListener=object:android.widget.AdapterView.OnItemSelectedListener {
             override fun onNothingSelected(parent:android.widget.AdapterView<*>?) {}
@@ -444,10 +483,13 @@ class FitnessActivity:Activity() {
                 elevation=2f
             }
             card.addView(txt(program.name,19f))
+            val constraints = currentWorkoutConstraintProfile()
+            val constrained = WorkoutConstraintFilter.apply(program, constraints)
             val planned = WorkoutDurationPlanner.build(
-                program, level.selectedItemPosition, mins[length.selectedItemPosition]
+                constrained.program, level.selectedItemPosition, mins[length.selectedItemPosition]
             )
             card.addView(txt(program.subtitle+" • "+planned.moves.size+" bước • khoảng "+planned.estimatedMinutes+" phút",13f))
+            if (constrained.notice.isNotBlank()) card.addView(txt(constrained.notice,12f))
             val buttons=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
             buttons.addView(Button(this).apply { text="📖 Xem bài";isAllCaps=false;setOnClickListener {
                 val guide=planned.moves
@@ -455,11 +497,11 @@ class FitnessActivity:Activity() {
                     .joinToString("\n\n")
                 AlertDialog.Builder(this@FitnessActivity)
                     .setTitle(program.name).setMessage(guide)
-                    .setPositiveButton("🎙 Bắt đầu"){_,_->startProgram(program)}
+                    .setPositiveButton("🎙 Bắt đầu"){_,_->startProgram(program, constraints)}
                     .setNegativeButton("Đóng",null).show()
             } },LinearLayout.LayoutParams(0,-2,1f))
             buttons.addView(Button(this).apply { text="▶ Tập ngay";isAllCaps=false;setOnClickListener {
-                startProgram(program)
+                startProgram(program, constraints)
             } },LinearLayout.LayoutParams(0,-2,1f))
             card.addView(buttons)
             card.addView(Button(this).apply { text="📆 Thêm lịch tuần";isAllCaps=false;setOnClickListener {
@@ -468,7 +510,13 @@ class FitnessActivity:Activity() {
             container.addView(card,LinearLayout.LayoutParams(-1,-2).apply { bottomMargin=15 })
         }
     }
-    private fun startProgram(p:TrainingProgram) {
+    private fun currentWorkoutConstraintProfile(): WorkoutConstraintProfile =
+        WorkoutConstraintProfile(avoidWristLoad = wristLoadCheckBox?.isChecked == true)
+
+    private fun startProgram(
+        p: TrainingProgram,
+        constraints: WorkoutConstraintProfile = currentWorkoutConstraintProfile()
+    ) {
         if (effectiveImpactRestriction() == 2) {
             AlertDialog.Builder(this)
                 .setTitle("🐰 Tạm dừng buổi tập")
@@ -487,9 +535,14 @@ class FitnessActivity:Activity() {
             .putInt("fitTimeMinutes", m)
             .apply()
         startActivity(Intent(this,GuidedWorkoutActivity::class.java)
-            .putExtra("program",p.id).putExtra("level",l).putExtra("minutes",m))
+            .putExtra("program",p.id).putExtra("level",l).putExtra("minutes",m)
+            .putExtra("avoid_wrist_load", constraints.avoidWristLoad))
     }
     private fun addRoutine(p:TrainingProgram) {
+        if (currentWorkoutConstraintProfile().avoidWristLoad) {
+            Toast.makeText(this, "Lựa chọn tránh tải cổ tay chỉ áp dụng cho buổi hiện tại; lịch tuần chưa lưu bộ lọc này.", Toast.LENGTH_LONG).show()
+            return
+        }
         if (effectiveImpactRestriction() == 2) {
             AlertDialog.Builder(this)
                 .setTitle("🐰 Chưa thể lên lịch tập")

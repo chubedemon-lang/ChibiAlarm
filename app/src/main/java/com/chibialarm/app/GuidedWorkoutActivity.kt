@@ -99,7 +99,7 @@ class GuidedWorkoutActivity:Activity() {
                 completedSetsByMove.clear()
                 completedSetsByMove.putAll(WorkoutSetTracker.decode(checkpoint.getString("completedSets",null),moves))
                 completedMoveIndices.removeAll { position ->
-                    val plan=WorkoutSetTracker.parse(moves[position].dose)
+                    val plan=setPlan(position)
                     plan!=null && !WorkoutSetTracker.isComplete(completedSetsByMove[position] ?: 0,plan)
                 }
                 displayStep()
@@ -145,6 +145,7 @@ class GuidedWorkoutActivity:Activity() {
                     resting=false
                     paused=true
                     restRemainingMs=0L
+                    renderSetControls()
                     control.text="▶ Tiếp tục hiệp"
                     counter.text=clockText(remainingMs)
                     saveCheckpoint()
@@ -366,7 +367,7 @@ class GuidedWorkoutActivity:Activity() {
             completedSetsByMove.clear()
             completedSetsByMove.putAll(WorkoutSetTracker.decode(savedInstanceState.getString("workout_completed_sets"),moves))
             completedMoveIndices.removeAll { position ->
-                val plan=WorkoutSetTracker.parse(moves[position].dose)
+                val plan=setPlan(position)
                 plan!=null && !WorkoutSetTracker.isComplete(completedSetsByMove[position] ?: 0,plan)
             }
             displayStep()
@@ -453,6 +454,7 @@ class GuidedWorkoutActivity:Activity() {
                 } else {
                     repTargets[selected] = reps
                     renderDose()
+                    renderSetControls()
                     saveCheckpoint()
                     speak("Đã đổi mục tiêu thành $reps lần. Tập trong khả năng của bạn.")
                 }
@@ -471,6 +473,7 @@ class GuidedWorkoutActivity:Activity() {
             WorkoutVoiceCommands.Command.PAIN -> {
                 pause()
                 pausedForSafety=true
+                renderSetControls()
                 control.text="⚠️ Đã dừng vì đau"
                 // Persist the safety lock after setting it, including when recognition
                 // arrives while the workout is already paused.
@@ -604,6 +607,7 @@ class GuidedWorkoutActivity:Activity() {
                             } else {
                                 repTargets[selected]=reps
                                 renderDose()
+                                renderSetControls()
                                 saveCheckpoint()
                                 speak("Mục tiêu động tác hiện tại là $reps lần. Tập trong khả năng của bạn.")
                             }
@@ -993,8 +997,14 @@ class GuidedWorkoutActivity:Activity() {
         control.text="▶ Tập động tác này"
         spoken?.stop()
     }
-    private fun currentSetPlan():WorkoutSetTracker.Plan? =
-        moves.getOrNull(index)?.let { WorkoutSetTracker.parse(it.dose) }
+    private fun setPlan(position:Int):WorkoutSetTracker.Plan? {
+        val move=moves.getOrNull(position) ?: return null
+        val base=WorkoutSetTracker.parse(move.dose) ?: return null
+        val edited=repTargets[position] ?: return base
+        return base.copy(targetMin=edited,targetMax=edited)
+    }
+
+    private fun currentSetPlan():WorkoutSetTracker.Plan? = setPlan(index)
 
     private fun clockText(milliseconds:Long):String {
         val seconds=(milliseconds.coerceAtLeast(0L)/1000L).toInt()
@@ -1076,6 +1086,7 @@ class GuidedWorkoutActivity:Activity() {
         startedAt=0L
         paused=false
         handler.removeCallbacks(tick)
+        renderSetControls()
         control.text="⏸ Dừng nghỉ"
         counter.text=restCounterText(restRemainingMs)
         handler.post(tick)
@@ -1113,7 +1124,7 @@ class GuidedWorkoutActivity:Activity() {
         if(pausedForSafety) {
             AlertDialog.Builder(this).setTitle("Xác nhận trước khi tập lại")
                 .setMessage("Bạn đã báo đau. Chỉ tiếp tục nếu triệu chứng đã hết và bạn thấy an toàn. Nếu còn đau, hãy dừng buổi tập.")
-                .setPositiveButton("Tôi đã ổn, tiếp tục"){_,_->pausedForSafety=false;resume()}
+                .setPositiveButton("Tôi đã ổn, tiếp tục"){_,_->pausedForSafety=false;renderSetControls();resume()}
                 .setNegativeButton("Tiếp tục nghỉ",null).show()
             return
         }
@@ -1144,6 +1155,7 @@ class GuidedWorkoutActivity:Activity() {
             spoken?.stop()
             control.text="▶ Tiếp tục nghỉ"
             counter.text=restCounterText(restRemainingMs)
+            saveCheckpoint()
             return
         }
         remainingMs=(deadline-now).coerceAtLeast(0L)
@@ -1152,6 +1164,7 @@ class GuidedWorkoutActivity:Activity() {
         paused=true;handler.removeCallbacks(tick)
         spoken?.stop()
         control.text="▶ Tiếp tục"
+        saveCheckpoint()
     }
     private fun nextMove(completedByTimer:Boolean=false) {
         if(pausedForSafety) {
@@ -1186,11 +1199,11 @@ class GuidedWorkoutActivity:Activity() {
         val elapsedMs=activeElapsedMs()
         val completedCount=completedMoveIndices.count { it in moves.indices }
         val setCompletedMoves=completedMoveIndices.count { position ->
-            val plan=WorkoutSetTracker.parse(moves[position].dose)
+            val plan=setPlan(position)
             plan!=null && WorkoutSetTracker.isComplete(completedSetsByMove[position] ?: 0,plan)
         }
         val timerCompletedMoves=completedMoveIndices.count { position ->
-            WorkoutSetTracker.parse(moves[position].dose)==null
+            setPlan(position)==null
         }
         val selfReportedSets=completedSetsByMove.values.sum()
         if (!WorkoutCompletionTracker.canLog(completedMoveIndices,moves.size,elapsedMs)) {

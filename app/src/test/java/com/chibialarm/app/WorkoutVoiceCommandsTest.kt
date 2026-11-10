@@ -19,6 +19,8 @@ class WorkoutVoiceCommandsTest {
         assertEquals(C.NEXT, WorkoutVoiceCommands.parse("bỏ qua bài này"))
         assertEquals(C.NEXT, WorkoutVoiceCommands.parse("chuyển bài"))
         assertEquals(C.EASIER, WorkoutVoiceCommands.parse("Nhẹ hơn"))
+        assertEquals(C.SWAP_EASIER, WorkoutVoiceCommands.parse("Đổi động tác"))
+        assertEquals(C.SWAP_EASIER, WorkoutVoiceCommands.parse("Đổi sang bài nhẹ hơn"))
         assertEquals(C.REST, WorkoutVoiceCommands.parse("Nghỉ thêm"))
         assertEquals(C.SHORTER, WorkoutVoiceCommands.parse("Rút ngắn bài tập"))
         assertEquals(C.SHORTER, WorkoutVoiceCommands.parse("giam thoi gian"))
@@ -71,7 +73,8 @@ class WorkoutVoiceCommandsTest {
             "Tôi đau gối, giảm còn 6 lần",
             "Nghỉ thêm 30 giây và giảm còn 8 lần",
             "Bài tiếp theo, giảm còn 12 lần",
-            "Tiếp tục và giảm còn 15 lần"
+            "Tiếp tục và giảm còn 15 lần",
+            "Đổi bài và giảm còn 8 lần"
         )) {
             org.junit.Assert.assertFalse(phrase, WorkoutVoiceCommands.mayEditReps(phrase))
         }

@@ -111,6 +111,63 @@ class WorkoutPoseView(context: Context) : View(context) {
                 line(116f, 69f, 83f, 86f); line(83f, 86f, 83f, 109f)
                 line(116f, 69f, 151f, 89f); line(151f, 89f, 185f, 89f)
             }
+            WorkoutPoseGuide.Pose.BRIDGE -> {
+                val hipY = if (movementPhase) 55f else 73f
+                head(39f, 83f); line(50f, 84f, 77f, 84f)
+                line(77f, 84f, 124f, hipY); line(124f, hipY, 164f, hipY)
+                line(164f, hipY, 190f, 101f); line(190f, 101f, 211f, 101f)
+                line(77f, 84f, 69f, 103f); line(69f, 103f, 51f, 103f)
+            }
+            WorkoutPoseGuide.Pose.BIRD_DOG -> {
+                head(72f, 55f); line(83f, 65f, 141f, 72f)
+                line(99f, 67f, 96f, 105f); line(99f, 67f, if (movementPhase) 43f else 64f, if (movementPhase) 44f else 54f)
+                line(141f, 72f, 145f, 104f); line(141f, 72f, if (movementPhase) 207f else 181f, if (movementPhase) 45f else 61f)
+            }
+            WorkoutPoseGuide.Pose.DEAD_BUG -> {
+                head(42f, 86f); line(54f, 86f, 119f, 86f)
+                line(75f, 84f, 58f, 43f); line(75f, 84f, 99f, 44f)
+                line(119f, 86f, 145f, 63f)
+                line(145f, 63f, if (movementPhase) 177f else 151f, if (movementPhase) 91f else 35f)
+                line(119f, 86f, 94f, 64f); line(94f, 64f, 91f, if (movementPhase) 35f else 91f)
+            }
+            WorkoutPoseGuide.Pose.CAT_COW -> {
+                val spineY = if (movementPhase) 57f else 87f
+                head(67f, 68f); line(79f, 76f, 111f, spineY)
+                line(111f, spineY, 151f, spineY); line(151f, spineY, 169f, 76f)
+                line(91f, 78f, 91f, 105f); line(160f, 78f, 160f, 105f)
+            }
+            WorkoutPoseGuide.Pose.MARCH -> {
+                head(120f, 20f); line(120f, 31f, 120f, 71f)
+                line(120f, 43f, 94f, if (movementPhase) 52f else 64f)
+                line(120f, 43f, 146f, if (movementPhase) 64f else 52f)
+                line(120f, 71f, 120f, 108f)
+                line(120f, 71f, if (movementPhase) 154f else 88f, 86f)
+                line(if (movementPhase) 154f else 88f, 86f, if (movementPhase) 166f else 76f, 108f)
+            }
+            WorkoutPoseGuide.Pose.STRETCH -> {
+                head(120f, 22f); line(120f, 33f, 120f, 73f)
+                line(120f, 45f, 87f, 20f); line(87f, 20f, 83f, 7f)
+                line(120f, 45f, 153f, 20f); line(153f, 20f, 157f, 7f)
+                line(120f, 73f, 101f, 108f); line(120f, 73f, 139f, 108f)
+            }
+            WorkoutPoseGuide.Pose.SIDE_PLANK -> {
+                head(54f, 48f); line(66f, 54f, 162f, 72f)
+                line(162f, 72f, 204f, 99f); line(204f, 99f, 220f, 99f)
+                line(91f, 59f, 91f, 101f); line(91f, 101f, 72f, 101f)
+            }
+            WorkoutPoseGuide.Pose.CALF_RAISE -> {
+                head(120f, 20f); line(120f, 31f, 120f, 71f)
+                line(120f, 43f, 94f, 64f); line(120f, 43f, 146f, 64f)
+                line(120f, 71f, 102f, 106f)
+                line(120f, 71f, 140f, if (movementPhase) 91f else 106f)
+                line(140f, if (movementPhase) 91f else 106f, 156f, 106f)
+            }
+            WorkoutPoseGuide.Pose.BALANCE -> {
+                head(120f, 20f); line(120f, 31f, 120f, 71f)
+                line(120f, 43f, 94f, 64f); line(120f, 43f, 146f, 64f)
+                line(120f, 71f, 120f, 108f)
+                line(120f, 71f, 151f, 84f); line(151f, 84f, 143f, 101f)
+            }
             WorkoutPoseGuide.Pose.STANDING, WorkoutPoseGuide.Pose.REST -> {
                 head(120f, 20f); line(120f, 31f, 120f, 71f)
                 line(120f, 43f, 94f, 64f); line(120f, 43f, 146f, 64f)

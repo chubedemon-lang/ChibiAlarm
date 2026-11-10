@@ -51,6 +51,19 @@ class WorkoutDurationChoicesTest {
         ])
     }
 
+    @Test fun guidedSessionPreservesEverySupportedDurationIncludingLongPlans() {
+        for (duration in listOf(5, 10, 15, 20, 30, 40, 45, 60, 90, 120)) {
+            assertEquals(duration, WorkoutDurationChoices.guidedMinutes(duration))
+        }
+    }
+
+    @Test fun guidedSessionBoundsInvalidIntentValuesWithoutTruncatingValidLongTargets() {
+        assertEquals(5, WorkoutDurationChoices.guidedMinutes(Int.MIN_VALUE))
+        assertEquals(120, WorkoutDurationChoices.guidedMinutes(Int.MAX_VALUE))
+        assertEquals(60, WorkoutDurationChoices.guidedMinutes(60))
+        assertEquals(90, WorkoutDurationChoices.guidedMinutes(90))
+    }
+
     @Test fun valuesOutsideSupportedRangeAreBounded() {
         assertEquals(5, WorkoutDurationChoices.minutes[
             WorkoutDurationChoices.indexForMinutes(-100)

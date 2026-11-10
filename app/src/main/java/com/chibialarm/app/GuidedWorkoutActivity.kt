@@ -531,34 +531,28 @@ class GuidedWorkoutActivity:Activity() {
             WorkoutVoiceCommands.Command.PREVIOUS -> { if(!pausedForSafety) { pause();if(index>0)index--;displayStep();speak("Bài "+moves[index].name) } }
             WorkoutVoiceCommands.Command.REPEAT -> speak(moves[index].steps)
             WorkoutVoiceCommands.Command.EASIER_AND_REST -> {
-                if (pausedForSafety) {
-                    Toast.makeText(this,"Buổi tập đã dừng vì báo đau.",Toast.LENGTH_LONG).show()
+                if (pausedForSafety || completed || resting || index !in moves.indices) {
+                    Toast.makeText(this,"Buổi tập đang dừng hoặc không thể điều chỉnh.",Toast.LENGTH_LONG).show()
                 } else {
-                    // Never silently mutate the session on a potentially misheard compound command.
-                    // Pause first, then require an explicit user decision; cancel keeps the timer intact.
+                    // Confirm the combined action before starting a separate rest countdown.
                     pause()
                     val addedSeconds=WorkoutRestRequest.seconds(utterance)
                     val previewIndex=index
                     val originalMs=remainingMs
-                    val proposedMs=(originalMs+addedSeconds*1000L).coerceAtMost(600_000L)
                     val exerciseName=moves[index].name
                     val easierCue=moves[index].easier
                     AlertDialog.Builder(this).setTitle("🐰 Xác nhận điều chỉnh buổi tập")
-                        .setMessage("Bạn muốn nghỉ thêm $addedSeconds giây (${originalMs / 1000} → ${proposedMs / 1000} giây) và xem cách tập nhẹ hơn cho $exerciseName?"+
-                            "\n\n$easierCue"+
-                            "\n\nChibi chỉ tăng thời gian nghỉ và gợi ý cách tập; chưa tự đổi số hiệp hoặc kỹ thuật.")
+                        .setMessage("Bạn muốn nghỉ riêng $addedSeconds giây và xem cách tập nhẹ hơn cho $exerciseName? " +
+                            "Bộ đếm động tác còn lại (${originalMs / 1000} giây) sẽ được giữ nguyên; thời gian nghỉ không tính vào vận động." +
+                            "\n\n$easierCue" +
+                            "\n\nChibi chỉ gợi ý cách tập, không tự đổi số hiệp hoặc xác minh kỹ thuật.")
                         .setPositiveButton("Đồng ý điều chỉnh") { _, _ ->
-                            if (pausedForSafety || completed || index != previewIndex ||
+                            if (pausedForSafety || completed || resting || index != previewIndex ||
                                 remainingMs != originalMs || index !in moves.indices) {
                                 Toast.makeText(this, "Buổi tập đã thay đổi. Hãy xem trước lại.", Toast.LENGTH_LONG).show()
                                 return@setPositiveButton
                             }
-                            remainingMs=proposedMs
-                            val seconds=(remainingMs/1000).toInt()
-                            counter.text=String.format(Locale.US,"%02d:%02d",seconds/60,seconds%60)
-                            control.text="▶ Tiếp tục khi sẵn sàng"
-                            saveCheckpoint()
-                            speak("Đã thêm $addedSeconds giây nghỉ. $easierCue")
+                            startSetRest(addedSeconds, "Cách tập nhẹ hơn: $easierCue")
                         }
                         .setNegativeButton("Giữ nguyên",null)
                         .show()
@@ -596,6 +590,10 @@ class GuidedWorkoutActivity:Activity() {
      * Spoken/manual rest is a separate countdown. It pauses the exercise timer
      * without adding rest seconds to the active-exercise duration.
      */
+    /**
+     * Spoken/manual rest is a separate countdown. It pauses the exercise timer
+     * without adding rest seconds to the active-exercise duration.
+     */
     private fun confirmExtraRest(addedSeconds: Int) {
         if (pausedForSafety || completed || resting || index !in moves.indices) return
         val seconds = addedSeconds.coerceIn(1, 600)
@@ -603,8 +601,8 @@ class GuidedWorkoutActivity:Activity() {
         val originalMs = remainingMs
         val originalIndex = index
         AlertDialog.Builder(this).setTitle("Xác nhận nghỉ riêng")
-            .setMessage("Động tác: ${moves[originalIndex].name}\\n" +
-                "Thời gian động tác còn lại: ${originalMs / 1000} giây.\\n" +
+            .setMessage("Động tác: ${moves[originalIndex].name}\n" +
+                "Thời gian động tác còn lại: ${originalMs / 1000} giây.\n" +
                 "Chibi sẽ chạy bộ đếm nghỉ riêng $seconds giây. Thời gian động tác được giữ nguyên; thời gian nghỉ không tính vào phút vận động.")
             .setPositiveButton("Bắt đầu nghỉ") { _, _ ->
                 if (pausedForSafety || completed || resting || index != originalIndex ||
@@ -1179,7 +1177,7 @@ class GuidedWorkoutActivity:Activity() {
     }
 
     /** Rest is a separate countdown and is excluded from active-exercise time. */
-    private fun startSetRest(seconds:Int) {
+    private fun startSetRest(seconds:Int, spokenCue:String?=null) {
         if(pausedForSafety || completed || resting || seconds !in 1..600) return
         pause()
         val restState = WorkoutRestSession.start(remainingMs, seconds)
@@ -1195,7 +1193,9 @@ class GuidedWorkoutActivity:Activity() {
         counter.text=restCounterText(restRemainingMs)
         handler.post(tick)
         saveCheckpoint()
-        speak("Bắt đầu nghỉ $seconds giây.")
+        val announcement = spokenCue?.take(240)?.let { "Bắt đầu nghỉ $seconds giây. $it" }
+            ?: "Bắt đầu nghỉ $seconds giây."
+        speak(announcement)
     }
 
     private fun requestSetRest() {

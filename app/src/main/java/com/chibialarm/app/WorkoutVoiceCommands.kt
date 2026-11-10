@@ -8,7 +8,9 @@ object WorkoutVoiceCommands {
     enum class Command { PAIN, PAUSE, RESUME, NEXT, PREVIOUS, REPEAT, EASIER, SWAP_EASIER, EASIER_AND_REST, SHORTER, SHORTER_REMAINING, REST, UNKNOWN }
 
     /** Human-readable action shown before applying fallible speech recognition. */
-    fun describe(command: Command): String = when (command) {
+    fun describe(command: Command, utterance: String? = null): String {
+        val restSeconds = utterance?.let { WorkoutRestRequest.seconds(it) } ?: 30
+        return when (command) {
         Command.PAIN -> "Dừng tập vì cảnh báo an toàn"
         Command.PAUSE -> "Tạm dừng buổi tập"
         Command.RESUME -> "Tiếp tục buổi tập"
@@ -17,11 +19,12 @@ object WorkoutVoiceCommands {
         Command.REPEAT -> "Đọc lại hướng dẫn"
         Command.EASIER -> "Hiển thị cách tập dễ hơn"
         Command.SWAP_EASIER -> "Thay động tác hiện tại bằng phương án nhẹ hơn"
-        Command.EASIER_AND_REST -> "Hiển thị cách tập dễ hơn và thêm thời gian nghỉ"
+        Command.EASIER_AND_REST -> "Hiển thị cách tập dễ hơn và thêm $restSeconds giây nghỉ"
         Command.SHORTER -> "Rút ngắn thời gian động tác hiện tại"
         Command.SHORTER_REMAINING -> "Rút ngắn động tác hiện tại và tất cả động tác còn lại"
-        Command.REST -> "Thêm 30 giây nghỉ"
+        Command.REST -> "Bắt đầu nghỉ riêng $restSeconds giây"
         Command.UNKNOWN -> "Chưa hiểu yêu cầu; không tự thay đổi buổi tập"
+        }
     }
 
     /**

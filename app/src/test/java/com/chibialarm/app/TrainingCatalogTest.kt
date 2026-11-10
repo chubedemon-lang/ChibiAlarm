@@ -26,4 +26,16 @@ class TrainingCatalogTest {
         val ids = TrainingCatalog.programs.map { it.id }
         assertEquals(ids.size, ids.toSet().size)
     }
+
+    @Test fun wristNeutralAlternativesHaveStepwiseGuidance() {
+        val forearmPress = TrainingCatalog.allMoves.first { it.name == "Ép ngực tường bằng cẳng tay" }
+        val scapular = TrainingCatalog.allMoves.first { it.name == "Siết bả vai đứng" }
+        assertTrue(forearmPress.steps.contains("cẳng tay"))
+        assertTrue(forearmPress.steps.contains("cổ tay thả lỏng"))
+        assertTrue(forearmPress.avoid.contains("đau"))
+        assertTrue(scapular.steps.contains("bả vai"))
+        assertTrue(scapular.dose.contains("hiệp"))
+    }
+
+
 }

@@ -88,6 +88,14 @@ class WorkoutVoiceCommandsTest {
         assertEquals(C.UNKNOWN, WorkoutVoiceCommands.parse("thời tiết hôm nay thế nào"))
         assertEquals(C.UNKNOWN, WorkoutVoiceCommands.parse("a".repeat(161)))
     }
+
+    @Test fun restPreviewIncludesTheDurationFromRecognizedSpeech() {
+        assertEquals("Bắt đầu nghỉ riêng 75 giây",
+            WorkoutVoiceCommands.describe(C.REST, "nghỉ 1 phút 15 giây"))
+        assertEquals("Hiển thị cách tập dễ hơn và thêm 90 giây nghỉ",
+            WorkoutVoiceCommands.describe(C.EASIER_AND_REST, "nhẹ hơn và nghỉ một phút rưỡi"))
+    }
+
     @Test fun spokenActionPreviewCoversEveryCommand() {
         for (command in C.values()) {
             val preview = WorkoutVoiceCommands.describe(command)

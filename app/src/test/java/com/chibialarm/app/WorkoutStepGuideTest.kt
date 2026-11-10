@@ -28,4 +28,31 @@ class WorkoutStepGuideTest {
     @Test fun skipsEmptyBullets() {
         assertEquals(listOf("Nâng tay"), WorkoutStepGuide.split("•\n-\n3) Nâng tay"))
     }
+
+    @Test fun walkthroughMovesBackwardAndForwardWithoutLeavingBounds() {
+        val first = WorkoutStepGuide.Walkthrough.start(
+            "Đứng thẳng.\\nHạ người.\\nĐứng lên."
+        )
+        assertEquals(1, first.position)
+        assertEquals("Đứng thẳng.", first.currentStep)
+        assertFalse(first.canGoPrevious)
+
+        val second = first.next()
+        assertEquals(2, second.position)
+        assertEquals("Hạ người.", second.currentStep)
+        assertTrue(second.canGoPrevious)
+
+        val third = second.next().next()
+        assertEquals(3, third.position)
+        assertEquals("Đứng lên.", third.currentStep)
+        assertFalse(third.canGoNext)
+        assertEquals(3, third.next().position)
+        assertEquals("Hạ người.", third.previous().currentStep)
+    }
+
+    @Test fun walkthroughAlwaysHasAReadableFallbackStep() {
+        val walkthrough = WorkoutStepGuide.Walkthrough.start("  ")
+        assertEquals(1, walkthrough.steps.size)
+        assertEquals("Đọc hướng dẫn trên màn hình và tập theo sức mình.", walkthrough.currentStep)
+    }
 }

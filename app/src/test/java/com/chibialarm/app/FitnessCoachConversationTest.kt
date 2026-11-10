@@ -2,6 +2,7 @@ package com.chibialarm.app
 
 import org.junit.Assert.*
 import org.junit.Test
+import java.util.Locale
 
 class FitnessCoachConversationTest {
     @Test fun accumulatesAcrossTurnsWithoutErasingPreviousAnswers() {
@@ -143,5 +144,18 @@ class FitnessCoachConversationTest {
         val reply = FitnessCoachConversation.parseReply(previous, "sức mạnh")
         assertEquals(2, FitnessCoachConversation.merge(previous, reply).impact)
         assertFalse(reply.reply.contains("Đã ghi nhận mục tiêu"))
+    }
+
+    @Test fun contextualReplyNormalizationDoesNotDependOnDeviceLocale() {
+        val original = Locale.getDefault()
+        try {
+            Locale.setDefault(Locale.forLanguageTag("tr-TR"))
+            val previous = FitnessNaturalRequest.parse("giãn cơ 15 phút")
+            val reply = FitnessCoachConversation.parseReply(previous, "MỚI BẮT ĐẦU")
+            assertEquals(0, reply.level)
+            assertTrue(reply.reply.contains("mới bắt đầu"))
+        } finally {
+            Locale.setDefault(original)
+        }
     }
 }

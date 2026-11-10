@@ -12,25 +12,80 @@ import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.*
 
-data class Workout(val date:String,val name:String,val minutes:Int,val note:String)
+data class Workout(
+    val date:String,
+    val name:String,
+    val minutes:Int,
+    val note:String,
+    val sessionId:String = "",
+    val completedMoves:Int = 0,
+    val selfReportedSets:Int = 0
+)
+
 object WorkoutData {
+    private val lock = Any()
     private fun prefs(ctx:Context)=ctx.getSharedPreferences("workouts_v12",Context.MODE_PRIVATE)
+
     fun history(ctx:Context):List<Workout> {
         return try {
             val arr=JSONArray(prefs(ctx).getString("history","[]"))
-            (0 until arr.length()).map { i->
+            (0 until arr.length()).map { i ->
                 val o=arr.getJSONObject(i)
-                Workout(o.optString("date"),o.optString("name"),o.optInt("minutes"),o.optString("note"))
+                Workout(
+                    o.optString("date"),
+                    o.optString("name"),
+                    o.optInt("minutes"),
+                    o.optString("note"),
+                    o.optString("sessionId"),
+                    o.optInt("completedMoves", 0),
+                    o.optInt("selfReportedSets", 0)
+                )
             }
-        }catch(_:Exception){ emptyList() }
+        } catch (_:Exception) { emptyList() }
     }
-    fun save(ctx:Context,items:List<Workout>) {
+
+    private fun encode(items:List<Workout>):String {
         val arr=JSONArray()
-        items.forEach {
-            arr.put(JSONObject().put("date",it.date).put("name",it.name)
-                .put("minutes",it.minutes).put("note",it.note))
+        items.forEach { workout ->
+            val item=JSONObject()
+                .put("date",workout.date)
+                .put("name",workout.name)
+                .put("minutes",workout.minutes)
+                .put("note",workout.note)
+            // Legacy/manual entries keep their original shape; only guided sessions
+            // carry the structured evidence needed for an idempotent RPG reward.
+            if (workout.sessionId.isNotBlank()) {
+                item.put("sessionId",workout.sessionId)
+                    .put("completedMoves",workout.completedMoves)
+                    .put("selfReportedSets",workout.selfReportedSets)
+            }
+            arr.put(item)
         }
-        prefs(ctx).edit().putString("history",arr.toString()).apply()
+        return arr.toString()
+    }
+
+    fun save(ctx:Context,items:List<Workout>) {
+        synchronized(lock) {
+            prefs(ctx).edit().putString("history",encode(items)).apply()
+        }
+    }
+
+    /**
+     * Append a guided session exactly once. commit() makes the journal durable before
+     * the checkpoint is cleared; retrying after process death finds the same sessionId.
+     */
+    fun appendSession(ctx:Context,workout:Workout):Boolean {
+        val id=workout.sessionId
+        val validId=runCatching { java.util.UUID.fromString(id).toString()==id }.getOrDefault(false)
+        if (!validId || workout.minutes !in 1..600 ||
+            workout.completedMoves !in 2..500 || workout.selfReportedSets !in 0..2_000) return false
+        synchronized(lock) {
+            val existing=history(ctx)
+            if (existing.any { it.sessionId==id }) return true
+            return prefs(ctx).edit()
+                .putString("history",encode(existing+workout))
+                .commit()
+        }
     }
 }
 class WorkoutActivity:Activity() {

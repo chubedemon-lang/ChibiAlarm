@@ -45,6 +45,8 @@ object WorkoutTargetCommand {
     private fun hasCompetingControlIntent(text: String): Boolean = when (WorkoutVoiceCommands.parse(text)) {
         WorkoutVoiceCommands.Command.PAIN,
         WorkoutVoiceCommands.Command.PAUSE,
+        // A read-only progress request must be handled by the coach, never by a target editor.
+        WorkoutVoiceCommands.Command.STATUS,
         WorkoutVoiceCommands.Command.RESUME,
         WorkoutVoiceCommands.Command.NEXT,
         WorkoutVoiceCommands.Command.PREVIOUS,

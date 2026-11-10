@@ -46,6 +46,8 @@ class GuidedWorkoutActivity:Activity() {
     private val checkpoint by lazy { getSharedPreferences("chibi_workout_checkpoint_guest", MODE_PRIVATE) }
     // Index-scoped rep guidance: completed steps are never retroactively edited.
     private val repTargets=mutableMapOf<Int,Int>()
+    // Only timer-expired exercise steps count as completed; manual skip/navigation never does.
+    private val completedMoveIndices=sortedSetOf<Int>()
     private fun targetDose(position:Int):String = repTargets[position]?.let { "$it lần (mục tiêu đã chỉnh)" } ?: moves[position].dose
     private var completed=false
     // Do not overwrite a saved session before the user chooses Restore or Start over.
@@ -58,6 +60,7 @@ class GuidedWorkoutActivity:Activity() {
             .putBoolean("tenSecondCueGiven",tenSecondCueGiven)
             .putInt("shorterFrom",shorterFromIndex)
             .putString("repTargets",repTargets.entries.joinToString(",") { "${it.key}:${it.value}" })
+            .putString("completedMoves",WorkoutCompletionTracker.encode(completedMoveIndices,moves.size))
             .putBoolean("started",activeElapsedMs()>0L)
             .putLong("elapsed",activeElapsedMs())
             .putLong("savedAt",System.currentTimeMillis()).apply()
@@ -78,6 +81,8 @@ class GuidedWorkoutActivity:Activity() {
                 shorterFromIndex=checkpoint.getInt("shorterFrom",Int.MAX_VALUE).coerceIn(0, moves.size)
                 repTargets.clear()
                 repTargets.putAll(WorkoutRepTargets.decode(checkpoint.getString("repTargets",null),moves.size,index))
+                completedMoveIndices.clear()
+                completedMoveIndices.addAll(WorkoutCompletionTracker.decode(checkpoint.getString("completedMoves",null),moves.size))
                 displayStep()
                 remainingMs=checkpoint.getLong("remaining",remainingMs).coerceIn(0L,600_000L)
                 tenSecondCueGiven=checkpoint.getBoolean("tenSecondCueGiven",remainingMs<=10_000L)
@@ -91,6 +96,7 @@ class GuidedWorkoutActivity:Activity() {
             }
             .setNegativeButton("Bắt đầu lại") { _,_ ->
                 checkpointDecisionPending=false
+                completedMoveIndices.clear()
                 checkpoint.edit().clear().apply()
             }
             .setCancelable(false).show()
@@ -111,7 +117,7 @@ class GuidedWorkoutActivity:Activity() {
             }
             val seconds=(left/1000).toInt()
             counter.text=String.format(Locale.US,"%02d:%02d",seconds/60,seconds%60)
-            if(left==0L) nextMove() else handler.postDelayed(this,300)
+            if(left==0L) nextMove(completedByTimer=true) else handler.postDelayed(this,300)
         }
     }
     override fun onCreate(savedInstanceState:Bundle?) {
@@ -275,6 +281,8 @@ class GuidedWorkoutActivity:Activity() {
             index=savedInstanceState.getInt("workout_index",0).coerceIn(0,moves.lastIndex)
             repTargets.clear()
             repTargets.putAll(WorkoutRepTargets.decode(savedInstanceState.getString("workout_rep_targets"),moves.size,index))
+            completedMoveIndices.clear()
+            completedMoveIndices.addAll(WorkoutCompletionTracker.decode(savedInstanceState.getString("workout_completed_moves"),moves.size))
             displayStep()
             remainingMs=savedInstanceState.getLong("workout_remaining",remainingMs)
                 .coerceIn(0L,600_000L)
@@ -294,6 +302,7 @@ class GuidedWorkoutActivity:Activity() {
         pause()
         outState.putString("workout_program",program.id)
         outState.putString("workout_rep_targets",repTargets.entries.joinToString(",") { "${it.key}:${it.value}" })
+        outState.putString("workout_completed_moves",WorkoutCompletionTracker.encode(completedMoveIndices,moves.size))
         outState.putInt("workout_index",index)
         outState.putLong("workout_remaining",remainingMs)
         outState.putBoolean("workout_ten_second_cue",tenSecondCueGiven)
@@ -908,12 +917,15 @@ class GuidedWorkoutActivity:Activity() {
         spoken?.stop()
         control.text="▶ Tiếp tục"
     }
-    private fun nextMove() {
+    private fun nextMove(completedByTimer:Boolean=false) {
         if(pausedForSafety) {
             Toast.makeText(this,"Đang dừng vì báo đau. Hãy xác nhận an toàn trước khi tiếp tục.",Toast.LENGTH_LONG).show()
             return
         }
         pause()
+        if(completedByTimer) {
+            completedMoveIndices.addAll(WorkoutCompletionTracker.complete(completedMoveIndices,index,moves.size))
+        }
         if(index==moves.lastIndex) {
             AlertDialog.Builder(this).setTitle("🎉 Đã đi hết chương trình!")
                 .setMessage("Bạn hoàn thành các bước hướng dẫn. Lưu buổi tập vào nhật ký nhé.")
@@ -922,17 +934,23 @@ class GuidedWorkoutActivity:Activity() {
             return
         }
         index++;displayStep()
+        saveCheckpoint()
         resume()
     }
     private fun finishWorkout() {
         pause()
-        // A skipped or immediately abandoned session is not a completed workout.
-        // Never manufacture one minute of exercise (and downstream RPG progress).
+        // A manual next/finish tap is not evidence that an exercise was completed.
+        // Only timer-expired, distinct steps plus one active minute can enter the journal
+        // and make the daily Fitness quest eligible for its normal, claim-once RPG reward.
         val elapsedMs=activeElapsedMs()
-        if (elapsedMs < 60_000L) {
+        val completedCount=completedMoveIndices.count { it in moves.indices }
+        if (!WorkoutCompletionTracker.canLog(completedMoveIndices,moves.size,elapsedMs)) {
+            val reason=if(completedCount < WorkoutCompletionTracker.MIN_COMPLETED_MOVES_TO_LOG)
+                "Hãy để bộ đếm tự hoàn tất ít nhất 2 động tác khác nhau. Bấm Bước tiếp chỉ chuyển bài, không tính là đã tập xong."
+            else "Cần ít nhất 1 phút hoạt động thực tế, không tính thời gian tạm dừng."
             AlertDialog.Builder(this)
-                .setTitle("Chưa đủ thời gian vận động")
-                .setMessage("Buổi tập có dưới 1 phút hoạt động thực tế. Chibi chưa ghi nhật ký hoặc trao tiến độ nhiệm vụ. Bạn có thể tập tiếp hoặc thoát mà không lưu.")
+                .setTitle("Chưa đủ hoạt động để ghi nhật ký")
+                .setMessage("$reason Chibi chưa ghi buổi tập hoặc mở tiến độ nhiệm vụ. Bạn có thể tập tiếp hoặc thoát mà không lưu.")
                 .setPositiveButton("Tập tiếp", null)
                 .setNegativeButton("Thoát không lưu") { _, _ ->
                     completed=true
@@ -945,7 +963,7 @@ class GuidedWorkoutActivity:Activity() {
         checkpoint.edit().clear().apply()
         val mins=(elapsedMs/60000L).toInt()
         WorkoutData.save(this,WorkoutData.history(this)+Workout(
-            LifeData.today(),program.name,mins,"Tập theo Chibi Coach, ${index+1}/${moves.size} bước; thời lượng ước tính"))
+            LifeData.today(),program.name,mins,"Chibi Coach: $completedCount/${moves.size} động tác hoàn tất theo bộ đếm; $mins phút hoạt động"))
         Toast.makeText(this,"Đã ghi $mins phút vào nhật ký",Toast.LENGTH_LONG).show()
         finish()
     }

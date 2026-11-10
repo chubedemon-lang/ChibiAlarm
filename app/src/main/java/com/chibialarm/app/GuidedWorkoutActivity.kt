@@ -16,10 +16,22 @@ import android.widget.*
 import java.util.Locale
 import java.util.UUID
 import com.chibialarm.app.fitness.RemainingWorkoutDuration
+import com.chibialarm.app.rpg.RpgDatabase
+import com.chibialarm.app.rpg.RpgEngine
+import com.chibialarm.app.rpg.WorkoutRewardEvidence
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** Entirely offline guided workout; spoken instructions depend on installed Vietnamese Android TTS. */
 class GuidedWorkoutActivity:Activity() {
     private val handler=Handler(Looper.getMainLooper())
+    // Reward work is asynchronous; the durable journal remains the retry source if this Activity is recreated.
+    private val rewardScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private lateinit var counter:TextView
     private lateinit var heading:TextView
     private lateinit var guide:TextView
@@ -1394,12 +1406,113 @@ class GuidedWorkoutActivity:Activity() {
             Toast.makeText(this,"Chưa lưu được buổi tập. Tiến độ vẫn được giữ để thử lại.",Toast.LENGTH_LONG).show()
             return
         }
-        // Clear the checkpoint only after the session journal is durably committed.
+        // The guest-local journal is durable before XP is attempted. If the app is
+        // interrupted here, RpgActivity's idempotent journal reconciliation retries it.
         completed=true
         checkpoint.edit().clear().apply()
-        Toast.makeText(this,"Đã ghi $mins phút. Mở Chibi RPG để đồng bộ EXP từ buổi tập.",Toast.LENGTH_LONG).show()
-        finish()
+        control.isEnabled=false
+        val evidence = WorkoutRewardEvidence(
+            sessionId = sessionId,
+            activeMinutes = mins,
+            completedMoves = completedCount,
+            selfReportedSets = selfReportedSets
+        )
+        rewardScope.launch {
+            try {
+                val display = withContext(Dispatchers.IO) {
+                    // GuidedWorkoutActivity still uses the guest-only checkpoint and journal.
+                    // Do not route it to an account database until Fitness has verified identity-scoped storage.
+                    val rpgDatabase = RpgDatabase.get(applicationContext)
+                    val rpgEngine = RpgEngine(rpgDatabase)
+                    rpgEngine.initialize(LifeData.points(applicationContext))
+                    val awardedXp = rpgEngine.awardWorkoutSessions(listOf(evidence))
+                    val totalXp = rpgDatabase.dao().character()?.totalXp ?: 0L
+                    WorkoutRewardDisplayFactory.create(awardedXp, totalXp)
+                }
+                if (!isFinishing && !isDestroyed) showWorkoutReward(display)
+            } catch (error: Exception) {
+                if (error is CancellationException) throw error
+                if (!isFinishing && !isDestroyed) showWorkoutRewardPending()
+            }
+        }
     }
+
+    private fun showWorkoutReward(display: WorkoutRewardDisplay) {
+        val panel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(24, 14, 24, 8)
+        }
+        panel.addView(TextView(this).apply {
+            text = if (display.awardedXp > 0) "⭐ +${display.awardedXp} EXP"
+                else "✓ Phần thưởng đã được cấp trước đó"
+            textSize = 27f
+            gravity = Gravity.CENTER
+            setTextColor(Color.rgb(105, 72, 145))
+            setPadding(8, 10, 8, 14)
+        })
+        panel.addView(TextView(this).apply {
+            text = "🐰 Chibi cấp ${display.level} • Tổng ${display.totalXp} EXP"
+            textSize = 17f
+            setTextColor(Color.rgb(75, 55, 95))
+            gravity = Gravity.CENTER
+        })
+        if (!display.maxLevelReached) {
+            val max = display.xpRequired.coerceAtMost(Int.MAX_VALUE.toLong()).toInt().coerceAtLeast(1)
+            val current = display.xpInLevel.coerceAtMost(max.toLong()).toInt()
+            panel.addView(ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
+                this.max = max
+                progress = current
+                contentDescription = "Tiến độ cấp tiếp theo: ${current} trên ${max} EXP"
+            })
+            panel.addView(TextView(this).apply {
+                text = "${display.xpInLevel}/${display.xpRequired} EXP tới cấp tiếp theo"
+                textSize = 13f
+                gravity = Gravity.CENTER
+                setTextColor(Color.rgb(95, 80, 110))
+                setPadding(4, 8, 4, 8)
+            })
+        } else {
+            panel.addView(TextView(this).apply {
+                text = "Đã đạt cấp tối đa."
+                gravity = Gravity.CENTER
+                setPadding(4, 8, 4, 8)
+            })
+        }
+        panel.addView(TextView(this).apply {
+            text = "EXP là phần thưởng trò chơi dựa trên thời gian và hiệp tự xác nhận; không phải xác minh bằng camera hoặc thiết bị y tế."
+            textSize = 12f
+            setTextColor(Color.rgb(100, 92, 110))
+            setPadding(4, 12, 4, 4)
+        })
+        AlertDialog.Builder(this)
+            .setTitle("🎉 Buổi tập đã được lưu")
+            .setView(panel)
+            .setPositiveButton("Mở Chibi RPG") { _, _ ->
+                startActivity(Intent(this, RpgActivity::class.java))
+                finish()
+            }
+            .setNegativeButton("Đóng") { _, _ -> finish() }
+            .setCancelable(false)
+            .show()
+    }
+
+    private fun showWorkoutRewardPending() {
+        AlertDialog.Builder(this)
+            .setTitle("Đã lưu buổi tập")
+            .setMessage(
+                "Nhật ký đã được lưu an toàn trên máy. Chưa thể đồng bộ EXP ngay lúc này; " +
+                    "Chibi RPG sẽ thử lại từ cùng mã buổi tập khi bạn mở màn hình RPG. " +
+                    "Không cần tập lại và không mất nhật ký."
+            )
+            .setPositiveButton("Mở Chibi RPG") { _, _ ->
+                startActivity(Intent(this, RpgActivity::class.java))
+                finish()
+            }
+            .setNegativeButton("Đóng") { _, _ -> finish() }
+            .setCancelable(false)
+            .show()
+    }
+
     override fun onPause() {
         pause()
         saveCheckpoint()
@@ -1407,6 +1520,7 @@ class GuidedWorkoutActivity:Activity() {
     }
     override fun onDestroy() {
         handler.removeCallbacks(tick)
+        rewardScope.cancel()
         spoken?.stop();spoken?.shutdown()
         super.onDestroy()
     }

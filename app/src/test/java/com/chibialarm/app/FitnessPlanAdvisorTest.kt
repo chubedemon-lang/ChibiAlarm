@@ -9,13 +9,22 @@ class FitnessPlanAdvisorTest {
                       minutes: Int = 20, equipment: Int = 0, impact: Int = 0) =
         FitnessPlanAdvisor.Preferences(goal, energy, level, minutes, equipment, impact)
 
-    @Test fun painOrInjuryNeverSelectsIntenseWorkout() {
+    @Test fun painOrInjuryBlocksWorkoutAndRequiresProfessionalReview() {
         for (goal in 0..5) for (energy in 0..2) for (level in 0..2) {
             val result = FitnessPlanAdvisor.recommend(
                 prefs(goal = goal, energy = energy, level = level, impact = 2))
-            assertEquals("recovery", result.programId)
-            assertTrue(result.minutes <= 10)
+            assertEquals("", result.programId)
+            assertEquals(0, result.minutes)
+            assertTrue(result.requiresProfessionalReview)
+            assertTrue(result.explanation.contains("chuyên gia y tế"))
         }
+    }
+
+    @Test fun ordinaryRecommendationsRemainStartable() {
+        val result = FitnessPlanAdvisor.recommend(prefs())
+        assertTrue(result.programId.isNotBlank())
+        assertTrue(!result.requiresProfessionalReview)
+        assertTrue(result.minutes in 5..120)
     }
 
     @Test fun lowImpactAvoidsAdvancedWorkout() {

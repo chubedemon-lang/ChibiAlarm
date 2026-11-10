@@ -37,12 +37,15 @@ object FitnessNaturalRequest {
     private const val LOCATION =
         "(?:kneecap|khop\\s+goi|lung\\s+duoi|co\\s+tay|co\\s+chan|goi|lung|vai|co|hong|nguc|chan|tay|khop)"
     private const val PAIN_WORD = "(?:dau|nhuc|te|sung)"
+    // Localized discomfort is treated conservatively like pain, but only when a body
+    // location is present. Generic "hôm nay khó chịu" must not block a workout.
+    private const val LOCALIZED_PAIN_WORD = "(?:$PAIN_WORD|kho\\s+chiu)"
     private val painBeforeLocation = Regex(
-        "(?:^| )$PAIN_WORD(?:\\s+(?:o|tai|vung))?\\s+$LOCATION(?: |$)"
+        "(?:^| )$LOCALIZED_PAIN_WORD(?:\\s+(?:o|tai|vung))?\\s+$LOCATION(?: |$)"
     )
     private val locationBeforePain = Regex(
         "(?:^| )$LOCATION\\s+(?:(khong(?:\\s+(?:con|bi|co))?|het)\\s+)?" +
-            "(?:(?:dang|bi|rat|hoi)\\s+)?$PAIN_WORD(?: |$)"
+            "(?:(?:dang|bi|rat|hoi)\\s+){0,2}$LOCALIZED_PAIN_WORD(?: |$)"
     )
     private val negationAtEnd = Regex("(?:^| )(?:khong(?:\\s+(?:con|bi|co))?|het)$")
     private val standalonePain = Regex("(?:^| )$PAIN_WORD(?: |$)")

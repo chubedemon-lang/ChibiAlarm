@@ -72,6 +72,14 @@ object TrainingCatalog {
     private val shoulder=exercise("Mở vai và ngực","6–10 nhịp",
         "Đứng thẳng, xoay vai nhẹ từ trước ra sau, khép bả vai, thả lỏng cổ.",
         "Chỉ xoay vai nhỏ.","Không ngửa cổ quá mức.",60)
+    private val forearmWallPress=exercise("Ép ngực tường bằng cẳng tay","2 hiệp × 5–8 lần giữ 5 giây",
+        "Đứng đối diện tường, đặt cẳng tay lên tường với khuỷu gập thoải mái. Giữ cổ tay thả lỏng, ấn cẳng tay nhẹ vào tường 5 giây rồi thả.",
+        "Ấn rất nhẹ hoặc bỏ qua nếu không thoải mái.",
+        "Không ép nếu đau vai, khuỷu hoặc cổ tay; không nín thở.",75)
+    private val scapularSqueeze=exercise("Siết bả vai đứng","2 hiệp × 8–12 lần",
+        "Đứng hoặc ngồi thẳng, thả tay dọc thân. Kéo nhẹ hai bả vai về sau và xuống, giữ 2 giây rồi thả lỏng.",
+        "Giảm lực và giữ ngắn hơn.",
+        "Không ưỡn lưng, nhún vai hoặc nín thở.",75)
     private val stretch=exercise("Giãn cơ và thở chậm","4–6 phút",
         "Giãn vai, hông, bắp chân từng bên nhẹ nhàng, không nín thở.",
         "Ngồi ghế để giảm tải.","Không giật nảy, không chịu đau.",180)
@@ -128,7 +136,7 @@ object TrainingCatalog {
      * Canonical substitution-only exercises remain available to the guided coach
      * even when they are not part of a default program's fixed sequence.
      */
-    val substitutionOnlyMoves: List<TrainingMove> = listOf(kneePush)
+    val substitutionOnlyMoves: List<TrainingMove> = listOf(kneePush, forearmWallPress, scapularSqueeze)
 
     /** One trusted catalog for library, substitutions and workout guidance. */
     val allMoves: List<TrainingMove> by lazy {

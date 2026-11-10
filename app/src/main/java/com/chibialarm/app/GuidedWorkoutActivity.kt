@@ -1334,7 +1334,7 @@ class GuidedWorkoutActivity:Activity() {
             append("Chibi Coach: $completedCount/${moves.size} động tác được ghi nhận; $setCompletedMoves động tác tự xác nhận hiệp ($selfReportedSets hiệp); $timerCompletedMoves động tác theo bộ đếm; $mins phút hoạt động. Số hiệp là tự khai báo, không được cảm biến xác minh.")
             if(substitutionSummary.isNotBlank()) append(" Thay động tác: $substitutionSummary.")
         }
-        WorkoutData.save(this,Workout(
+        WorkoutData.save(this,WorkoutData.history(this)+Workout(
             LifeData.today(),program.name,mins,workoutNote))
         Toast.makeText(this,"Đã ghi $mins phút vào nhật ký",Toast.LENGTH_LONG).show()
         finish()

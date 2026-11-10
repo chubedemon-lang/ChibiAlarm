@@ -75,4 +75,19 @@ class FitnessCoachSessionSnapshotTest {
         assertNull(FitnessCoachSessionSnapshot(minutes = 999).restore())
         assertNull(FitnessCoachSessionSnapshot().restore())
     }
+
+    @Test fun wristLoadPreferenceSurvivesRotationWithoutPersistingFreeText() {
+        val source = FitnessNaturalRequest.Result(
+            reply = "private speech transcript",
+            avoidWristLoad = true
+        )
+        val snapshot = FitnessCoachSessionSnapshot.capture(source, 0, true)!!
+        assertEquals(true, snapshot.avoidWristLoad)
+        assertEquals(true, snapshot.restore()?.avoidWristLoad)
+        assertFalse(snapshot.toString().contains("private speech transcript"))
+        val cleared = FitnessCoachSessionSnapshot.capture(source.copy(avoidWristLoad = null), 0, false)!!
+        assertEquals(false, cleared.restore()?.avoidWristLoad)
+    }
+
+
 }

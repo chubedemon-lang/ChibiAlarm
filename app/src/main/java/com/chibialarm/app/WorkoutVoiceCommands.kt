@@ -5,7 +5,10 @@ import java.util.Locale
 
 /** Small, offline command interpreter. Unrecognized speech never controls a workout. */
 object WorkoutVoiceCommands {
-    enum class Command { PAIN, PAUSE, RESUME, NEXT, PREVIOUS, REPEAT, EASIER, SWAP_EASIER, EASIER_AND_REST, SHORTER, SHORTER_REMAINING, REST, UNKNOWN }
+    enum class Command {
+        PAIN, PAUSE, STATUS, RESUME, NEXT, PREVIOUS, REPEAT, EASIER, SWAP_EASIER,
+        EASIER_AND_REST, SHORTER, SHORTER_REMAINING, REST, UNKNOWN
+    }
 
     /** Human-readable action shown before applying fallible speech recognition. */
     fun describe(command: Command, utterance: String? = null): String {
@@ -13,6 +16,7 @@ object WorkoutVoiceCommands {
         return when (command) {
             Command.PAIN -> "Dừng tập vì cảnh báo an toàn"
             Command.PAUSE -> "Tạm dừng buổi tập"
+            Command.STATUS -> "Đọc tiến độ buổi tập hiện tại"
             Command.RESUME -> "Tiếp tục buổi tập"
             Command.NEXT -> "Chuyển sang động tác tiếp theo"
             Command.PREVIOUS -> "Quay lại động tác trước"
@@ -29,9 +33,8 @@ object WorkoutVoiceCommands {
 
     /**
      * A repetition target may be applied only when the utterance has no other
-     * recognized action. In particular, "dừng tập và giảm còn 10 lần" must
-     * pause rather than opening a repetition editor. Mixed commands remain
-     * single-action until an explicit multi-action confirmation is supported.
+     * recognized action. Mixed commands remain single-action until an explicit
+     * multi-action confirmation is supported.
      */
     fun mayEditReps(utterance: String): Boolean = parse(utterance) == Command.UNKNOWN
 
@@ -57,6 +60,9 @@ object WorkoutVoiceCommands {
             normalized.contains("tam dung") || normalized.contains("dung lai") ||
                 normalized.contains("dung tap") || normalized.contains("khong tap noi") ||
                 normalized.contains("het suc") || "pause" in words -> Command.PAUSE
+            normalized.contains("tien do") || normalized.contains("con bao nhieu bai") ||
+                normalized.contains("con may bai") || normalized.contains("bao nhieu hiep") ||
+                "progress" in words || "status" in words -> Command.STATUS
             (normalized.contains("de hon") || normalized.contains("giam do kho") || normalized.contains("nhe hon")) &&
                 (normalized.contains("nghi") || normalized.contains("can nghi")) -> Command.EASIER_AND_REST
             normalized.contains("nghi them") || normalized.contains("nghi mot chut") || normalized.contains("met roi") ||

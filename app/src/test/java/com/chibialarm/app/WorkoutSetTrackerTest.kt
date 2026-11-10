@@ -51,6 +51,17 @@ class WorkoutSetTrackerTest {
         assertNull(WorkoutSetTracker.parse("21 hiệp × 8 lần"))
         assertNull(WorkoutSetTracker.parse("2 hiệp × 201 lần"))
         assertNull(WorkoutSetTracker.parse("3–2 hiệp × 8 lần"))
+        assertNull(WorkoutSetTracker.parse("2–999999999999 hiệp × 8 lần"))
+        assertNull(WorkoutSetTracker.parse("2 hiệp × 8–999999999999 lần"))
+    }
+
+    @Test fun everyCatalogDoseWithSetMultiplierIsStructured() {
+        val moves = TrainingCatalog.programs.flatMap { it.moves }.distinctBy { it.name + it.dose }
+        val setMoves = moves.filter { it.dose.contains("×") }
+        assertTrue("Expected catalog exercises with explicit sets", setMoves.isNotEmpty())
+        setMoves.forEach { move ->
+            assertNotNull("${move.name}: ${move.dose}", WorkoutSetTracker.parse(move.dose))
+        }
     }
 
     @Test fun completingSetsIsBoundedAndIdempotentAtTarget() {
@@ -60,6 +71,7 @@ class WorkoutSetTrackerTest {
         assertEquals(2, WorkoutSetTracker.complete(2, plan))
         assertFalse(WorkoutSetTracker.isComplete(1, plan))
         assertTrue(WorkoutSetTracker.isComplete(2, plan))
+        assertFalse(WorkoutSetTracker.isComplete(3, plan))
     }
 
     @Test fun optionalSetCanBeAddedWithoutChangingTheMinimumCompletionGate() {

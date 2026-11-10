@@ -21,7 +21,13 @@ object FitnessNaturalRequest {
     private fun normalize(input: String): String {
         // Keep "đầu" distinct from "đau". Removing Vietnamese diacritics first made
         // "đầu gối" indistinguishable from "đau gối", causing false injury warnings.
-        val protected = input.lowercase(Locale.ROOT).replace("đầu", "headword").replace('đ', 'd')
+        val protected = input.lowercase(Locale.ROOT)
+            // Preserve lexical compounds before stripping Vietnamese diacritics:
+            // "đầu gối" is a body part; "bắt đầu" is a beginner phrase, not "đau".
+            .replace(Regex("đầu\\s+gối"), "kneecap")
+            .replace(Regex("bắt\\s+đầu"), "beginning")
+            .replace(Regex("đầu\\s+tiên"), "firstword")
+            .replace('đ', 'd')
         return Normalizer.normalize(protected, Normalizer.Form.NFD)
             .replace(Regex("\\p{M}+"), "")
             .replace(Regex("[^a-z0-9 ]"), " ")
@@ -29,7 +35,7 @@ object FitnessNaturalRequest {
     }
 
     private const val LOCATION =
-        "(?:headword\\s+goi|khop\\s+goi|lung\\s+duoi|co\\s+tay|co\\s+chan|headword|goi|lung|vai|co|hong|nguc|chan|tay|khop)"
+        "(?:kneecap|khop\\s+goi|lung\\s+duoi|co\\s+tay|co\\s+chan|goi|lung|vai|co|hong|nguc|chan|tay|khop)"
     private const val PAIN_WORD = "(?:dau|nhuc|te|sung)"
     private val painBeforeLocation = Regex(
         "(?:^| )$PAIN_WORD(?:\\s+(?:o|tai|vung))?\\s+$LOCATION(?: |$)"
@@ -48,8 +54,8 @@ object FitnessNaturalRequest {
             if (!negationAtEnd.containsMatchIn(prefix)) return true
         }
         for (match in locationBeforePain.findAll(text)) {
-            // Group 1 is the location; group 2 is an optional negation.
-            if (match.groupValues[2].isBlank()) return true
+            // Group 1 is the optional negation immediately before the pain word.
+            if (match.groupValues[1].isBlank()) return true
         }
         for (match in standalonePain.findAll(text)) {
             val prefix = text.substring(0, match.range.first).trimEnd()
@@ -135,11 +141,11 @@ object FitnessNaturalRequest {
             has("ngoi lau", "van phong", "moi lung") -> 3
             has("tim mach", "cardio", "dot mo", "giam can", "giam mo", "suc ben", "ben bi") -> 1
             has("suc manh", "tang co", "co bap", "tang suc manh", "phat trien co") -> 0
-            has("moi bat dau", "tan thu") -> 4
+            has("moi beginning", "beginning", "moi bat dau", "tan thu") -> 4
             else -> null
         }
         val level = when {
-            has("moi bat dau", "tan thu", "chua tap bao gio", "nguoi moi", "beginner") -> 0
+            has("moi beginning", "beginning", "moi bat dau", "tan thu", "chua tap bao gio", "nguoi moi", "beginner") -> 0
             has("dang tap deu", "trung cap", "tap thuong xuyen", "intermediate") -> 1
             has("co kinh nghiem", "nang cao", "tap lau nam", "advanced") -> 2
             else -> null

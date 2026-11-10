@@ -21,6 +21,18 @@ class FitnessNaturalRequestTest {
         assertEquals(2, FitnessNaturalRequest.parse("advanced").level)
     }
 
+    @Test fun beginnerPhrasesAreNotMistakenForPain() {
+        for (phrase in listOf(
+            "Mới bắt đầu, muốn tập nhẹ",
+            "Bắt đầu tập 15 phút",
+            "Mới bắt đầu, không dụng cụ"
+        )) {
+            val result = FitnessNaturalRequest.parse(phrase)
+            assertEquals("Failed for $phrase", 0, result.level)
+            assertNull("Failed for $phrase", result.impact)
+        }
+    }
+
     @Test fun injuryTakesPriorityOverExerciseGoals() {
         val result = FitnessNaturalRequest.parse("Tôi bị đau khớp nhưng muốn tập sức mạnh 30 phút")
         assertEquals(2, result.impact)

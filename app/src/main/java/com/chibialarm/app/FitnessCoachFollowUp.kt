@@ -5,7 +5,7 @@ object FitnessCoachFollowUp {
     fun nextQuestion(parsed: FitnessNaturalRequest.Result): String = when {
         parsed.impact == 2 -> "Nếu đang đau hoặc chấn thương, đừng cố tập. Hãy hỏi chuyên gia y tế trước khi tiếp tục."
         parsed.goal == null -> "Mày muốn tập sức mạnh, tim mạch hay giãn cơ hôm nay?"
-        parsed.level == null -> "Trình độ hiện tại của mày thế nào: mới bắt đầu, đang tập đều hay đã có kinh nghiệm?"
+        parsed.level == null -> "Mày đang ở trình độ nào: mới bắt đầu, đang tập đều hay đã có kinh nghiệm?"
         parsed.minutes == null -> "Mày có bao nhiêu phút? Ví dụ: 15 phút."
         parsed.equipment == null -> "Mày có thảm, tạ, dây kháng lực hay muốn tập tay không?"
         parsed.impact == null -> "Mày có cần tránh nhảy hoặc hạn chế vận động nào không?"

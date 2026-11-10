@@ -39,6 +39,11 @@ class FitnessActivity:Activity() {
         super.onDestroy()
     }
 
+    override fun onResume() {
+        super.onResume()
+        refreshWorkoutHistoryInsight()
+    }
+
     private fun sayFollowUp(message: String) {
         if (speechReady) speechOutput?.speak(message, TextToSpeech.QUEUE_FLUSH, null, "fitness-follow-up")
     }
@@ -48,6 +53,9 @@ class FitnessActivity:Activity() {
     private lateinit var length:Spinner
     private lateinit var filter:Spinner
     private var impactRestrictionSpinner: Spinner? = null
+    private var historySummaryView: TextView? = null
+    private var historySuggestionView: TextView? = null
+    private var historyRecoveryButton: Button? = null
     private val levels=arrayOf("🌱 Mới bắt đầu","🌿 Đang tập đều","🔥 Có kinh nghiệm")
     private val lengths=arrayOf("10 phút","15 phút","20 phút","30 phút","40 phút")
     private val mins=intArrayOf(10,15,20,30,40)
@@ -71,6 +79,20 @@ class FitnessActivity:Activity() {
         FitnessCoachSessionSnapshot.effectiveImpact(
             conversation?.impact, impactRestrictionSpinner?.selectedItemPosition ?: 0
         )
+
+    /** Reads only coarse local workout totals; free-text journal notes never enter the advisor. */
+    private fun refreshWorkoutHistoryInsight() {
+        val summary = WorkoutHistoryAdvisor.summarize(WorkoutData.history(this))
+        historySummaryView?.apply {
+            visibility = if (summary.sessions > 0) android.view.View.VISIBLE else android.view.View.GONE
+            text = "📊 Nhật ký 7 ngày: ${summary.sessions} buổi • ${summary.activeDays} ngày vận động • ${summary.totalMinutes} phút (ghi trên máy)."
+        }
+        historySuggestionView?.apply {
+            visibility = if (summary.suggestLighterSession) android.view.View.VISIBLE else android.view.View.GONE
+            text = "🐰 Nhật ký cho thấy bạn đã vận động ${summary.activeDays}/7 ngày và ghi ${summary.totalMinutes} phút. Bạn có thể cân nhắc nghỉ hoặc chọn buổi phục hồi nhẹ. Đây chỉ là gợi ý từ nhật ký tự ghi, không phải đánh giá hồi phục hay tư vấn y khoa."
+        }
+        historyRecoveryButton?.visibility = if (summary.suggestLighterSession) android.view.View.VISIBLE else android.view.View.GONE
+    }
     private fun render() {
         root=LinearLayout(this).apply {
             orientation=1;setPadding(22,26,22,28);setBackgroundColor(Color.rgb(246,250,249))
@@ -175,6 +197,21 @@ class FitnessActivity:Activity() {
         }
         root.addView(impactSpinner)
         impactRestrictionSpinner = impactSpinner
+        val historySummary = txt("",14f).apply { visibility = android.view.View.GONE }
+        historySummaryView = historySummary
+        root.addView(historySummary)
+        val historySuggestion = txt("",14f).apply { visibility = android.view.View.GONE }
+        historySuggestionView = historySuggestion
+        root.addView(historySuggestion)
+        val historyRecovery = Button(this).apply {
+            text = "🌿 Xem giáo án phục hồi nhẹ"
+            contentDescription = "Xem buổi vận động nhẹ dựa trên nhật ký 7 ngày; vẫn phải tuân thủ cảnh báo an toàn hiện tại"
+            isAllCaps = false
+            visibility = android.view.View.GONE
+            setOnClickListener { startProgram(TrainingCatalog.byId("recovery")) }
+        }
+        historyRecoveryButton = historyRecovery
+        root.addView(historyRecovery)
         // Session-only handoff: no health preferences are written to SharedPreferences.
         // Review all selections before asking for a recommendation.
         if (intent.hasExtra("coach_goal")) goalSpinner.setSelection(intent.getIntExtra("coach_goal",0).coerceIn(0,goals.lastIndex))

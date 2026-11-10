@@ -37,3 +37,16 @@ def test_direct_catalog_launch_uses_the_same_injury_gate():
     assert gate < launch
     assert "return" in launch_method[gate:launch]
     assert "không khởi chạy bài tập" in launch_method[gate:launch]
+
+
+
+def test_injury_gate_blocks_recurring_routine_creation():
+    source = SOURCE.read_text(encoding="utf-8")
+    start = source.index("private fun addRoutine(p:TrainingProgram)")
+    end = source.index("\n    }", start) + len("\n    }")
+    routine_method = source[start:end]
+    gate = routine_method.index("impactRestrictionSpinner?.selectedItemPosition == 2")
+    schedule = routine_method.index("LifeData.save(this,current+r)")
+    assert gate < schedule
+    assert "return" in routine_method[gate:schedule]
+    assert "không tạo lịch tập định kỳ" in routine_method[gate:schedule]

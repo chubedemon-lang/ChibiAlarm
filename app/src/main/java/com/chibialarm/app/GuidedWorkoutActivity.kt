@@ -753,7 +753,7 @@ class GuidedWorkoutActivity:Activity() {
                 }
             }.setNegativeButton("Đóng",null).show()
     }
-    /** Replace only the current, not-yet-started step with a curated easier catalog move. */
+    /** Replace only the current, not-yet-completed step with a curated easier catalog move. */
     private fun chooseEasierAlternative() {
         if (pausedForSafety) {
             Toast.makeText(this, "Đã dừng vì đau. Không tự đổi bài để tiếp tục tập.", Toast.LENGTH_LONG).show()

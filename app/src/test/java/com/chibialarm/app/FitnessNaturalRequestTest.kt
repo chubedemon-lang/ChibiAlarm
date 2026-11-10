@@ -87,6 +87,9 @@ class FitnessNaturalRequestTest {
     @Test fun respectsExplicitlyNegatedPainButStillFindsAnotherPainReport() {
         assertNull(FitnessNaturalRequest.parse("không đau đầu gối").impact)
         assertNull(FitnessNaturalRequest.parse("đầu gối không đau").impact)
+        assertNull(FitnessNaturalRequest.parse("không bị đau ở đầu gối").impact)
+        assertNull(FitnessNaturalRequest.parse("đầu gối không bị đau").impact)
+        assertNull(FitnessNaturalRequest.parse("không bị đau").impact)
         assertEquals(2, FitnessNaturalRequest.parse("không đau đầu gối nhưng đau lưng").impact)
     }
 

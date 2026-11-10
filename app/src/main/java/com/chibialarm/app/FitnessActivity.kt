@@ -66,7 +66,7 @@ class FitnessActivity:Activity() {
                 intArrayOf(Color.rgb(215,248,226),Color.rgb(230,223,255))).apply { cornerRadius=35f }
         }
         hero.addView(txt("🐰 CHIBI FITNESS PRO",27f))
-        hero.addView(txt("12 chương trình • miễn phí • offline • không cần phòng gym",14f))
+        hero.addView(txt("13 chương trình • miễn phí • offline • không cần phòng gym",14f))
         root.addView(hero)
         root.addView(txt("🎚 Trình độ của bạn",19f))
         level=Spinner(this).apply {

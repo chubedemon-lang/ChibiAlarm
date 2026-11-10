@@ -53,4 +53,22 @@ class WorkoutConstraintFilterTest {
         assertTrue(press.steps.contains("cổ tay thả lỏng"))
         assertFalse(press.steps.contains("instructions supplied by caller"))
     }
+
+    @Test fun planFingerprintIsStableAndChangesWhenTheConstraintChanges() {
+        val original = TrainingCatalog.byId("full").moves
+        val filtered = WorkoutConstraintFilter.apply(
+            TrainingCatalog.byId("full"),
+            WorkoutConstraintProfile(avoidWristLoad = true)
+        ).program.moves
+        assertEquals(
+            WorkoutConstraintFilter.fingerprint(original),
+            WorkoutConstraintFilter.fingerprint(original.toList())
+        )
+        assertNotEquals(
+            WorkoutConstraintFilter.fingerprint(original),
+            WorkoutConstraintFilter.fingerprint(filtered)
+        )
+    }
+
+
 }

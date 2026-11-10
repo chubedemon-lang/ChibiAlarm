@@ -18,12 +18,12 @@ class WorkoutRewardDisplayFactoryTest {
     }
 
     @Test fun progressUsesCurrentLevelAfterCrossingThreshold() {
-        // Level 1 requires 100 XP; level 2 requires 125 XP.
+        // Level 1 requires 100 XP; level 2 requires 130 XP.
         val display = WorkoutRewardDisplayFactory.create(5, 105L)
 
         assertEquals(2, display.level)
         assertEquals(5L, display.xpInLevel)
-        assertEquals(125L, display.xpRequired)
+        assertEquals(130L, display.xpRequired)
     }
 
     @Test fun previouslyAwardedSessionCanRenderWithoutMintingMoreXp() {

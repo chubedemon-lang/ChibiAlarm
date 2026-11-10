@@ -237,7 +237,7 @@ class GuidedWorkoutActivity:Activity() {
         super.onCreate(savedInstanceState)
         program=TrainingCatalog.byId(intent.getStringExtra("program") ?: "starter")
         val level=intent.getIntExtra("level",0).coerceIn(0,2)
-        val minutes=intent.getIntExtra("minutes",15).coerceIn(5,45)
+        val minutes=WorkoutDurationChoices.guidedMinutes(intent.getIntExtra("minutes",15))
         val planned=WorkoutDurationPlanner.build(program,level,minutes)
         moves=planned.moves
         originalMoves=moves.toList()

@@ -2,6 +2,7 @@ package com.chibialarm.app.rpg
 
 import androidx.room.withTransaction
 import java.time.LocalDate
+import java.util.UUID
 
 /** Deterministic, offline RPG rules. */
 object RpgRules {
@@ -48,6 +49,17 @@ object RpgRules {
         return count
     }
 }
+
+/**
+ * Minimal, non-health workout evidence used only for an offline XP receipt.
+ * Set counts are self-confirmed by the user, not sensor- or camera-verified.
+ */
+data class WorkoutRewardEvidence(
+    val sessionId: String,
+    val activeMinutes: Int,
+    val completedMoves: Int,
+    val selfReportedSets: Int
+)
 
 class RpgEngine(private val db: RpgDatabase) {
     /** Reconcile existing and newly added milestones from durable ledger state. */
@@ -273,6 +285,52 @@ class RpgEngine(private val db: RpgDatabase) {
             state = if (next >= quest.target) "COMPLETED" else "ACTIVE"))
         true
     }
+
+    /**
+     * Credit a small offline RPG reward for each durably saved guided session.
+     * The unique ledger receipt makes repeated dashboard refreshes and process
+     * retries idempotent. Evidence is deliberately coarse and contains no notes,
+     * symptoms, transcript, media or device identifiers.
+     *
+     * XP = completed moves + 2 per self-confirmed set, capped at 30 per session.
+     * This is a game reward, not verification that an exercise was performed.
+     */
+    suspend fun awardWorkoutSessions(sessions: List<WorkoutRewardEvidence>): Int =
+        db.withTransaction {
+            if (sessions.isEmpty()) return@withTransaction 0
+            val dao = db.dao()
+            var totalAwarded = 0L
+            sessions.take(200).forEach { evidence ->
+                val canonicalId = runCatching {
+                    UUID.fromString(evidence.sessionId).toString()
+                }.getOrNull()
+                if (canonicalId != evidence.sessionId ||
+                    evidence.activeMinutes !in 1..600 ||
+                    evidence.completedMoves !in 2..500 ||
+                    evidence.selfReportedSets !in 0..2_000) return@forEach
+
+                val reward = (evidence.completedMoves.toLong() +
+                    evidence.selfReportedSets.toLong() * 2L).coerceIn(1L, 30L).toInt()
+                val key = "fitness_session:${evidence.sessionId}"
+                if (dao.insertLedger(XpLedger(
+                        dedupeKey = key,
+                        questId = "fitness-session",
+                        amount = reward
+                    )) == -1L) return@forEach
+                totalAwarded = Math.addExact(totalAwarded, reward.toLong())
+            }
+            if (totalAwarded == 0L) return@withTransaction 0
+
+            val character = dao.character() ?: RpgCharacter().also { dao.insertCharacter(it) }
+            require(character.totalXp >= 0L && character.coins >= 0L) {
+                "Invalid reward balance"
+            }
+            dao.updateCharacter(character.copy(
+                totalXp = Math.addExact(character.totalXp, totalAwarded)
+            ))
+            updateMilestones(dao)
+            totalAwarded.toInt()
+        }
 
     /** Atomic and idempotent quest claim, including achievements. */
     suspend fun claimQuest(questId: String): Boolean = db.withTransaction {

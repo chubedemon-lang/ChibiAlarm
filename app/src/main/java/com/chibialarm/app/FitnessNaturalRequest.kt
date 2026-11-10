@@ -101,6 +101,9 @@ object FitnessNaturalRequest {
         val number = "(?:[0-9]{1,3}|mot|hai|ba|bon|tu|nam|lam|sau|bay|tam|chin|muoi)(?:\\s+(?:tram|linh|le|muoi|mot|hai|ba|bon|tu|nam|lam|sau|bay|tam|chin))*"
         val match = Regex("(?:^| )($number)\\s*(phut|minute|min|p|tieng|gio)(?: |$)")
             .find(text) ?: return null
+        // Do not silently round fractional spoken durations such as "15 phút rưỡi".
+        val tail = text.substring(match.range.last + 1).trimStart()
+        if (tail.startsWith("ruoi")) return null
         val amount = spokenNumber(match.groupValues[1]) ?: return null
         val minutes = when (match.groupValues[2]) {
             "tieng", "gio" -> amount.toLong() * 60L

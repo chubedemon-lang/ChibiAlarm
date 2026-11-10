@@ -151,7 +151,10 @@ class GuidedWorkoutActivity:Activity() {
                 pausedForSafety=keepSafetyLock
                 checkpoint.edit().clear().apply()
                 displayStep()
-                if(pausedForSafety) control.text="⚠️ Đã dừng vì đau"
+                if(pausedForSafety) {
+                    control.text="⚠️ Đã dừng vì đau"
+                    saveCheckpoint()
+                }
             }
             .setCancelable(false).show()
     }

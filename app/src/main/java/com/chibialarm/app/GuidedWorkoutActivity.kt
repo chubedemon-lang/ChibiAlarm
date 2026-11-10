@@ -469,7 +469,7 @@ class GuidedWorkoutActivity:Activity() {
             }.setNegativeButton("Hủy",null).show()
     }
     private fun requestTypedCommand() {
-        val field=EditText(this).apply { hint="Ví dụ: nghỉ thêm, đổi động tác, dễ hơn, tiếp tục";setSingleLine(false) }
+        val field=EditText(this).apply { hint="Ví dụ: đọc tiến độ, nghỉ thêm, đổi động tác, dễ hơn, tiếp tục";setSingleLine(false) }
         AlertDialog.Builder(this).setTitle("💬 Chibi Coach • lệnh offline")
             .setMessage("Điều khiển buổi tập bằng chữ, không gửi dữ liệu lên mạng.")
             .setView(field).setPositiveButton("Gửi"){_,_->handleCoachCommand(field.text.toString())}
@@ -526,6 +526,36 @@ class GuidedWorkoutActivity:Activity() {
                 speak("Đã dừng tập vì bạn báo đau. Hãy ưu tiên an toàn.")
             }
             WorkoutVoiceCommands.Command.PAUSE -> { pause();speak("Đã tạm dừng.") }
+            WorkoutVoiceCommands.Command.STATUS -> {
+                val plan = currentSetPlan()
+                val secondsLeft = { millis: Long ->
+                    ((millis.coerceAtLeast(0L) + 999L) / 1000L).coerceIn(0L, 600L).toInt()
+                }
+                val setProgress = plan?.let {
+                    WorkoutContextCoach.SetProgress(
+                        completed = (completedSetsByMove[index] ?: 0).coerceIn(0, it.maximumSets),
+                        required = it.requiredSets,
+                        maximum = it.maximumSets,
+                        targetMin = it.targetMin,
+                        targetMax = it.targetMax,
+                        unit = it.unit
+                    )
+                }
+                speak(WorkoutContextCoach.progressScript(
+                    WorkoutContextCoach.Progress(
+                        completedMoves = completedMoveIndices.count { it in moves.indices },
+                        totalMoves = moves.size,
+                        currentMoveIndex = index,
+                        currentMoveName = moves[index].name,
+                        sets = setProgress,
+                        resting = resting,
+                        restSecondsRemaining = if (resting) secondsLeft(restRemainingMs) else 0,
+                        exerciseSecondsRemaining = if (resting) 0 else secondsLeft(remainingMs),
+                        pausedForSafety = pausedForSafety,
+                        nextMoveName = moves.getOrNull(index + 1)?.name
+                    )
+                ))
+            }
             WorkoutVoiceCommands.Command.RESUME -> resume()
             WorkoutVoiceCommands.Command.NEXT -> nextMove()
             WorkoutVoiceCommands.Command.PREVIOUS -> { if(!pausedForSafety) { pause();if(index>0)index--;displayStep();speak("Bài "+moves[index].name) } }
@@ -577,7 +607,7 @@ class GuidedWorkoutActivity:Activity() {
             }
             WorkoutVoiceCommands.Command.UNKNOWN -> {
                 AlertDialog.Builder(this).setTitle("Chibi chưa hiểu yêu cầu")
-                    .setMessage("Bạn có thể nói: tạm dừng, tiếp tục, bài tiếp theo, bài trước, đổi động tác, nhắc lại, dễ hơn, rút ngắn hoặc nghỉ thêm. Đây là bộ lệnh offline, chưa phải hội thoại AI tự do.")
+                    .setMessage("Bạn có thể nói: đọc tiến độ, tạm dừng, tiếp tục, bài tiếp theo, bài trước, đổi động tác, nhắc lại, dễ hơn, rút ngắn hoặc nghỉ thêm. Đây là bộ lệnh offline, chưa phải hội thoại AI tự do.")
                     .setPositiveButton("Đóng",null).show()
             }
         }

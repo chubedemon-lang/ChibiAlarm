@@ -50,13 +50,30 @@ class GuidedWorkoutRestConfirmationTest {
         activity.finish()
     }
 
-    @Test fun acceptingRestPreviewAddsOnlyRequestedTime() {
+    @Test fun acceptingRestPreviewStartsSeparateRestWithoutChangingExerciseTime() {
         val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup().get()
-        val before = remaining(activity)
         val dialog = propose(activity, 30)
+        // propose() pauses the exercise first; capture the frozen value after that pause.
+        val exerciseBeforeRest = remaining(activity)
+        val elapsedBeforeRest = GuidedWorkoutActivity::class.java
+            .getDeclaredMethod("activeElapsedMs").apply { isAccessible = true }
+            .invoke(activity) as Long
+
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
         shadowOf(Looper.getMainLooper()).idle()
-        assertEquals((before + 30_000L).coerceAtMost(600_000L), remaining(activity))
+
+        val restingField = GuidedWorkoutActivity::class.java.getDeclaredField("resting")
+            .apply { isAccessible = true }
+        val restRemainingField = GuidedWorkoutActivity::class.java.getDeclaredField("restRemainingMs")
+            .apply { isAccessible = true }
+        val elapsedAfterRest = GuidedWorkoutActivity::class.java
+            .getDeclaredMethod("activeElapsedMs").apply { isAccessible = true }
+            .invoke(activity) as Long
+
+        assertEquals(exerciseBeforeRest, remaining(activity))
+        assertTrue(restingField.getBoolean(activity))
+        assertEquals(30_000L, restRemainingField.getLong(activity))
+        assertEquals(elapsedBeforeRest, elapsedAfterRest)
         activity.finish()
     }
 

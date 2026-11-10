@@ -73,6 +73,6 @@ class FitnessCoachSessionSnapshotTest {
         assertFalse(snapshot.toString().contains("private transcript text"))
         assertNull(FitnessCoachSessionSnapshot(goal = 99).restore())
         assertNull(FitnessCoachSessionSnapshot(minutes = 999).restore())
-        assertNull(FitnessCoachSessionSnapshot())
+        assertNull(FitnessCoachSessionSnapshot().restore())
     }
 }

@@ -74,8 +74,8 @@ class FitnessActivity:Activity() {
     private var historySuggestionView: TextView? = null
     private var historyRecoveryButton: Button? = null
     private val levels=arrayOf("🌱 Mới bắt đầu","🌿 Đang tập đều","🔥 Có kinh nghiệm")
-    private val lengths=arrayOf("10 phút","15 phút","20 phút","30 phút","40 phút")
-    private val mins=intArrayOf(10,15,20,30,40)
+    private val lengths=WorkoutDurationChoices.labels
+    private val mins=WorkoutDurationChoices.minutes
     private val categories=arrayOf("Tất cả","Toàn thân","Sức mạnh","Cardio","Linh hoạt","Vận động nhẹ","Phục hồi nhẹ","Thử thách")
     private fun txt(s:String,size:Float=16f)=TextView(this).apply {
         text=s;textSize=size;setTextColor(Color.rgb(73,59,88));setPadding(7,6,7,7)
@@ -131,7 +131,12 @@ class FitnessActivity:Activity() {
         root.addView(txt("⏱ Thời lượng bạn muốn",19f))
         length=Spinner(this).apply {
             adapter=ArrayAdapter(this@FitnessActivity,android.R.layout.simple_spinner_dropdown_item,lengths)
-            setSelection(prefs.getInt("fitTime",2).coerceIn(0,mins.lastIndex))
+            val savedMinutes = if (prefs.contains("fitTimeMinutes")) {
+                prefs.getInt("fitTimeMinutes", 20)
+            } else {
+                WorkoutDurationChoices.legacyMinutesForIndex(prefs.getInt("fitTime", 2))
+            }
+            setSelection(WorkoutDurationChoices.indexForMinutes(savedMinutes))
         }
         root.addView(length)
         root.addView(txt("💬 Nói với Chibi về buổi tập",19f))
@@ -258,7 +263,7 @@ class FitnessActivity:Activity() {
         if (intent.hasExtra("coach_impact")) impactSpinner.setSelection(intent.getIntExtra("coach_impact",0).coerceIn(0,impactOptions.lastIndex))
         if (intent.hasExtra("coach_minutes")) {
             val requested=intent.getIntExtra("coach_minutes",20).coerceIn(5,120)
-            length.setSelection(mins.indices.minByOrNull { kotlin.math.abs(mins[it]-requested) } ?: 0)
+            length.setSelection(WorkoutDurationChoices.indexForMinutes(requested))
         }
         if (intent.hasExtra("coach_goal") || intent.hasExtra("coach_impact")) {
             root.addView(txt("🐰 Đã điền thông tin từ cuộc trò chuyện. Kiểm tra mục tiêu, thời lượng và hạn chế vận động trước khi chọn giáo án.",14f))
@@ -268,7 +273,7 @@ class FitnessActivity:Activity() {
             restored.level?.let { level.setSelection(it) }
             restored.energy?.let { energySpinner.setSelection(it) }
             restored.minutes?.let { requested ->
-                length.setSelection(mins.indices.minByOrNull { kotlin.math.abs(mins[it] - requested) } ?: 0)
+                length.setSelection(WorkoutDurationChoices.indexForMinutes(requested))
             }
             restored.equipment?.let { equipmentSpinner.setSelection(it) }
             restored.impact?.let { impactSpinner.setSelection(it) }
@@ -293,7 +298,7 @@ class FitnessActivity:Activity() {
                     parsed.level?.let { level.setSelection(it) }
                     parsed.energy?.let { energySpinner.setSelection(it) }
                     parsed.minutes?.let { requested ->
-                        val closest=mins.indices.minByOrNull { kotlin.math.abs(mins[it]-requested) } ?: 0
+                        val closest=WorkoutDurationChoices.indexForMinutes(requested)
                         length.setSelection(closest)
                     }
                     parsed.equipment?.let { equipmentSpinner.setSelection(it) }
@@ -475,7 +480,12 @@ class FitnessActivity:Activity() {
         }
         val l=level.selectedItemPosition
         val m=mins[length.selectedItemPosition]
-        prefs.edit().putInt("fitLevel",l).putInt("fitTime",length.selectedItemPosition).apply()
+        prefs.edit()
+            .putInt("fitLevel", l)
+            // Keep the old index key readable while preserving the exact custom duration.
+            .putInt("fitTime", WorkoutDurationChoices.legacyIndexForMinutes(m))
+            .putInt("fitTimeMinutes", m)
+            .apply()
         startActivity(Intent(this,GuidedWorkoutActivity::class.java)
             .putExtra("program",p.id).putExtra("level",l).putExtra("minutes",m))
     }

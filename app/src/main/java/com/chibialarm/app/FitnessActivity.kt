@@ -56,7 +56,21 @@ class FitnessActivity:Activity() {
         text=s;textSize=size;setTextColor(Color.rgb(73,59,88));setPadding(7,6,7,7)
     }
     private fun panel(bg:Int)=GradientDrawable().apply { setColor(bg);cornerRadius=33f }
-    override fun onCreate(savedInstanceState:Bundle?) { super.onCreate(savedInstanceState);render() }
+    override fun onCreate(savedInstanceState:Bundle?) {
+        super.onCreate(savedInstanceState)
+        // Retain only coarse selections across a configuration change. Raw speech/text is never kept.
+        conversation = FitnessCoachSessionSnapshot.restore(lastNonConfigurationInstance as? FitnessCoachSessionSnapshot)
+        render()
+    }
+
+    /** The safety selection survives rotation in memory only; it is not written to disk or backup. */
+    override fun onRetainNonConfigurationInstance(): Any? =
+        FitnessCoachSessionSnapshot.capture(conversation, impactRestrictionSpinner?.selectedItemPosition)
+
+    private fun effectiveImpactRestriction(): Int =
+        FitnessCoachSessionSnapshot.effectiveImpact(
+            conversation?.impact, impactRestrictionSpinner?.selectedItemPosition ?: 0
+        )
     private fun render() {
         root=LinearLayout(this).apply {
             orientation=1;setPadding(22,26,22,28);setBackgroundColor(Color.rgb(246,250,249))
@@ -174,6 +188,18 @@ class FitnessActivity:Activity() {
         if (intent.hasExtra("coach_goal") || intent.hasExtra("coach_impact")) {
             root.addView(txt("🐰 Đã điền thông tin từ cuộc trò chuyện. Kiểm tra mục tiêu, thời lượng và hạn chế vận động trước khi chọn giáo án.",14f))
         }
+        conversation?.let { restored ->
+            restored.goal?.let { goalSpinner.setSelection(it) }
+            restored.level?.let { level.setSelection(it) }
+            restored.energy?.let { energySpinner.setSelection(it) }
+            restored.minutes?.let { requested ->
+                length.setSelection(mins.indices.minByOrNull { kotlin.math.abs(mins[it] - requested) } ?: 0)
+            }
+            restored.equipment?.let { equipmentSpinner.setSelection(it) }
+            restored.impact?.let { impactSpinner.setSelection(it) }
+            naturalRequest.hint = FitnessCoachFollowUp.nextQuestion(restored)
+            root.addView(txt("🐰 Đã giữ lựa chọn trong phiên hiện tại sau khi xoay màn hình. Kiểm tra lại trước khi xem giáo án.",14f))
+        }
         root.addView(Button(this).apply {
             text="💬 Chibi hiểu yêu cầu của tôi"
             setOnClickListener {
@@ -237,7 +263,7 @@ class FitnessActivity:Activity() {
                 val goal=goalSpinner.selectedItemPosition
                 val energy=energySpinner.selectedItemPosition
                 val equipment=equipmentSpinner.selectedItemPosition
-                val impact=impactSpinner.selectedItemPosition
+                val impact=effectiveImpactRestriction()
                 prefs.edit().putInt("recommendGoal",goal).putInt("recommendEnergy",energy)
                     .putInt("recommendEquipment",equipment).apply()
                 val recommendation=FitnessPlanAdvisor.recommend(FitnessPlanAdvisor.Preferences(
@@ -344,7 +370,7 @@ class FitnessActivity:Activity() {
         }
     }
     private fun startProgram(p:TrainingProgram) {
-        if (impactRestrictionSpinner?.selectedItemPosition == 2) {
+        if (effectiveImpactRestriction() == 2) {
             AlertDialog.Builder(this)
                 .setTitle("🐰 Tạm dừng buổi tập")
                 .setMessage("Bạn đã báo đang đau hoặc có chấn thương. Chibi không khởi chạy bài tập từ thư viện khi chưa được chuyên gia y tế đánh giá phù hợp.")
@@ -360,7 +386,7 @@ class FitnessActivity:Activity() {
             .putExtra("program",p.id).putExtra("level",l).putExtra("minutes",m))
     }
     private fun addRoutine(p:TrainingProgram) {
-        if (impactRestrictionSpinner?.selectedItemPosition == 2) {
+        if (effectiveImpactRestriction() == 2) {
             AlertDialog.Builder(this)
                 .setTitle("🐰 Chưa thể lên lịch tập")
                 .setMessage("Bạn đã báo đang đau hoặc có chấn thương. Chibi không tạo lịch tập định kỳ cho đến khi chuyên gia y tế đánh giá hoạt động phù hợp.")

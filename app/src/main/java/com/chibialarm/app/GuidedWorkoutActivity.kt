@@ -1327,9 +1327,15 @@ class GuidedWorkoutActivity:Activity() {
         completed=true
         checkpoint.edit().clear().apply()
         val mins=(elapsedMs/60000L).toInt()
-        WorkoutData.save(this,WorkoutData.history(this)+Workout(
-            LifeData.today(),program.name,mins,
-            "Chibi Coach: $completedCount/${moves.size} động tác được ghi nhận; $setCompletedMoves động tác tự xác nhận hiệp ($selfReportedSets hiệp); $timerCompletedMoves động tác theo bộ đếm; $mins phút hoạt động. Số hiệp là tự khai báo, không được cảm biến xác minh."))
+        val substitutionSummary=substitutions.entries.sortedBy { it.key }.joinToString("; ") { (position,replacement) ->
+            "${originalMoves.getOrNull(position)?.name ?: "Động tác"} → ${replacement.name}"
+        }
+        val workoutNote=buildString {
+            append("Chibi Coach: $completedCount/${moves.size} động tác được ghi nhận; $setCompletedMoves động tác tự xác nhận hiệp ($selfReportedSets hiệp); $timerCompletedMoves động tác theo bộ đếm; $mins phút hoạt động. Số hiệp là tự khai báo, không được cảm biến xác minh.")
+            if(substitutionSummary.isNotBlank()) append(" Thay động tác: $substitutionSummary.")
+        }
+        WorkoutData.save(this,Workout(
+            LifeData.today(),program.name,mins,workoutNote))
         Toast.makeText(this,"Đã ghi $mins phút vào nhật ký",Toast.LENGTH_LONG).show()
         finish()
     }

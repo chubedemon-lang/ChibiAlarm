@@ -41,8 +41,9 @@ object WorkoutMoveSubstitution {
         replacement: TrainingMove
     ): List<TrainingMove>? {
         val current = currentMoves.getOrNull(index) ?: return null
-        if (alternativesFor(current).none { it.name == replacement.name }) return null
-        return currentMoves.toMutableList().also { it[index] = replacement }
+        val approved = alternativesFor(current).firstOrNull { it.name == replacement.name } ?: return null
+        // Insert the canonical catalog object, never caller-supplied exercise instructions.
+        return currentMoves.toMutableList().also { it[index] = approved }
     }
 
     /** Store only bounded index/name pairs; no free-form transcript or health text is accepted. */

@@ -7,7 +7,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.RuntimeEnvironment
 
 @RunWith(RobolectricTestRunner::class)
 class FitnessCoachChatTranscriptActivityTest {
@@ -42,7 +41,11 @@ class FitnessCoachChatTranscriptActivityTest {
         }
         val transcript = transcriptField.get(activity) as FitnessCoachChatTranscript
         transcript.addUser("đang đau khớp")
-        transcript.clear()
+        FitnessActivity::class.java.getDeclaredMethod("renderCoachTranscript")
+            .apply { isAccessible = true }.invoke(activity)
+        val clearButton = FitnessActivity::class.java.getDeclaredField("coachTranscriptClearButton")
+            .apply { isAccessible = true }.get(activity) as android.widget.Button
+        clearButton.performClick()
 
         assertEquals(2, conversationField.get(activity).let { it as FitnessNaturalRequest.Result }.impact)
         assertEquals("", transcript.render())

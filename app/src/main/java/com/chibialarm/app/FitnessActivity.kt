@@ -15,6 +15,10 @@ import android.widget.*
 class FitnessActivity:Activity() {
     private val prefs by lazy { getSharedPreferences("chibi_fitness_offline",0) }
     private var conversation: FitnessNaturalRequest.Result? = null
+    // Raw wording is shown only in this Activity's transient chat panel; it is never snapshotted.
+    private val coachTranscript = FitnessCoachChatTranscript()
+    private var coachTranscriptView: TextView? = null
+    private var coachTranscriptClearButton: Button? = null
     private var speechInput: EditText? = null
     private var speechOutput: TextToSpeech? = null
     private var speechReady = false
@@ -33,6 +37,10 @@ class FitnessActivity:Activity() {
     }
 
     override fun onDestroy() {
+        // Drop transient raw text on finish and configuration recreation.
+        coachTranscript.clear()
+        coachTranscriptView = null
+        coachTranscriptClearButton = null
         speechOutput?.stop()
         speechOutput?.shutdown()
         speechOutput = null
@@ -46,6 +54,15 @@ class FitnessActivity:Activity() {
 
     private fun sayFollowUp(message: String) {
         if (speechReady) speechOutput?.speak(message, TextToSpeech.QUEUE_FLUSH, null, "fitness-follow-up")
+    }
+
+    private fun renderCoachTranscript() {
+        val panel = coachTranscriptView ?: return
+        val rendered = coachTranscript.render()
+        panel.text = rendered
+        panel.visibility = if (rendered.isBlank()) android.view.View.GONE else android.view.View.VISIBLE
+        coachTranscriptClearButton?.visibility =
+            if (rendered.isBlank()) android.view.View.GONE else android.view.View.VISIBLE
     }
 
     private lateinit var root:LinearLayout
@@ -126,6 +143,27 @@ class FitnessActivity:Activity() {
         }
         root.addView(naturalRequest)
         speechInput = naturalRequest
+        val transcriptPanel = txt("", 14f).apply {
+            visibility = android.view.View.GONE
+            maxHeight = (190 * resources.displayMetrics.density).toInt()
+            background = panel(Color.WHITE)
+            contentDescription = "Lịch sử hội thoại tạm thời với Chibi"
+            setPadding(14, 12, 14, 12)
+        }
+        coachTranscriptView = transcriptPanel
+        root.addView(transcriptPanel)
+        val clearTranscript = Button(this).apply {
+            text = "🧹 Xóa lời thoại tạm"
+            isAllCaps = false
+            visibility = android.view.View.GONE
+            contentDescription = "Xóa văn bản hội thoại khỏi bộ nhớ màn hình; giữ nguyên lựa chọn và cảnh báo an toàn"
+            setOnClickListener {
+                coachTranscript.clear()
+                renderCoachTranscript()
+            }
+        }
+        coachTranscriptClearButton = clearTranscript
+        root.addView(clearTranscript)
         root.addView(Button(this).apply {
             text = "🎙 Nhập bằng giọng nói (dịch vụ nhận dạng trên máy)"
             isAllCaps = false
@@ -246,6 +284,11 @@ class FitnessActivity:Activity() {
                 } else {
                     val parsed=FitnessCoachConversation.merge(conversation, FitnessCoachConversation.parseReply(conversation, request))
                     conversation=parsed
+                    val nextQuestion = FitnessCoachFollowUp.nextQuestion(parsed)
+                    val coachMessage = parsed.reply + "\n\n🐰 Chibi hỏi tiếp: " + nextQuestion
+                    coachTranscript.addUser(request)
+                    coachTranscript.addChibi(coachMessage)
+                    renderCoachTranscript()
                     parsed.goal?.let { goalSpinner.setSelection(it) }
                     parsed.level?.let { level.setSelection(it) }
                     parsed.energy?.let { energySpinner.setSelection(it) }
@@ -255,10 +298,10 @@ class FitnessActivity:Activity() {
                     }
                     parsed.equipment?.let { equipmentSpinner.setSelection(it) }
                     parsed.impact?.let { impactSpinner.setSelection(it) }
-                    sayFollowUp(parsed.reply + " " + FitnessCoachFollowUp.nextQuestion(parsed))
+                    sayFollowUp(coachMessage)
                     AlertDialog.Builder(this@FitnessActivity)
                         .setTitle("🐰 Chibi đã nghe")
-                        .setMessage(parsed.reply + "\n\n🐰 Chibi hỏi tiếp: " + FitnessCoachFollowUp.nextQuestion(parsed))
+                        .setMessage(coachMessage)
                         .setPositiveButton("Xem giáo án",null)
                         .setNeutralButton("Trả lời tiếp") { _, _ ->
                             naturalRequest.text.clear()

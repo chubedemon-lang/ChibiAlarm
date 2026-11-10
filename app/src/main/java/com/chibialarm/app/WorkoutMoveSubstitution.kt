@@ -26,7 +26,7 @@ object WorkoutMoveSubstitution {
     )
 
     private val catalogMoves: List<TrainingMove> by lazy {
-        TrainingCatalog.programs.flatMap { it.moves }.distinctBy { it.name }
+        TrainingCatalog.allMoves
     }
 
     fun alternativesFor(move: TrainingMove): List<TrainingMove> =

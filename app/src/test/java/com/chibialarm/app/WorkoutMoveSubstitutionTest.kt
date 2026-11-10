@@ -13,6 +13,7 @@ class WorkoutMoveSubstitutionTest {
         assertEquals(listOf("Đứng lên – ngồi xuống"), options.map { it.name })
 
         val push = catalogMove("Chống đẩy sàn")
+        assertTrue(TrainingCatalog.allMoves.any { it.name == "Chống đẩy gối" })
         assertEquals(
             listOf("Chống đẩy gối", "Chống đẩy tường"),
             WorkoutMoveSubstitution.alternativesFor(push).map { it.name }

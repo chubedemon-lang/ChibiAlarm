@@ -211,13 +211,8 @@ class GuidedWorkoutActivity:Activity() {
         program=TrainingCatalog.byId(intent.getStringExtra("program") ?: "starter")
         val level=intent.getIntExtra("level",0).coerceIn(0,2)
         val minutes=intent.getIntExtra("minutes",15).coerceIn(5,45)
-        val base=TrainingCatalog.adjusted(program,level,minutes)
-        val middle=base.drop(1).dropLast(1)
-        val estimate=base.sumOf { it.seconds }
-        val rounds=if(middle.isEmpty()) 1 else
-            ((minutes*60-estimate).coerceAtLeast(0)/middle.sumOf { it.seconds }+1).coerceIn(1,4)
-        moves=if(middle.isEmpty())base else listOf(base.first())+
-            (0 until rounds).flatMap { middle }+listOf(base.last())
+        val planned=WorkoutDurationPlanner.build(program,level,minutes)
+        moves=planned.moves
         originalMoves=moves.toList()
         val root=LinearLayout(this).apply {
             orientation=1;setPadding(24,27,24,24);setBackgroundColor(Color.rgb(247,240,252))
@@ -227,6 +222,15 @@ class GuidedWorkoutActivity:Activity() {
             setTextColor(Color.rgb(95,55,113))
         })
         root.addView(TextView(this).apply { text=program.name;textSize=16f })
+        root.addView(TextView(this).apply {
+            text = "Mục tiêu tối đa: ${planned.targetMinutes} phút • ước tính theo bộ đếm: ${planned.estimatedMinutes} phút.\n" +
+                "Ước tính chưa tính đầy đủ thời gian nghỉ và tốc độ thực hiện từng hiệp."
+            textSize = 12f
+            setPadding(4, 4, 4, 10)
+            if (planned.exceedsTarget) {
+                append("\\nLưu ý: chương trình tối thiểu dài hơn thời lượng đã chọn.")
+            }
+        })
         heading=TextView(this).apply {
             textSize=23f;gravity=Gravity.CENTER;setPadding(5,20,5,18);setTextColor(Color.rgb(75,55,95))
         }

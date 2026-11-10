@@ -315,16 +315,27 @@ class FitnessActivity:Activity() {
                     return@setOnClickListener
                 }
                 val p=TrainingCatalog.byId(recommendation.programId)
+                val planned=WorkoutDurationPlanner.build(
+                    p, level.selectedItemPosition, mins[length.selectedItemPosition]
+                )
+                val durationSummary = buildString {
+                    append("Thời lượng tối đa bạn chọn: ${planned.targetMinutes} phút • ")
+                    append("ước tính theo bộ đếm hướng dẫn: ${planned.estimatedMinutes} phút.")
+                    append(" Hiệp, thời gian nghỉ và tốc độ thực tế có thể làm buổi tập dài hơn hoặc ngắn hơn.")
+                    if (planned.exceedsTarget) {
+                        append("\\nChương trình tối thiểu hiện dài hơn thời lượng bạn chọn; hãy cân nhắc chọn chương trình ngắn hơn.")
+                    }
+                }
                 AlertDialog.Builder(this@FitnessActivity).setTitle("🐰 Chibi đề xuất: "+p.name)
-                    .setMessage("Mục tiêu: "+goals[goal]+" • "+energyLevels[energy]+"\n"+
-                        "Dụng cụ: "+equipmentOptions[equipment]+"\n"+
-                        "Vận động: "+impactOptions[impact]+"\n\n"+
+                    .setMessage("Mục tiêu: "+goals[goal]+" • "+energyLevels[energy]+"\\n"+
+                        "Dụng cụ: "+equipmentOptions[equipment]+"\\n"+
+                        "Vận động: "+impactOptions[impact]+"\\n\\n"+
+                        durationSummary+"\\n\\n"+
                         recommendation.explanation+
                         "\n\nGợi ý offline theo quy tắc trên máy, không phải AI chẩn đoán hay tư vấn y khoa.")
                     .setPositiveButton("▶ Bắt đầu"){_,_->startProgram(p)}
                     .setNeutralButton("📖 Xem từng bước") { _, _ ->
-                        val steps = TrainingCatalog.adjusted(p, level.selectedItemPosition,
-                            mins[length.selectedItemPosition])
+                        val steps = planned.moves
                             .mapIndexed { i, move ->
                                 "${i + 1}. ${move.name} — ${move.dose}\n" +
                                     "Cách tập: ${move.steps}\n" +
@@ -385,10 +396,13 @@ class FitnessActivity:Activity() {
                 elevation=2f
             }
             card.addView(txt(program.name,19f))
-            card.addView(txt(program.subtitle+" • "+program.moves.size+" bước",13f))
+            val planned = WorkoutDurationPlanner.build(
+                program, level.selectedItemPosition, mins[length.selectedItemPosition]
+            )
+            card.addView(txt(program.subtitle+" • "+planned.moves.size+" bước • khoảng "+planned.estimatedMinutes+" phút",13f))
             val buttons=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
             buttons.addView(Button(this).apply { text="📖 Xem bài";isAllCaps=false;setOnClickListener {
-                val guide=TrainingCatalog.adjusted(program,level.selectedItemPosition,mins[length.selectedItemPosition])
+                val guide=planned.moves
                     .mapIndexed { i,m->"${i+1}. ${m.name} — ${m.dose}\nCách tập: ${m.steps}\nDễ hơn: ${m.easier}\nLưu ý: ${m.avoid}" }
                     .joinToString("\n\n")
                 AlertDialog.Builder(this@FitnessActivity)

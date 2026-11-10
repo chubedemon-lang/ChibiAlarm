@@ -124,6 +124,17 @@ object TrainingCatalog {
         TrainingProgram("weighted","🏋️ Sức mạnh với tạ hoặc dây","Cần tạ đơn nhẹ hoặc dây kháng lực • cho người đã quen động tác cơ bản","Sức mạnh",listOf(warm,resistanceRow,resistanceHinge,resistancePress,cool)),
         TrainingProgram("recovery","🌙 Ngày phục hồi tích cực","Nhẹ nhàng, không thay thế điều trị chấn thương","Phục hồi nhẹ",listOf(march,shoulder,catCow,stretch))
     )
+    /**
+     * Canonical substitution-only exercises remain available to the guided coach
+     * even when they are not part of a default program's fixed sequence.
+     */
+    val substitutionOnlyMoves: List<TrainingMove> = listOf(kneePush)
+
+    /** One trusted catalog for library, substitutions and workout guidance. */
+    val allMoves: List<TrainingMove> by lazy {
+        (programs.flatMap { it.moves } + substitutionOnlyMoves).distinctBy { it.name }
+    }
+
     fun byId(id:String)=programs.firstOrNull { it.id==id } ?: programs.first()
     fun adjusted(program:TrainingProgram,level:Int,duration:Int):List<TrainingMove> {
         // Keep warm up/cool down; add repeats conservatively rather than intensify blindly.

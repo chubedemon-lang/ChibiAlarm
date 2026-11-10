@@ -53,7 +53,7 @@ object WorkoutSetTracker {
     }
 
     fun isComplete(completedSets: Int, plan: Plan): Boolean =
-        completedSets >= plan.requiredSets
+        completedSets in plan.requiredSets..plan.maximumSets
 
     fun encode(progress: Map<Int, Int>, moves: List<TrainingMove>): String {
         require(moves.size in 1..MAX_MOVES)

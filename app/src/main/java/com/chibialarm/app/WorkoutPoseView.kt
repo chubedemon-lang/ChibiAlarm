@@ -119,8 +119,6 @@ class WorkoutPoseView(context: Context) : View(context) {
                 // A vertical stance and a visible wall distinguish this from a floor push-up.
                 line(190f, 12f, 190f, 110f)
                 head(78f, 18f); line(78f, 30f, 78f, 72f)
-                line(78f, 44f, 116f, 45f)
-                line(116f, 45f, 177f, 45f)
                 line(78f, 72f, 62f, 105f); line(78f, 72f, 99f, 105f)
                 line(62f, 105f, 48f, 105f); line(99f, 105f, 113f, 105f)
                 if (movementPhase) {

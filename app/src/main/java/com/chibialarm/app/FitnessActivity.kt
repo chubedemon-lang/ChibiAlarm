@@ -240,43 +240,36 @@ class FitnessActivity:Activity() {
                     .putInt("recommendEquipment",equipment).apply()
                 val recommendation=FitnessPlanAdvisor.recommend(FitnessPlanAdvisor.Preferences(
                     goal,energy,level.selectedItemPosition,mins[length.selectedItemPosition],equipment,impact))
-                val id=recommendation.programId
-                val p=TrainingCatalog.byId(id)
+                if (recommendation.requiresProfessionalReview) {
+                    AlertDialog.Builder(this@FitnessActivity)
+                        .setTitle("🐰 Tạm dừng kế hoạch tập")
+                        .setMessage(recommendation.explanation + "\n\nChibi sẽ không đưa bạn vào buổi tập chỉ bằng một lần xác nhận bỏ qua cảnh báo.")
+                        .setPositiveButton("Đã hiểu", null)
+                        .setNegativeButton("Đóng", null)
+                        .show()
+                    return@setOnClickListener
+                }
+                val p=TrainingCatalog.byId(recommendation.programId)
                 AlertDialog.Builder(this@FitnessActivity).setTitle("🐰 Chibi đề xuất: "+p.name)
                     .setMessage("Mục tiêu: "+goals[goal]+" • "+energyLevels[energy]+"\n"+
                         "Dụng cụ: "+equipmentOptions[equipment]+"\n"+
                         "Vận động: "+impactOptions[impact]+"\n\n"+
                         recommendation.explanation+
                         "\n\nGợi ý offline theo quy tắc trên máy, không phải AI chẩn đoán hay tư vấn y khoa.")
-                    .setPositiveButton("▶ Bắt đầu"){_,_->
-                        if (impact==2) {
-                            AlertDialog.Builder(this@FitnessActivity).setTitle("Ưu tiên an toàn")
-                                .setMessage("Khi đang đau hoặc chấn thương, chỉ tập nếu được chuyên gia xác nhận phù hợp. Dừng ngay nếu triệu chứng tăng.")
-                                .setPositiveButton("Tôi đã hiểu"){_,_->startProgram(p)}
-                                .setNegativeButton("Hủy",null).show()
-                        } else startProgram(p)
-                    }
+                    .setPositiveButton("▶ Bắt đầu"){_,_->startProgram(p)}
                     .setNeutralButton("📖 Xem từng bước") { _, _ ->
                         val steps = TrainingCatalog.adjusted(p, level.selectedItemPosition,
                             mins[length.selectedItemPosition])
                             .mapIndexed { i, move ->
-                                "${i + 1}. ${move.name} — ${move.dose}\n" +
-                                    "Cách tập: ${move.steps}\n" +
-                                    "Dễ hơn: ${move.easier}\n" +
-                                    "Lưu ý: ${move.avoid}"
+                                "\${i + 1}. \${move.name} — \${move.dose}\n" +
+                                    "Cách tập: \${move.steps}\n" +
+                                    "Dễ hơn: \${move.easier}\n" +
+                                    "Lưu ý: \${move.avoid}"
                             }.joinToString("\n\n")
                         AlertDialog.Builder(this@FitnessActivity)
-                            .setTitle("📖 ${p.name} • hướng dẫn trước khi tập")
+                            .setTitle("📖 \${p.name} • hướng dẫn trước khi tập")
                             .setMessage(steps + "\n\nBạn có thể quay lại để thay đổi mục tiêu hoặc thời lượng.")
-                            .setPositiveButton("▶ Bắt đầu") { _, _ ->
-                                if (impact == 2) {
-                                    AlertDialog.Builder(this@FitnessActivity)
-                                        .setTitle("Ưu tiên an toàn")
-                                        .setMessage("Khi đang đau hoặc chấn thương, chỉ tập nếu được chuyên gia xác nhận phù hợp. Dừng ngay nếu triệu chứng tăng.")
-                                        .setPositiveButton("Tôi đã hiểu") { _, _ -> startProgram(p) }
-                                        .setNegativeButton("Hủy", null).show()
-                                } else startProgram(p)
-                            }
+                            .setPositiveButton("▶ Bắt đầu") { _, _ -> startProgram(p) }
                             .setNegativeButton("Đóng", null).show()
                     }
                     .setNegativeButton("Chọn bài khác",null).show()

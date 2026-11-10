@@ -440,6 +440,10 @@ class GuidedWorkoutActivity:Activity() {
     /** Spoken repetition changes use the same preview/confirmation as manual edits. */
     private fun confirmSpokenRepTarget(reps: Int) {
         if (pausedForSafety || completed || index !in moves.indices) return
+        if ((completedSetsByMove[index] ?: 0) > 0) {
+            Toast.makeText(this, "Đã ghi nhận hiệp; không sửa lại mục tiêu của động tác này.", Toast.LENGTH_LONG).show()
+            return
+        }
         pause()
         val selected = index
         val before = repTargets[selected]
@@ -580,6 +584,10 @@ class GuidedWorkoutActivity:Activity() {
     /** Repetition guidance for the current step, without pretending to count actual reps. */
     private fun requestRepTarget() {
         if (pausedForSafety || completed || index !in moves.indices) return
+        if ((completedSetsByMove[index] ?: 0) > 0) {
+            Toast.makeText(this, "Đã ghi nhận hiệp; không sửa lại mục tiêu của động tác này.", Toast.LENGTH_LONG).show()
+            return
+        }
         pause()
         val selected=index
         val before=repTargets[selected]
@@ -1024,18 +1032,18 @@ class GuidedWorkoutActivity:Activity() {
             return
         }
         val done=(completedSetsByMove[index] ?: 0).coerceIn(0,plan.maximumSets)
-        val target=if(plan.targetMin==plan.targetMax) "\${plan.targetMin} \${plan.unit}"
-            else "\${plan.targetMin}–\${plan.targetMax} \${plan.unit}"
+        val target=if(plan.targetMin==plan.targetMax) "${plan.targetMin} ${plan.unit}"
+            else "${plan.targetMin}–${plan.targetMax} ${plan.unit}"
         val setDescription=if(plan.maximumSets>plan.requiredSets)
-            "Tối thiểu \${plan.requiredSets} hiệp, có thể thêm đến \${plan.maximumSets}"
-            else "\${plan.requiredSets} hiệp"
-        setProgress.text="Hiệp tự xác nhận: $done/\${plan.maximumSets} • $setDescription • $target"
-        if(setTimerExpired) setProgress.append("\\nHết thời gian gợi ý; chỉ xác nhận hiệp sau khi bạn thực hiện.")
+            "Tối thiểu ${plan.requiredSets} hiệp, có thể thêm đến ${plan.maximumSets}"
+            else "${plan.requiredSets} hiệp"
+        setProgress.text="Hiệp tự xác nhận: $done/${plan.maximumSets} • $setDescription • $target"
+        if(setTimerExpired) setProgress.append("\nHết thời gian gợi ý; chỉ xác nhận hiệp sau khi bạn thực hiện.")
         setProgress.contentDescription=setProgress.text
         completeSetButton.isEnabled=done<plan.maximumSets && !pausedForSafety && !resting
         completeSetButton.text=when {
-            done<plan.requiredSets -> "✓ Xác nhận hoàn thành hiệp \${done+1}/\${plan.requiredSets}"
-            done<plan.maximumSets -> "＋ Ghi nhận hiệp tùy chọn \${done+1}/\${plan.maximumSets}"
+            done<plan.requiredSets -> "✓ Xác nhận hoàn thành hiệp ${done+1}/${plan.requiredSets}"
+            done<plan.maximumSets -> "＋ Ghi nhận hiệp tùy chọn ${done+1}/${plan.maximumSets}"
             else -> "✓ Đã ghi nhận đủ hiệp"
         }
         val canRest=done>0 && done<plan.maximumSets && !pausedForSafety && !resting
@@ -1043,7 +1051,7 @@ class GuidedWorkoutActivity:Activity() {
         customSetRestButton.visibility=if(canRest) android.view.View.VISIBLE else android.view.View.GONE
         restSetButton.isEnabled=canRest
         customSetRestButton.isEnabled=canRest
-        restSetButton.text="⏱ Nghỉ theo giáo án (\${plan.defaultRestSeconds} giây)"
+        restSetButton.text="⏱ Nghỉ theo giáo án (${plan.defaultRestSeconds} giây)"
     }
 
     /** The user confirms a set after doing it; no camera or automatic rep counting is implied. */
@@ -1065,12 +1073,12 @@ class GuidedWorkoutActivity:Activity() {
         if(after<plan.maximumSets) {
             val message=if(after>=plan.requiredSets)
                 "Đã đủ hiệp tối thiểu. Bạn có thể nghỉ rồi thêm hiệp tùy chọn nếu còn sức."
-                else "Đã tự xác nhận hiệp $after/\${plan.requiredSets}. Nghỉ trước hiệp tiếp theo."
+                else "Đã tự xác nhận hiệp $after/${plan.requiredSets}. Nghỉ trước hiệp tiếp theo."
             Toast.makeText(this,message,Toast.LENGTH_LONG).show()
             speak(message)
             startSetRest(plan.defaultRestSeconds)
         } else {
-            val message="Đã tự xác nhận đủ $after hiệp cho \${moves[index].name}."
+            val message="Đã tự xác nhận đủ $after hiệp cho ${moves[index].name}."
             Toast.makeText(this,message,Toast.LENGTH_LONG).show()
             speak(message)
         }

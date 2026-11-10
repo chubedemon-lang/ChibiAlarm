@@ -44,6 +44,7 @@ class GuidedWorkoutActivity:Activity() {
     private fun validSessionId(value:String?):String? = value?.takeIf {
         runCatching { UUID.fromString(it).toString()==it }.getOrDefault(false)
     }
+    private fun currentPlanFingerprint(): String = WorkoutConstraintFilter.fingerprint(originalMoves)
     private var moves:List<TrainingMove> = emptyList()
     private var originalMoves:List<TrainingMove> = emptyList()
     private val substitutions=mutableMapOf<Int,TrainingMove>()
@@ -85,6 +86,7 @@ class GuidedWorkoutActivity:Activity() {
     private fun saveCheckpoint() {
         if (completed || checkpointDecisionPending || moves.isEmpty()) return
         checkpoint.edit().putString("program",program.id)
+            .putString("planFingerprint",currentPlanFingerprint())
             .putString("sessionId",sessionId)
             .putInt("index",index).putLong("remaining",remainingMs.coerceIn(0L,600_000L))
             .putBoolean("safety",pausedForSafety)
@@ -103,6 +105,15 @@ class GuidedWorkoutActivity:Activity() {
     }
     private fun offerCheckpoint() {
         if (checkpoint.getString("program",null)!=program.id) return
+        val savedFingerprint = checkpoint.getString("planFingerprint", null)
+        if ((savedFingerprint != null && savedFingerprint != currentPlanFingerprint()) ||
+            (savedFingerprint == null && workoutConstraints.avoidWristLoad)) {
+            checkpoint.edit().clear().apply()
+            Toast.makeText(this,
+                "Giáo án đã thay đổi theo lựa chọn hiện tại. Chibi không khôi phục hiệp cũ để tránh gán nhầm tiến độ; hãy bắt đầu buổi mới.",
+                Toast.LENGTH_LONG).show()
+            return
+        }
         val savedSessionId=validSessionId(checkpoint.getString("sessionId",null))
         if (savedSessionId!=null && WorkoutData.history(this).any { it.sessionId==savedSessionId }) {
             // A crash after the durable journal append must not reopen a completed session.
@@ -433,8 +444,12 @@ class GuidedWorkoutActivity:Activity() {
         displayStep()
         if (savedInstanceState == null) offerCheckpoint()
         // Restore the active exercise after rotation, but never auto-resume.
+        val savedPlanFingerprint = savedInstanceState?.getString("workout_plan_fingerprint")
+        val savedPlanCompatible = savedPlanFingerprint == currentPlanFingerprint() ||
+            (savedPlanFingerprint == null && !workoutConstraints.avoidWristLoad)
         if(savedInstanceState!=null &&
-            savedInstanceState.getString("workout_program")==program.id) {
+            savedInstanceState.getString("workout_program")==program.id &&
+            savedPlanCompatible) {
             sessionId=validSessionId(savedInstanceState.getString("workout_session_id")) ?: sessionId
             val savedSubstitutions=savedInstanceState.getString("workout_substitutions")
             substitutions.clear()
@@ -473,12 +488,16 @@ class GuidedWorkoutActivity:Activity() {
                 resting -> "▶ Tiếp tục nghỉ"
                 else -> "▶ Tiếp tục"
             }
+        } else if (savedInstanceState != null &&
+            savedInstanceState.getString("workout_program") == program.id) {
+            Toast.makeText(this, "Giáo án đã đổi; không khôi phục tiến độ của kế hoạch khác.", Toast.LENGTH_LONG).show()
         }
     }
     override fun onSaveInstanceState(outState:Bundle) {
         // Save monotonic elapsed duration, not an absolute deadline.
         pause()
         outState.putString("workout_program",program.id)
+        outState.putString("workout_plan_fingerprint",currentPlanFingerprint())
         outState.putString("workout_session_id",sessionId)
         outState.putString("workout_rep_targets",repTargets.entries.joinToString(",") { "${it.key}:${it.value}" })
         outState.putString("workout_substitutions",WorkoutMoveSubstitution.encode(substitutions,originalMoves,workoutConstraints))

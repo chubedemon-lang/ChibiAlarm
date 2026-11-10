@@ -118,7 +118,7 @@ object FitnessNaturalRequest {
         // Acute/non-local symptoms remain conservative stop signals. Musculoskeletal
         // pain is parsed separately so "đầu gối" alone is not mistaken for "đau gối".
         val symptoms = listOf(
-            "chan thuong", "dang dau", "bi dau", "chong mat", "choang",
+            "chan thuong", "chong mat", "choang",
             "kho tho", "buon non", "muon ngat"
         )
         val injury = symptoms.any { phrase ->

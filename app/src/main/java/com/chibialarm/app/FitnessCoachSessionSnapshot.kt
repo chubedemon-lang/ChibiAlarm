@@ -12,7 +12,8 @@ data class FitnessCoachSessionSnapshot(
     val energy: Int? = null,
     val minutes: Int? = null,
     val equipment: Int? = null,
-    val impact: Int? = null
+    val impact: Int? = null,
+    val avoidWristLoad: Boolean? = null
 ) {
     fun restore(): FitnessNaturalRequest.Result? {
         if (goal != null && goal !in 0..5) return null
@@ -22,7 +23,7 @@ data class FitnessCoachSessionSnapshot(
         if (equipment != null && equipment !in 0..2) return null
         if (impact != null && impact !in 0..2) return null
         if (goal == null && level == null && energy == null && minutes == null &&
-            equipment == null && impact == null) return null
+            equipment == null && impact == null && avoidWristLoad == null) return null
         return FitnessNaturalRequest.Result(
             goal = goal,
             level = level,
@@ -30,7 +31,8 @@ data class FitnessCoachSessionSnapshot(
             minutes = minutes,
             equipment = equipment,
             impact = impact,
-            reply = "Đã giữ các lựa chọn trong phiên hiện tại. Hãy kiểm tra lại trước khi xem giáo án."
+            reply = "Đã giữ các lựa chọn trong phiên hiện tại. Hãy kiểm tra lại trước khi xem giáo án.",
+            avoidWristLoad = avoidWristLoad
         )
     }
 
@@ -47,7 +49,8 @@ data class FitnessCoachSessionSnapshot(
 
         fun capture(
             result: FitnessNaturalRequest.Result?,
-            selectedImpact: Int?
+            selectedImpact: Int?,
+            selectedAvoidWristLoad: Boolean? = null
         ): FitnessCoachSessionSnapshot? {
             if (selectedImpact != null && selectedImpact !in 0..2) return null
             val retainedImpact = when {
@@ -55,17 +58,20 @@ data class FitnessCoachSessionSnapshot(
                 selectedImpact != null -> selectedImpact
                 else -> result?.impact
             }
+            val retainedAvoidWristLoad = selectedAvoidWristLoad ?: result?.avoidWristLoad
             val snapshot = FitnessCoachSessionSnapshot(
                 goal = result?.goal,
                 level = result?.level,
                 energy = result?.energy,
                 minutes = result?.minutes,
                 equipment = result?.equipment,
-                impact = retainedImpact
+                impact = retainedImpact,
+                avoidWristLoad = retainedAvoidWristLoad
             )
             return snapshot.takeUnless {
                 it.goal == null && it.level == null && it.energy == null &&
-                    it.minutes == null && it.equipment == null && it.impact == null
+                    it.minutes == null && it.equipment == null && it.impact == null &&
+                    it.avoidWristLoad == null
             }
         }
 

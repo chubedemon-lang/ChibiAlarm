@@ -1,5 +1,7 @@
 package com.chibialarm.app
 
+import java.util.Locale
+
 /**
  * In-memory, offline multi-turn coaching state. A new conversation starts on Activity creation;
  * no health-related free text is persisted or sent to a server.
@@ -13,7 +15,7 @@ object FitnessCoachConversation {
     fun parseReply(previous: FitnessNaturalRequest.Result?, input: String): FitnessNaturalRequest.Result {
         val parsed = FitnessNaturalRequest.parse(input)
         if (previous == null) return parsed
-        val answer = input.trim().lowercase()
+        val answer = input.trim().lowercase(Locale.ROOT)
         val question = FitnessCoachFollowUp.nextQuestion(previous).lowercase(Locale.ROOT)
         val shortMinutes = Regex("^([0-9]{1,3})$").matchEntire(answer)
             ?.groupValues?.get(1)?.toIntOrNull()?.takeIf { it in 5..120 }

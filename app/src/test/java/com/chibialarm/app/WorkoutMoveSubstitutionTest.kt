@@ -76,4 +76,19 @@ class WorkoutMoveSubstitutionTest {
         assertTrue(WorkoutMoveSubstitution.decode("x:bad;0:%ZZ", base).isEmpty())
         assertTrue(WorkoutMoveSubstitution.decode("a".repeat(4_097), base).isEmpty())
     }
+
+    @Test fun wristAvoidanceDoesNotOfferOrRestoreHandLoadingEasierAlternatives() {
+        val profile = WorkoutConstraintProfile(avoidWristLoad = true)
+        val push = catalogMove("Chống đẩy sàn")
+        assertTrue(WorkoutMoveSubstitution.alternativesFor(push, profile).isEmpty())
+
+        val plank = catalogMove("Plank khuỷu hoặc plank gối")
+        val birdDog = catalogMove("Bird-dog")
+        val base = listOf(plank)
+        assertNull(WorkoutMoveSubstitution.replace(base, 0, birdDog, profile))
+        val unsafeCheckpoint = "0:Bird-dog"
+        assertTrue(WorkoutMoveSubstitution.decode(unsafeCheckpoint, base, profile).isEmpty())
+    }
+
+
 }

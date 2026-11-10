@@ -11,19 +11,19 @@ object WorkoutVoiceCommands {
     fun describe(command: Command, utterance: String? = null): String {
         val restSeconds = utterance?.let { WorkoutRestRequest.seconds(it) } ?: 30
         return when (command) {
-        Command.PAIN -> "Dừng tập vì cảnh báo an toàn"
-        Command.PAUSE -> "Tạm dừng buổi tập"
-        Command.RESUME -> "Tiếp tục buổi tập"
-        Command.NEXT -> "Chuyển sang động tác tiếp theo"
-        Command.PREVIOUS -> "Quay lại động tác trước"
-        Command.REPEAT -> "Đọc lại hướng dẫn"
-        Command.EASIER -> "Hiển thị cách tập dễ hơn"
-        Command.SWAP_EASIER -> "Thay động tác hiện tại bằng phương án nhẹ hơn"
-        Command.EASIER_AND_REST -> "Hiển thị cách tập dễ hơn và thêm $restSeconds giây nghỉ"
-        Command.SHORTER -> "Rút ngắn thời gian động tác hiện tại"
-        Command.SHORTER_REMAINING -> "Rút ngắn động tác hiện tại và tất cả động tác còn lại"
-        Command.REST -> "Bắt đầu nghỉ riêng $restSeconds giây"
-        Command.UNKNOWN -> "Chưa hiểu yêu cầu; không tự thay đổi buổi tập"
+            Command.PAIN -> "Dừng tập vì cảnh báo an toàn"
+            Command.PAUSE -> "Tạm dừng buổi tập"
+            Command.RESUME -> "Tiếp tục buổi tập"
+            Command.NEXT -> "Chuyển sang động tác tiếp theo"
+            Command.PREVIOUS -> "Quay lại động tác trước"
+            Command.REPEAT -> "Đọc lại hướng dẫn"
+            Command.EASIER -> "Hiển thị cách tập dễ hơn"
+            Command.SWAP_EASIER -> "Thay động tác hiện tại bằng phương án nhẹ hơn"
+            Command.EASIER_AND_REST -> "Hiển thị cách tập dễ hơn và thêm $restSeconds giây nghỉ"
+            Command.SHORTER -> "Rút ngắn thời gian động tác hiện tại"
+            Command.SHORTER_REMAINING -> "Rút ngắn động tác hiện tại và tất cả động tác còn lại"
+            Command.REST -> "Bắt đầu nghỉ riêng $restSeconds giây"
+            Command.UNKNOWN -> "Chưa hiểu yêu cầu; không tự thay đổi buổi tập"
         }
     }
 

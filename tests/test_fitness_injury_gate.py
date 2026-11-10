@@ -24,3 +24,16 @@ def test_injury_path_has_no_override_confirmation_to_start():
     gate_block = source[start:catalog]
     assert "Tạm dừng kế hoạch tập" in gate_block
     assert "không khởi chạy bài tập" in gate_block
+
+
+
+def test_direct_catalog_launch_uses_the_same_injury_gate():
+    source = SOURCE.read_text(encoding="utf-8")
+    start = source.index("private fun startProgram(p:TrainingProgram)")
+    end = source.index("private fun addRoutine", start)
+    launch_method = source[start:end]
+    gate = launch_method.index("impactRestrictionSpinner?.selectedItemPosition == 2")
+    launch = launch_method.index("startActivity(")
+    assert gate < launch
+    assert "return" in launch_method[gate:launch]
+    assert "không khởi chạy bài tập" in launch_method[gate:launch]

@@ -984,16 +984,24 @@ class GuidedWorkoutActivity:Activity() {
     private fun openSavedVideo() {
         val local=videoPrefs.getString("local_"+videoKey(),null)
         val remote=videoPrefs.getString("link_"+videoKey(),null)
-        val url=local ?: remote
-        if(url==null) {
+        if(local==null && remote.isNullOrBlank()) {
             Toast.makeText(this,"Chưa có video. Hãy lưu link hoặc chọn video từ máy.",Toast.LENGTH_LONG).show()
             return
         }
         try {
-            val i=Intent(Intent.ACTION_VIEW,Uri.parse(url))
-            if(local!=null) { i.setDataAndType(Uri.parse(local),"video/*");i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION) }
-            startActivity(i)
-        } catch(_:Exception) { Toast.makeText(this,"Không mở được video, hãy chọn lại tệp hoặc kiểm tra mạng.",Toast.LENGTH_LONG).show() }
+            val intent = when {
+                local != null -> Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(Uri.parse(local),"video/*")
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                remote != null && WorkoutVideoUrl.extractVideoId(remote) != null ->
+                    Intent(this, WorkoutVideoActivity::class.java).putExtra("url", remote)
+                else -> Intent(Intent.ACTION_VIEW, Uri.parse(remote))
+            }
+            startActivity(intent)
+        } catch(_:Exception) {
+            Toast.makeText(this,"Không mở được video, hãy chọn lại tệp hoặc kiểm tra mạng.",Toast.LENGTH_LONG).show()
+        }
     }
     private fun searchVideo(site:String) {
         val move=moves.getOrNull(index) ?: return

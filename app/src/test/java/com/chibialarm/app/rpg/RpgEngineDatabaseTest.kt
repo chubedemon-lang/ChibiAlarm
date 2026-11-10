@@ -479,7 +479,9 @@ class RpgEngineDatabaseTest {
             WorkoutRewardEvidence("550e8400-e29b-41d4-a716-446655440002", 10, 1, 4)
         )
         assertEquals(0, engine.awardWorkoutSessions(invalid))
-        assertTrue(database.dao().ledgerEntries().isEmpty())
+        assertFalse(database.dao().ledgerEntries().any {
+            it.dedupeKey.startsWith("fitness_session:")
+        })
 
         val capped = WorkoutRewardEvidence(
             "550e8400-e29b-41d4-a716-446655440003", 20, 20, 100

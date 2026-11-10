@@ -323,14 +323,14 @@ class FitnessActivity:Activity() {
                     append("ước tính theo bộ đếm hướng dẫn: ${planned.estimatedMinutes} phút.")
                     append(" Hiệp, thời gian nghỉ và tốc độ thực tế có thể làm buổi tập dài hơn hoặc ngắn hơn.")
                     if (planned.exceedsTarget) {
-                        append("\\nChương trình tối thiểu hiện dài hơn thời lượng bạn chọn; hãy cân nhắc chọn chương trình ngắn hơn.")
+                        append("\nChương trình tối thiểu hiện dài hơn thời lượng bạn chọn; hãy cân nhắc chọn chương trình ngắn hơn.")
                     }
                 }
                 AlertDialog.Builder(this@FitnessActivity).setTitle("🐰 Chibi đề xuất: "+p.name)
-                    .setMessage("Mục tiêu: "+goals[goal]+" • "+energyLevels[energy]+"\\n"+
-                        "Dụng cụ: "+equipmentOptions[equipment]+"\\n"+
-                        "Vận động: "+impactOptions[impact]+"\\n\\n"+
-                        durationSummary+"\\n\\n"+
+                    .setMessage("Mục tiêu: "+goals[goal]+" • "+energyLevels[energy]+"\n"+
+                        "Dụng cụ: "+equipmentOptions[equipment]+"\n"+
+                        "Vận động: "+impactOptions[impact]+"\n\n"+
+                        durationSummary+"\n\n"+
                         recommendation.explanation+
                         "\n\nGợi ý offline theo quy tắc trên máy, không phải AI chẩn đoán hay tư vấn y khoa.")
                     .setPositiveButton("▶ Bắt đầu"){_,_->startProgram(p)}

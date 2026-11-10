@@ -228,7 +228,7 @@ class GuidedWorkoutActivity:Activity() {
             textSize = 12f
             setPadding(4, 4, 4, 10)
             if (planned.exceedsTarget) {
-                append("\\nLưu ý: chương trình tối thiểu dài hơn thời lượng đã chọn.")
+                append("\nLưu ý: chương trình tối thiểu dài hơn thời lượng đã chọn.")
             }
         })
         heading=TextView(this).apply {
@@ -488,7 +488,7 @@ class GuidedWorkoutActivity:Activity() {
         val previewRemainingMs = remainingMs
         val oldDose = targetDose(selected)
         AlertDialog.Builder(this).setTitle("🎯 Xác nhận số lần tập")
-            .setMessage("${moves[selected].name}: $oldDose → $reps lần.\\nChỉ thay đổi hướng dẫn, không tự đếm lần tập.")
+            .setMessage("${moves[selected].name}: $oldDose → $reps lần.\nChỉ thay đổi hướng dẫn, không tự đếm lần tập.")
             .setPositiveButton("Áp dụng") { _, _ ->
                 if (pausedForSafety || completed || index != selected ||
                     repTargets[selected] != before || remainingMs != previewRemainingMs) {
@@ -568,7 +568,7 @@ class GuidedWorkoutActivity:Activity() {
             WorkoutVoiceCommands.Command.EASIER -> {
                 pause()
                 AlertDialog.Builder(this).setTitle("🌿 Cách tập dễ hơn")
-                    .setMessage(moves[index].easier+"\\n\\nChỉ tiếp tục khi bạn thấy thoải mái.")
+                    .setMessage(moves[index].easier+"\n\nChỉ tiếp tục khi bạn thấy thoải mái.")
                     .setPositiveButton("Đã hiểu",null).show()
                 speak(moves[index].easier)
             }
@@ -604,8 +604,8 @@ class GuidedWorkoutActivity:Activity() {
             return
         }
         AlertDialog.Builder(this).setTitle("Xác nhận thêm thời gian nghỉ")
-            .setMessage("Động tác: ${moves[originalIndex].name}\\n" +
-                "Thời gian hiện tại: ${originalMs / 1000} giây → ${proposedMs / 1000} giây.\\n" +
+            .setMessage("Động tác: ${moves[originalIndex].name}\n" +
+                "Thời gian hiện tại: ${originalMs / 1000} giây → ${proposedMs / 1000} giây.\n" +
                 "Chỉ thay đổi sau khi bạn xác nhận.")
             .setPositiveButton("Thêm thời gian") { _, _ ->
                 if (pausedForSafety || completed || index != originalIndex ||
@@ -647,7 +647,7 @@ class GuidedWorkoutActivity:Activity() {
                 else {
                     dialog.dismiss()
                     AlertDialog.Builder(this).setTitle("Xác nhận số lần tập")
-                        .setMessage("${moves[selected].name}\\n${targetDose(selected)} → $reps lần.\\nKhông sửa các bước đã hoàn thành hoặc thời gian đếm ngược.")
+                        .setMessage("${moves[selected].name}\n${targetDose(selected)} → $reps lần.\nKhông sửa các bước đã hoàn thành hoặc thời gian đếm ngược.")
                         .setPositiveButton("Áp dụng") { _, _ ->
                             if (completed || pausedForSafety || index!=selected || repTargets[selected]!=before) {
                                 Toast.makeText(this,"Buổi tập đã thay đổi. Hãy xem trước lại.",Toast.LENGTH_LONG).show()
@@ -747,7 +747,7 @@ class GuidedWorkoutActivity:Activity() {
                     3 -> {
                         pause()
                         AlertDialog.Builder(this).setTitle("Cách tập dễ hơn")
-                            .setMessage(moves[index].easier+"\\n\\nDừng tập nếu thấy đau.")
+                            .setMessage(moves[index].easier+"\n\nDừng tập nếu thấy đau.")
                             .setPositiveButton("Đã hiểu",null).show()
                         speak(moves[index].easier)
                     }
@@ -836,14 +836,14 @@ class GuidedWorkoutActivity:Activity() {
             moves.map { it.name }, moves.map { it.seconds }, index,
             (remainingMs / 1000L).toInt(), shorterFromIndex
         )
-        val details = stepPreview.take(4).joinToString("\\n") { step ->
+        val details = stepPreview.take(4).joinToString("\n") { step ->
             "• ${step.name}: ${step.beforeSeconds}s → ${step.afterSeconds}s"
-        } + if (stepPreview.size > 4) "\\n… và ${stepPreview.size - 4} bước tiếp theo" else ""
+        } + if (stepPreview.size > 4) "\n… và ${stepPreview.size - 4} bước tiếp theo" else ""
 
         AlertDialog.Builder(this).setTitle("Xem trước giáo án rút ngắn")
             .setMessage("Thời gian còn lại dự kiến:\nTrước: ${format(before)}\nSau: ${format(after)}\n\n" +
                 "Giảm thời lượng động tác hiện tại và các động tác phía sau. " +
-                "Những bước đã hoàn thành được giữ nguyên. Đây là ước tính, không bao gồm nghỉ thêm.\\n\\n" + details)
+                "Những bước đã hoàn thành được giữ nguyên. Đây là ước tính, không bao gồm nghỉ thêm.\n\n" + details)
             .setPositiveButton("Xác nhận thay đổi") { _, _ ->
                 if (pausedForSafety || completed || index != previewIndex ||
                     index !in moves.indices || remainingMs != previewRemainingMs ||
@@ -958,8 +958,8 @@ class GuidedWorkoutActivity:Activity() {
                     handleCoachCommand(phrase)
                 } else {
                     AlertDialog.Builder(this).setTitle("🐰 Chibi nghe được")
-                        .setMessage("“"+phrase.take(160)+"”\\n\\n"+WorkoutVoiceCommands.describe(command)+
-                            "\\n\\nKiểm tra câu nhận dạng trước khi điều khiển buổi tập.")
+                        .setMessage("“"+phrase.take(160)+"”\n\n"+WorkoutVoiceCommands.describe(command)+
+                            "\n\nKiểm tra câu nhận dạng trước khi điều khiển buổi tập.")
                         .setPositiveButton("Áp dụng") { _,_ -> handleCoachCommand(phrase) }
                         .setNeutralButton("Sửa câu nhận dạng") { _, _ ->
                             val corrected=EditText(this).apply {

@@ -35,11 +35,11 @@ object WorkoutSetTracker {
     fun parse(dose: String): Plan? {
         val match = prescription.matchEntire(dose.trim()) ?: return null
         val requiredSets = match.groupValues[1].toIntOrNull() ?: return null
-        val maximumSets = match.groupValues[2].takeIf { it.isNotBlank() }?.toIntOrNull()
-            ?: requiredSets
+        val maximumSets = if (match.groupValues[2].isBlank()) requiredSets
+            else match.groupValues[2].toIntOrNull() ?: return null
         val targetMin = match.groupValues[3].toIntOrNull() ?: return null
-        val targetMax = match.groupValues[4].takeIf { it.isNotBlank() }?.toIntOrNull()
-            ?: targetMin
+        val targetMax = if (match.groupValues[4].isBlank()) targetMin
+            else match.groupValues[4].toIntOrNull() ?: return null
         val unit = match.groupValues[5].lowercase()
         return runCatching {
             Plan(requiredSets, maximumSets, targetMin, targetMax, unit)

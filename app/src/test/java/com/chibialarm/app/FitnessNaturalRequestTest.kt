@@ -117,4 +117,26 @@ class FitnessNaturalRequestTest {
         assertNull(FitnessNaturalRequest.parse("một trăm ba mươi phút").minutes)
         assertNull(FitnessNaturalRequest.parse("mười lăm phút rưỡi").minutes)
     }
+
+    @Test fun localizedDiscomfortBlocksOnlyWhenABodyRegionIsNamed() {
+        for (phrase in listOf(
+            "cổ tay hơi khó chịu khi chống đẩy",
+            "khó chịu ở cổ tay",
+            "cổ tay đang hơi khó chịu",
+            "đầu gối bị khó chịu"
+        )) {
+            assertEquals("Failed for $phrase", 2, FitnessNaturalRequest.parse(phrase).impact)
+        }
+    }
+
+    @Test fun negatedLocalizedDiscomfortDoesNotTriggerTheSafetyGate() {
+        for (phrase in listOf(
+            "không khó chịu ở cổ tay",
+            "cổ tay không còn khó chịu",
+            "cổ tay không bị khó chịu"
+        )) {
+            assertNull("Failed for $phrase", FitnessNaturalRequest.parse(phrase).impact)
+        }
+        assertNull(FitnessNaturalRequest.parse("hôm nay hơi khó chịu với lịch tập").impact)
+    }
 }

@@ -29,6 +29,26 @@ class WorkoutVoiceCommandsTest {
         assertEquals(C.SHORTER_REMAINING, WorkoutVoiceCommands.parse("rut ngan ca buoi"))
     }
 
+    @Test fun statusRequestsAreRecognizedWithoutChangingTheWorkout() {
+        for (phrase in listOf(
+            "Đọc tiến độ",
+            "Tiến độ buổi tập",
+            "Xem tiến độ hiện tại",
+            "Còn bao nhiêu bài",
+            "Tao đã làm bao nhiêu hiệp",
+            "progress",
+            "status"
+        )) {
+            assertEquals(phrase, C.STATUS, WorkoutVoiceCommands.parse(phrase))
+        }
+        assertEquals("Đọc tiến độ buổi tập hiện tại", WorkoutVoiceCommands.describe(C.STATUS))
+    }
+
+    @Test fun safetyAndPauseTakePriorityOverStatusRequests() {
+        assertEquals(C.PAIN, WorkoutVoiceCommands.parse("Đau gối, đọc tiến độ"))
+        assertEquals(C.PAUSE, WorkoutVoiceCommands.parse("Tạm dừng và đọc tiến độ"))
+    }
+
     @Test fun safetyTakesPriorityOverStartAndNext() {
         assertEquals(C.PAIN, WorkoutVoiceCommands.parse("Tôi đang đau, cho bài tiếp theo"))
         assertEquals(C.PAIN, WorkoutVoiceCommands.parse("bị chấn thương, bắt đầu"))

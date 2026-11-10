@@ -22,6 +22,7 @@ import com.chibialarm.app.rpg.RpgDataExport
 import com.chibialarm.app.rpg.RpgEngine
 import com.chibialarm.app.rpg.RpgQuest
 import com.chibialarm.app.rpg.RpgRules
+import com.chibialarm.app.rpg.WorkoutRewardEvidence
 import com.chibialarm.app.rpg.RpgItemStack
 import com.chibialarm.app.rpg.RpgItemCatalog
 import com.chibialarm.app.rpg.RpgInventoryEngine
@@ -56,7 +57,8 @@ class RpgActivity : Activity() {
         val petGameClaimed: Boolean,
         val charmClaimed: Boolean,
         val inventory: List<ChibiInventory.Item>,
-        val itemStacks: List<RpgItemStack>
+        val itemStacks: List<RpgItemStack>,
+        val workoutXpAwarded: Int
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -137,10 +139,28 @@ class RpgActivity : Activity() {
                         if (LifeData.count(applicationContext) > 0) 1 else 0)
                     engine.syncProgress("focus:" + today,
                         FocusTimer.sessionsOnDay(applicationContext, today))
+                    // The journal and RPG database are both guest-local today. Only guided
+                    // sessions carry a stable ID and structured completion evidence; manual
+                    // entries continue to affect the daily Fitness quest but never mint XP.
+                    val workoutHistory = WorkoutData.history(applicationContext)
+                    val rewardEvidence = workoutHistory.mapNotNull { workout ->
+                        workout.sessionId.takeIf { it.isNotBlank() }?.let { id ->
+                            WorkoutRewardEvidence(
+                                sessionId = id,
+                                activeMinutes = workout.minutes,
+                                completedMoves = workout.completedMoves,
+                                selfReportedSets = workout.selfReportedSets
+                            )
+                        }
+                    }
+                    var workoutXpAwarded = 0
+                    rewardEvidence.chunked(200).forEach { batch ->
+                        workoutXpAwarded += engine.awardWorkoutSessions(batch)
+                    }
                     // Workout journal entries are user-editable. Reconcile deletions before
-                    // claiming, just like reversible Routine/Growth check-ins.
+                    // claiming the daily quest, just like reversible Routine/Growth check-ins.
                     engine.syncCheckableProgress("fitness:" + today,
-                        WorkoutData.history(applicationContext).count { it.date == today })
+                        workoutHistory.count { it.date == today })
                     engine.syncCheckableProgress("growth:" + today,
                         legacyDays.count { it.localDate == today && it.completed })
                     val dao = database.dao()
@@ -152,11 +172,16 @@ class RpgActivity : Activity() {
                         ChibiInventory.fromClaims(
                             dao.dailyLoginClaimCount(), dao.petGameClaimCount(),
                             dao.questClaimCount().toLong()
-                        ), dao.itemStacks())
+                        ), dao.itemStacks(), workoutXpAwarded)
                 }
                 render(data.character, data.quests, data.achievements,
                     data.growthStreak, data.dailyClaimed, data.petGameClaimed,
                     data.charmClaimed, data.inventory, data.itemStacks)
+                if (data.workoutXpAwarded > 0) {
+                    Toast.makeText(this@RpgActivity,
+                        "🐰 Chibi ghi nhận buổi tập: +${data.workoutXpAwarded} EXP",
+                        Toast.LENGTH_LONG).show()
+                }
             } catch (error: Exception) {
                 if (error is CancellationException) throw error
                 Toast.makeText(this@RpgActivity,

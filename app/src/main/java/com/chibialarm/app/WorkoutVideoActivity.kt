@@ -23,7 +23,6 @@ import java.util.Locale
 internal object WorkoutVideoUrl {
     private val videoIdPattern = Regex("^[A-Za-z0-9_-]{11}$")
     private val youtubeHosts = setOf("youtube.com", "www.youtube.com", "m.youtube.com")
-    private val shortHosts = setOf("youtu.be")
 
     fun extractVideoId(raw: String): String? {
         if (raw.length !in 1..2048) return null
@@ -35,7 +34,7 @@ internal object WorkoutVideoUrl {
             val host = uri.host?.lowercase(Locale.ROOT) ?: return null
             val segments = uri.rawPath.orEmpty().split('/').filter { it.isNotEmpty() }
             val candidate = when {
-                host in shortHosts && segments.size == 1 -> segments[0]
+                host == "youtu.be" && segments.size == 1 -> segments[0]
                 host in youtubeHosts && segments == listOf("watch") -> singleVideoQueryValue(uri)
                 host in youtubeHosts && segments.size == 2 &&
                     segments[0] in setOf("shorts", "embed", "live") -> segments[1]
@@ -127,7 +126,7 @@ class WorkoutVideoActivity : Activity() {
               </body>
             </html>
         """.trimIndent()
-        web.loadDataWithBaseURL("https://www.youtube.com", html, "text/html", "UTF-8", null)
+        web.loadDataWithBaseURL("https://chibi.invalid/", html, "text/html", "UTF-8", null)
     }
 
     private fun configurePlayer(web: WebView) {
@@ -151,8 +150,6 @@ class WorkoutVideoActivity : Activity() {
                 view: WebView,
                 request: WebResourceRequest
             ): Boolean {
-                // Keep top-level navigation on YouTube. The explicit button is the
-                // only route that opens another app/browser.
                 if (!request.isForMainFrame) return false
                 return !isAllowedYoutubePage(request.url)
             }

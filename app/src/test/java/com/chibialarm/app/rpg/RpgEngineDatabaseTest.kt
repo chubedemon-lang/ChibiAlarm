@@ -451,4 +451,83 @@ class RpgEngineDatabaseTest {
         assertEquals(-1L, dao.character()!!.coins)
     }
 
+    @Test fun guidedWorkoutXpIsCappedAndIdempotentAcrossDashboardRefreshes() = runBlocking {
+        val engine = RpgEngine(database)
+        engine.initialize(0, day)
+        val evidence = WorkoutRewardEvidence(
+            sessionId = "550e8400-e29b-41d4-a716-446655440000",
+            activeMinutes = 8,
+            completedMoves = 3,
+            selfReportedSets = 4
+        )
+        // Duplicate rows in one sync batch and later refreshes pay only once.
+        assertEquals(11, engine.awardWorkoutSessions(listOf(evidence, evidence)))
+        assertEquals(0, engine.awardWorkoutSessions(listOf(evidence)))
+        assertEquals(11L, database.dao().character()!!.totalXp)
+        assertEquals(1, database.dao().ledgerEntries().count {
+            it.dedupeKey == "fitness_session:${evidence.sessionId}"
+        })
+        assertEquals(0, database.dao().questClaimCount())
+    }
+
+    @Test fun guidedWorkoutRewardRejectsInvalidEvidenceAndCapsPerSessionXp() = runBlocking {
+        val engine = RpgEngine(database)
+        engine.initialize(0, day)
+        val invalid = listOf(
+            WorkoutRewardEvidence("not-a-uuid", 10, 3, 4),
+            WorkoutRewardEvidence("550e8400-e29b-41d4-a716-446655440001", 0, 3, 4),
+            WorkoutRewardEvidence("550e8400-e29b-41d4-a716-446655440002", 10, 1, 4)
+        )
+        assertEquals(0, engine.awardWorkoutSessions(invalid))
+        assertTrue(database.dao().ledgerEntries().isEmpty())
+
+        val capped = WorkoutRewardEvidence(
+            "550e8400-e29b-41d4-a716-446655440003", 20, 20, 100
+        )
+        assertEquals(30, engine.awardWorkoutSessions(listOf(capped)))
+        assertEquals(30L, database.dao().character()!!.totalXp)
+    }
+
+    @Test fun guidedWorkoutRewardOverflowRollsBackItsLedgerReceipt() = runBlocking {
+        val engine = RpgEngine(database)
+        engine.initialize(0, day)
+        val dao = database.dao()
+        dao.updateCharacter(dao.character()!!.copy(totalXp = Long.MAX_VALUE))
+        val evidence = WorkoutRewardEvidence(
+            "550e8400-e29b-41d4-a716-446655440004", 5, 2, 1
+        )
+        try {
+            engine.awardWorkoutSessions(listOf(evidence))
+            fail("XP overflow must roll back the workout reward receipt")
+        } catch (_: ArithmeticException) { }
+        assertFalse(dao.hasLedgerEntry("fitness_session:${evidence.sessionId}"))
+        assertEquals(Long.MAX_VALUE, dao.character()!!.totalXp)
+    }
+
+    @Test fun sameWorkoutReceiptIsIsolatedBetweenSeparateRpgDatabases() = runBlocking {
+        val context = RuntimeEnvironment.getApplication()
+        val accountDb = Room.inMemoryDatabaseBuilder(
+            context, RpgDatabase::class.java
+        ).build()
+        try {
+            accountDb.markVerifiedAccountStorage()
+            val guestEngine = RpgEngine(database)
+            val accountEngine = RpgEngine(accountDb)
+            guestEngine.initialize(0, day)
+            accountEngine.initialize(999, day)
+            val evidence = WorkoutRewardEvidence(
+                "550e8400-e29b-41d4-a716-446655440005", 5, 2, 1
+            )
+            assertEquals(4, guestEngine.awardWorkoutSessions(listOf(evidence)))
+            assertEquals(4, accountEngine.awardWorkoutSessions(listOf(evidence)))
+            assertEquals(4L, database.dao().character()!!.totalXp)
+            // Verified-account storage never imports the device-wide guest XP.
+            assertEquals(4L, accountDb.dao().character()!!.totalXp)
+            assertTrue(database.dao().hasLedgerEntry("fitness_session:${evidence.sessionId}"))
+            assertTrue(accountDb.dao().hasLedgerEntry("fitness_session:${evidence.sessionId}"))
+        } finally {
+            accountDb.close()
+        }
+    }
+
 }

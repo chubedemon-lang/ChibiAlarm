@@ -25,6 +25,14 @@ class WorkoutPoseGuideTest {
         assertEquals(WorkoutPoseGuide.Pose.BALANCE, WorkoutPoseGuide.classify("Đứng thăng bằng có hỗ trợ"))
     }
 
+    @Test fun pushUpVariantsUseTheirOwnIllustrations() {
+        assertEquals(WorkoutPoseGuide.Pose.PUSH_UP, WorkoutPoseGuide.classify("Chống đẩy sàn"))
+        assertEquals(WorkoutPoseGuide.Pose.KNEE_PUSH_UP, WorkoutPoseGuide.classify("Chống đẩy gối"))
+        assertEquals(WorkoutPoseGuide.Pose.WALL_PUSH_UP, WorkoutPoseGuide.classify("Chống đẩy tường"))
+        assertEquals(WorkoutPoseGuide.Pose.INCLINE_PUSH_UP,
+            WorkoutPoseGuide.classify("Chống đẩy trên bề mặt cao"))
+    }
+
     @Test fun specificSidePlankIsNotCapturedByGenericPlankRule() {
         assertEquals(WorkoutPoseGuide.Pose.SIDE_PLANK, WorkoutPoseGuide.classify("Side plank"))
     }

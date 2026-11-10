@@ -104,6 +104,43 @@ class WorkoutPoseView(context: Context) : View(context) {
                 line(85f, upperY + 3f, 85f, 106f); line(85f, 106f, 68f, 106f)
                 line(178f, upperY, 204f, 104f); line(204f, 104f, 218f, 104f)
             }
+            WorkoutPoseGuide.Pose.KNEE_PUSH_UP -> {
+                // Knees remain on the floor; do not reuse the full plank push-up drawing.
+                val shoulderY = if (movementPhase) 82f else 66f
+                head(48f, shoulderY - 8f)
+                line(60f, shoulderY, 143f, 72f)
+                line(76f, shoulderY + 2f, 118f, if (movementPhase) 86f else 77f)
+                line(118f, if (movementPhase) 86f else 77f, 181f, 104f)
+                line(143f, 72f, 150f, 101f)
+                line(150f, 101f, 184f, 104f)
+                line(181f, 104f, 194f, 104f)
+            }
+            WorkoutPoseGuide.Pose.WALL_PUSH_UP -> {
+                // A vertical stance and a visible wall distinguish this from a floor push-up.
+                line(190f, 12f, 190f, 110f)
+                head(78f, 18f); line(78f, 30f, 78f, 72f)
+                line(78f, 44f, 116f, 45f)
+                line(116f, 45f, 177f, 45f)
+                line(78f, 72f, 62f, 105f); line(78f, 72f, 99f, 105f)
+                line(62f, 105f, 48f, 105f); line(99f, 105f, 113f, 105f)
+                if (movementPhase) {
+                    line(78f, 44f, 132f, 58f)
+                    line(132f, 58f, 177f, 45f)
+                } else {
+                    line(78f, 44f, 132f, 45f)
+                    line(132f, 45f, 177f, 45f)
+                }
+            }
+            WorkoutPoseGuide.Pose.INCLINE_PUSH_UP -> {
+                // Hands rest on a raised, stable surface; the body stays diagonally aligned.
+                line(164f, 82f, 225f, 82f)
+                line(174f, 82f, 174f, 108f); line(216f, 82f, 216f, 108f)
+                head(48f, 25f); line(60f, 32f, 133f, 62f)
+                line(76f, 38f, if (movementPhase) 118f else 132f, if (movementPhase) 62f else 70f)
+                line(if (movementPhase) 118f else 132f, if (movementPhase) 62f else 70f, 174f, 82f)
+                line(133f, 62f, 151f, 91f); line(151f, 91f, 174f, 104f)
+                line(133f, 62f, 153f, 103f); line(153f, 103f, 174f, 104f)
+            }
             WorkoutPoseGuide.Pose.LUNGE -> {
                 val headY = if (movementPhase) 30f else 20f
                 head(116f, headY); line(116f, headY + 12f, 116f, 69f)

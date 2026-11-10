@@ -10,6 +10,9 @@ class WorkoutPoseMotionTest {
         for (pose in listOf(
             WorkoutPoseGuide.Pose.SQUAT,
             WorkoutPoseGuide.Pose.PUSH_UP,
+            WorkoutPoseGuide.Pose.KNEE_PUSH_UP,
+            WorkoutPoseGuide.Pose.WALL_PUSH_UP,
+            WorkoutPoseGuide.Pose.INCLINE_PUSH_UP,
             WorkoutPoseGuide.Pose.LUNGE,
             WorkoutPoseGuide.Pose.BRIDGE,
             WorkoutPoseGuide.Pose.BIRD_DOG,
@@ -25,6 +28,9 @@ class WorkoutPoseMotionTest {
         assertEquals("Hạ hông", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.SQUAT, true))
         assertEquals("Đẩy lên", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.PUSH_UP, false))
         assertEquals("Hạ ngực", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.PUSH_UP, true))
+        assertEquals("Đẩy lên từ điểm tựa gối", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.KNEE_PUSH_UP, false))
+        assertEquals("Gập khuỷu về tường", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.WALL_PUSH_UP, true))
+        assertEquals("Đẩy ra khỏi mặt tựa", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.INCLINE_PUSH_UP, false))
         assertEquals("Nâng hông", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.BRIDGE, false))
         assertEquals("Hạ hông", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.BRIDGE, true))
         assertEquals("Duỗi tay chân đối diện", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.BIRD_DOG, false))
@@ -65,6 +71,9 @@ class WorkoutPoseMotionTest {
         }
         assertTrue(WorkoutPoseMotion.spokenWalkthrough(WorkoutPoseGuide.Pose.SQUAT).contains("Hạ hông"))
         assertTrue(WorkoutPoseMotion.spokenWalkthrough(WorkoutPoseGuide.Pose.STANDING).contains("Chưa có minh họa riêng"))
+        assertTrue(WorkoutPoseMotion.spokenWalkthrough(WorkoutPoseGuide.Pose.WALL_PUSH_UP).contains("tường"))
+        assertTrue(WorkoutPoseMotion.spokenWalkthrough(WorkoutPoseGuide.Pose.INCLINE_PUSH_UP).contains("chắc chắn"))
+        assertTrue(WorkoutPoseMotion.spokenWalkthrough(WorkoutPoseGuide.Pose.KNEE_PUSH_UP).contains("hai gối"))
     }
 
     @Test fun staticAndFallbackCuesNeverAnimate() {

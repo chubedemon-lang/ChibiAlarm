@@ -6,7 +6,7 @@ package com.chibialarm.app
  */
 object WorkoutPoseGuide {
     enum class Pose {
-        SQUAT, PLANK, PUSH_UP, LUNGE,
+        SQUAT, PLANK, PUSH_UP, KNEE_PUSH_UP, WALL_PUSH_UP, INCLINE_PUSH_UP, LUNGE,
         BRIDGE, BIRD_DOG, DEAD_BUG, CAT_COW,
         MARCH, STRETCH, SIDE_PLANK, CALF_RAISE, BALANCE,
         STANDING, REST
@@ -26,6 +26,10 @@ object WorkoutPoseGuide {
             listOf("nhón gót", "calf raise").any { it in text } -> Pose.CALF_RAISE
             listOf("thăng bằng", "balance").any { it in text } -> Pose.BALANCE
             listOf("squat", "ngồi xổm", "đứng lên – ngồi xuống", "đứng lên - ngồi xuống").any { it in text } -> Pose.SQUAT
+            // Distinguish easier variants before the generic floor push-up matcher.
+            listOf("chống đẩy gối", "knee push-up", "knee push up").any { it in text } -> Pose.KNEE_PUSH_UP
+            listOf("chống đẩy tường", "wall push-up", "wall push up").any { it in text } -> Pose.WALL_PUSH_UP
+            listOf("chống đẩy trên bề mặt cao", "incline push-up", "incline push up").any { it in text } -> Pose.INCLINE_PUSH_UP
             listOf("push-up", "push up", "chống đẩy", "hít đất").any { it in text } -> Pose.PUSH_UP
             listOf("lunge", "chùng chân").any { it in text } -> Pose.LUNGE
             listOf("plank", "tấm ván").any { it in text } -> Pose.PLANK
@@ -37,7 +41,10 @@ object WorkoutPoseGuide {
     fun label(pose: Pose): String = when (pose) {
         Pose.SQUAT -> "Minh họa: hạ hông và gập gối"
         Pose.PLANK -> "Minh họa: giữ thân người thẳng"
-        Pose.PUSH_UP -> "Minh họa: chống tay, thân người thẳng"
+        Pose.PUSH_UP -> "Minh họa: chống đẩy sàn, thân người thẳng"
+        Pose.KNEE_PUSH_UP -> "Minh họa: chống đẩy với hai gối làm điểm tựa"
+        Pose.WALL_PUSH_UP -> "Minh họa: đứng chống tay vào tường và gập khuỷu"
+        Pose.INCLINE_PUSH_UP -> "Minh họa: chống tay trên bề mặt cao vững chắc"
         Pose.LUNGE -> "Minh họa: bước chân trước, hạ gối"
         Pose.BRIDGE -> "Minh họa: nằm ngửa và nâng hông"
         Pose.BIRD_DOG -> "Minh họa: chống tay gối, duỗi tay chân đối diện"

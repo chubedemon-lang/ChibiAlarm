@@ -5,6 +5,9 @@ object WorkoutPoseMotion {
     fun hasMotion(pose: WorkoutPoseGuide.Pose): Boolean = when (pose) {
         WorkoutPoseGuide.Pose.SQUAT,
         WorkoutPoseGuide.Pose.PUSH_UP,
+        WorkoutPoseGuide.Pose.KNEE_PUSH_UP,
+        WorkoutPoseGuide.Pose.WALL_PUSH_UP,
+        WorkoutPoseGuide.Pose.INCLINE_PUSH_UP,
         WorkoutPoseGuide.Pose.LUNGE,
         WorkoutPoseGuide.Pose.BRIDGE,
         WorkoutPoseGuide.Pose.BIRD_DOG,
@@ -27,7 +30,10 @@ object WorkoutPoseMotion {
     /** One user-requested spoken walkthrough, never automatically repeated with animation. */
     fun spokenWalkthrough(pose: WorkoutPoseGuide.Pose): String = when (pose) {
         WorkoutPoseGuide.Pose.SQUAT -> "Minh họa squat. Hạ hông từ từ, sau đó đứng lên. Chỉ xuống sâu trong mức thoải mái."
-        WorkoutPoseGuide.Pose.PUSH_UP -> "Minh họa chống đẩy. Hạ ngực có kiểm soát, sau đó đẩy lên. Có thể chống gối để giảm độ khó."
+        WorkoutPoseGuide.Pose.PUSH_UP -> "Minh họa chống đẩy sàn. Hạ ngực có kiểm soát, sau đó đẩy lên. Có thể chọn biến thể dễ hơn nếu cần."
+        WorkoutPoseGuide.Pose.KNEE_PUSH_UP -> "Minh họa chống đẩy gối. Đặt hai gối trên sàn, giữ thân từ vai tới gối ổn định, hạ ngực vừa tầm rồi đẩy lên."
+        WorkoutPoseGuide.Pose.WALL_PUSH_UP -> "Minh họa chống đẩy tường. Đứng cách tường một khoảng thoải mái, đặt tay ngang ngực, gập khuỷu đưa thân gần tường rồi đẩy ra."
+        WorkoutPoseGuide.Pose.INCLINE_PUSH_UP -> "Minh họa chống đẩy trên bề mặt cao. Chỉ dùng mặt tựa chắc chắn, không trượt hoặc lật; giữ thân thẳng, hạ ngực rồi đẩy ra. Dừng nếu mặt tựa không vững."
         WorkoutPoseGuide.Pose.LUNGE -> "Minh họa chùng chân. Bước chân trước, hạ gối từ từ rồi đứng lên. Có thể vịn vào điểm tựa chắc chắn."
         WorkoutPoseGuide.Pose.PLANK -> "Minh họa plank. Giữ thân thẳng, thở đều và dừng nếu đau hoặc khó chịu."
         WorkoutPoseGuide.Pose.BRIDGE -> "Minh họa nâng hông. Nằm ngửa, co gối, siết mông nâng hông vừa tầm rồi hạ chậm. Không ưỡn lưng quá mức."
@@ -47,6 +53,9 @@ object WorkoutPoseMotion {
     fun phaseCue(pose: WorkoutPoseGuide.Pose, lowered: Boolean): String = when (pose) {
         WorkoutPoseGuide.Pose.SQUAT -> if (lowered) "Hạ hông" else "Đứng lên"
         WorkoutPoseGuide.Pose.PUSH_UP -> if (lowered) "Hạ ngực" else "Đẩy lên"
+        WorkoutPoseGuide.Pose.KNEE_PUSH_UP -> if (lowered) "Hạ ngực" else "Đẩy lên từ điểm tựa gối"
+        WorkoutPoseGuide.Pose.WALL_PUSH_UP -> if (lowered) "Gập khuỷu về tường" else "Đẩy ra khỏi tường"
+        WorkoutPoseGuide.Pose.INCLINE_PUSH_UP -> if (lowered) "Hạ ngực về mặt tựa" else "Đẩy ra khỏi mặt tựa"
         WorkoutPoseGuide.Pose.LUNGE -> if (lowered) "Hạ gối" else "Đứng lên"
         WorkoutPoseGuide.Pose.BRIDGE -> if (lowered) "Hạ hông" else "Nâng hông"
         WorkoutPoseGuide.Pose.BIRD_DOG -> if (lowered) "Thu tay chân" else "Duỗi tay chân đối diện"

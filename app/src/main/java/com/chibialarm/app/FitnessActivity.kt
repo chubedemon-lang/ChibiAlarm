@@ -47,6 +47,7 @@ class FitnessActivity:Activity() {
     private lateinit var level:Spinner
     private lateinit var length:Spinner
     private lateinit var filter:Spinner
+    private var impactRestrictionSpinner: Spinner? = null
     private val levels=arrayOf("🌱 Mới bắt đầu","🌿 Đang tập đều","🔥 Có kinh nghiệm")
     private val lengths=arrayOf("10 phút","15 phút","20 phút","30 phút","40 phút")
     private val mins=intArrayOf(10,15,20,30,40)
@@ -159,6 +160,7 @@ class FitnessActivity:Activity() {
             setSelection(0) // Sensitive movement limitations are session-only
         }
         root.addView(impactSpinner)
+        impactRestrictionSpinner = impactSpinner
         // Session-only handoff: no health preferences are written to SharedPreferences.
         // Review all selections before asking for a recommendation.
         if (intent.hasExtra("coach_goal")) goalSpinner.setSelection(intent.getIntExtra("coach_goal",0).coerceIn(0,goals.lastIndex))
@@ -342,6 +344,15 @@ class FitnessActivity:Activity() {
         }
     }
     private fun startProgram(p:TrainingProgram) {
+        if (impactRestrictionSpinner?.selectedItemPosition == 2) {
+            AlertDialog.Builder(this)
+                .setTitle("🐰 Tạm dừng buổi tập")
+                .setMessage("Bạn đã báo đang đau hoặc có chấn thương. Chibi không khởi chạy bài tập từ thư viện khi chưa được chuyên gia y tế đánh giá phù hợp.")
+                .setPositiveButton("Đã hiểu", null)
+                .setNegativeButton("Đóng", null)
+                .show()
+            return
+        }
         val l=level.selectedItemPosition
         val m=mins[length.selectedItemPosition]
         prefs.edit().putInt("fitLevel",l).putInt("fitTime",length.selectedItemPosition).apply()

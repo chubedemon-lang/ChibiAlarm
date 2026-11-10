@@ -14,7 +14,7 @@ object FitnessCoachConversation {
         val parsed = FitnessNaturalRequest.parse(input)
         if (previous == null) return parsed
         val answer = input.trim().lowercase()
-        val question = FitnessCoachFollowUp.nextQuestion(previous)
+        val question = FitnessCoachFollowUp.nextQuestion(previous).lowercase(Locale.ROOT)
         val shortMinutes = Regex("^([0-9]{1,3})$").matchEntire(answer)
             ?.groupValues?.get(1)?.toIntOrNull()?.takeIf { it in 5..120 }
         return when {

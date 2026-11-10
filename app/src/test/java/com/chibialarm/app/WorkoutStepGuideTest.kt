@@ -33,7 +33,7 @@ class WorkoutStepGuideTest {
 
     @Test fun walkthroughMovesBackwardAndForwardWithoutLeavingBounds() {
         val first = WorkoutStepGuide.Walkthrough.start(
-            "Đứng thẳng.\\nHạ người.\\nĐứng lên."
+            "Đứng thẳng.\nHạ người.\nĐứng lên."
         )
         assertEquals(1, first.position)
         assertEquals("Đứng thẳng.", first.currentStep)

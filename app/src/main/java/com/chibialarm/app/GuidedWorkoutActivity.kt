@@ -27,6 +27,8 @@ class GuidedWorkoutActivity:Activity() {
     private lateinit var control:Button
     private lateinit var program:TrainingProgram
     private var moves:List<TrainingMove> = emptyList()
+    private var originalMoves:List<TrainingMove> = emptyList()
+    private val substitutions=mutableMapOf<Int,TrainingMove>()
     private var index=0
     private var deadline=0L
     private var remainingMs=0L
@@ -69,6 +71,7 @@ class GuidedWorkoutActivity:Activity() {
             .putBoolean("tenSecondCueGiven",tenSecondCueGiven)
             .putInt("shorterFrom",shorterFromIndex)
             .putString("repTargets",repTargets.entries.joinToString(",") { "${it.key}:${it.value}" })
+            .putString("substitutions",WorkoutMoveSubstitution.encode(substitutions,originalMoves))
             .putString("completedMoves",WorkoutCompletionTracker.encode(completedMoveIndices,moves.size))
             .putString("completedSets",WorkoutSetTracker.encode(completedSetsByMove,moves))
             .putBoolean("resting",resting)
@@ -91,6 +94,10 @@ class GuidedWorkoutActivity:Activity() {
             .setPositiveButton("Khôi phục") { _,_ ->
                 checkpointDecisionPending=false
                 index=checkpoint.getInt("index",0).coerceIn(0,moves.lastIndex)
+                val savedSubstitutions=checkpoint.getString("substitutions",null)
+                substitutions.clear()
+                substitutions.putAll(WorkoutMoveSubstitution.decode(savedSubstitutions,originalMoves))
+                moves=WorkoutMoveSubstitution.apply(originalMoves,savedSubstitutions)
                 shorterFromIndex=checkpoint.getInt("shorterFrom",Int.MAX_VALUE).coerceIn(0, moves.size)
                 repTargets.clear()
                 repTargets.putAll(WorkoutRepTargets.decode(checkpoint.getString("repTargets",null),moves.size,index))
@@ -126,7 +133,16 @@ class GuidedWorkoutActivity:Activity() {
             .setNegativeButton("Bắt đầu lại") { _,_ ->
                 checkpointDecisionPending=false
                 completedMoveIndices.clear()
+                completedSetsByMove.clear()
+                repTargets.clear()
+                substitutions.clear()
+                moves=originalMoves
+                index=0
+                accumulated=0L
+                startedAt=0L
+                remainingMs=0L
                 checkpoint.edit().clear().apply()
+                displayStep()
             }
             .setCancelable(false).show()
     }
@@ -190,6 +206,7 @@ class GuidedWorkoutActivity:Activity() {
             ((minutes*60-estimate).coerceAtLeast(0)/middle.sumOf { it.seconds }+1).coerceIn(1,4)
         moves=if(middle.isEmpty())base else listOf(base.first())+
             (0 until rounds).flatMap { middle }+listOf(base.last())
+        originalMoves=moves.toList()
         val root=LinearLayout(this).apply {
             orientation=1;setPadding(24,27,24,24);setBackgroundColor(Color.rgb(247,240,252))
         }
@@ -359,6 +376,10 @@ class GuidedWorkoutActivity:Activity() {
         // Restore the active exercise after rotation, but never auto-resume.
         if(savedInstanceState!=null &&
             savedInstanceState.getString("workout_program")==program.id) {
+            val savedSubstitutions=savedInstanceState.getString("workout_substitutions")
+            substitutions.clear()
+            substitutions.putAll(WorkoutMoveSubstitution.decode(savedSubstitutions,originalMoves))
+            moves=WorkoutMoveSubstitution.apply(originalMoves,savedSubstitutions)
             index=savedInstanceState.getInt("workout_index",0).coerceIn(0,moves.lastIndex)
             repTargets.clear()
             repTargets.putAll(WorkoutRepTargets.decode(savedInstanceState.getString("workout_rep_targets"),moves.size,index))
@@ -399,6 +420,7 @@ class GuidedWorkoutActivity:Activity() {
         pause()
         outState.putString("workout_program",program.id)
         outState.putString("workout_rep_targets",repTargets.entries.joinToString(",") { "${it.key}:${it.value}" })
+        outState.putString("workout_substitutions",WorkoutMoveSubstitution.encode(substitutions,originalMoves))
         outState.putString("workout_completed_moves",WorkoutCompletionTracker.encode(completedMoveIndices,moves.size))
         outState.putString("workout_completed_sets",WorkoutSetTracker.encode(completedSetsByMove,moves))
         outState.putBoolean("workout_resting",resting)
@@ -424,14 +446,14 @@ class GuidedWorkoutActivity:Activity() {
                 val request=Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                     putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                     putExtra(RecognizerIntent.EXTRA_LANGUAGE,"vi-VN")
-                    putExtra(RecognizerIntent.EXTRA_PROMPT,"Ví dụ: nghỉ thêm, bài tiếp theo, dễ hơn, dừng lại")
+                    putExtra(RecognizerIntent.EXTRA_PROMPT,"Ví dụ: nghỉ thêm, bài tiếp theo, đổi động tác, dừng lại")
                 }
                 try { startActivityForResult(request,voiceRequest) }
                 catch (_:Exception) { Toast.makeText(this,"Thiết bị chưa có dịch vụ nhận giọng nói. Hãy nhập yêu cầu bằng chữ.",Toast.LENGTH_LONG).show() }
             }.setNegativeButton("Hủy",null).show()
     }
     private fun requestTypedCommand() {
-        val field=EditText(this).apply { hint="Ví dụ: nghỉ thêm, dễ hơn, tiếp tục";setSingleLine(false) }
+        val field=EditText(this).apply { hint="Ví dụ: nghỉ thêm, đổi động tác, dễ hơn, tiếp tục";setSingleLine(false) }
         AlertDialog.Builder(this).setTitle("💬 Chibi Coach • lệnh offline")
             .setMessage("Điều khiển buổi tập bằng chữ, không gửi dữ liệu lên mạng.")
             .setView(field).setPositiveButton("Gửi"){_,_->handleCoachCommand(field.text.toString())}
@@ -526,6 +548,7 @@ class GuidedWorkoutActivity:Activity() {
                         .show()
                 }
             }
+            WorkoutVoiceCommands.Command.SWAP_EASIER -> chooseEasierAlternative()
             WorkoutVoiceCommands.Command.EASIER -> {
                 pause()
                 AlertDialog.Builder(this).setTitle("🌿 Cách tập dễ hơn")
@@ -544,7 +567,7 @@ class GuidedWorkoutActivity:Activity() {
             }
             WorkoutVoiceCommands.Command.UNKNOWN -> {
                 AlertDialog.Builder(this).setTitle("Chibi chưa hiểu yêu cầu")
-                    .setMessage("Bạn có thể nói: tạm dừng, tiếp tục, bài tiếp theo, bài trước, nhắc lại, dễ hơn, rút ngắn hoặc nghỉ thêm. Đây là bộ lệnh offline, chưa phải hội thoại AI tự do.")
+                    .setMessage("Bạn có thể nói: tạm dừng, tiếp tục, bài tiếp theo, bài trước, đổi động tác, nhắc lại, dễ hơn, rút ngắn hoặc nghỉ thêm. Đây là bộ lệnh offline, chưa phải hội thoại AI tự do.")
                     .setPositiveButton("Đóng",null).show()
             }
         }
@@ -696,7 +719,8 @@ class GuidedWorkoutActivity:Activity() {
             "⏱ Tự chọn số giây nghỉ",
             "📖 Xem cách tập dễ hơn",
             "⏸ Tạm dừng buổi tập",
-            "⏱ Rút ngắn tất cả động tác còn lại"
+            "⏱ Rút ngắn tất cả động tác còn lại",
+            "🔄 Đổi sang động tác nhẹ hơn"
         )
         AlertDialog.Builder(this).setTitle("Chibi điều chỉnh theo sức của bạn")
             .setItems(options) { _, choice ->
@@ -713,9 +737,68 @@ class GuidedWorkoutActivity:Activity() {
                     }
                     4 -> { pause();speak("Đã tạm dừng buổi tập.") }
                     5 -> shortenRemainingWorkout()
+                    6 -> chooseEasierAlternative()
                 }
             }.setNegativeButton("Đóng",null).show()
     }
+    /** Replace only the current, not-yet-started step with a curated easier catalog move. */
+    private fun chooseEasierAlternative() {
+        if (pausedForSafety) {
+            Toast.makeText(this, "Đã dừng vì đau. Không tự đổi bài để tiếp tục tập.", Toast.LENGTH_LONG).show()
+            return
+        }
+        if (completed || resting || index !in moves.indices) return
+        if ((completedSetsByMove[index] ?: 0) > 0 || index in completedMoveIndices) {
+            Toast.makeText(this, "Động tác đã ghi nhận hiệp hoặc hoàn thành; không thể thay thế hồi tố.", Toast.LENGTH_LONG).show()
+            return
+        }
+        if (index in substitutions) {
+            Toast.makeText(this, "Động tác này đã được thay thế trong phiên. Giữ thay đổi hiện tại để bảo toàn tiến độ.", Toast.LENGTH_LONG).show()
+            return
+        }
+        val options = WorkoutMoveSubstitution.alternativesFor(moves[index])
+        if (options.isEmpty()) {
+            Toast.makeText(this, "Chưa có phương án thay thế được kiểm duyệt cho động tác này.", Toast.LENGTH_LONG).show()
+            return
+        }
+        pause()
+        val selectedIndex = index
+        val original = moves[selectedIndex]
+        AlertDialog.Builder(this).setTitle("🔄 Đổi động tác hiện tại")
+            .setItems(options.map { "${it.name} • ${it.dose}" }.toTypedArray()) { _, choice ->
+                val replacement = options.getOrNull(choice) ?: return@setItems
+                AlertDialog.Builder(this).setTitle("Xác nhận thay động tác")
+                    .setMessage("${original.name} → ${replacement.name}\n\nChỉ thay bước hiện tại chưa ghi nhận hiệp. Các bước khác, thời gian còn lại và lịch sử đã hoàn thành được giữ nguyên. Đây là lựa chọn mẫu offline, không phải tư vấn điều trị.")
+                    .setPositiveButton("Đổi động tác") { _, _ ->
+                        if (pausedForSafety || completed || resting || index != selectedIndex ||
+                            index !in moves.indices || (completedSetsByMove[index] ?: 0) > 0 ||
+                            index in completedMoveIndices || index in substitutions
+                        ) {
+                            Toast.makeText(this, "Buổi tập đã thay đổi. Hãy mở lại phần điều chỉnh.", Toast.LENGTH_LONG).show()
+                            return@setPositiveButton
+                        }
+                        val updated = WorkoutMoveSubstitution.replace(moves, selectedIndex, replacement)
+                        if (updated == null) {
+                            Toast.makeText(this, "Phương án không còn hợp lệ. Giữ nguyên động tác.", Toast.LENGTH_LONG).show()
+                            return@setPositiveButton
+                        }
+                        moves = updated
+                        substitutions[selectedIndex] = replacement
+                        repTargets.remove(selectedIndex)
+                        heading.text = "${selectedIndex + 1}/${moves.size} • ${replacement.name}"
+                        poseView.pose = WorkoutPoseGuide.classify(replacement.name)
+                        renderDose()
+                        renderSetControls()
+                        saveCheckpoint()
+                        speak("Đã đổi sang ${replacement.name}. Thời gian còn lại được giữ nguyên. Hãy kiểm tra hướng dẫn trước khi tiếp tục.")
+                    }
+                    .setNegativeButton("Giữ bài cũ", null)
+                    .show()
+            }
+            .setNegativeButton("Đóng", null)
+            .show()
+    }
+
     private fun shortenRemainingWorkout() {
         if (pausedForSafety || completed) return
         pause()

@@ -1,5 +1,7 @@
 package com.chibialarm.app
 
+import java.security.MessageDigest
+
 /**
  * Session-only exercise substitutions for a user who wants to avoid loading through the wrists.
  * This is a movement preference, not a diagnosis or a rehabilitation prescription.
@@ -65,6 +67,16 @@ object WorkoutConstraintFilter {
     fun isAllowed(move: TrainingMove, profile: WorkoutConstraintProfile): Boolean =
         !profile.avoidWristLoad ||
             wristLoadHints.none { hint -> move.name.contains(hint, ignoreCase = true) }
+
+    /** Stable identity for a planned sequence; prevents restoring progress into a different plan. */
+    fun fingerprint(moves: List<TrainingMove>): String {
+        val canonical = moves.joinToString("\u001f") {
+            "${it.name}\u001e${it.dose}\u001e${it.seconds}"
+        }
+        val digest = MessageDigest.getInstance("SHA-256")
+            .digest(canonical.toByteArray(Charsets.UTF_8))
+        return digest.joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }
+    }
 
     fun apply(
         program: TrainingProgram,

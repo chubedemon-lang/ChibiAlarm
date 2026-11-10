@@ -15,7 +15,8 @@ object FitnessNaturalRequest {
         val minutes: Int? = null,
         val equipment: Int? = null,
         val impact: Int? = null,
-        val reply: String
+        val reply: String,
+        val avoidWristLoad: Boolean? = null
     )
 
     private fun normalize(input: String): String {
@@ -134,6 +135,12 @@ object FitnessNaturalRequest {
             Regex("(?:^| )" + Regex.escape(phrase) + "(?: |$)").containsMatchIn(text)
         } || hasUnnegatedPain(text)
         val lowImpact = has("khong nhay", "it tac dong", "nhe nhang", "tranh nhay")
+        // A movement preference is not a pain diagnosis. Active pain still triggers the stop gate.
+        val avoidWristLoad = has(
+            "khong chong tay", "tranh chong tay", "khong muon chong tay",
+            "khong ti co tay", "tranh ti co tay", "khong chiu tai co tay",
+            "khong chiu tai qua co tay", "han che co tay"
+        )
         val energy = when {
             has("met", "het suc", "it nang luong") -> 0
             has("khoe", "nhieu nang luong", "sung suc") -> 2
@@ -161,9 +168,11 @@ object FitnessNaturalRequest {
         }
         val duration = parseDuration(text)
         val detected = listOf(goal, level, energy, equipment, duration).count { it != null } +
-            if (injury || lowImpact) 1 else 0
+            (if (injury || lowImpact) 1 else 0) +
+            (if (avoidWristLoad) 1 else 0)
         val reply = when {
             injury -> "Mày báo đau hoặc có dấu hiệu cần thận trọng. Tao đã chọn mức hạn chế vận động cao nhất. Không bắt đầu tập khi đang có triệu chứng; hãy tham khảo chuyên gia y tế. Kiểm tra các lựa chọn trước khi tiếp tục."
+            avoidWristLoad -> "Tao đã ghi nhận mày muốn tránh chống tay hoặc cầm tải qua cổ tay. Tao sẽ thay các động tác phù hợp trong thư viện và cho mày xem trước. Nếu đang đau, tê hoặc sưng, đừng bắt đầu tập; hãy xin tư vấn chuyên môn."
             detected == 0 -> "Tao chưa hiểu rõ mục tiêu. Hãy thử: 'giãn cơ 15 phút không dụng cụ'. Mày vẫn có thể chọn thủ công."
             else -> "Tao đã điền những thông tin nhận ra vào biểu mẫu. Kiểm tra lại mục tiêu, thời gian, dụng cụ và hạn chế vận động rồi bấm 'Gợi ý chương trình phù hợp'. Đây là gợi ý offline, không phải tư vấn y khoa."
         }
@@ -174,7 +183,8 @@ object FitnessNaturalRequest {
             minutes = duration,
             equipment = equipment,
             impact = if (injury) 2 else if (lowImpact) 1 else null,
-            reply = reply
+            reply = reply,
+            avoidWristLoad = if (avoidWristLoad) true else null
         )
     }
 }

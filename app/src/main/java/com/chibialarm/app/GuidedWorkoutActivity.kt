@@ -14,6 +14,7 @@ import android.speech.tts.TextToSpeech
 import android.view.Gravity
 import android.widget.*
 import java.util.Locale
+import java.util.UUID
 import com.chibialarm.app.fitness.RemainingWorkoutDuration
 
 /** Entirely offline guided workout; spoken instructions depend on installed Vietnamese Android TTS. */
@@ -26,6 +27,11 @@ class GuidedWorkoutActivity:Activity() {
     private lateinit var progress:ProgressBar
     private lateinit var control:Button
     private lateinit var program:TrainingProgram
+    // Stable across rotation/process restore so one guided session can earn XP only once.
+    private var sessionId:String = UUID.randomUUID().toString()
+    private fun validSessionId(value:String?):String? = value?.takeIf {
+        runCatching { UUID.fromString(it).toString()==it }.getOrDefault(false)
+    }
     private var moves:List<TrainingMove> = emptyList()
     private var originalMoves:List<TrainingMove> = emptyList()
     private val substitutions=mutableMapOf<Int,TrainingMove>()
@@ -66,6 +72,7 @@ class GuidedWorkoutActivity:Activity() {
     private fun saveCheckpoint() {
         if (completed || checkpointDecisionPending || moves.isEmpty()) return
         checkpoint.edit().putString("program",program.id)
+            .putString("sessionId",sessionId)
             .putInt("index",index).putLong("remaining",remainingMs.coerceIn(0L,600_000L))
             .putBoolean("safety",pausedForSafety)
             .putBoolean("tenSecondCueGiven",tenSecondCueGiven)
@@ -83,6 +90,12 @@ class GuidedWorkoutActivity:Activity() {
     }
     private fun offerCheckpoint() {
         if (checkpoint.getString("program",null)!=program.id) return
+        val savedSessionId=validSessionId(checkpoint.getString("sessionId",null))
+        if (savedSessionId!=null && WorkoutData.history(this).any { it.sessionId==savedSessionId }) {
+            // A crash after the durable journal append must not reopen a completed session.
+            checkpoint.edit().clear().apply()
+            return
+        }
         val age=System.currentTimeMillis()-checkpoint.getLong("savedAt",0L)
         if (age !in 0L..604_800_000L) {
             checkpoint.edit().clear().apply()
@@ -93,6 +106,7 @@ class GuidedWorkoutActivity:Activity() {
             .setMessage("Đã lưu bước và thời gian còn lại trên máy. Khôi phục luôn ở trạng thái tạm dừng.")
             .setPositiveButton("Khôi phục") { _,_ ->
                 checkpointDecisionPending=false
+                sessionId=validSessionId(checkpoint.getString("sessionId",null)) ?: UUID.randomUUID().toString()
                 index=checkpoint.getInt("index",0).coerceIn(0,moves.lastIndex)
                 val savedSubstitutions=checkpoint.getString("substitutions",null)
                 substitutions.clear()
@@ -134,6 +148,7 @@ class GuidedWorkoutActivity:Activity() {
                 // Starting over must not silently erase a previously reported pain lock.
                 val keepSafetyLock=checkpoint.getBoolean("safety",false)
                 checkpointDecisionPending=false
+                sessionId=UUID.randomUUID().toString()
                 completedMoveIndices.clear()
                 completedSetsByMove.clear()
                 repTargets.clear()
@@ -392,6 +407,7 @@ class GuidedWorkoutActivity:Activity() {
         // Restore the active exercise after rotation, but never auto-resume.
         if(savedInstanceState!=null &&
             savedInstanceState.getString("workout_program")==program.id) {
+            sessionId=validSessionId(savedInstanceState.getString("workout_session_id")) ?: sessionId
             val savedSubstitutions=savedInstanceState.getString("workout_substitutions")
             substitutions.clear()
             substitutions.putAll(WorkoutMoveSubstitution.decode(savedSubstitutions,originalMoves))
@@ -435,6 +451,7 @@ class GuidedWorkoutActivity:Activity() {
         // Save monotonic elapsed duration, not an absolute deadline.
         pause()
         outState.putString("workout_program",program.id)
+        outState.putString("workout_session_id",sessionId)
         outState.putString("workout_rep_targets",repTargets.entries.joinToString(",") { "${it.key}:${it.value}" })
         outState.putString("workout_substitutions",WorkoutMoveSubstitution.encode(substitutions,originalMoves))
         outState.putString("workout_completed_moves",WorkoutCompletionTracker.encode(completedMoveIndices,moves.size))
@@ -1363,9 +1380,7 @@ class GuidedWorkoutActivity:Activity() {
                 }.show()
             return
         }
-        completed=true
-        checkpoint.edit().clear().apply()
-        val mins=(elapsedMs/60000L).toInt()
+        val mins=(elapsedMs/60000L).toInt().coerceIn(1,600)
         val substitutionSummary=substitutions.entries.sortedBy { it.key }.joinToString("; ") { (position,replacement) ->
             "${originalMoves.getOrNull(position)?.name ?: "Động tác"} → ${replacement.name}"
         }
@@ -1373,9 +1388,16 @@ class GuidedWorkoutActivity:Activity() {
             append("Chibi Coach: $completedCount/${moves.size} động tác được ghi nhận; $setCompletedMoves động tác tự xác nhận hiệp ($selfReportedSets hiệp); $timerCompletedMoves động tác theo bộ đếm; $mins phút hoạt động. Số hiệp là tự khai báo, không được cảm biến xác minh.")
             if(substitutionSummary.isNotBlank()) append(" Thay động tác: $substitutionSummary.")
         }
-        WorkoutData.save(this,WorkoutData.history(this)+Workout(
-            LifeData.today(),program.name,mins,workoutNote))
-        Toast.makeText(this,"Đã ghi $mins phút vào nhật ký",Toast.LENGTH_LONG).show()
+        val saved=WorkoutData.appendSession(this,Workout(
+            LifeData.today(),program.name,mins,workoutNote,sessionId,completedCount,selfReportedSets))
+        if(!saved) {
+            Toast.makeText(this,"Chưa lưu được buổi tập. Tiến độ vẫn được giữ để thử lại.",Toast.LENGTH_LONG).show()
+            return
+        }
+        // Clear the checkpoint only after the session journal is durably committed.
+        completed=true
+        checkpoint.edit().clear().apply()
+        Toast.makeText(this,"Đã ghi $mins phút. Mở Chibi RPG để đồng bộ EXP từ buổi tập.",Toast.LENGTH_LONG).show()
         finish()
     }
     override fun onPause() {

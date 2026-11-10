@@ -4,7 +4,7 @@ import java.net.URLDecoder
 import java.net.URLEncoder
 
 /**
- * Curated, offline substitutions for a few common exercise patterns.
+ * Curated, offline substitutions for a few common exercise patterns after user confirmation.
  * This is a convenience for changing an unstarted step, not injury treatment.
  */
 object WorkoutMoveSubstitution {

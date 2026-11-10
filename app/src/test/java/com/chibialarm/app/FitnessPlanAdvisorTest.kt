@@ -36,11 +36,27 @@ class FitnessPlanAdvisorTest {
             prefs(goal = 0, minutes = 10)).programId)
     }
 
-    @Test fun equipmentEnablesAdvancedStrengthForExperiencedUser() {
+    @Test fun resistanceEquipmentSelectsItsOwnStrengthProgram() {
         assertEquals("full", FitnessPlanAdvisor.recommend(
             prefs(goal = 0, level = 2, equipment = 0)).programId)
         assertEquals("advanced", FitnessPlanAdvisor.recommend(
+            prefs(goal = 0, level = 2, equipment = 1)).programId)
+        assertEquals("weighted", FitnessPlanAdvisor.recommend(
             prefs(goal = 0, level = 2, equipment = 2)).programId)
+        assertEquals("weighted", FitnessPlanAdvisor.recommend(
+            prefs(goal = 0, level = 1, equipment = 2)).programId)
+    }
+
+    @Test fun beginnersDoNotReceiveLoadedStrengthPlanEvenWhenTheyOwnEquipment() {
+        assertEquals("starter", FitnessPlanAdvisor.recommend(
+            prefs(goal = 0, level = 0, equipment = 2)).programId)
+    }
+
+    @Test fun fatigueAndLowImpactStillOverrideResistanceEquipment() {
+        assertEquals("recovery", FitnessPlanAdvisor.recommend(
+            prefs(goal = 0, energy = 0, level = 2, equipment = 2)).programId)
+        assertEquals("mobility", FitnessPlanAdvisor.recommend(
+            prefs(goal = 0, level = 2, equipment = 2, impact = 1)).programId)
     }
 
     @Test(expected = IllegalArgumentException::class)

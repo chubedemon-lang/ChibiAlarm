@@ -261,13 +261,13 @@ class FitnessActivity:Activity() {
                         val steps = TrainingCatalog.adjusted(p, level.selectedItemPosition,
                             mins[length.selectedItemPosition])
                             .mapIndexed { i, move ->
-                                "\${i + 1}. \${move.name} — \${move.dose}\n" +
-                                    "Cách tập: \${move.steps}\n" +
-                                    "Dễ hơn: \${move.easier}\n" +
-                                    "Lưu ý: \${move.avoid}"
+                                "${i + 1}. ${move.name} — ${move.dose}\n" +
+                                    "Cách tập: ${move.steps}\n" +
+                                    "Dễ hơn: ${move.easier}\n" +
+                                    "Lưu ý: ${move.avoid}"
                             }.joinToString("\n\n")
                         AlertDialog.Builder(this@FitnessActivity)
-                            .setTitle("📖 \${p.name} • hướng dẫn trước khi tập")
+                            .setTitle("📖 ${p.name} • hướng dẫn trước khi tập")
                             .setMessage(steps + "\n\nBạn có thể quay lại để thay đổi mục tiêu hoặc thời lượng.")
                             .setPositiveButton("▶ Bắt đầu") { _, _ -> startProgram(p) }
                             .setNegativeButton("Đóng", null).show()

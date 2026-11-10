@@ -27,7 +27,7 @@ class WorkoutMoveSubstitutionTest {
         assertNotNull(updated)
         assertEquals(replacement, updated!![0])
         assertEquals(base[1], updated[1])
-        assertEquals(base[0], base[0]) // source plan remains immutable
+        assertEquals("Squat không tạ", base[0].name) // source plan remains immutable
     }
 
     @Test fun rejectsUnlistedAlternativesAndInvalidIndexes() {

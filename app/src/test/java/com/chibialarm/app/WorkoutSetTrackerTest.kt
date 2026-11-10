@@ -62,6 +62,16 @@ class WorkoutSetTrackerTest {
         assertTrue(WorkoutSetTracker.isComplete(2, plan))
     }
 
+    @Test fun optionalSetCanBeAddedWithoutChangingTheMinimumCompletionGate() {
+        val plan = WorkoutSetTracker.parse("2–3 hiệp × 8–12 lần")!!
+        assertEquals(1, WorkoutSetTracker.complete(0, plan))
+        assertEquals(2, WorkoutSetTracker.complete(1, plan))
+        assertTrue(WorkoutSetTracker.isComplete(2, plan))
+        assertEquals(3, WorkoutSetTracker.complete(2, plan))
+        assertTrue(WorkoutSetTracker.isComplete(3, plan))
+        assertEquals(3, WorkoutSetTracker.complete(3, plan))
+    }
+
     @Test fun checkpointRoundTripKeepsOnlyValidSetBasedMoves() {
         val moves = listOf(
             move("2 hiệp × 8–12 lần"),

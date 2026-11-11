@@ -15,14 +15,16 @@ object WorkoutMoveSubstitution {
         "Squat không tạ" to listOf("Đứng lên – ngồi xuống"),
         "Squat chậm 3 giây" to listOf("Đứng lên – ngồi xuống"),
         "Bước lùi – lunge" to listOf("Đứng lên – ngồi xuống"),
-        "Chống đẩy sàn" to listOf("Chống đẩy gối", "Chống đẩy tường"),
-        "Chống đẩy gối" to listOf("Chống đẩy tường"),
-        "Chống đẩy trên bề mặt cao" to listOf("Chống đẩy tường"),
+        // Offer a forearm-supported option as well as hand-supported regressions.
+        // The constraint filter below will remove the latter when wrist loading is avoided.
+        "Chống đẩy sàn" to listOf("Chống đẩy gối", "Chống đẩy tường", "Ép ngực tường bằng cẳng tay"),
+        "Chống đẩy gối" to listOf("Chống đẩy tường", "Ép ngực tường bằng cẳng tay"),
+        "Chống đẩy trên bề mặt cao" to listOf("Chống đẩy tường", "Ép ngực tường bằng cẳng tay"),
         "Mountain climber chậm" to listOf("Đi bộ nhanh tại chỗ"),
         "Plank khuỷu hoặc plank gối" to listOf("Bird-dog", "Dead bug cơ bụng"),
-        "Side plank gối" to listOf("Bird-dog"),
+        "Side plank gối" to listOf("Bird-dog", "Dead bug cơ bụng"),
         "Gập hông với tạ đơn hoặc dây" to listOf("Nâng hông trên sàn"),
-        "Đẩy vai với tạ đơn hoặc dây" to listOf("Chống đẩy tường")
+        "Đẩy vai với tạ đơn hoặc dây" to listOf("Ép ngực tường bằng cẳng tay")
     )
 
     private val catalogMoves: List<TrainingMove> by lazy {

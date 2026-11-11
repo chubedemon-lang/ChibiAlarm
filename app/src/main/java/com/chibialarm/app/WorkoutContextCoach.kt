@@ -71,6 +71,9 @@ object WorkoutContextCoach {
      * A spoken status report built only from the active local session.
      * Set counts are explicitly self-confirmed; rest time is kept separate from
      * the exercise reminder timer and no health note or free-form chat is included.
+     *
+     * A safety lock suppresses all forward-looking timing and next-move prompts,
+     * even if a stale caller accidentally supplies those fields.
      */
     fun progressScript(progress: Progress): String {
         val current = progress.currentMoveName.trim().take(90).ifBlank { "động tác hiện tại" }
@@ -106,13 +109,18 @@ object WorkoutContextCoach {
                         .append(progress.exerciseSecondsRemaining).append(" giây.")
             }
 
-            if (next != null) append(" Động tác tiếp theo: ").append(next).append(".")
-            progress.estimatedSessionSecondsRemaining?.let { estimate ->
-                val minutes = estimate / 60
-                val seconds = estimate % 60
-                append(" Ước tính phần còn lại khoảng ")
-                if (minutes > 0) append(minutes).append(" phút ")
-                append(seconds).append(" giây, gồm thời gian nhắc động tác, nghỉ và chuyển bước; đây chỉ là ước tính.")
+            // Never encourage progression or imply an ETA while the safety lock is active.
+            if (!progress.pausedForSafety && next != null) {
+                append(" Động tác tiếp theo: ").append(next).append(".")
+            }
+            if (!progress.pausedForSafety) {
+                progress.estimatedSessionSecondsRemaining?.let { estimate ->
+                    val minutes = estimate / 60
+                    val seconds = estimate % 60
+                    append(" Ước tính phần còn lại khoảng ")
+                    if (minutes > 0) append(minutes).append(" phút ")
+                    append(seconds).append(" giây, gồm thời gian nhắc động tác, nghỉ và chuyển bước; đây chỉ là ước tính.")
+                }
             }
             append(" Số hiệp là xác nhận của bạn, không phải cảm biến tự đếm.")
         }.take(900)

@@ -177,4 +177,20 @@ class FitnessCoachConversationTest {
         assertEquals(30, second.minutes)
     }
 
+    @Test fun removingEquipmentOnALaterTurnPreservesTheRestOfThePlan() {
+        val first = FitnessCoachConversation.merge(
+            null,
+            FitnessNaturalRequest.parse("tăng cơ 30 phút, mới bắt đầu, có tạ")
+        )
+        assertEquals(2, first.equipment)
+
+        val reply = FitnessCoachConversation.parseReply(first, "không còn tạ nữa")
+        val updated = FitnessCoachConversation.merge(first, reply)
+
+        assertEquals(0, updated.equipment)
+        assertEquals(0, updated.goal)
+        assertEquals(0, updated.level)
+        assertEquals(30, updated.minutes)
+    }
+
 }

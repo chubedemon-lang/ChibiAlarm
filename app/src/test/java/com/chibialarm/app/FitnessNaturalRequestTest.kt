@@ -162,4 +162,20 @@ class FitnessNaturalRequestTest {
     }
 
 
+
+    @Test fun floorPositionAvoidanceIsAPlanPreferenceNotAnInjuryReport() {
+        for (phrase in listOf("không nằm sàn", "đừng quỳ sàn", "tránh xuống sàn")) {
+            val result = FitnessNaturalRequest.parse(phrase)
+            assertEquals("Failed for $phrase", true, result.avoidFloorPositions)
+            assertNull("Failed for $phrase", result.impact)
+        }
+    }
+
+    @Test fun floorPreferenceCanCoexistWithWristPreference() {
+        val result = FitnessNaturalRequest.parse("đừng chống tay và không nằm sàn")
+        assertEquals(true, result.avoidWristLoad)
+        assertEquals(true, result.avoidFloorPositions)
+        assertNull(result.impact)
+    }
+
 }

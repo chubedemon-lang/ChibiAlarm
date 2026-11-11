@@ -29,7 +29,7 @@ class WorkoutPoseGuideTest {
         assertTrue(WorkoutPoseMotion.hasMotion(WorkoutPoseGuide.Pose.SUPPORTED_MARCH))
         assertTrue(WorkoutPoseMotion.hasMotion(WorkoutPoseGuide.Pose.HIP_ABDUCTION))
         assertTrue(!WorkoutPoseMotion.hasMotion(WorkoutPoseGuide.Pose.SEATED_HAMSTRING_STRETCH))
-        assertTrue(WorkoutPoseMotion.spokenWalkthrough(WorkoutPoseGuide.Pose.HIP_ABDUCTION).contains("đưa một chân sang bên"))
+        assertTrue(WorkoutPoseMotion.spokenWalkthrough(WorkoutPoseGuide.Pose.HIP_ABDUCTION).contains("Đưa một chân sang bên"))
         assertTrue(WorkoutPoseGuide.label(WorkoutPoseGuide.Pose.SEATED_HAMSTRING_STRETCH).contains("ngồi ghế"))
         assertEquals(WorkoutPoseGuide.Pose.SIDE_PLANK, WorkoutPoseGuide.classify("Side plank gối"))
         assertEquals(WorkoutPoseGuide.Pose.CALF_RAISE, WorkoutPoseGuide.classify("Nhón gót"))

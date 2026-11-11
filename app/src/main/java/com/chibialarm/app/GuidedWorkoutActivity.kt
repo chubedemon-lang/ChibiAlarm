@@ -841,7 +841,7 @@ class GuidedWorkoutActivity:Activity() {
                                 currentIndex = index,
                                 completedMoves = completedMoveIndices,
                                 completedSets = completedSetsByMove,
-                                currentExerciseRemainingSeconds = if (resting) 0 else secondsLeft(remainingMs),
+                                currentExerciseRemainingSeconds = secondsLeft(remainingMs),
                                 resting = resting,
                                 restSecondsRemaining = if (resting) secondsLeft(restRemainingMs) else 0,
                                 level = workoutLevel

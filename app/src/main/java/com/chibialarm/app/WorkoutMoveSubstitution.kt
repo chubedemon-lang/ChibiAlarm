@@ -26,8 +26,9 @@ object WorkoutMoveSubstitution {
         "Bird-dog" to listOf("Dead bug cơ bụng"),
         "Plank khuỷu hoặc plank gối" to listOf("Bird-dog", "Dead bug cơ bụng"),
         "Side plank gối" to listOf("Bird-dog", "Dead bug cơ bụng"),
-        "Gập hông với tạ đơn hoặc dây" to listOf("Nâng hông trên sàn"),
-        "Đẩy vai với tạ đơn hoặc dây" to listOf("Ép ngực tường bằng cẳng tay")
+        "Kéo tạ đơn hoặc dây kháng lực" to listOf("Siết bả vai đứng"),
+        "Gập hông với tạ đơn hoặc dây" to listOf("Gập hông không dụng cụ", "Nâng hông trên sàn"),
+        "Đẩy vai với tạ đơn hoặc dây" to listOf("Mở vai và ngực", "Ép ngực tường bằng cẳng tay")
     )
 
     private val catalogMoves: List<TrainingMove> by lazy {

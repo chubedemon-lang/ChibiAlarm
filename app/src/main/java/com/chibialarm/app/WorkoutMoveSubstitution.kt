@@ -18,6 +18,8 @@ object WorkoutMoveSubstitution {
         // Offer a forearm-supported option as well as hand-supported regressions.
         // The constraint filter below will remove the latter when wrist loading is avoided.
         "Chống đẩy sàn" to listOf("Chống đẩy gối", "Chống đẩy tường", "Ép ngực tường bằng cẳng tay"),
+        "Chống đẩy tường" to listOf("Ép ngực tường bằng cẳng tay"),
+        "Cat-cow nhẹ" to listOf("Mở vai và ngực"),
         "Chống đẩy gối" to listOf("Chống đẩy tường", "Ép ngực tường bằng cẳng tay"),
         "Chống đẩy trên bề mặt cao" to listOf("Chống đẩy tường", "Ép ngực tường bằng cẳng tay"),
         "Mountain climber chậm" to listOf("Đi bộ nhanh tại chỗ"),

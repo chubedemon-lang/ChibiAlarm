@@ -56,6 +56,8 @@ object WorkoutTargetCommand {
         WorkoutVoiceCommands.Command.EASIER_AND_REST,
         WorkoutVoiceCommands.Command.SHORTER,
         WorkoutVoiceCommands.Command.SHORTER_REMAINING,
+        // Opening a walkthrough is a separate coach action, never a repetition edit.
+        WorkoutVoiceCommands.Command.STEP_GUIDE,
         // Set completion is a state-changing workout action, never a repetition edit.
         WorkoutVoiceCommands.Command.COMPLETE_SET -> true
         WorkoutVoiceCommands.Command.REST,

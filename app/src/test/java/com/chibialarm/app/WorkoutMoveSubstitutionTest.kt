@@ -111,6 +111,39 @@ class WorkoutMoveSubstitutionTest {
         assertTrue(WorkoutMoveSubstitution.decode(unsafeCheckpoint, base, profile).isEmpty())
     }
 
+    @Test fun weightedExercisesOfferCuratedLowerLoadAlternatives() {
+        val row = catalogMove("Kéo tạ đơn hoặc dây kháng lực")
+        assertEquals(
+            listOf("Siết bả vai đứng"),
+            WorkoutMoveSubstitution.alternativesFor(row).map { it.name }
+        )
+
+        val hinge = catalogMove("Gập hông với tạ đơn hoặc dây")
+        assertEquals(
+            listOf("Gập hông không dụng cụ", "Nâng hông trên sàn"),
+            WorkoutMoveSubstitution.alternativesFor(hinge).map { it.name }
+        )
+        val bodyweightHinge = catalogMove("Gập hông không dụng cụ")
+        assertTrue(bodyweightHinge.steps.contains("lưng trung lập"))
+        assertTrue(bodyweightHinge.easier.isNotBlank())
+        assertTrue(bodyweightHinge.avoid.contains("dừng"))
+
+        val shoulderPress = catalogMove("Đẩy vai với tạ đơn hoặc dây")
+        assertEquals(
+            listOf("Mở vai và ngực", "Ép ngực tường bằng cẳng tay"),
+            WorkoutMoveSubstitution.alternativesFor(shoulderPress).map { it.name }
+        )
+    }
+
+    @Test fun standingUnloadedHingeRemainsAllowedWhenWristAndFloorPositionsAreAvoided() {
+        val profile = WorkoutConstraintProfile(avoidWristLoad = true, avoidFloorPositions = true)
+        val weightedHinge = catalogMove("Gập hông với tạ đơn hoặc dây")
+        val alternative = WorkoutMoveSubstitution.alternativesFor(weightedHinge, profile).first()
+
+        assertEquals("Gập hông không dụng cụ", alternative.name)
+        assertTrue(WorkoutConstraintFilter.isAllowed(alternative, profile))
+    }
+
     @Test fun malformedDuplicateAndOversizedCheckpointEntriesAreIgnored() {
         val base = listOf(catalogMove("Squat không tạ"))
         val valid = WorkoutMoveSubstitution.encode(

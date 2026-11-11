@@ -21,6 +21,7 @@ object WorkoutPoseGuide {
             listOf("dead bug").any { it in text } -> Pose.DEAD_BUG
             listOf("cat-cow", "cat cow", "mèo-bò").any { it in text } -> Pose.CAT_COW
             listOf("nâng hông", "glute bridge", "bridge").any { it in text } -> Pose.BRIDGE
+            listOf("gập hông không dụng cụ", "hip hinge").any { it in text } -> Pose.HIP_HINGE
             listOf("nâng gối luân phiên có điểm tựa", "supported march").any { it in text } -> Pose.SUPPORTED_MARCH
             listOf("dang chân sang bên có điểm tựa", "hip abduction").any { it in text } -> Pose.HIP_ABDUCTION
             listOf("giãn gân kheo ngồi ghế", "seated hamstring").any { it in text } -> Pose.SEATED_HAMSTRING_STRETCH
@@ -43,6 +44,7 @@ object WorkoutPoseGuide {
 
     fun label(pose: Pose): String = when (pose) {
         Pose.SQUAT -> "Minh họa: hạ hông và gập gối"
+        Pose.HIP_HINGE -> "Minh họa: đẩy hông ra sau, giữ lưng trung lập"
         Pose.PLANK -> "Minh họa: giữ thân người thẳng"
         Pose.PUSH_UP -> "Minh họa: chống đẩy sàn, thân người thẳng"
         Pose.KNEE_PUSH_UP -> "Minh họa: chống đẩy với hai gối làm điểm tựa"

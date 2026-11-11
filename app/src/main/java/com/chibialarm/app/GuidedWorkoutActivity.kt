@@ -131,7 +131,7 @@ class GuidedWorkoutActivity:Activity() {
         )
         optionalExtensionNames.clear()
         optionalExtensionNames.addAll(
-            checkpoint.getString("extensionMoves", "").split("\n")
+            checkpoint.getString("extensionMoves", "").orEmpty().split("\n")
                 .filter { name -> name.isNotBlank() && moves.any { it.name == name } }
                 .take(20)
         )

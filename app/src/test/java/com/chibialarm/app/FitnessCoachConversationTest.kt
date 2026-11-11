@@ -193,4 +193,35 @@ class FitnessCoachConversationTest {
         assertEquals(30, updated.minutes)
     }
 
+    @Test fun userCanRelaxAPlanPreferenceOnALaterTurnWithoutLosingOtherContext() {
+        val first = FitnessCoachConversation.merge(
+            null,
+            FitnessNaturalRequest.parse("tăng cơ 30 phút, không chống tay, không nằm sàn")
+        )
+        assertEquals(true, first.avoidWristLoad)
+        assertEquals(true, first.avoidFloorPositions)
+
+        val second = FitnessCoachConversation.merge(
+            first,
+            FitnessNaturalRequest.parse("có thể chống tay và nằm sàn")
+        )
+        assertEquals(false, second.avoidWristLoad)
+        assertEquals(false, second.avoidFloorPositions)
+        assertEquals(0, second.goal)
+        assertEquals(30, second.minutes)
+    }
+
+    @Test fun relaxingMovementPreferenceNeverClearsAnEarlierPainStop() {
+        val first = FitnessCoachConversation.merge(
+            null,
+            FitnessNaturalRequest.parse("đau cổ tay, không chống tay")
+        )
+        val second = FitnessCoachConversation.merge(
+            first,
+            FitnessNaturalRequest.parse("bỏ hạn chế cổ tay, 20 phút")
+        )
+        assertEquals(false, second.avoidWristLoad)
+        assertEquals(2, second.impact)
+    }
+
 }

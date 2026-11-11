@@ -111,6 +111,36 @@ class WorkoutVoiceCommandsTest {
         org.junit.Assert.assertTrue(WorkoutVoiceCommands.mayEditReps("Giảm xuống hai mươi lăm lần"))
     }
 
+    @Test fun explicitSetCompletionRequiresAnAffirmativeSetPhrase() {
+        for (phrase in listOf(
+            "Xong hiệp rồi",
+            "Tôi đã hoàn thành hiệp này",
+            "Đã tập xong hiệp một",
+            "Xác nhận hiệp",
+            "hoan thanh hiep"
+        )) {
+            assertEquals(phrase, C.COMPLETE_SET, WorkoutVoiceCommands.parse(phrase))
+        }
+        for (phrase in listOf(
+            "Chưa xong hiệp",
+            "Chưa hoàn thành hiệp",
+            "Không xong hiệp",
+            "Không hoàn thành hiệp",
+            "Xong bài tập"
+        )) {
+            assertEquals(phrase, C.UNKNOWN, WorkoutVoiceCommands.parse(phrase))
+        }
+        assertEquals("Xác nhận hoàn thành hiệp hiện tại",
+            WorkoutVoiceCommands.describe(C.COMPLETE_SET))
+    }
+
+    @Test fun safetyPauseAndStatusTakePriorityOverSetCompletion() {
+        assertEquals(C.PAIN, WorkoutVoiceCommands.parse("Đau gối, xong hiệp"))
+        assertEquals(C.PAUSE, WorkoutVoiceCommands.parse("Dừng tập rồi xong hiệp"))
+        assertEquals(C.STATUS, WorkoutVoiceCommands.parse("Khi nào xong hiệp?"))
+        assertFalse(WorkoutVoiceCommands.mayEditReps("Xong hiệp và giảm còn 10 lần"))
+    }
+
     @Test fun unknownOrOversizedInputNeverExecutesAction() {
         assertEquals(C.UNKNOWN, WorkoutVoiceCommands.parse(""))
         assertEquals(C.UNKNOWN, WorkoutVoiceCommands.parse("thời tiết hôm nay thế nào"))

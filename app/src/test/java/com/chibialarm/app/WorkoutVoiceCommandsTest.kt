@@ -36,12 +36,20 @@ class WorkoutVoiceCommandsTest {
             "Xem tiến độ hiện tại",
             "Còn bao nhiêu bài",
             "Tao đã làm bao nhiêu hiệp",
+            "Còn bao lâu?",
+            "Bao lâu nữa xong?",
+            "Mấy phút nữa?",
+            "Còn bao nhiêu phút?",
+            "Còn bao nhiêu giây?",
+            "Thời gian còn lại",
+            "Ước tính thời gian còn lại",
+            "Khi nào xong?",
             "progress",
             "status"
         )) {
             assertEquals(phrase, C.STATUS, WorkoutVoiceCommands.parse(phrase))
         }
-        assertEquals("Đọc tiến độ buổi tập hiện tại", WorkoutVoiceCommands.describe(C.STATUS))
+        assertEquals("Đọc tiến độ và thời gian còn lại", WorkoutVoiceCommands.describe(C.STATUS))
     }
 
     @Test fun safetyAndPauseTakePriorityOverStatusRequests() {

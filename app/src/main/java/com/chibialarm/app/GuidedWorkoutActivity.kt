@@ -694,8 +694,14 @@ class GuidedWorkoutActivity:Activity() {
                     if (request.avoidWristLoad) {
                         append("\nÁp dụng tránh chống tay/tải qua cổ tay cho phần chưa hoàn thành.")
                     }
+                    if (request.allowWristLoad) {
+                        append("\nBỏ hạn chế chống tay/tải qua cổ tay cho phần chưa hoàn thành; các hiệp đã ghi nhận vẫn giữ nguyên.")
+                    }
                     if (request.avoidFloorPositions) {
                         append("\nBỏ các động tác phải nằm hoặc quỳ sàn chưa bắt đầu; không tự tạo bài thay thế chưa được tuyển chọn.")
+                    }
+                    if (request.allowFloorPositions) {
+                        append("\nBỏ hạn chế nằm/quỳ sàn cho phần chưa hoàn thành; các hiệp đã ghi nhận vẫn giữ nguyên.")
                     }
                     if (request.avoidExternalLoad) {
                         append("\nLoại bỏ tạ và dây kháng lực khỏi phần chưa hoàn thành; chỉ dùng biến thể đã có trong thư viện.")
@@ -745,9 +751,9 @@ class GuidedWorkoutActivity:Activity() {
                         repTargets.keys.removeAll {
                             it > index || (it == index && preview.currentMoveChanged)
                         }
-                        workoutConstraints = WorkoutConstraintProfile(
-                            avoidWristLoad = workoutConstraints.avoidWristLoad || request.avoidWristLoad,
-                            avoidFloorPositions = workoutConstraints.avoidFloorPositions || request.avoidFloorPositions
+                        workoutConstraints = WorkoutMidSessionPlanner.effectiveConstraints(
+                            workoutConstraints,
+                            request
                         )
                         if (preview.currentMoveChanged) {
                             remainingMs = minOf(

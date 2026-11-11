@@ -71,6 +71,12 @@ class WorkoutSetTrackerTest {
         assertNull(WorkoutSetTracker.parse("2 hiệp × 8 lần", 181))
     }
 
+    @Test fun restGuidanceIsHiddenForTimeOnlyMoves() {
+        assertEquals("Nghỉ giữa hiệp đề xuất: 75 giây",
+            WorkoutSetTracker.restGuidance("2 hiệp × 8 lần", 75))
+        assertNull(WorkoutSetTracker.restGuidance("3–5 phút", 30))
+    }
+
     @Test fun completingSetsIsBoundedAndIdempotentAtTarget() {
         val plan = WorkoutSetTracker.parse("2 hiệp × 8–12 lần")!!
         assertEquals(1, WorkoutSetTracker.complete(0, plan))

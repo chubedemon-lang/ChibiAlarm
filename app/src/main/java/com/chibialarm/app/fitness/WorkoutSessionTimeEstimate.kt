@@ -47,18 +47,31 @@ object WorkoutSessionTimeEstimate {
         remainingIndices.forEach { index ->
             val move = moves[index]
             if (index == currentIndex) {
-                // The exercise timer is paused, not discarded, during a separate rest countdown.
-                // Count both clocks so the ETA includes the remaining active block after rest.
-                total += currentExerciseRemainingSeconds.toLong()
-                if (resting) total += restSecondsRemaining.toLong()
-
                 val plan = WorkoutSetTracker.parse(move.dose, move.restSeconds)
                 if (plan != null) {
                     val done = (completedSets[index] ?: 0).coerceIn(0, plan.maximumSets)
                     val setsLeft = (plan.requiredSets - done).coerceAtLeast(0)
-                    // The current rest countdown, if any, is added separately above.
+                    // The active timer is a timebox for the whole move and pauses during
+                    // rest. If it has expired, estimate the remaining active block by the
+                    // fraction of required sets still unconfirmed rather than reporting zero.
+                    val activeRemaining = if (currentExerciseRemainingSeconds > 0) {
+                        currentExerciseRemainingSeconds
+                    } else if (setsLeft > 0) {
+                        val totalActive = WorkoutDurationPlanner.activeSeconds(move).toLong()
+                        ((totalActive * setsLeft + plan.requiredSets - 1) / plan.requiredSets)
+                            .coerceAtMost(MAX_ESTIMATE_SECONDS.toLong()).toInt()
+                    } else {
+                        0
+                    }
+                    total += activeRemaining.toLong()
+                    if (resting) total += restSecondsRemaining.toLong()
+                    // The current rest countdown is separate; add only later set-to-set rests.
                     total += (setsLeft - 1).coerceAtLeast(0).toLong() *
                         plan.defaultRestSeconds.toLong()
+                } else {
+                    // Time-only moves retain their timer even while a separate rest is active.
+                    total += currentExerciseRemainingSeconds.toLong()
+                    if (resting) total += restSecondsRemaining.toLong()
                 }
             } else {
                 total += WorkoutDurationPlanner.activeSeconds(move).toLong()

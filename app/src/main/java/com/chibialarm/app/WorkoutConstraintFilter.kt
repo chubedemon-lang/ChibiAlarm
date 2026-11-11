@@ -56,7 +56,7 @@ object WorkoutConstraintFilter {
         "Cat-cow nhẹ" to "Mở vai và ngực",
         "Mountain climber chậm" to "Đi bộ nhanh tại chỗ",
         "Kéo tạ đơn hoặc dây kháng lực" to "Siết bả vai đứng",
-        "Gập hông với tạ đơn hoặc dây" to "Nâng hông trên sàn",
+        "Gập hông với tạ đơn hoặc dây" to "Gập hông không dụng cụ",
         "Đẩy vai với tạ đơn hoặc dây" to "Mở vai và ngực"
     )
 

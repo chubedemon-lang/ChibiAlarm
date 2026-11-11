@@ -17,7 +17,7 @@ data class TrainingMove(
     init {
         require(restSeconds in 15..180)
     }
-)}
+}
 data class TrainingProgram(
     val id:String,
     val name:String,

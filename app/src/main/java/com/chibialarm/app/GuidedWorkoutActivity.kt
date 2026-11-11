@@ -260,7 +260,14 @@ class GuidedWorkoutActivity:Activity() {
         program = constraintResult.program
         val level=intent.getIntExtra("level",0).coerceIn(0,2)
         val minutes=WorkoutDurationChoices.guidedMinutes(intent.getIntExtra("minutes",15))
-        val planned=WorkoutDurationPlanner.build(program,level,minutes)
+        val extensionPreferences = WorkoutExtensionPreferences(
+            goal = intent.getIntExtra("extension_goal", 0).coerceIn(0, 5),
+            energy = intent.getIntExtra("extension_energy", 1).coerceIn(0, 2),
+            equipment = intent.getIntExtra("extension_equipment", 0).coerceIn(0, 2),
+            impact = intent.getIntExtra("extension_impact", 0).coerceIn(0, 2),
+            constraints = workoutConstraints
+        )
+        val planned=WorkoutDurationPlanner.build(program,level,minutes,extensionPreferences)
         moves=planned.moves
         originalMoves=moves.toList()
         val root=LinearLayout(this).apply {

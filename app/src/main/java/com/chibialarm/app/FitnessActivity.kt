@@ -23,6 +23,9 @@ class FitnessActivity:Activity() {
     private var speechOutput: TextToSpeech? = null
     private var speechReady = false
     private val speechRequestCode = 4107
+    private var recommendationGoalSpinner: Spinner? = null
+    private var recommendationEnergySpinner: Spinner? = null
+    private var recommendationEquipmentSpinner: Spinner? = null
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
@@ -227,11 +230,13 @@ class FitnessActivity:Activity() {
             setSelection(prefs.getInt("recommendGoal",0).coerceIn(0,goals.lastIndex))
         }
         root.addView(goalSpinner)
+        recommendationGoalSpinner = goalSpinner
         val energySpinner=Spinner(this).apply {
             adapter=ArrayAdapter(this@FitnessActivity,android.R.layout.simple_spinner_dropdown_item,energyLevels)
             setSelection(prefs.getInt("recommendEnergy",1).coerceIn(0,2))
         }
         root.addView(energySpinner)
+        recommendationEnergySpinner = energySpinner
         root.addView(txt("🏋️ Dụng cụ hiện có",19f))
         val equipmentOptions=arrayOf("Không có dụng cụ","Có thảm tập","Có tạ hoặc dây kháng lực")
         val equipmentSpinner=Spinner(this).apply {
@@ -239,6 +244,7 @@ class FitnessActivity:Activity() {
             setSelection(prefs.getInt("recommendEquipment",0).coerceIn(0,2))
         }
         root.addView(equipmentSpinner)
+        recommendationEquipmentSpinner = equipmentSpinner
         root.addView(txt("🦵 Mức độ vận động phù hợp",19f))
         val impactOptions=arrayOf("Không có hạn chế được báo","Ưu tiên bài ít tác động, không nhảy","Đang đau hoặc có chấn thương")
         val impactSpinner=Spinner(this).apply {
@@ -401,7 +407,10 @@ class FitnessActivity:Activity() {
                     return@setOnClickListener
                 }
                 val planned=WorkoutDurationPlanner.build(
-                    constraintResult.program, level.selectedItemPosition, mins[length.selectedItemPosition]
+                    constraintResult.program,
+                    level.selectedItemPosition,
+                    mins[length.selectedItemPosition],
+                    currentExtensionPreferences(constraintProfile)
                 )
                 val durationSummary = buildString {
                     append("Thời lượng mục tiêu: ${planned.targetMinutes} phút • ")
@@ -410,6 +419,11 @@ class FitnessActivity:Activity() {
                     append("nghỉ giữa hiệp: ${planned.prescribedRestSeconds / 60} phút • ")
                     append("chuyển bài dự kiến: ${planned.transitionSeconds / 60} phút.")
                     append("\nĐây là ước tính từ thư viện, không phải thời gian đo thực tế.")
+                    if (planned.extensionMoves.isNotEmpty()) {
+                        append("\nKhối bổ sung theo mục tiêu: ")
+                        append(planned.extensionMoves.joinToString(" • ") { it.name })
+                        append(". Chibi chỉ thêm động tác khác nhóm đã có và vẫn có thể để dư thời gian.")
+                    }
                     if (planned.exceedsTarget) {
                         append("\nChuỗi bài tối thiểu đang dài hơn thời lượng bạn chọn; hãy chọn chương trình ngắn hơn.")
                     } else if (planned.unallocatedSeconds >= 60) {
@@ -495,7 +509,10 @@ class FitnessActivity:Activity() {
             val constraints = currentWorkoutConstraintProfile()
             val constrained = WorkoutConstraintFilter.apply(program, constraints)
             val planned = WorkoutDurationPlanner.build(
-                constrained.program, level.selectedItemPosition, mins[length.selectedItemPosition]
+                constrained.program,
+                level.selectedItemPosition,
+                mins[length.selectedItemPosition],
+                currentExtensionPreferences(constraints)
             )
             card.addView(txt(program.subtitle+" • "+planned.moves.size+" bước • khoảng "+planned.estimatedMinutes+" phút",13f))
             if (constrained.notice.isNotBlank()) card.addView(txt(constrained.notice,12f))
@@ -526,6 +543,16 @@ class FitnessActivity:Activity() {
     private fun currentWorkoutConstraintProfile(): WorkoutConstraintProfile =
         WorkoutConstraintProfile(avoidWristLoad = wristLoadCheckBox?.isChecked == true)
 
+    private fun currentExtensionPreferences(
+        constraints: WorkoutConstraintProfile = currentWorkoutConstraintProfile()
+    ): WorkoutExtensionPreferences = WorkoutExtensionPreferences(
+        goal = recommendationGoalSpinner?.selectedItemPosition ?: 0,
+        energy = recommendationEnergySpinner?.selectedItemPosition ?: 1,
+        equipment = recommendationEquipmentSpinner?.selectedItemPosition ?: 0,
+        impact = effectiveImpactRestriction(),
+        constraints = constraints
+    )
+
     private fun startProgram(
         p: TrainingProgram,
         constraints: WorkoutConstraintProfile = currentWorkoutConstraintProfile()
@@ -549,7 +576,11 @@ class FitnessActivity:Activity() {
             .apply()
         startActivity(Intent(this,GuidedWorkoutActivity::class.java)
             .putExtra("program",p.id).putExtra("level",l).putExtra("minutes",m)
-            .putExtra("avoid_wrist_load", constraints.avoidWristLoad))
+            .putExtra("avoid_wrist_load", constraints.avoidWristLoad)
+            .putExtra("extension_goal", recommendationGoalSpinner?.selectedItemPosition ?: 0)
+            .putExtra("extension_energy", recommendationEnergySpinner?.selectedItemPosition ?: 1)
+            .putExtra("extension_equipment", recommendationEquipmentSpinner?.selectedItemPosition ?: 0)
+            .putExtra("extension_impact", effectiveImpactRestriction()))
     }
     private fun addRoutine(p:TrainingProgram) {
         if (currentWorkoutConstraintProfile().avoidWristLoad) {

@@ -34,6 +34,32 @@ class TrainingCatalogTest {
         assertTrue(moves.values.all { it.restSeconds in 15..180 })
     }
 
+    @Test fun curatedExtensionMovesHaveCompleteStepwiseGuidance() {
+        val extensions = TrainingCatalog.extensionMoves
+        assertEquals(3, extensions.size)
+        assertTrue(extensions.all {
+            it.name.isNotBlank() && it.dose.isNotBlank() &&
+                it.steps.isNotBlank() && it.easier.isNotBlank() && it.avoid.isNotBlank()
+        })
+        assertTrue(extensions.all { it.restSeconds in 15..180 })
+    }
+
+    @Test fun lowCardioProgramUsesDistinctMovesInsteadOfRepeatingMarch() {
+        val moves = TrainingCatalog.byId("lowcardio").moves
+        assertEquals(moves.size, moves.map { it.name }.distinct().size)
+        assertTrue(moves.any { it.name == "Nâng gối luân phiên có điểm tựa" })
+    }
+
+    @Test fun legacyDurationHelperNeverDuplicatesPrescribedMoves() {
+        TrainingCatalog.programs.forEach { program ->
+            for (level in 0..2) {
+                val adjusted = TrainingCatalog.adjusted(program, level, 60)
+                assertEquals(program.moves, adjusted)
+                assertEquals(adjusted.size, adjusted.map { it.name }.distinct().size)
+            }
+        }
+    }
+
     @Test fun programIdentifiersRemainUnique() {
         val ids = TrainingCatalog.programs.map { it.id }
         assertEquals(ids.size, ids.toSet().size)

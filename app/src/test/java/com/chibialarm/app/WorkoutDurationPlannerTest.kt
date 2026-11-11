@@ -21,11 +21,15 @@ class WorkoutDurationPlannerTest {
         val short = WorkoutDurationPlanner.build(program, level = 0, targetMinutes = 10)
         val longer = WorkoutDurationPlanner.build(program, level = 0, targetMinutes = 30)
 
-        assertEquals(short.moves, longer.moves)
+        assertEquals(program.moves, short.moves)
+        assertEquals(program.moves, longer.moves.filterNot { it in longer.extensionMoves })
+        assertTrue(longer.extensionMoves.isNotEmpty())
         assertEquals(1, short.rounds)
         assertEquals(1, longer.rounds)
-        assertEquals(short.estimatedSeconds, longer.estimatedSeconds)
-        assertTrue(longer.unallocatedSeconds > short.unallocatedSeconds)
+        assertTrue(longer.estimatedSeconds > short.estimatedSeconds)
+        assertTrue(longer.unallocatedSeconds < short.unallocatedSeconds)
+        assertEquals(longer.moves.size, longer.moves.map { it.name }.distinct().size)
+        assertEquals("Thả lỏng", longer.moves.last().name)
     }
 
     @Test fun reportsWhenMinimumSequenceExceedsVeryShortTarget() {
@@ -76,8 +80,10 @@ class WorkoutDurationPlannerTest {
         val beginner = WorkoutDurationPlanner.build(program, level = 0, targetMinutes = 30)
         val experienced = WorkoutDurationPlanner.build(program, level = 2, targetMinutes = 30)
 
-        assertEquals(program.moves, beginner.moves)
-        assertEquals(program.moves, experienced.moves)
+        assertEquals(program.moves, beginner.moves.filterNot { it in beginner.extensionMoves })
+        assertEquals(program.moves, experienced.moves.filterNot { it in experienced.extensionMoves })
+        assertTrue(beginner.extensionMoves.size <= 2)
+        assertTrue(experienced.extensionMoves.size <= 3)
         assertTrue(beginner.transitionSeconds > experienced.transitionSeconds)
         assertTrue(beginner.estimatedSeconds > experienced.estimatedSeconds)
     }
@@ -86,7 +92,9 @@ class WorkoutDurationPlannerTest {
         val program = TrainingCatalog.byId("advanced")
         val plan = WorkoutDurationPlanner.build(program, level = 2, targetMinutes = 120)
 
-        assertEquals(program.moves, plan.moves)
+        assertEquals(program.moves, plan.moves.filterNot { it in plan.extensionMoves })
+        assertTrue(plan.extensionMoves.size <= 3)
+        assertEquals(plan.moves.size, plan.moves.map { it.name }.distinct().size)
         assertEquals(1, plan.rounds)
         assertEquals("Khởi động tại chỗ", plan.moves.first().name)
         assertEquals("Thả lỏng", plan.moves.last().name)
@@ -119,6 +127,14 @@ class WorkoutDurationPlannerTest {
         assertEquals(0, plan.prescribedRestSeconds)
         assertEquals(15, plan.transitionSeconds)
         assertEquals(315, plan.estimatedSeconds)
+    }
+
+    @Test fun targetWithNoSafeExtensionRoomKeepsTheBasePrescription() {
+        val program = TrainingCatalog.byId("full")
+        val plan = WorkoutDurationPlanner.build(program, level = 0, targetMinutes = 20)
+        assertTrue(plan.extensionMoves.isEmpty())
+        assertEquals(program.moves, plan.moves)
+        assertEquals(60, plan.unallocatedSeconds)
     }
 
     @Test fun rejectsInvalidInputs() {

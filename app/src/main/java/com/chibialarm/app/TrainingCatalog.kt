@@ -56,6 +56,10 @@ object TrainingCatalog {
     private val march=exercise("Đi bộ nhanh tại chỗ","3–6 phút",
         "Bước đều, đánh tay tự nhiên, tăng nhịp vừa sức; vẫn có thể trò chuyện.",
         "Đi bộ chậm hoặc bước tại chỗ.","Không cần chạy nhảy nếu không thoải mái.",150)
+    private val supportedMarch=exercise("Nâng gối luân phiên có điểm tựa","2 phút",
+        "Đứng cạnh ghế hoặc tường vững, luân phiên nâng gối thấp vừa sức, giữ thân thẳng và nhịp đều; có thể vịn nhẹ.",
+        "Ngồi trên ghế vững và nâng từng gối với biên độ nhỏ.",
+        "Không nâng cao nếu đau hông hoặc gối; không vịn vào vật dễ trượt.",120)
     private val sideStep=exercise("Bước ngang nhẹ","2 phút",
         "Bước sang phải, đưa chân trái về cạnh chân phải; đổi hướng, giữ gối hơi mềm.",
         "Bước ngắn, bám tay vịn nếu cần.","Giữ sàn khô, không trơn.",90)
@@ -85,6 +89,14 @@ object TrainingCatalog {
         "Đứng hoặc ngồi thẳng, thả tay dọc thân. Kéo nhẹ hai bả vai về sau và xuống, giữ 2 giây rồi thả lỏng.",
         "Giảm lực và giữ ngắn hơn.",
         "Không ưỡn lưng, nhún vai hoặc nín thở.",75,30)
+    private val standingHipAbduction=exercise("Dang chân sang bên có điểm tựa","2 hiệp × 8–12 lần mỗi bên",
+        "Đứng cạnh ghế vững, giữ nhẹ để thăng bằng. Đưa một chân sang bên trong biên độ nhỏ, giữ thân thẳng rồi hạ chậm; đổi bên.",
+        "Chỉ nhấc chân vài centimet hoặc bỏ qua nếu mất thăng bằng.",
+        "Không nghiêng thân, xoay bàn chân hoặc tiếp tục khi đau hông/gối.",90,45)
+    private val seatedHamstringStretch=exercise("Giãn gân kheo ngồi ghế","2 hiệp × 20 giây mỗi bên",
+        "Ngồi gần mép ghế vững, duỗi một chân với gót chạm sàn. Giữ lưng dài, nghiêng nhẹ từ hông đến khi căng nhẹ phía sau đùi; đổi bên.",
+        "Giữ gối hơi chùng và giảm biên độ.",
+        "Không nảy người hoặc kéo đến mức đau; dừng nếu tê lan.",90,30)
     private val stretch=exercise("Giãn cơ và thở chậm","4–6 phút",
         "Giãn vai, hông, bắp chân từng bên nhẹ nhàng, không nín thở.",
         "Ngồi ghế để giảm tải.","Không giật nảy, không chịu đau.",180)
@@ -125,7 +137,7 @@ object TrainingCatalog {
     val programs=listOf(
         TrainingProgram("starter","🌱 Bắt đầu nhẹ nhàng","Mới tập hoặc quay lại sau thời gian nghỉ","Toàn thân",listOf(warm,chairSquat,wallPush,bridge,stretch)),
         TrainingProgram("full","💪 Toàn thân không dụng cụ","Chân, thân trên và cơ trung tâm","Sức mạnh",listOf(warm,squat,wallPush,bridge,bird,plank,cool)),
-        TrainingProgram("lowcardio","🚶 Cardio không bật nhảy","Tăng vận động, hạn chế tác động khớp","Cardio",listOf(warm,march,sideStep,calf,march,cool)),
+        TrainingProgram("lowcardio","🚶 Cardio không bật nhảy","Tăng vận động, hạn chế tác động khớp","Cardio",listOf(warm,march,sideStep,supportedMarch,calf,cool)),
         TrainingProgram("legs","🦵 Chân và mông","Hông, đùi, bắp chân","Sức mạnh",listOf(warm,squat,reverseLunge,bridge,calf,cool)),
         TrainingProgram("upper","🏋️ Thân trên","Vai, ngực, tay và lưng trên","Sức mạnh",listOf(warm,wallPush,inclinePush,shoulder,bird,cool)),
         TrainingProgram("core","🔥 Core ổn định","Cơ bụng và kiểm soát thân người, không hứa giảm mỡ vùng bụng","Sức mạnh",listOf(warm,bird,deadBug,plank,sidePlank,cool)),
@@ -143,18 +155,22 @@ object TrainingCatalog {
      */
     val substitutionOnlyMoves: List<TrainingMove> = listOf(kneePush, forearmWallPress, scapularSqueeze)
 
-    /** One trusted catalog for library, substitutions and workout guidance. */
+    /** Additional moves used only by curated duration extensions. */
+    val extensionMoves: List<TrainingMove> = listOf(
+        supportedMarch, standingHipAbduction, seatedHamstringStretch
+    )
+
+    /** One trusted catalog for library, substitutions, extensions and workout guidance. */
     val allMoves: List<TrainingMove> by lazy {
-        (programs.flatMap { it.moves } + substitutionOnlyMoves).distinctBy { it.name }
+        (programs.flatMap { it.moves } + substitutionOnlyMoves + extensionMoves).distinctBy { it.name }
     }
 
     fun byId(id:String)=programs.firstOrNull { it.id==id } ?: programs.first()
-    fun adjusted(program:TrainingProgram,level:Int,duration:Int):List<TrainingMove> {
-        // Keep warm up/cool down; add repeats conservatively rather than intensify blindly.
-        val base=program.moves.toMutableList()
-        if(duration>=35 && level>=1 && program.category in listOf("Sức mạnh","Cardio","Thử thách")) {
-            base.add(base.size-1,base.getOrElse(2){base.last()})
-        }
-        return base
-    }
+    /**
+     * Legacy compatibility helper. Duration expansion belongs to WorkoutDurationPlanner's
+     * goal/equipment-aware curated policy; never clone a prescription to fill more time.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    fun adjusted(program:TrainingProgram,level:Int,duration:Int):List<TrainingMove> =
+        program.moves.toList()
 }

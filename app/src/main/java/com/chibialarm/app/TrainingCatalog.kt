@@ -157,7 +157,8 @@ object TrainingCatalog {
      * Canonical substitution-only exercises remain available to the guided coach
      * even when they are not part of a default program's fixed sequence.
      */
-    val substitutionOnlyMoves: List<TrainingMove> = listOf(kneePush, forearmWallPress, scapularSqueeze)
+    val substitutionOnlyMoves: List<TrainingMove> =
+        listOf(kneePush, forearmWallPress, scapularSqueeze, bodyweightHipHinge)
 
     /** Additional moves used only by curated duration extensions. */
     val extensionMoves: List<TrainingMove> = listOf(

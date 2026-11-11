@@ -630,6 +630,50 @@ class GuidedWorkoutActivity:Activity() {
             }.setNegativeButton("Giữ nguyên", null).show()
     }
 
+    /** Voice recognition is fallible: confirm before recording a self-reported set. */
+    private fun confirmSpokenSetCompletion() {
+        if (pausedForSafety || completed || resting || index !in moves.indices) {
+            Toast.makeText(this, "Buổi tập đang dừng; chưa thể ghi nhận hiệp.", Toast.LENGTH_LONG).show()
+            return
+        }
+        val plan = currentSetPlan()
+        if (plan == null) {
+            Toast.makeText(this, "Động tác này không dùng bộ đếm hiệp.", Toast.LENGTH_LONG).show()
+            return
+        }
+        if (activeElapsedMs() <= 0L) {
+            Toast.makeText(this, "Hãy bắt đầu buổi tập trước khi ghi nhận hiệp.", Toast.LENGTH_LONG).show()
+            return
+        }
+        val selectedIndex = index
+        val selectedSessionId = sessionId
+        val before = completedSetsByMove[selectedIndex] ?: 0
+        if (before >= plan.maximumSets) {
+            Toast.makeText(this, "Các hiệp của động tác này đã được ghi nhận đủ.", Toast.LENGTH_LONG).show()
+            return
+        }
+        pause()
+        val moveName = moves[selectedIndex].name
+        AlertDialog.Builder(this)
+            .setTitle("✓ Xác nhận hoàn thành hiệp")
+            .setMessage(
+                "Bạn xác nhận đã thực hiện xong hiệp ${before + 1}/${plan.maximumSets} của $moveName?\n\n" +
+                    "Chibi chỉ ghi nhận lời xác nhận của bạn; không tự đếm lần tập hoặc xác minh bằng camera."
+            )
+            .setPositiveButton("Đúng, ghi nhận") { _, _ ->
+                if (pausedForSafety || completed || resting || index != selectedIndex ||
+                    sessionId != selectedSessionId ||
+                    (completedSetsByMove[selectedIndex] ?: 0) != before
+                ) {
+                    Toast.makeText(this, "Buổi tập đã thay đổi. Chibi chưa ghi nhận hiệp.", Toast.LENGTH_LONG).show()
+                } else {
+                    completeCurrentSet()
+                }
+            }
+            .setNegativeButton("Chưa, giữ nguyên", null)
+            .show()
+    }
+
     private fun stopForSafety() {
         pause()
         pausedForSafety=true

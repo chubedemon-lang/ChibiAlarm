@@ -3,11 +3,12 @@ package com.chibialarm.app
 import java.security.MessageDigest
 
 /**
- * Session-only exercise substitutions for a user who wants to avoid loading through the wrists.
- * This is a movement preference, not a diagnosis or a rehabilitation prescription.
+ * Session-only movement preferences, not diagnoses or rehabilitation prescriptions.
+ * Never persist these as a health profile without separate consent and data controls.
  */
 data class WorkoutConstraintProfile(
-    val avoidWristLoad: Boolean = false
+    val avoidWristLoad: Boolean = false,
+    val avoidFloorPositions: Boolean = false
 )
 
 object WorkoutConstraintFilter {
@@ -25,7 +26,7 @@ object WorkoutConstraintFilter {
 
         val canStart: Boolean
             get() = program.moves.any {
-                it.name != "Khởi động tại chỗ" && it.name != "Thả lỏng"
+                it.name !in setOf("Khởi động tại chỗ", "Thả lỏng", "Giãn cơ và thở chậm")
             }
 
         val notice: String
@@ -41,7 +42,7 @@ object WorkoutConstraintFilter {
                     if (removed.isNotBlank()) {
                         append("Đã bỏ động tác chưa có biến thể phù hợp: ").append(removed).append(". ")
                     }
-                    append("Các lựa chọn này tránh chống tay hoặc cầm tải qua cổ tay, nhưng không tương đương hoàn toàn về nhóm cơ/cường độ. Hãy đọc hướng dẫn và bỏ qua nếu không thoải mái.")
+                    append("Các động tác được giữ lại đã được lọc theo lựa chọn hiện tại. Việc thay hoặc bỏ bài có thể làm thay đổi nhóm cơ/cường độ, không tương đương hoàn toàn; hãy đọc hướng dẫn và bỏ qua nếu không thoải mái.")
                 }
             }
     }
@@ -64,13 +65,29 @@ object WorkoutConstraintFilter {
         "tạ đơn hoặc dây", "dây kháng lực"
     )
 
-    fun isAllowed(move: TrainingMove, profile: WorkoutConstraintProfile): Boolean =
-        !profile.avoidWristLoad ||
-            wristLoadHints.none { hint -> move.name.contains(hint, ignoreCase = true) }
+    // Reviewed catalog movements that require getting down to or supporting the body on the floor.
+    private val floorPositionHints = listOf(
+        "nâng hông trên sàn", "bird-dog", "dead bug", "plank khuỷu",
+        "side plank", "cat-cow", "mountain climber", "chống đẩy sàn", "chống đẩy gối"
+    )
 
-    /** Stable identity for a planned sequence; prevents restoring progress into a different plan. */
-    fun fingerprint(moves: List<TrainingMove>): String {
-        val canonical = moves.joinToString("\u001f") {
+    fun isAllowed(move: TrainingMove, profile: WorkoutConstraintProfile): Boolean {
+        val wristAllowed = !profile.avoidWristLoad ||
+            wristLoadHints.none { hint -> move.name.contains(hint, ignoreCase = true) }
+        val floorAllowed = !profile.avoidFloorPositions ||
+            floorPositionHints.none { hint -> move.name.contains(hint, ignoreCase = true) }
+        return wristAllowed && floorAllowed
+    }
+
+    /** Stable identity for a planned sequence; active constraints invalidate old checkpoints. */
+    fun fingerprint(
+        moves: List<TrainingMove>,
+        profile: WorkoutConstraintProfile = WorkoutConstraintProfile()
+    ): String {
+        val constraintPrefix = if (profile.avoidWristLoad || profile.avoidFloorPositions) {
+            "constraints:${profile.avoidWristLoad}:${profile.avoidFloorPositions}\u001d"
+        } else ""
+        val canonical = constraintPrefix + moves.joinToString("\u001f") {
             "${it.name}\u001e${it.dose}\u001e${it.seconds}\u001e${it.restSeconds}"
         }
         val digest = MessageDigest.getInstance("SHA-256")
@@ -82,21 +99,23 @@ object WorkoutConstraintFilter {
         program: TrainingProgram,
         profile: WorkoutConstraintProfile
     ): Result {
-        if (!profile.avoidWristLoad) return Result(program, emptyList(), emptyList())
+        if (!profile.avoidWristLoad && !profile.avoidFloorPositions) {
+            return Result(program, emptyList(), emptyList())
+        }
 
         val catalog = TrainingCatalog.allMoves.associateBy { it.name }
         val substitutions = mutableListOf<Substitution>()
         val removed = mutableListOf<String>()
         val filteredMoves = program.moves.mapNotNull { move ->
-            val replacementName = alternatives[move.name]
+            val replacementName = if (profile.avoidWristLoad) alternatives[move.name] else null
             if (replacementName != null) {
                 val replacement = catalog[replacementName]
-                if (replacement == null) {
-                    removed += move.name
-                    null
-                } else {
+                if (replacement != null && isAllowed(replacement, profile)) {
                     substitutions += Substitution(move.name, replacement.name)
                     replacement
+                } else {
+                    removed += move.name
+                    null
                 }
             } else if (isAllowed(move, profile)) {
                 move

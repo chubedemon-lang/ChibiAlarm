@@ -17,11 +17,17 @@ object WorkoutMidSessionRequest {
         val avoidFloorPositions: Boolean = false,
         val preferEasier: Boolean = false,
         val restSeconds: Int? = null,
-        val avoidExternalLoad: Boolean = false
+        val avoidExternalLoad: Boolean = false,
+        // Explicit permissions are distinct from an absent preference. They let a user
+        // relax a session-only constraint without treating an unrelated utterance as consent.
+        val allowWristLoad: Boolean = false,
+        val allowFloorPositions: Boolean = false
     ) {
         init {
             require(remainingMinutes == null || remainingMinutes in 5..120)
             require(restSeconds == null || restSeconds in 15..120)
+            require(!(avoidWristLoad && allowWristLoad))
+            require(!(avoidFloorPositions && allowFloorPositions))
         }
     }
 
@@ -70,12 +76,14 @@ object WorkoutMidSessionRequest {
             "dung chong tay", "dung ti co tay", "khong duoc chong tay",
             "dung chiu tai qua co tay"
         )
+        val allowWristLoad = fitness.avoidWristLoad == false
         val avoidFloorPositions = fitness.avoidFloorPositions == true || has(
             "dung nam san", "dung quy san", "dung xuong san",
             "khong nam san", "khong quy san", "khong xuong san",
             "tranh nam san", "tranh quy san", "tranh xuong san",
             "dung nam", "dung quy", "khong nam", "khong quy", "tranh nam", "tranh quy"
         )
+        val allowFloorPositions = fitness.avoidFloorPositions == false
 
         val preferEasier = lowEnergy || has(
             "nhe hon", "de hon", "giam do kho", "doi bai nhe",
@@ -94,6 +102,7 @@ object WorkoutMidSessionRequest {
         val restSeconds = explicitRest ?: if (lowEnergy) 60 else null
 
         if (remainingMinutes == null && !lowEnergy && !avoidWristLoad && !avoidFloorPositions &&
+            !allowWristLoad && !allowFloorPositions &&
             !preferEasier && restSeconds == null && !avoidExternalLoad
         ) return Result.Unsupported
 
@@ -105,7 +114,9 @@ object WorkoutMidSessionRequest {
                 avoidFloorPositions = avoidFloorPositions,
                 preferEasier = preferEasier,
                 restSeconds = restSeconds,
-                avoidExternalLoad = avoidExternalLoad
+                avoidExternalLoad = avoidExternalLoad,
+                allowWristLoad = allowWristLoad,
+                allowFloorPositions = allowFloorPositions
             )
         )
     }

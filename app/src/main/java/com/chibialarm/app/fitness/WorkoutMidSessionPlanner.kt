@@ -37,6 +37,27 @@ object WorkoutMidSessionPlanner {
         val changed: Boolean get() = before != after
     }
 
+    /**
+     * Resolve explicit mid-session permissions without confusing an omitted field with consent.
+     * A true restriction wins within one parsed utterance; otherwise an explicit allow can
+     * relax only that preference for the uncompleted portion of the current session.
+     */
+    fun effectiveConstraints(
+        current: WorkoutConstraintProfile,
+        request: WorkoutMidSessionRequest.Request
+    ): WorkoutConstraintProfile = WorkoutConstraintProfile(
+        avoidWristLoad = when {
+            request.avoidWristLoad -> true
+            request.allowWristLoad -> false
+            else -> current.avoidWristLoad
+        },
+        avoidFloorPositions = when {
+            request.avoidFloorPositions -> true
+            request.allowFloorPositions -> false
+            else -> current.avoidFloorPositions
+        }
+    )
+
     fun preview(
         currentMoves: List<TrainingMove>,
         currentIndex: Int,
@@ -53,10 +74,7 @@ object WorkoutMidSessionPlanner {
             remainingCurrentSeconds !in 0..3_600 || level !in 0..2
         ) return Result.Unsupported
 
-        val effectiveProfile = WorkoutConstraintProfile(
-            avoidWristLoad = constraints.avoidWristLoad || request.avoidWristLoad,
-            avoidFloorPositions = constraints.avoidFloorPositions || request.avoidFloorPositions
-        )
+        val effectiveProfile = effectiveConstraints(constraints, request)
         val prefix = currentMoves.take(currentIndex)
         val usedNames = prefix.mapTo(mutableSetOf()) { it.name }
         val reservedFutureNames = currentMoves.drop(currentIndex + 1).map { it.name }.toSet()

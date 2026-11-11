@@ -142,25 +142,22 @@ object FitnessNaturalRequest {
         // A movement preference is not a pain diagnosis. Active pain still triggers the stop gate.
         // Explicitly relaxing a preference is allowed; a separate active-pain stop
         // signal below remains sticky in the conversation merge and cannot be cleared here.
+        // If one utterance contains both permission and restriction, keep the safer
+        // restriction. A later, unambiguous turn can still relax this preference.
         val avoidWristLoad = when {
-            has(
-                "bo han che co tay", "bo tranh co tay", "khong can tranh co tay",
-                "co the chong tay", "chong tay duoc", "co the ti co tay"
-            ) -> false
             has(
                 "khong chong tay", "tranh chong tay", "khong muon chong tay", "dung chong tay",
                 "khong ti co tay", "tranh ti co tay", "khong chiu tai co tay",
                 "khong chiu tai qua co tay", "han che co tay", "dung ti co tay"
             ) -> true
+            has(
+                "bo han che co tay", "bo tranh co tay", "khong can tranh co tay",
+                "co the chong tay", "chong tay duoc", "co the ti co tay"
+            ) -> false
             else -> null
         }
         val avoidFloorPositions = when {
-            has(
-                "bo han che nam san", "bo han che quy san", "khong can tranh nam san",
-                "khong can tranh quy san", "khong con can tranh nam san",
-                "khong con can tranh quy san", "co the nam san", "co the quy san",
-                "nam san duoc", "quy san duoc", "tap duoi san duoc"
-            ) -> false
+            // Explicit restrictions win if a single sentence also mentions permission.
             has(
                 "khong nam san", "tranh nam san", "dung nam san",
                 "khong quy san", "tranh quy san", "dung quy san",
@@ -168,6 +165,15 @@ object FitnessNaturalRequest {
                 "khong nam", "tranh nam", "dung nam", "khong quy", "tranh quy", "dung quy",
                 "khong tap duoi san", "tranh bai nam san", "khong nam xuong san"
             ) -> true
+            has(
+                "bo han che nam san", "bo han che quy san", "khong can tranh nam san",
+                "khong can tranh quy san", "khong con can tranh nam san",
+                "khong con can tranh quy san", "co the nam san", "co the quy san",
+                "co the chong tay va nam san", "co the chong tay va quy san",
+                "co the nam san va chong tay", "co the quy san va chong tay",
+                "co the nam san va quy san", "co the quy san va nam san",
+                "nam san duoc", "quy san duoc", "tap duoi san duoc"
+            ) -> false
             else -> null
         }
         val energy = when {

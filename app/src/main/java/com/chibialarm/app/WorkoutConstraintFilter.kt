@@ -71,7 +71,7 @@ object WorkoutConstraintFilter {
     /** Stable identity for a planned sequence; prevents restoring progress into a different plan. */
     fun fingerprint(moves: List<TrainingMove>): String {
         val canonical = moves.joinToString("\u001f") {
-            "${it.name}\u001e${it.dose}\u001e${it.seconds}"
+            "${it.name}\u001e${it.dose}\u001e${it.seconds}\u001e${it.restSeconds}"
         }
         val digest = MessageDigest.getInstance("SHA-256")
             .digest(canonical.toByteArray(Charsets.UTF_8))

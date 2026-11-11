@@ -11,8 +11,13 @@ data class TrainingMove(
     val steps:String,
     val easier:String,
     val avoid:String,
-    val seconds:Int=60
-)
+    val seconds:Int=60,
+    val restSeconds:Int=if (dose.contains("giây", ignoreCase=true)) 30 else 45
+) {
+    init {
+        require(restSeconds in 15..180)
+    }
+)}
 data class TrainingProgram(
     val id:String,
     val name:String,
@@ -22,8 +27,8 @@ data class TrainingProgram(
     val caution:String="Thở đều, tập trong phạm vi dễ chịu. Dừng khi đau, chóng mặt, đau ngực hoặc khó thở bất thường."
 )
 object TrainingCatalog {
-    private fun exercise(n:String,d:String,s:String,e:String,a:String="Nếu khó chịu hoặc mất kiểm soát kỹ thuật, dừng hoặc giảm mức độ.",secs:Int=60)=
-        TrainingMove(n,d,s,e,a,secs)
+    private fun exercise(n:String,d:String,s:String,e:String,a:String="Nếu khó chịu hoặc mất kiểm soát kỹ thuật, dừng hoặc giảm mức độ.",secs:Int=60,restSecs:Int=if(d.contains("giây",ignoreCase=true))30 else 45)=
+        TrainingMove(n,d,s,e,a,secs,restSecs)
     private val warm=exercise("Khởi động tại chỗ","3–5 phút",
         "Đi bộ tại chỗ, xoay vai và cổ chân chậm, nâng gối nhẹ. Tăng tốc từng chút.",
         "Bước chậm, có thể vịn ghế chắc chắn.","Không xoay giật khớp.",120)
@@ -32,13 +37,13 @@ object TrainingCatalog {
         "Ngồi nghỉ và hít thở chậm nếu mệt.","Không ép cơ đến mức đau.",120)
     private val chairSquat=exercise("Đứng lên – ngồi xuống","2 hiệp × 6–10 lần",
         "Dùng ghế vững chắc không bánh xe. Ngồi gần mép ghế, bàn chân rộng bằng hông, đứng lên chậm rồi ngồi xuống có kiểm soát.",
-        "Dùng tay vịn hỗ trợ hoặc hạ ít lần.","Đảm bảo ghế không trượt.",90)
+        "Dùng tay vịn hỗ trợ hoặc hạ ít lần.","Đảm bảo ghế không trượt.",90,60)
     private val wallPush=exercise("Chống đẩy tường","2 hiệp × 5–12 lần",
         "Đặt hai tay ngang ngực lên tường, giữ thân thẳng, gập khuỷu đưa ngực gần tường rồi đẩy ra.",
         "Đứng gần tường hơn để dễ hơn.","Không võng lưng, không ép cổ tay.",90)
     private val squat=exercise("Squat không tạ","2–3 hiệp × 8–12 lần",
         "Chân rộng bằng vai, đẩy hông nhẹ về sau, hạ xuống theo khả năng rồi đứng lên, gối cùng hướng bàn chân.",
-        "Squat nông hoặc squat ghế.","Không nhún mạnh ở cuối động tác.",90)
+        "Squat nông hoặc squat ghế.","Không nhún mạnh ở cuối động tác.",90,60)
     private val bridge=exercise("Nâng hông trên sàn","2 hiệp × 8–12 lần",
         "Nằm ngửa, co gối, đặt bàn chân trên sàn. Siết mông nâng hông, giữ ngắn rồi hạ chậm.",
         "Nâng hông với biên độ thấp.","Không ưỡn thắt lưng quá mức.",90)
@@ -47,7 +52,7 @@ object TrainingCatalog {
         "Chỉ duỗi một tay hoặc một chân.","Giữ thân ổn định.",90)
     private val plank=exercise("Plank khuỷu hoặc plank gối","2 hiệp × 15–30 giây",
         "Giữ thân thành đường thẳng, siết bụng nhẹ, tiếp tục hít thở.",
-        "Chống hai gối xuống sàn, rút ngắn thời gian.","Dừng nếu đau lưng hoặc vai.",60)
+        "Chống hai gối xuống sàn, rút ngắn thời gian.","Dừng nếu đau lưng hoặc vai.",60,45)
     private val march=exercise("Đi bộ nhanh tại chỗ","3–6 phút",
         "Bước đều, đánh tay tự nhiên, tăng nhịp vừa sức; vẫn có thể trò chuyện.",
         "Đi bộ chậm hoặc bước tại chỗ.","Không cần chạy nhảy nếu không thoải mái.",150)
@@ -56,7 +61,7 @@ object TrainingCatalog {
         "Bước ngắn, bám tay vịn nếu cần.","Giữ sàn khô, không trơn.",90)
     private val reverseLunge=exercise("Bước lùi – lunge","2 hiệp × 6–10 lần mỗi chân",
         "Bước một chân ra sau, hạ thân nhẹ rồi trở về; chân trước vững vàng.",
-        "Vịn tường hoặc chỉ bước lùi không hạ sâu.","Không tập khi cảm thấy khớp gối đau.",90)
+        "Vịn tường hoặc chỉ bước lùi không hạ sâu.","Không tập khi cảm thấy khớp gối đau.",90,60)
     private val calf=exercise("Nhón gót","2 hiệp × 10–15 lần",
         "Đứng thẳng, vịn tường nếu cần, nâng gót chậm rồi hạ xuống.",
         "Dùng hai tay vịn ghế để giữ thăng bằng.","Tránh nhún bật mạnh.",70)
@@ -100,23 +105,23 @@ object TrainingCatalog {
         "Giữ cả hai chân trên sàn và chuyển trọng tâm.","Không thử nếu chóng mặt; luôn có điểm tựa.",75)
     private val tempoSquat=exercise("Squat chậm 3 giây","3 hiệp × 8–12 lần",
         "Đếm ba giây khi hạ xuống, giữ kỹ thuật rồi đứng lên bình thường.",
-        "Giảm độ sâu hoặc dùng ghế.","Dừng khi gối đau, không quá sức.",95)
+        "Giảm độ sâu hoặc dùng ghế.","Dừng khi gối đau, không quá sức.",95,60)
     private val push=exercise("Chống đẩy sàn","3 hiệp × 6–12 lần",
         "Tay dưới vai, thân thẳng, hạ có kiểm soát, đẩy lên đều.",
-        "Chống đẩy gối hoặc tường.","Dừng nếu đau cổ tay hoặc vai.",95)
+        "Chống đẩy gối hoặc tường.","Dừng nếu đau cổ tay hoặc vai.",95,60)
     // Resistance-band / light-dumbbell options are offered only when the user reports this equipment.
     private val resistanceRow=exercise("Kéo tạ đơn hoặc dây kháng lực","2 hiệp × 8–10 lần",
         "Dùng tạ nhẹ hoặc cố định dây kháng lực dưới hai bàn chân. Gập hông nhẹ, giữ lưng trung lập, kéo khuỷu tay sát thân rồi hạ chậm.",
         "Dùng dây có lực nhẹ hoặc giảm còn 6 lần; có thể tập từng tay với điểm tựa chắc chắn.",
-        "Không giật tạ, không gù lưng; kiểm tra dây không rách và điểm neo không trượt.",90)
+        "Không giật tạ, không gù lưng; kiểm tra dây không rách và điểm neo không trượt.",90,75)
     private val resistanceHinge=exercise("Gập hông với tạ đơn hoặc dây","2 hiệp × 8–10 lần",
         "Đứng chân rộng bằng hông, giữ tạ nhẹ trước đùi hoặc đứng trên dây chắc chắn. Đẩy hông ra sau, gối hơi chùng, nghiêng thân trong tầm thoải mái rồi đứng lên.",
         "Tập động tác gập hông không dụng cụ trước hoặc giảm biên độ.",
-        "Không cong lưng, không hạ sâu khi chưa kiểm soát; không dùng tải nặng.",90)
+        "Không cong lưng, không hạ sâu khi chưa kiểm soát; không dùng tải nặng.",90,75)
     private val resistancePress=exercise("Đẩy vai với tạ đơn hoặc dây","2 hiệp × 6–10 lần",
         "Ngồi hoặc đứng vững, giữ tạ nhẹ ngang vai hoặc đặt giữa dây dưới bàn chân. Đẩy lên có kiểm soát, không khóa cứng khuỷu, hạ về ngang vai.",
         "Dùng tải rất nhẹ, tập từng tay hoặc giảm biên độ.",
-        "Không ưỡn lưng hay nín thở; dừng nếu đau vai hoặc tê.",90)
+        "Không ưỡn lưng hay nín thở; dừng nếu đau vai hoặc tê.",90,75)
     val programs=listOf(
         TrainingProgram("starter","🌱 Bắt đầu nhẹ nhàng","Mới tập hoặc quay lại sau thời gian nghỉ","Toàn thân",listOf(warm,chairSquat,wallPush,bridge,stretch)),
         TrainingProgram("full","💪 Toàn thân không dụng cụ","Chân, thân trên và cơ trung tâm","Sức mạnh",listOf(warm,squat,wallPush,bridge,bird,plank,cool)),

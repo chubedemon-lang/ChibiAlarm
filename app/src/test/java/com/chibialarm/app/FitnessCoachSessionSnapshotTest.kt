@@ -90,4 +90,22 @@ class FitnessCoachSessionSnapshotTest {
     }
 
 
+
+    @Test fun floorPositionPreferenceSurvivesRotationSnapshotWithoutFreeText() {
+        val source = FitnessNaturalRequest.Result(
+            reply = "private speech transcript",
+            avoidFloorPositions = true
+        )
+        val snapshot = FitnessCoachSessionSnapshot.capture(
+            source, 0, selectedAvoidFloorPositions = true
+        )!!
+        assertEquals(true, snapshot.avoidFloorPositions)
+        assertEquals(true, snapshot.restore()?.avoidFloorPositions)
+        assertFalse(snapshot.toString().contains("private speech transcript"))
+        val cleared = FitnessCoachSessionSnapshot.capture(
+            source.copy(avoidFloorPositions = null), 0, selectedAvoidFloorPositions = false
+        )!!
+        assertEquals(false, cleared.restore()?.avoidFloorPositions)
+    }
+
 }

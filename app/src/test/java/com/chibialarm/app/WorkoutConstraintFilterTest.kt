@@ -83,4 +83,35 @@ class WorkoutConstraintFilterTest {
     }
 
 
+
+    @Test fun floorPositionPreferenceRemovesReviewedFloorBasedMoves() {
+        val profile = WorkoutConstraintProfile(avoidFloorPositions = true)
+        val original = TrainingCatalog.byId("full")
+        val result = WorkoutConstraintFilter.apply(original, profile)
+
+        assertTrue(result.canStart)
+        assertTrue(result.removedMoves.contains("Nâng hông trên sàn"))
+        assertTrue(result.removedMoves.contains("Bird-dog"))
+        assertTrue(result.removedMoves.contains("Plank khuỷu hoặc plank gối"))
+        assertTrue(result.program.moves.all { WorkoutConstraintFilter.isAllowed(it, profile) })
+        assertTrue(original.moves.any { it.name == "Bird-dog" })
+    }
+
+    @Test fun allFloorBasedCorePlanFailsClosedInsteadOfInventingStandingReplacements() {
+        val profile = WorkoutConstraintProfile(avoidFloorPositions = true)
+        val result = WorkoutConstraintFilter.apply(TrainingCatalog.byId("core"), profile)
+        assertFalse(result.canStart)
+        assertTrue(result.removedMoves.isNotEmpty())
+    }
+
+    @Test fun fingerprintChangesWhenTheSameMovesHaveDifferentActiveConstraints() {
+        val moves = TrainingCatalog.byId("full").moves
+        assertNotEquals(
+            WorkoutConstraintFilter.fingerprint(moves),
+            WorkoutConstraintFilter.fingerprint(
+                moves, WorkoutConstraintProfile(avoidFloorPositions = true)
+            )
+        )
+    }
+
 }

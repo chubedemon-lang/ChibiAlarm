@@ -10,7 +10,8 @@ object WorkoutSetTracker {
         val maximumSets: Int,
         val targetMin: Int,
         val targetMax: Int,
-        val unit: String
+        val unit: String,
+        val restSeconds: Int = if (unit == "giây") 30 else 45
     ) {
         init {
             require(requiredSets in 1..20)
@@ -18,10 +19,11 @@ object WorkoutSetTracker {
             require(targetMin in 1..200)
             require(targetMax in targetMin..200)
             require(unit in setOf("lần", "nhịp", "giây"))
+            require(restSeconds in 15..180)
         }
 
         val defaultRestSeconds: Int
-            get() = if (unit == "giây") 30 else 45
+            get() = restSeconds
     }
 
     private const val MAX_MOVES = 500
@@ -32,7 +34,7 @@ object WorkoutSetTracker {
     )
 
     /** Returns null for time-only guidance such as "3–5 phút" or "6–8 nhịp". */
-    fun parse(dose: String): Plan? {
+    fun parse(dose: String, restSeconds: Int? = null): Plan? {
         val match = prescription.matchEntire(dose.trim()) ?: return null
         val requiredSets = match.groupValues[1].toIntOrNull() ?: return null
         val maximumSets = if (match.groupValues[2].isBlank()) requiredSets
@@ -41,8 +43,9 @@ object WorkoutSetTracker {
         val targetMax = if (match.groupValues[4].isBlank()) targetMin
             else match.groupValues[4].toIntOrNull() ?: return null
         val unit = match.groupValues[5].lowercase()
+        val recommendedRest = restSeconds ?: if (unit == "giây") 30 else 45
         return runCatching {
-            Plan(requiredSets, maximumSets, targetMin, targetMax, unit)
+            Plan(requiredSets, maximumSets, targetMin, targetMax, unit, recommendedRest)
         }.getOrNull()
     }
 

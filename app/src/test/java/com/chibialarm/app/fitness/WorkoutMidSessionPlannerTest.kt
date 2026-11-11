@@ -141,6 +141,29 @@ class WorkoutMidSessionPlannerTest {
         assertEquals(current, preview.after.first())
     }
 
+    @Test fun replacingCurrentMoveUsesTheShorterTimerInPreviewEstimate() {
+        val moves = listOf(move("Cat-cow nhẹ"), move("Thả lỏng"))
+        val result = WorkoutMidSessionPlanner.preview(
+            currentMoves = moves,
+            currentIndex = 0,
+            completedCurrentSets = 0,
+            currentStepLocked = false,
+            constraints = WorkoutConstraintProfile(),
+            request = WorkoutMidSessionRequest.Request(preferEasier = true),
+            remainingCurrentSeconds = 70,
+            extensionMoveNames = emptySet(),
+            level = 0
+        )
+
+        assertTrue(result is WorkoutMidSessionPlanner.Result.Proposed)
+        val preview = (result as WorkoutMidSessionPlanner.Result.Proposed).preview
+        assertTrue(preview.currentMoveChanged)
+        assertEquals("Mở vai và ngực", preview.after.first().name)
+        // 60s replacement timer + 180s minimum cool-down + 20s transition.
+        // The previous implementation incorrectly retained the old 70s timer in its preview.
+        assertEquals(260, preview.estimatedRemainingSeconds)
+    }
+
     @Test fun checkpointPlanRoundTripsOnlyCanonicalCatalogExercises() {
         val moves = listOf(move("Squat không tạ"), move("Dead bug cơ bụng"), move("Thả lỏng"))
         val encoded = WorkoutMidSessionPlanner.encodePlan(moves)

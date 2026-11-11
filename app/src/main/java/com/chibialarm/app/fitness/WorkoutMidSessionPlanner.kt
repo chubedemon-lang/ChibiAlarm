@@ -126,6 +126,7 @@ object WorkoutMidSessionPlanner {
         fun estimate(): Int = estimateRemaining(
             remaining = remaining,
             remainingCurrentSeconds = remainingCurrentSeconds,
+            currentMoveChanged = currentChanged,
             completedCurrentSets = completedCurrentSets,
             level = level,
             extraRestSeconds = extraRest
@@ -176,13 +177,20 @@ object WorkoutMidSessionPlanner {
     private fun estimateRemaining(
         remaining: List<TrainingMove>,
         remainingCurrentSeconds: Int,
+        currentMoveChanged: Boolean,
         completedCurrentSets: Int,
         level: Int,
         extraRestSeconds: Int
     ): Int {
         val active = remaining.mapIndexed { index, move ->
-            if (index == 0) remainingCurrentSeconds.toLong()
-            else WorkoutDurationPlanner.activeSeconds(move).toLong()
+            if (index == 0) {
+                // GuidedWorkoutActivity caps the replacement timer at min(oldRemaining, newMove.seconds).
+                // Mirror that exact rule in the preview so the user is not shown a stale duration.
+                val currentSeconds = if (currentMoveChanged) {
+                    minOf(remainingCurrentSeconds, move.seconds.coerceAtLeast(0))
+                } else remainingCurrentSeconds
+                currentSeconds.toLong()
+            } else WorkoutDurationPlanner.activeSeconds(move).toLong()
         }.sum()
 
         val rests = remaining.mapIndexed { index, move ->

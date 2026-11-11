@@ -37,9 +37,8 @@ class WorkoutSessionTimeEstimateTest {
             restSecondsRemaining = 18,
             level = 1
         )
-        // One current rest countdown + cooldown + one transition. The completed
-        // warm-up is excluded and the already-recorded squat set is not counted again.
-        assertEquals(93, estimate)
+        // 45 seconds for the one unconfirmed set + 18 rest + 60 cool-down + 15 transition.
+        assertEquals(138, estimate)
     }
 
     @Test fun completedMovesAreSkippedButTheNextTransitionIsIncluded() {
@@ -85,6 +84,21 @@ class WorkoutSessionTimeEstimateTest {
         )
         // 42 active + 18 current rest + 60 cool-down + 15 transition.
         assertEquals(135, estimate)
+    }
+
+    @Test fun expiredTimerEstimatesRemainingSetWorkFromThePrescription() {
+        val estimate = WorkoutSessionTimeEstimate.seconds(
+            moves = moves,
+            currentIndex = 1,
+            completedMoves = setOf(0),
+            completedSets = emptyMap(),
+            currentExerciseRemainingSeconds = 0,
+            resting = false,
+            restSecondsRemaining = 0,
+            level = 1
+        )
+        // The full 90-second active block + 30 prescribed rest + 60 cool-down + 15 transition.
+        assertEquals(195, estimate)
     }
 
     @Test fun estimateIsBoundedAndRejectsInvalidSessionState() {

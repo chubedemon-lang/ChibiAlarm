@@ -8,8 +8,8 @@ object WorkoutPoseGuide {
     enum class Pose {
         SQUAT, PLANK, PUSH_UP, KNEE_PUSH_UP, WALL_PUSH_UP, INCLINE_PUSH_UP, LUNGE,
         BRIDGE, BIRD_DOG, DEAD_BUG, CAT_COW,
-        MARCH, STRETCH, SIDE_PLANK, CALF_RAISE, BALANCE,
-        STANDING, REST
+        MARCH, SUPPORTED_MARCH, HIP_ABDUCTION, SEATED_HAMSTRING_STRETCH,
+        STRETCH, SIDE_PLANK, CALF_RAISE, BALANCE, STANDING, REST
     }
 
     fun classify(name: String): Pose {
@@ -21,6 +21,9 @@ object WorkoutPoseGuide {
             listOf("dead bug").any { it in text } -> Pose.DEAD_BUG
             listOf("cat-cow", "cat cow", "mèo-bò").any { it in text } -> Pose.CAT_COW
             listOf("nâng hông", "glute bridge", "bridge").any { it in text } -> Pose.BRIDGE
+            listOf("nâng gối luân phiên có điểm tựa", "supported march").any { it in text } -> Pose.SUPPORTED_MARCH
+            listOf("dang chân sang bên có điểm tựa", "hip abduction").any { it in text } -> Pose.HIP_ABDUCTION
+            listOf("giãn gân kheo ngồi ghế", "seated hamstring").any { it in text } -> Pose.SEATED_HAMSTRING_STRETCH
             listOf("đi bộ nhanh tại chỗ", "bước tại chỗ", "march").any { it in text } -> Pose.MARCH
             listOf("mở vai", "giãn cơ", "stretch").any { it in text } -> Pose.STRETCH
             listOf("nhón gót", "calf raise").any { it in text } -> Pose.CALF_RAISE
@@ -51,6 +54,9 @@ object WorkoutPoseGuide {
         Pose.DEAD_BUG -> "Minh họa: nằm ngửa, co và duỗi tay chân đối diện"
         Pose.CAT_COW -> "Minh họa: chuyển động cột sống nhẹ nhàng"
         Pose.MARCH -> "Minh họa: bước tại chỗ và nâng gối luân phiên"
+        Pose.SUPPORTED_MARCH -> "Minh họa: đứng cạnh ghế vững và nâng gối thấp luân phiên"
+        Pose.HIP_ABDUCTION -> "Minh họa: đứng cạnh điểm tựa và đưa chân sang bên"
+        Pose.SEATED_HAMSTRING_STRETCH -> "Minh họa: ngồi ghế, duỗi một chân và giãn nhẹ phía sau đùi"
         Pose.STRETCH -> "Minh họa: giãn cơ nhẹ, không ép biên độ"
         Pose.SIDE_PLANK -> "Minh họa: plank nghiêng có điểm tựa"
         Pose.CALF_RAISE -> "Minh họa: nhón và hạ gót chân"

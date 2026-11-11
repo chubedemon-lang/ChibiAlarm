@@ -179,6 +179,34 @@ class WorkoutPoseView(context: Context) : View(context) {
                 line(120f, 71f, if (movementPhase) 154f else 88f, 86f)
                 line(if (movementPhase) 154f else 88f, 86f, if (movementPhase) 166f else 76f, 108f)
             }
+            WorkoutPoseGuide.Pose.SUPPORTED_MARCH -> {
+                // A visible chair/rail communicates that light support is part of this move.
+                line(184f, 48f, 224f, 48f); line(188f, 48f, 188f, 108f); line(220f, 48f, 220f, 108f)
+                head(102f, 20f); line(102f, 31f, 102f, 71f)
+                line(102f, 43f, 84f, 55f); line(102f, 43f, 151f, 48f); line(151f, 48f, 184f, 48f)
+                line(102f, 71f, 91f, 108f)
+                val kneeX = if (movementPhase) 146f else 115f
+                val kneeY = if (movementPhase) 83f else 108f
+                line(102f, 71f, kneeX, kneeY); line(kneeX, kneeY, if (movementPhase) 164f else 115f, 108f)
+            }
+            WorkoutPoseGuide.Pose.HIP_ABDUCTION -> {
+                // Keep one leg grounded while the other moves sideways; chair remains in reach.
+                line(184f, 48f, 224f, 48f); line(188f, 48f, 188f, 108f); line(220f, 48f, 220f, 108f)
+                head(105f, 20f); line(105f, 31f, 105f, 71f)
+                line(105f, 43f, 86f, 55f); line(105f, 43f, 153f, 48f); line(153f, 48f, 184f, 48f)
+                line(105f, 71f, 96f, 108f)
+                val sideX = if (movementPhase) 151f else 119f
+                val sideY = if (movementPhase) 76f else 108f
+                line(105f, 71f, sideX, sideY); line(sideX, sideY, if (movementPhase) 171f else 119f, 108f)
+            }
+            WorkoutPoseGuide.Pose.SEATED_HAMSTRING_STRETCH -> {
+                // Seated on a stable chair with one heel resting on the floor.
+                line(75f, 67f, 151f, 67f); line(82f, 67f, 82f, 108f); line(145f, 67f, 145f, 108f)
+                head(100f, 19f); line(100f, 31f, 100f, 66f)
+                line(100f, 44f, 83f, 62f); line(100f, 44f, 130f, 62f)
+                line(100f, 66f, 119f, 84f); line(119f, 84f, 134f, 105f)
+                line(100f, 66f, 155f, 66f); line(155f, 66f, 205f, 66f)
+            }
             WorkoutPoseGuide.Pose.STRETCH -> {
                 head(120f, 22f); line(120f, 33f, 120f, 73f)
                 line(120f, 45f, 87f, 20f); line(87f, 20f, 83f, 7f)

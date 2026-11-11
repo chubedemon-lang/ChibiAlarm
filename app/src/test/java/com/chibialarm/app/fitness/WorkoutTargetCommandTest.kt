@@ -123,6 +123,18 @@ class WorkoutTargetCommandTest {
             WorkoutTargetCommand.propose(utterance, "squat", session, 0))
     }
 
+    @Test fun spokenSetCompletionCannotBeMisroutedIntoTargetEditor() {
+        for (utterance in listOf(
+            "Xong hiệp và giảm còn 6 lần",
+            "Hoàn thành hiệp rồi tăng lên 8 lần",
+            "Xác nhận hiệp, đổi thành 10 lần"
+        )) {
+            assertNull(utterance, WorkoutTargetCommand.spokenReps(utterance))
+            assertSame(utterance, WorkoutTargetCommand.Result.Unsupported,
+                WorkoutTargetCommand.propose(utterance, "squat", session, 0))
+        }
+    }
+
     @Test fun restAndRepetitionRemainValidTogether() {
         val result = WorkoutTargetCommand.propose(
             "Giảm còn 6 lần và nghỉ 90 giây", "squat", session, 0)

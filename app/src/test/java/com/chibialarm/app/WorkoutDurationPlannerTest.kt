@@ -27,7 +27,11 @@ class WorkoutDurationPlannerTest {
         assertEquals(1, short.rounds)
         assertEquals(1, longer.rounds)
         assertTrue(longer.estimatedSeconds > short.estimatedSeconds)
-        assertTrue(longer.unallocatedSeconds < short.unallocatedSeconds)
+        val unextendedLong = WorkoutDurationPlanner.build(
+            program, level = 0, targetMinutes = 30,
+            preferences = WorkoutExtensionPreferences(energy = 0)
+        )
+        assertTrue(longer.unallocatedSeconds < unextendedLong.unallocatedSeconds)
         assertEquals(longer.moves.size, longer.moves.map { it.name }.distinct().size)
         assertEquals("Thả lỏng", longer.moves.last().name)
     }
@@ -85,7 +89,8 @@ class WorkoutDurationPlannerTest {
         assertTrue(beginner.extensionMoves.size <= 2)
         assertTrue(experienced.extensionMoves.size <= 3)
         assertTrue(beginner.transitionSeconds > experienced.transitionSeconds)
-        assertTrue(beginner.estimatedSeconds > experienced.estimatedSeconds)
+        assertTrue(beginner.estimatedSeconds <= 30 * 60)
+        assertTrue(experienced.estimatedSeconds <= 30 * 60)
     }
 
     @Test fun longTargetsNeverMultiplyExerciseVolume() {

@@ -14,6 +14,7 @@ object WorkoutMidSessionRequest {
         val remainingMinutes: Int? = null,
         val lowEnergy: Boolean = false,
         val avoidWristLoad: Boolean = false,
+        val avoidFloorPositions: Boolean = false,
         val preferEasier: Boolean = false,
         val restSeconds: Int? = null
     ) {
@@ -68,6 +69,11 @@ object WorkoutMidSessionRequest {
             "dung chong tay", "dung ti co tay", "khong duoc chong tay",
             "dung chiu tai qua co tay"
         )
+        val avoidFloorPositions = fitness.avoidFloorPositions == true || has(
+            "dung nam san", "dung quy san", "dung xuong san",
+            "khong nam san", "khong quy san", "khong xuong san",
+            "tranh nam san", "tranh quy san", "tranh xuong san"
+        )
 
         val preferEasier = lowEnergy || has(
             "nhe hon", "de hon", "giam do kho", "doi bai nhe",
@@ -78,7 +84,7 @@ object WorkoutMidSessionRequest {
         val explicitRest = if (hasRestRequest) WorkoutRestRequest.seconds(input) else null
         val restSeconds = explicitRest ?: if (lowEnergy) 60 else null
 
-        if (remainingMinutes == null && !lowEnergy && !avoidWristLoad &&
+        if (remainingMinutes == null && !lowEnergy && !avoidWristLoad && !avoidFloorPositions &&
             !preferEasier && restSeconds == null
         ) return Result.Unsupported
 
@@ -87,6 +93,7 @@ object WorkoutMidSessionRequest {
                 remainingMinutes = remainingMinutes,
                 lowEnergy = lowEnergy,
                 avoidWristLoad = avoidWristLoad,
+                avoidFloorPositions = avoidFloorPositions,
                 preferEasier = preferEasier,
                 restSeconds = restSeconds
             )

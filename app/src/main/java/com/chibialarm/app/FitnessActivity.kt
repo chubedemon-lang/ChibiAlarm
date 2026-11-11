@@ -423,8 +423,10 @@ class FitnessActivity:Activity() {
                     .setNeutralButton("📖 Xem từng bước") { _, _ ->
                         val steps = planned.moves
                             .mapIndexed { i, move ->
+                                val rest = WorkoutSetTracker.restGuidance(move.dose, move.restSeconds)
+                                    ?.let { "$it\n" }.orEmpty()
                                 "${i + 1}. ${move.name} — ${move.dose}\n" +
-                                    "Nghỉ giữa hiệp đề xuất: ${move.restSeconds} giây\n" +
+                                    rest +
                                     "Cách tập: ${move.steps}\n" +
                                     "Dễ hơn: ${move.easier}\n" +
                                     "Lưu ý: ${move.avoid}"
@@ -494,7 +496,11 @@ class FitnessActivity:Activity() {
             val buttons=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
             buttons.addView(Button(this).apply { text="📖 Xem bài";isAllCaps=false;setOnClickListener {
                 val guide=planned.moves
-                    .mapIndexed { i,m->"${i+1}. ${m.name} — ${m.dose}\nNghỉ giữa hiệp đề xuất: ${m.restSeconds} giây\nCách tập: ${m.steps}\nDễ hơn: ${m.easier}\nLưu ý: ${m.avoid}" }
+                    .mapIndexed { i,m->
+                        val rest = WorkoutSetTracker.restGuidance(m.dose, m.restSeconds)?.let { "$it\n" }.orEmpty()
+                        "${i+1}. ${m.name} — ${m.dose}\n" + rest +
+                            "Cách tập: ${m.steps}\nDễ hơn: ${m.easier}\nLưu ý: ${m.avoid}"
+                    }
                     .joinToString("\n\n")
                 AlertDialog.Builder(this@FitnessActivity)
                     .setTitle(program.name).setMessage(guide)

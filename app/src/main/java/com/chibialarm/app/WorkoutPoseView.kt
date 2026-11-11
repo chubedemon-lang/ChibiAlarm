@@ -98,6 +98,19 @@ class WorkoutPoseView(context: Context) : View(context) {
                 line(118f, 66f, 91f, 83f); line(91f, 83f, 91f, 108f)
                 line(118f, 66f, 149f, 83f); line(149f, 83f, 149f, 108f)
             }
+            WorkoutPoseGuide.Pose.HIP_HINGE -> {
+                if (movementPhase) {
+                    // Keep the torso as one straight diagonal while the hips travel backward.
+                    head(160f, 29f); line(151f, 39f, 121f, 69f)
+                    line(151f, 43f, 177f, 64f); line(177f, 64f, 190f, 67f)
+                    line(121f, 69f, 108f, 108f); line(121f, 69f, 143f, 84f)
+                    line(143f, 84f, 155f, 108f)
+                } else {
+                    head(120f, 20f); line(120f, 31f, 120f, 69f)
+                    line(120f, 43f, 94f, 64f); line(120f, 43f, 146f, 64f)
+                    line(120f, 69f, 103f, 108f); line(120f, 69f, 139f, 108f)
+                }
+            }
             WorkoutPoseGuide.Pose.PLANK, WorkoutPoseGuide.Pose.PUSH_UP -> {
                 val upperY = if (pose == WorkoutPoseGuide.Pose.PUSH_UP && movementPhase) 87f else 67f
                 head(54f, upperY); line(66f, upperY + 3f, 178f, upperY)

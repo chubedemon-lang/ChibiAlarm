@@ -49,6 +49,10 @@ object WorkoutSetTracker {
         }.getOrNull()
     }
 
+    /** Human-readable rest guidance exists only for set-based prescriptions. */
+    fun restGuidance(dose: String, restSeconds: Int? = null): String? =
+        parse(dose, restSeconds)?.let { "Nghỉ giữa hiệp đề xuất: ${it.defaultRestSeconds} giây" }
+
     /** Adds one self-confirmed set, including an optional set when the dose gives a range. */
     fun complete(completedSets: Int, plan: Plan): Int {
         require(completedSets in 0..plan.maximumSets)

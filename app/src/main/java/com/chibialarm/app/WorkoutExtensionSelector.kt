@@ -86,9 +86,8 @@ object WorkoutExtensionSelector {
         }
     }
 
-    private fun requiresReportedEquipment(move: TrainingMove): Boolean =
-        move.name.contains("tạ đơn", ignoreCase = true) ||
-            move.name.contains("dây kháng lực", ignoreCase = true)
+    private fun availableEquipment(preferences: WorkoutExtensionPreferences): Set<TrainingEquipment> =
+        TrainingEquipmentAvailability.fromPreference(preferences.equipment)
 
     fun select(
         baseMoves: List<TrainingMove>,
@@ -119,9 +118,8 @@ object WorkoutExtensionSelector {
             if (name in existingNames) continue
             val move = catalog[name] ?: continue
             if (!WorkoutConstraintFilter.isAllowed(move, preferences.constraints)) continue
-            if (requiresReportedEquipment(move) &&
-                (preferences.equipment != 2 || level == 0 || preferences.constraints.avoidWristLoad)
-            ) continue
+            if (!TrainingEquipmentAvailability.allows(move, availableEquipment(preferences))) continue
+            if (move.requiresExternalLoad && (level == 0 || preferences.constraints.avoidWristLoad)) continue
 
             val family = familyByName[name] ?: continue
             if (!usedFamilies.add(family)) continue

@@ -92,6 +92,55 @@ class WorkoutMidSessionPlannerTest {
         assertEquals(10, preview.requestedMinutes)
     }
 
+    @Test fun lowEnergyMidSessionCanReplaceWeightedMovesWithoutFloorOrWristLoading() {
+        val moves = listOf(
+            move("Khởi động tại chỗ"),
+            move("Kéo tạ đơn hoặc dây kháng lực"),
+            move("Gập hông với tạ đơn hoặc dây"),
+            move("Đẩy vai với tạ đơn hoặc dây"),
+            move("Thả lỏng")
+        )
+        val parsed = WorkoutMidSessionRequest.parse(
+            "Tao mệt rồi, đừng chống tay và không nằm sàn"
+        )
+        assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
+        val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+        assertTrue(request.lowEnergy)
+        assertTrue(request.preferEasier)
+        assertTrue(request.avoidWristLoad)
+        assertTrue(request.avoidFloorPositions)
+
+        val result = WorkoutMidSessionPlanner.preview(
+            currentMoves = moves,
+            currentIndex = 1,
+            completedCurrentSets = 0,
+            currentStepLocked = false,
+            constraints = WorkoutConstraintProfile(),
+            request = request,
+            remainingCurrentSeconds = 90,
+            extensionMoveNames = emptySet(),
+            level = 0
+        )
+        assertTrue(result is WorkoutMidSessionPlanner.Result.Proposed)
+        val preview = (result as WorkoutMidSessionPlanner.Result.Proposed).preview
+        assertEquals(
+            listOf(
+                "Khởi động tại chỗ",
+                "Siết bả vai đứng",
+                "Gập hông không dụng cụ",
+                "Mở vai và ngực",
+                "Thả lỏng"
+            ),
+            preview.after.map { it.name }
+        )
+        val effectiveProfile = WorkoutConstraintProfile(
+            avoidWristLoad = true,
+            avoidFloorPositions = true
+        )
+        assertTrue(preview.after.all { WorkoutConstraintFilter.isAllowed(it, effectiveProfile) })
+        assertEquals(3, preview.replacements.size)
+    }
+
     @Test fun wristConstraintCannotRewriteAnAlreadyStartedUnsafeExercise() {
         val result = WorkoutMidSessionPlanner.preview(
             currentMoves = listOf(move("Chống đẩy sàn"), move("Thả lỏng")),

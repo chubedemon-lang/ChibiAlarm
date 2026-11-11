@@ -92,7 +92,7 @@ object WorkoutMidSessionPlanner {
                 replacement != null -> {
                     remaining += replacement
                     usedNames += replacement.name
-                    replacements += "\${move.name} → \${replacement.name}"
+                    replacements += "${move.name} → ${replacement.name}"
                     if (isCurrent) currentChanged = true
                     if (move.name in extensions) {
                         extensions.remove(move.name)

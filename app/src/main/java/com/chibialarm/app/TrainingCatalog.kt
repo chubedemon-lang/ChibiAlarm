@@ -1,5 +1,8 @@
 package com.chibialarm.app
 
+/** Equipment a move can use; multiple entries mean alternatives, not cumulative requirements. */
+enum class TrainingEquipment { DUMBBELL, RESISTANCE_BAND, STABLE_CHAIR, MAT }
+
 /**
  * Lightweight, fully offline wellness exercise library.
  * Informational guidance for generally healthy adults, not medical rehabilitation.
@@ -12,8 +15,12 @@ data class TrainingMove(
     val easier:String,
     val avoid:String,
     val seconds:Int=60,
-    val restSeconds:Int=if (dose.contains("giây", ignoreCase=true)) 30 else 45
+    val restSeconds:Int=if (dose.contains("giây", ignoreCase=true)) 30 else 45,
+    val equipmentOptions:Set<TrainingEquipment> = emptySet()
 ) {
+    val requiresExternalLoad:Boolean
+        get() = equipmentOptions.any { it == TrainingEquipment.DUMBBELL || it == TrainingEquipment.RESISTANCE_BAND }
+
     init {
         require(restSeconds in 15..180)
     }
@@ -27,8 +34,8 @@ data class TrainingProgram(
     val caution:String="Thở đều, tập trong phạm vi dễ chịu. Dừng khi đau, chóng mặt, đau ngực hoặc khó thở bất thường."
 )
 object TrainingCatalog {
-    private fun exercise(n:String,d:String,s:String,e:String,a:String="Nếu khó chịu hoặc mất kiểm soát kỹ thuật, dừng hoặc giảm mức độ.",secs:Int=60,restSecs:Int=if(d.contains("giây",ignoreCase=true))30 else 45)=
-        TrainingMove(n,d,s,e,a,secs,restSecs)
+    private fun exercise(n:String,d:String,s:String,e:String,a:String="Nếu khó chịu hoặc mất kiểm soát kỹ thuật, dừng hoặc giảm mức độ.",secs:Int=60,restSecs:Int=if(d.contains("giây",ignoreCase=true))30 else 45,equipmentOptions:Set<TrainingEquipment> = emptySet())=
+        TrainingMove(n,d,s,e,a,secs,restSecs,equipmentOptions)
     private val warm=exercise("Khởi động tại chỗ","3–5 phút",
         "Đi bộ tại chỗ, xoay vai và cổ chân chậm, nâng gối nhẹ. Tăng tốc từng chút.",
         "Bước chậm, có thể vịn ghế chắc chắn.","Không xoay giật khớp.",120)
@@ -125,11 +132,13 @@ object TrainingCatalog {
     private val resistanceRow=exercise("Kéo tạ đơn hoặc dây kháng lực","2 hiệp × 8–10 lần",
         "Dùng tạ nhẹ hoặc cố định dây kháng lực dưới hai bàn chân. Gập hông nhẹ, giữ lưng trung lập, kéo khuỷu tay sát thân rồi hạ chậm.",
         "Dùng dây có lực nhẹ hoặc giảm còn 6 lần; có thể tập từng tay với điểm tựa chắc chắn.",
-        "Không giật tạ, không gù lưng; kiểm tra dây không rách và điểm neo không trượt.",90,75)
+        "Không giật tạ, không gù lưng; kiểm tra dây không rách và điểm neo không trượt.",90,75,
+        setOf(TrainingEquipment.DUMBBELL, TrainingEquipment.RESISTANCE_BAND))
     private val resistanceHinge=exercise("Gập hông với tạ đơn hoặc dây","2 hiệp × 8–10 lần",
         "Đứng chân rộng bằng hông, giữ tạ nhẹ trước đùi hoặc đứng trên dây chắc chắn. Đẩy hông ra sau, gối hơi chùng, nghiêng thân trong tầm thoải mái rồi đứng lên.",
         "Tập động tác gập hông không dụng cụ trước hoặc giảm biên độ.",
-        "Không cong lưng, không hạ sâu khi chưa kiểm soát; không dùng tải nặng.",90,75)
+        "Không cong lưng, không hạ sâu khi chưa kiểm soát; không dùng tải nặng.",90,75,
+        setOf(TrainingEquipment.DUMBBELL, TrainingEquipment.RESISTANCE_BAND))
     private val bodyweightHipHinge=exercise("Gập hông không dụng cụ","2 hiệp × 8–10 lần",
         "Đứng chân rộng bằng hông, gối hơi chùng. Đẩy hông ra sau, giữ lưng trung lập và nghiêng thân nhẹ trong tầm thoải mái; siết mông để trở về đứng thẳng. Không cần tạ.",
         "Giảm biên độ; đặt tay lên hông hoặc vịn nhẹ ghế chắc chắn để giữ thăng bằng.",
@@ -137,7 +146,8 @@ object TrainingCatalog {
     private val resistancePress=exercise("Đẩy vai với tạ đơn hoặc dây","2 hiệp × 6–10 lần",
         "Ngồi hoặc đứng vững, giữ tạ nhẹ ngang vai hoặc đặt giữa dây dưới bàn chân. Đẩy lên có kiểm soát, không khóa cứng khuỷu, hạ về ngang vai.",
         "Dùng tải rất nhẹ, tập từng tay hoặc giảm biên độ.",
-        "Không ưỡn lưng hay nín thở; dừng nếu đau vai hoặc tê.",90,75)
+        "Không ưỡn lưng hay nín thở; dừng nếu đau vai hoặc tê.",90,75,
+        setOf(TrainingEquipment.DUMBBELL, TrainingEquipment.RESISTANCE_BAND))
     val programs=listOf(
         TrainingProgram("starter","🌱 Bắt đầu nhẹ nhàng","Mới tập hoặc quay lại sau thời gian nghỉ","Toàn thân",listOf(warm,chairSquat,wallPush,bridge,stretch)),
         TrainingProgram("full","💪 Toàn thân không dụng cụ","Chân, thân trên và cơ trung tâm","Sức mạnh",listOf(warm,squat,wallPush,bridge,bird,plank,cool)),

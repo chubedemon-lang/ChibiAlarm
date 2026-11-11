@@ -332,10 +332,31 @@ class WorkoutMidSessionPlannerTest {
         )
         assertEquals(3, preview.replacements.size)
         assertEquals(setOf("Gập hông không dụng cụ"), preview.extensionMoveNames)
-        assertFalse(preview.after.any {
-            it.name.contains("tạ đơn", ignoreCase = true) ||
-                it.name.contains("dây kháng lực", ignoreCase = true)
-        })
+        assertFalse(preview.after.any { it.requiresExternalLoad })
+    }
+
+    @Test fun equipmentMetadataIsAuthoritativeEvenWhenTheDisplayNameChanges() {
+        val weighted = TrainingMove(
+            name = "Dumbbell row", dose = "2 hiệp × 8 lần",
+            steps = "Kéo có kiểm soát", easier = "Giảm tải", avoid = "Dừng nếu đau",
+            seconds = 60, restSeconds = 45,
+            equipmentOptions = setOf(TrainingEquipment.DUMBBELL)
+        )
+        val result = WorkoutMidSessionPlanner.preview(
+            currentMoves = listOf(weighted, move("Squat không tạ"), move("Thả lỏng")),
+            currentIndex = 0,
+            completedCurrentSets = 1,
+            currentStepLocked = true,
+            constraints = WorkoutConstraintProfile(),
+            request = WorkoutMidSessionRequest.Request(avoidExternalLoad = true),
+            remainingCurrentSeconds = 30,
+            extensionMoveNames = emptySet(),
+            level = 0
+        )
+        assertTrue(result is WorkoutMidSessionPlanner.Result.Blocked)
+
+        val untagged = weighted.copy(name = "Bài tạ trong mô tả cũ", equipmentOptions = emptySet())
+        assertFalse(untagged.requiresExternalLoad)
     }
 
     @Test fun noEquipmentPreferenceCannotRewriteAWeightedMoveAfterASetWasConfirmed() {

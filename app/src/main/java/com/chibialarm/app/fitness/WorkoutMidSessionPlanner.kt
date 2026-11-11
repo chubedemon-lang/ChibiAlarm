@@ -180,9 +180,7 @@ object WorkoutMidSessionPlanner {
         )
     }
 
-    private fun requiresExternalLoad(move: TrainingMove): Boolean =
-        move.name.contains("tạ đơn", ignoreCase = true) ||
-            move.name.contains("dây kháng lực", ignoreCase = true)
+    private fun requiresExternalLoad(move: TrainingMove): Boolean = move.requiresExternalLoad
 
     private fun isMainExercise(move: TrainingMove): Boolean =
         move.name !in setOf("Khởi động tại chỗ", "Thả lỏng", "Giãn cơ và thở chậm")

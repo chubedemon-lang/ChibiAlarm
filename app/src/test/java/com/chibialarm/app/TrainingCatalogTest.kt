@@ -21,6 +21,11 @@ class TrainingCatalogTest {
         assertEquals(3, resistanceMoves.size)
         assertTrue(resistanceMoves.all { it.steps.isNotBlank() && it.easier.isNotBlank() && it.avoid.isNotBlank() })
         assertTrue(resistanceMoves.all { it.dose.contains("hiệp") })
+        assertTrue(resistanceMoves.all {
+            it.equipmentOptions == setOf(TrainingEquipment.DUMBBELL, TrainingEquipment.RESISTANCE_BAND)
+        })
+        assertTrue(TrainingCatalog.allMoves.filterNot { it.name in resistanceMoves.map(TrainingMove::name) }
+            .all { it.equipmentOptions.isEmpty() })
     }
 
     @Test fun exerciseRestRecommendationsAreBoundedAndMatchEffort() {

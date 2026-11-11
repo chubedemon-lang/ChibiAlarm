@@ -30,7 +30,7 @@ class WorkoutConstraintFilterTest {
 
     @Test fun weightedPlanDoesNotKeepGripLoadedCatalogMoves() {
         val result = WorkoutConstraintFilter.apply(TrainingCatalog.byId("weighted"), wristOnly)
-        assertTrue(result.program.moves.none { it.name.contains("tạ đơn hoặc dây") })
+        assertTrue(result.program.moves.none { it.requiresExternalLoad })
         assertTrue(result.program.moves.any { it.name == "Siết bả vai đứng" })
         assertTrue(result.program.moves.any { it.name == "Gập hông không dụng cụ" })
         assertTrue(result.program.moves.any { it.name == "Mở vai và ngực" })
@@ -68,6 +68,17 @@ class WorkoutConstraintFilterTest {
         assertNotEquals(
             WorkoutConstraintFilter.fingerprint(original),
             WorkoutConstraintFilter.fingerprint(filtered)
+        )
+    }
+
+    @Test fun fingerprintChangesWhenEquipmentRequirementsChange() {
+        val original = TrainingCatalog.byId("weighted").moves
+        val changed = original.mapIndexed { index, move ->
+            if (index == 1) move.copy(equipmentOptions = emptySet()) else move
+        }
+        assertNotEquals(
+            WorkoutConstraintFilter.fingerprint(original),
+            WorkoutConstraintFilter.fingerprint(changed)
         )
     }
 

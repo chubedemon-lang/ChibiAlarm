@@ -72,8 +72,8 @@ object WorkoutConstraintFilter {
     )
 
     fun isAllowed(move: TrainingMove, profile: WorkoutConstraintProfile): Boolean {
-        val wristAllowed = !profile.avoidWristLoad ||
-            wristLoadHints.none { hint -> move.name.contains(hint, ignoreCase = true) }
+        val wristAllowed = !profile.avoidWristLoad || (!move.requiresExternalLoad &&
+            wristLoadHints.none { hint -> move.name.contains(hint, ignoreCase = true) })
         val floorAllowed = !profile.avoidFloorPositions ||
             floorPositionHints.none { hint -> move.name.contains(hint, ignoreCase = true) }
         return wristAllowed && floorAllowed
@@ -88,7 +88,8 @@ object WorkoutConstraintFilter {
             "constraints:${profile.avoidWristLoad}:${profile.avoidFloorPositions}\u001d"
         } else ""
         val canonical = constraintPrefix + moves.joinToString("\u001f") {
-            "${it.name}\u001e${it.dose}\u001e${it.seconds}\u001e${it.restSeconds}"
+            "${it.name}\u001e${it.dose}\u001e${it.seconds}\u001e${it.restSeconds}\u001e" +
+                it.equipmentOptions.map { equipment -> equipment.name }.sorted().joinToString(",")
         }
         val digest = MessageDigest.getInstance("SHA-256")
             .digest(canonical.toByteArray(Charsets.UTF_8))

@@ -70,5 +70,17 @@ class WorkoutConstraintFilterTest {
         )
     }
 
+    @Test fun fingerprintChangesWhenOnlyTheRestPrescriptionChanges() {
+        val original = TrainingCatalog.byId("full").moves
+        val changedRest = original.mapIndexed { index, move ->
+            if (index == 1) move.copy(restSeconds = move.restSeconds + 15) else move
+        }
+
+        assertNotEquals(
+            WorkoutConstraintFilter.fingerprint(original),
+            WorkoutConstraintFilter.fingerprint(changedRest)
+        )
+    }
+
 
 }

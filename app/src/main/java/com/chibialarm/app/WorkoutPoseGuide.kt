@@ -9,6 +9,7 @@ object WorkoutPoseGuide {
         SQUAT, HIP_HINGE, PLANK, PUSH_UP, KNEE_PUSH_UP, WALL_PUSH_UP, INCLINE_PUSH_UP, LUNGE,
         BRIDGE, BIRD_DOG, DEAD_BUG, CAT_COW,
         MARCH, SUPPORTED_MARCH, HIP_ABDUCTION, SEATED_HAMSTRING_STRETCH,
+        SCAPULAR_SQUEEZE, FOREARM_WALL_PRESS, SIDE_STEP, SEATED_KNEE_RAISE,
         STRETCH, SIDE_PLANK, CALF_RAISE, BALANCE, STANDING, REST
     }
 
@@ -25,6 +26,10 @@ object WorkoutPoseGuide {
             listOf("nâng gối luân phiên có điểm tựa", "supported march").any { it in text } -> Pose.SUPPORTED_MARCH
             listOf("dang chân sang bên có điểm tựa", "hip abduction").any { it in text } -> Pose.HIP_ABDUCTION
             listOf("giãn gân kheo ngồi ghế", "seated hamstring").any { it in text } -> Pose.SEATED_HAMSTRING_STRETCH
+            listOf("siết bả vai đứng", "scapular squeeze").any { it in text } -> Pose.SCAPULAR_SQUEEZE
+            listOf("ép ngực tường bằng cẳng tay", "forearm wall press").any { it in text } -> Pose.FOREARM_WALL_PRESS
+            listOf("bước ngang nhẹ", "side step", "lateral step").any { it in text } -> Pose.SIDE_STEP
+            listOf("nâng gối ngồi ghế", "seated knee raise").any { it in text } -> Pose.SEATED_KNEE_RAISE
             listOf("đi bộ nhanh tại chỗ", "bước tại chỗ", "march").any { it in text } -> Pose.MARCH
             listOf("mở vai", "giãn cơ", "stretch").any { it in text } -> Pose.STRETCH
             listOf("nhón gót", "calf raise").any { it in text } -> Pose.CALF_RAISE
@@ -59,6 +64,10 @@ object WorkoutPoseGuide {
         Pose.SUPPORTED_MARCH -> "Minh họa: đứng cạnh ghế vững và nâng gối thấp luân phiên"
         Pose.HIP_ABDUCTION -> "Minh họa: đứng cạnh điểm tựa và đưa chân sang bên"
         Pose.SEATED_HAMSTRING_STRETCH -> "Minh họa: ngồi ghế, duỗi một chân và giãn nhẹ phía sau đùi"
+        Pose.SCAPULAR_SQUEEZE -> "Minh họa: kéo nhẹ hai bả vai về sau và xuống"
+        Pose.FOREARM_WALL_PRESS -> "Minh họa: đặt cẳng tay lên tường, giữ cổ tay thả lỏng"
+        Pose.SIDE_STEP -> "Minh họa: bước ngang ngắn, giữ gối mềm"
+        Pose.SEATED_KNEE_RAISE -> "Minh họa: ngồi ghế vững và nâng từng gối"
         Pose.STRETCH -> "Minh họa: giãn cơ nhẹ, không ép biên độ"
         Pose.SIDE_PLANK -> "Minh họa: plank nghiêng có điểm tựa"
         Pose.CALF_RAISE -> "Minh họa: nhón và hạ gót chân"

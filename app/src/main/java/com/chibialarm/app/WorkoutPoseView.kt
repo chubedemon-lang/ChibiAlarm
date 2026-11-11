@@ -212,6 +212,48 @@ class WorkoutPoseView(context: Context) : View(context) {
                 val sideY = if (movementPhase) 76f else 108f
                 line(105f, 71f, sideX, sideY); line(sideX, sideY, if (movementPhase) 171f else 119f, 108f)
             }
+            WorkoutPoseGuide.Pose.SCAPULAR_SQUEEZE -> {
+                // Standing shoulder-blade retraction; the movement stays small and controlled.
+                head(120f, 20f); line(120f, 31f, 120f, 72f)
+                line(120f, 43f, 94f, 51f); line(120f, 43f, 146f, 51f)
+                if (movementPhase) {
+                    line(94f, 51f, 108f, 60f); line(108f, 60f, 120f, 55f)
+                    line(146f, 51f, 132f, 60f); line(132f, 60f, 120f, 55f)
+                } else {
+                    line(94f, 51f, 90f, 76f); line(146f, 51f, 150f, 76f)
+                }
+                line(120f, 72f, 101f, 108f); line(120f, 72f, 139f, 108f)
+            }
+            WorkoutPoseGuide.Pose.FOREARM_WALL_PRESS -> {
+                // Forearms meet a visible wall; wrists stay neutral rather than bearing floor load.
+                line(190f, 12f, 190f, 110f)
+                head(76f, 18f); line(76f, 30f, 76f, 72f)
+                line(76f, 72f, 60f, 105f); line(76f, 72f, 98f, 105f)
+                line(60f, 105f, 46f, 105f); line(98f, 105f, 112f, 105f)
+                val elbowX = if (movementPhase) 122f else 132f
+                val elbowY = if (movementPhase) 57f else 48f
+                line(76f, 44f, elbowX, elbowY)
+                line(elbowX, elbowY, 177f, 45f)
+            }
+            WorkoutPoseGuide.Pose.SIDE_STEP -> {
+                // One foot stays planted while the other moves laterally; no jumping is implied.
+                head(120f, 20f); line(120f, 31f, 120f, 71f)
+                line(120f, 43f, 94f, 60f); line(120f, 43f, 146f, 60f)
+                line(120f, 71f, 101f, 108f)
+                val sideKnee = if (movementPhase) 164f else 139f
+                line(120f, 71f, sideKnee, 87f)
+                line(sideKnee, 87f, sideKnee + 15f, 108f)
+            }
+            WorkoutPoseGuide.Pose.SEATED_KNEE_RAISE -> {
+                // Stable chair and a small seated knee lift, distinct from standing marching.
+                line(70f, 69f, 166f, 69f); line(78f, 69f, 78f, 108f); line(158f, 69f, 158f, 108f)
+                head(112f, 18f); line(112f, 30f, 112f, 68f)
+                line(112f, 43f, 91f, 60f); line(112f, 43f, 134f, 60f)
+                line(112f, 68f, 91f, 86f); line(91f, 86f, 91f, 106f)
+                val kneeY = if (movementPhase) 77f else 94f
+                line(112f, 68f, 145f, kneeY)
+                line(145f, kneeY, 160f, 106f)
+            }
             WorkoutPoseGuide.Pose.SEATED_HAMSTRING_STRETCH -> {
                 // Seated on a stable chair with one heel resting on the floor.
                 line(75f, 67f, 151f, 67f); line(82f, 67f, 82f, 108f); line(145f, 67f, 145f, 108f)

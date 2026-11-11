@@ -17,6 +17,10 @@ object WorkoutPoseMotion {
         WorkoutPoseGuide.Pose.MARCH,
         WorkoutPoseGuide.Pose.SUPPORTED_MARCH,
         WorkoutPoseGuide.Pose.HIP_ABDUCTION,
+        WorkoutPoseGuide.Pose.SCAPULAR_SQUEEZE,
+        WorkoutPoseGuide.Pose.FOREARM_WALL_PRESS,
+        WorkoutPoseGuide.Pose.SIDE_STEP,
+        WorkoutPoseGuide.Pose.SEATED_KNEE_RAISE,
         WorkoutPoseGuide.Pose.CALF_RAISE -> true
         WorkoutPoseGuide.Pose.PLANK,
         WorkoutPoseGuide.Pose.STRETCH,
@@ -48,6 +52,10 @@ object WorkoutPoseMotion {
         WorkoutPoseGuide.Pose.MARCH -> "Minh họa bước tại chỗ. Nâng từng gối luân phiên, bước nhẹ và giữ nhịp thở đều."
         WorkoutPoseGuide.Pose.SUPPORTED_MARCH -> "Đứng cạnh ghế vững và vịn nhẹ. Nâng từng gối thấp vừa sức, đổi bên và giữ thân thẳng."
         WorkoutPoseGuide.Pose.HIP_ABDUCTION -> "Đứng cạnh ghế vững, giữ nhẹ để thăng bằng. Đưa một chân sang bên trong biên độ nhỏ, hạ chậm rồi đổi bên."
+        WorkoutPoseGuide.Pose.SCAPULAR_SQUEEZE -> "Ngồi hoặc đứng thẳng, thả tay. Kéo nhẹ hai bả vai về sau và xuống, giữ ngắn rồi thả lỏng; không nhún vai hoặc ưỡn lưng."
+        WorkoutPoseGuide.Pose.FOREARM_WALL_PRESS -> "Đứng đối diện tường, đặt cẳng tay lên tường với khuỷu gập thoải mái. Ấn nhẹ cẳng tay vào tường, giữ cổ tay thả lỏng và thở đều rồi thả. Dừng nếu đau."
+        WorkoutPoseGuide.Pose.SIDE_STEP -> "Đứng vững, bước ngang ngắn sang một bên rồi đưa chân kia về gần; đổi hướng. Giữ gối mềm, sàn khô và vịn điểm tựa nếu cần."
+        WorkoutPoseGuide.Pose.SEATED_KNEE_RAISE -> "Ngồi trên ghế chắc chắn, lưng thẳng. Nâng một gối thấp vừa sức rồi hạ chậm, đổi bên. Dừng nếu đau hoặc chóng mặt."
         WorkoutPoseGuide.Pose.SEATED_HAMSTRING_STRETCH -> "Ngồi ghế vững, duỗi một chân với gót chạm sàn. Nghiêng nhẹ từ hông đến khi căng nhẹ phía sau đùi; đổi bên, không kéo đến đau."
         WorkoutPoseGuide.Pose.STRETCH -> "Minh họa giãn cơ. Thực hiện chậm, không giật nảy và không ép tới mức đau."
         WorkoutPoseGuide.Pose.SIDE_PLANK -> "Minh họa plank nghiêng. Chống khuỷu chắc chắn, nâng hông trong mức thoải mái; có thể co gối để dễ hơn."
@@ -73,6 +81,10 @@ object WorkoutPoseMotion {
         WorkoutPoseGuide.Pose.MARCH -> if (lowered) "Đổi chân" else "Nâng gối"
         WorkoutPoseGuide.Pose.SUPPORTED_MARCH -> if (lowered) "Đổi chân có điểm tựa" else "Nâng gối thấp"
         WorkoutPoseGuide.Pose.HIP_ABDUCTION -> if (lowered) "Hạ chân" else "Đưa chân sang bên"
+        WorkoutPoseGuide.Pose.SCAPULAR_SQUEEZE -> if (lowered) "Thả lỏng bả vai" else "Kéo nhẹ bả vai"
+        WorkoutPoseGuide.Pose.FOREARM_WALL_PRESS -> if (lowered) "Thả cẳng tay" else "Ấn nhẹ cẳng tay"
+        WorkoutPoseGuide.Pose.SIDE_STEP -> if (lowered) "Đưa chân về" else "Bước ngang"
+        WorkoutPoseGuide.Pose.SEATED_KNEE_RAISE -> if (lowered) "Hạ chân" else "Nâng gối"
         WorkoutPoseGuide.Pose.SEATED_HAMSTRING_STRETCH -> "Giãn nhẹ phía sau đùi"
         WorkoutPoseGuide.Pose.CALF_RAISE -> if (lowered) "Hạ gót" else "Nhón gót"
         WorkoutPoseGuide.Pose.PLANK -> "Giữ thân thẳng"

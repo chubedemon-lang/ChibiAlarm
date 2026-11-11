@@ -48,6 +48,21 @@ class WorkoutPoseGuideTest {
             WorkoutPoseGuide.classify("Chống đẩy trên bề mặt cao"))
     }
 
+    @Test fun commonSubstitutionsHaveDedicatedAnimatedIllustrations() {
+        val cases = listOf(
+            "Siết bả vai đứng" to WorkoutPoseGuide.Pose.SCAPULAR_SQUEEZE,
+            "Ép ngực tường bằng cẳng tay" to WorkoutPoseGuide.Pose.FOREARM_WALL_PRESS,
+            "Bước ngang nhẹ" to WorkoutPoseGuide.Pose.SIDE_STEP,
+            "Nâng gối ngồi ghế" to WorkoutPoseGuide.Pose.SEATED_KNEE_RAISE
+        )
+        for ((name, expected) in cases) {
+            assertEquals(name, expected, WorkoutPoseGuide.classify(name))
+            assertTrue("$name should have a distinct animation", WorkoutPoseMotion.hasMotion(expected))
+            assertTrue(WorkoutPoseGuide.label(expected).isNotBlank())
+            assertTrue(WorkoutPoseMotion.spokenWalkthrough(expected).isNotBlank())
+        }
+    }
+
     @Test fun specificSidePlankIsNotCapturedByGenericPlankRule() {
         assertEquals(WorkoutPoseGuide.Pose.SIDE_PLANK, WorkoutPoseGuide.classify("Side plank"))
     }

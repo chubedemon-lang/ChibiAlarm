@@ -20,6 +20,10 @@ class WorkoutPoseMotionTest {
             WorkoutPoseGuide.Pose.DEAD_BUG,
             WorkoutPoseGuide.Pose.CAT_COW,
             WorkoutPoseGuide.Pose.MARCH,
+            WorkoutPoseGuide.Pose.SCAPULAR_SQUEEZE,
+            WorkoutPoseGuide.Pose.FOREARM_WALL_PRESS,
+            WorkoutPoseGuide.Pose.SIDE_STEP,
+            WorkoutPoseGuide.Pose.SEATED_KNEE_RAISE,
             WorkoutPoseGuide.Pose.CALF_RAISE
         )) assertTrue("$pose should animate", WorkoutPoseMotion.hasMotion(pose))
     }
@@ -39,6 +43,10 @@ class WorkoutPoseMotionTest {
         assertEquals("Duỗi tay chân đối diện", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.BIRD_DOG, false))
         assertEquals("Thu tay chân", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.BIRD_DOG, true))
         assertEquals("Cuộn lưng nhẹ", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.CAT_COW, true))
+        assertEquals("Kéo nhẹ bả vai", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.SCAPULAR_SQUEEZE, false))
+        assertEquals("Ấn nhẹ cẳng tay", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.FOREARM_WALL_PRESS, false))
+        assertEquals("Bước ngang", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.SIDE_STEP, false))
+        assertEquals("Nâng gối", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.SEATED_KNEE_RAISE, false))
         assertEquals("Nhón gót", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.CALF_RAISE, false))
     }
 

@@ -273,7 +273,7 @@ class GuidedWorkoutActivity:Activity() {
         root.addView(TextView(this).apply { text=program.name;textSize=16f })
         root.addView(TextView(this).apply {
             text = "Mục tiêu tối đa: ${planned.targetMinutes} phút • ước tính theo bộ đếm: ${planned.estimatedMinutes} phút.\n" +
-                "Ước tính chưa tính đầy đủ thời gian nghỉ và tốc độ thực hiện từng hiệp."
+                "Ước tính đã cộng thời gian nghỉ giữa hiệp theo giáo án; thời gian thực tế còn tùy tốc độ thực hiện và thời gian nghỉ thêm."
             textSize = 12f
             setPadding(4, 4, 4, 10)
             if (planned.exceedsTarget) {
@@ -871,7 +871,7 @@ class GuidedWorkoutActivity:Activity() {
             .setItems(options.map { "${it.name} • ${it.dose}" }.toTypedArray()) { _, choice ->
                 val replacement = options.getOrNull(choice) ?: return@setItems
                 AlertDialog.Builder(this).setTitle("Xác nhận thay động tác")
-                    .setMessage("${original.name} → ${replacement.name}\n\nMục tiêu: ${replacement.dose}\nCách tập: ${replacement.steps}\nDễ hơn nữa: ${replacement.easier}\nLưu ý: ${replacement.avoid}\n\nChỉ thay bước hiện tại chưa được ghi nhận hoàn thành. Các bước khác và thời gian còn lại được giữ nguyên. Chỉ chọn nếu phù hợp với cơ thể bạn; đây là gợi ý offline, không phải tư vấn điều trị.")
+                    .setMessage("${original.name} → ${replacement.name}\n\nMục tiêu: ${replacement.dose}\nNghỉ giữa hiệp đề xuất: ${replacement.restSeconds} giây\nCách tập: ${replacement.steps}\nDễ hơn nữa: ${replacement.easier}\nLưu ý: ${replacement.avoid}\n\nChỉ thay bước hiện tại chưa được ghi nhận hoàn thành. Các bước khác và thời gian còn lại được giữ nguyên. Chỉ chọn nếu phù hợp với cơ thể bạn; đây là gợi ý offline, không phải tư vấn điều trị.")
                     .setPositiveButton("Đổi động tác") { _, _ ->
                         if (pausedForSafety || completed || resting || index != selectedIndex ||
                             index !in moves.indices || (completedSetsByMove[index] ?: 0) > 0 ||
@@ -1178,7 +1178,10 @@ class GuidedWorkoutActivity:Activity() {
 
     private fun renderDose() {
         val move=moves[index]
-        guide.text="🎯 ${targetDose(index)}\n\n📖 Cách thực hiện:\n${move.steps}\n\n🌿 Giảm độ khó:\n${move.easier}\n\n⚠️ Lưu ý:\n${move.avoid}"
+        val restGuidance = currentSetPlan()?.let {
+            "\n\n⏱ Nghỉ giữa hiệp đề xuất: ${it.defaultRestSeconds} giây. Có thể tùy chỉnh nếu cần."
+        }.orEmpty()
+        guide.text="🎯 ${targetDose(index)}${restGuidance}\n\n📖 Cách thực hiện:\n${move.steps}\n\n🌿 Giảm độ khó:\n${move.easier}\n\n⚠️ Lưu ý:\n${move.avoid}"
     }
     private fun displayStep() {
         paused=true;handler.removeCallbacks(tick)
@@ -1201,7 +1204,7 @@ class GuidedWorkoutActivity:Activity() {
     }
     private fun setPlan(position:Int):WorkoutSetTracker.Plan? {
         val move=moves.getOrNull(position) ?: return null
-        val base=WorkoutSetTracker.parse(move.dose) ?: return null
+        val base=WorkoutSetTracker.parse(move.dose, move.restSeconds) ?: return null
         val edited=repTargets[position] ?: return base
         return base.copy(targetMin=edited,targetMax=edited)
     }

@@ -74,6 +74,7 @@ class FitnessActivity:Activity() {
     private lateinit var filter:Spinner
     private var impactRestrictionSpinner: Spinner? = null
     private var wristLoadCheckBox: CheckBox? = null
+    private var floorPositionCheckBox: CheckBox? = null
     private var programContainer: LinearLayout? = null
     private var historySummaryView: TextView? = null
     private var historySuggestionView: TextView? = null
@@ -99,7 +100,9 @@ class FitnessActivity:Activity() {
             conversation,
             impactRestrictionSpinner?.selectedItemPosition,
             selectedAvoidWristLoad = if (wristLoadCheckBox?.isChecked == true || conversation?.avoidWristLoad != null)
-                wristLoadCheckBox?.isChecked else null
+                wristLoadCheckBox?.isChecked else null,
+            selectedAvoidFloorPositions = if (floorPositionCheckBox?.isChecked == true || conversation?.avoidFloorPositions != null)
+                floorPositionCheckBox?.isChecked else null
         )
 
     private fun effectiveImpactRestriction(): Int =
@@ -272,7 +275,26 @@ class FitnessActivity:Activity() {
         }
         wristLoadCheckBox = wristLoadRestriction
         root.addView(wristLoadRestriction)
-        root.addView(txt("Lựa chọn này chỉ áp dụng cho buổi tập hiện tại; không lưu thành hồ sơ sức khỏe. Nếu đang đau, tê hoặc sưng cổ tay, hãy dừng tập và xin tư vấn phù hợp.",12f))
+        val floorPositionRestriction = CheckBox(this).apply {
+            text = "Tránh bài phải nằm hoặc quỳ sàn"
+            contentDescription = "Chỉ lọc động tác đã được xác định cần nằm hoặc quỳ sàn trong buổi hiện tại"
+            isChecked = conversation?.avoidFloorPositions == true
+            setOnCheckedChangeListener { _, checked ->
+                val previous = conversation
+                conversation = if (previous == null) {
+                    if (checked) FitnessNaturalRequest.Result(
+                        reply = "Đã chọn tránh động tác phải nằm hoặc quỳ sàn.",
+                        avoidFloorPositions = true
+                    ) else null
+                } else previous.copy(avoidFloorPositions = checked)
+                if (::filter.isInitialized) {
+                    programContainer?.let { drawPrograms(it, categories[filter.selectedItemPosition]) }
+                }
+            }
+        }
+        floorPositionCheckBox = floorPositionRestriction
+        root.addView(floorPositionRestriction)
+        root.addView(txt("Các hạn chế này chỉ áp dụng cho buổi tập hiện tại, không lưu thành hồ sơ sức khỏe. Nếu đang đau, tê, sưng hoặc có triệu chứng bất thường, hãy dừng tập và xin tư vấn phù hợp.",12f))
         val historySummary = txt("",14f).apply { visibility = android.view.View.GONE }
         historySummaryView = historySummary
         root.addView(historySummary)
@@ -310,6 +332,8 @@ class FitnessActivity:Activity() {
             }
             restored.equipment?.let { equipmentSpinner.setSelection(it) }
             restored.impact?.let { impactSpinner.setSelection(it) }
+            restored.avoidWristLoad?.let { wristLoadCheckBox?.isChecked = it }
+            restored.avoidFloorPositions?.let { floorPositionCheckBox?.isChecked = it }
             naturalRequest.hint = FitnessCoachFollowUp.nextQuestion(restored)
             root.addView(txt("🐰 Đã giữ lựa chọn trong phiên hiện tại sau khi xoay màn hình. Kiểm tra lại trước khi xem giáo án.",14f))
         }
@@ -337,6 +361,7 @@ class FitnessActivity:Activity() {
                     parsed.equipment?.let { equipmentSpinner.setSelection(it) }
                     parsed.impact?.let { impactSpinner.setSelection(it) }
                     parsed.avoidWristLoad?.let { wristLoadCheckBox?.isChecked = it }
+                    parsed.avoidFloorPositions?.let { floorPositionCheckBox?.isChecked = it }
                     sayFollowUp(coachMessage)
                     AlertDialog.Builder(this@FitnessActivity)
                         .setTitle("🐰 Chibi đã nghe")
@@ -541,7 +566,10 @@ class FitnessActivity:Activity() {
         }
     }
     private fun currentWorkoutConstraintProfile(): WorkoutConstraintProfile =
-        WorkoutConstraintProfile(avoidWristLoad = wristLoadCheckBox?.isChecked == true)
+        WorkoutConstraintProfile(
+            avoidWristLoad = wristLoadCheckBox?.isChecked == true,
+            avoidFloorPositions = floorPositionCheckBox?.isChecked == true
+        )
 
     private fun currentExtensionPreferences(
         constraints: WorkoutConstraintProfile = currentWorkoutConstraintProfile()
@@ -577,14 +605,15 @@ class FitnessActivity:Activity() {
         startActivity(Intent(this,GuidedWorkoutActivity::class.java)
             .putExtra("program",p.id).putExtra("level",l).putExtra("minutes",m)
             .putExtra("avoid_wrist_load", constraints.avoidWristLoad)
+            .putExtra("avoid_floor_positions", constraints.avoidFloorPositions)
             .putExtra("extension_goal", recommendationGoalSpinner?.selectedItemPosition ?: 0)
             .putExtra("extension_energy", recommendationEnergySpinner?.selectedItemPosition ?: 1)
             .putExtra("extension_equipment", recommendationEquipmentSpinner?.selectedItemPosition ?: 0)
             .putExtra("extension_impact", effectiveImpactRestriction()))
     }
     private fun addRoutine(p:TrainingProgram) {
-        if (currentWorkoutConstraintProfile().avoidWristLoad) {
-            Toast.makeText(this, "Lựa chọn tránh tải cổ tay chỉ áp dụng cho buổi hiện tại; lịch tuần chưa lưu bộ lọc này.", Toast.LENGTH_LONG).show()
+        if (currentWorkoutConstraintProfile().avoidWristLoad || currentWorkoutConstraintProfile().avoidFloorPositions) {
+            Toast.makeText(this, "Các hạn chế vận động chỉ áp dụng cho buổi hiện tại; lịch tuần chưa lưu bộ lọc này.", Toast.LENGTH_LONG).show()
             return
         }
         if (effectiveImpactRestriction() == 2) {

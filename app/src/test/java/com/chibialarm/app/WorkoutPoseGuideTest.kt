@@ -15,6 +15,10 @@ class WorkoutPoseGuideTest {
 
     @Test fun mapsMoreCatalogExercisesToSpecificIllustrations() {
         assertEquals(WorkoutPoseGuide.Pose.BRIDGE, WorkoutPoseGuide.classify("Nâng hông trên sàn"))
+        assertEquals(WorkoutPoseGuide.Pose.HIP_HINGE, WorkoutPoseGuide.classify("Gập hông không dụng cụ"))
+        assertTrue(WorkoutPoseMotion.hasMotion(WorkoutPoseGuide.Pose.HIP_HINGE))
+        assertTrue(WorkoutPoseMotion.spokenWalkthrough(WorkoutPoseGuide.Pose.HIP_HINGE).contains("lưng trung lập"))
+        assertTrue(WorkoutPoseGuide.label(WorkoutPoseGuide.Pose.HIP_HINGE).contains("đẩy hông"))
         assertEquals(WorkoutPoseGuide.Pose.BIRD_DOG, WorkoutPoseGuide.classify("Bird-dog"))
         assertEquals(WorkoutPoseGuide.Pose.DEAD_BUG, WorkoutPoseGuide.classify("Dead bug cơ bụng"))
         assertEquals(WorkoutPoseGuide.Pose.CAT_COW, WorkoutPoseGuide.classify("Cat-cow nhẹ"))

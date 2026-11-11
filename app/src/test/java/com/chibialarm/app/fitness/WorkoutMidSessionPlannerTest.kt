@@ -379,4 +379,85 @@ class WorkoutMidSessionPlannerTest {
         assertTrue(result is WorkoutMidSessionPlanner.Result.Blocked)
     }
 
+
+    @Test fun explicitMidSessionPermissionsCanRelaxEarlierMovementPreferences() {
+        val parsed = WorkoutMidSessionRequest.parse("có thể chống tay và nằm sàn")
+        assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
+        val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+
+        assertFalse(request.avoidWristLoad)
+        assertFalse(request.avoidFloorPositions)
+        assertTrue(request.allowWristLoad)
+        assertTrue(request.allowFloorPositions)
+
+        val current = WorkoutConstraintProfile(
+            avoidWristLoad = true,
+            avoidFloorPositions = true
+        )
+        assertEquals(
+            WorkoutConstraintProfile(),
+            WorkoutMidSessionPlanner.effectiveConstraints(current, request)
+        )
+    }
+
+    @Test fun midSessionPermissionPreviewKeepsCatalogMovesWhenConstraintsAreRelaxed() {
+        val moves = listOf(
+            move("Chống đẩy sàn"),
+            move("Bird-dog"),
+            move("Thả lỏng")
+        )
+        val parsed = WorkoutMidSessionRequest.parse("có thể chống tay và nằm sàn")
+        assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
+        val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+
+        val result = WorkoutMidSessionPlanner.preview(
+            currentMoves = moves,
+            currentIndex = 0,
+            completedCurrentSets = 0,
+            currentStepLocked = false,
+            constraints = WorkoutConstraintProfile(
+                avoidWristLoad = true,
+                avoidFloorPositions = true
+            ),
+            request = request,
+            remainingCurrentSeconds = 60,
+            extensionMoveNames = emptySet(),
+            level = 0
+        )
+
+        assertTrue(result is WorkoutMidSessionPlanner.Result.Proposed)
+        val preview = (result as WorkoutMidSessionPlanner.Result.Proposed).preview
+        assertEquals(moves, preview.after)
+        assertTrue(preview.replacements.isEmpty())
+        assertTrue(preview.removedMoves.isEmpty())
+    }
+
+    @Test fun unrelatedMidSessionRequestDoesNotClearExistingMovementConstraints() {
+        val parsed = WorkoutMidSessionRequest.parse("Nghỉ thêm 30 giây")
+        assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
+        val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+        val current = WorkoutConstraintProfile(
+            avoidWristLoad = true,
+            avoidFloorPositions = true
+        )
+
+        assertEquals(
+            current,
+            WorkoutMidSessionPlanner.effectiveConstraints(current, request)
+        )
+    }
+
+    @Test fun explicitRestrictionWinsOverPermissionInOneMidSessionUtterance() {
+        val parsed = WorkoutMidSessionRequest.parse(
+            "có thể chống tay nhưng không chống tay; có thể nằm sàn nhưng không quỳ sàn"
+        )
+        assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
+        val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+
+        assertTrue(request.avoidWristLoad)
+        assertFalse(request.allowWristLoad)
+        assertTrue(request.avoidFloorPositions)
+        assertFalse(request.allowFloorPositions)
+    }
+
 }

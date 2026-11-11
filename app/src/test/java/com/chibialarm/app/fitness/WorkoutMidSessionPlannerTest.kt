@@ -2,6 +2,7 @@ package com.chibialarm.app.fitness
 
 import com.chibialarm.app.TrainingCatalog
 import com.chibialarm.app.TrainingMove
+import com.chibialarm.app.WorkoutConstraintFilter
 import com.chibialarm.app.WorkoutConstraintProfile
 import org.junit.Assert.*
 import org.junit.Test

@@ -84,7 +84,7 @@ object TrainingCatalog {
     private val scapularSqueeze=exercise("Siết bả vai đứng","2 hiệp × 8–12 lần",
         "Đứng hoặc ngồi thẳng, thả tay dọc thân. Kéo nhẹ hai bả vai về sau và xuống, giữ 2 giây rồi thả lỏng.",
         "Giảm lực và giữ ngắn hơn.",
-        "Không ưỡn lưng, nhún vai hoặc nín thở.",75)
+        "Không ưỡn lưng, nhún vai hoặc nín thở.",75,30)
     private val stretch=exercise("Giãn cơ và thở chậm","4–6 phút",
         "Giãn vai, hông, bắp chân từng bên nhẹ nhàng, không nín thở.",
         "Ngồi ghế để giảm tải.","Không giật nảy, không chịu đau.",180)

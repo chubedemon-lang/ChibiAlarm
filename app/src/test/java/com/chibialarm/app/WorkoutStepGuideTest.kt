@@ -22,6 +22,13 @@ class WorkoutStepGuideTest {
             WorkoutStepGuide.split("1. Đứng thẳng.\n2) Hạ người.\n• Thở ra."))
     }
 
+    @Test fun splitsCompactSemicolonAndInlineNumberedCues() {
+        assertEquals(
+            listOf("Đứng thẳng", "Hạ người", "Thở ra."),
+            WorkoutStepGuide.split("1) Đứng thẳng; 2) Hạ người; 3) Thở ra.")
+        )
+    }
+
     @Test fun keepsDecimalWeightsAndTimesIntact() {
         assertEquals(listOf("Giữ tạ 2.5 kg.", "Nghỉ 1.5 phút."),
             WorkoutStepGuide.split("Giữ tạ 2.5 kg. Nghỉ 1.5 phút."))

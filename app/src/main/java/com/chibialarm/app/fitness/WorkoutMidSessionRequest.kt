@@ -72,7 +72,8 @@ object WorkoutMidSessionRequest {
         val avoidFloorPositions = fitness.avoidFloorPositions == true || has(
             "dung nam san", "dung quy san", "dung xuong san",
             "khong nam san", "khong quy san", "khong xuong san",
-            "tranh nam san", "tranh quy san", "tranh xuong san"
+            "tranh nam san", "tranh quy san", "tranh xuong san",
+            "dung nam", "dung quy", "khong nam", "khong quy", "tranh nam", "tranh quy"
         )
 
         val preferEasier = lowEnergy || has(

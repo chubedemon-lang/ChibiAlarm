@@ -168,4 +168,13 @@ class FitnessCoachConversationTest {
     }
 
 
+
+    @Test fun floorPositionPreferenceSurvivesLaterConversationTurns() {
+        val first = FitnessCoachConversation.merge(null, FitnessNaturalRequest.parse("không nằm sàn"))
+        val second = FitnessCoachConversation.merge(first, FitnessNaturalRequest.parse("sức mạnh 30 phút"))
+        assertEquals(true, second.avoidFloorPositions)
+        assertEquals(0, second.goal)
+        assertEquals(30, second.minutes)
+    }
+
 }

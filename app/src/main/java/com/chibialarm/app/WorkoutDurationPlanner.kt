@@ -12,6 +12,20 @@ package com.chibialarm.app
  * level-sensitive transition allowance. Actual reps, pace and extra rest remain user-paced.
  */
 object WorkoutDurationPlanner {
+    private val minuteOnlyDose = Regex(
+        """^\s*(\d+)(?:\s*[–-]\s*\d+)?\s*phút\b""",
+        RegexOption.IGNORE_CASE
+    )
+
+    private fun activeSeconds(move: TrainingMove): Int {
+        val minimumMinutes = minuteOnlyDose.find(move.dose)?.groupValues?.getOrNull(1)?.toIntOrNull()
+        return if (minimumMinutes != null && minimumMinutes in 1..60) {
+            minimumMinutes * 60
+        } else {
+            move.seconds.coerceIn(0, 3_600)
+        }
+    }
+
     private fun prescribedRestSeconds(move: TrainingMove): Int =
         WorkoutSetTracker.parse(move.dose, move.restSeconds)
             ?.let { (it.requiredSets - 1) * it.defaultRestSeconds }
@@ -46,7 +60,7 @@ object WorkoutDurationPlanner {
 
         // Keep the catalog sequence and its set prescriptions intact. Do not clone rounds.
         val moves = program.moves.toList()
-        val activeSeconds = moves.sumOf { it.seconds.coerceIn(0, 3_600) }
+        val activeSeconds = moves.sumOf(::activeSeconds)
         val restSeconds = moves.sumOf(::prescribedRestSeconds)
         val transitionAllowance = when (level) {
             0 -> 20

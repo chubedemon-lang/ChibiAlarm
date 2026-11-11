@@ -12,14 +12,14 @@ class WorkoutDurationPlannerTest {
         assertEquals(preview, guided)
         assertEquals("Khởi động tại chỗ", preview.moves.first().name)
         assertEquals("Thả lỏng", preview.moves.last().name)
-        assertEquals(2, preview.rounds)
-        assertEquals(18, preview.estimatedMinutes)
+        assertEquals(1, preview.rounds)
+        assertEquals(15, preview.estimatedMinutes)
     }
 
     @Test fun longerTargetAddsRoundsWithoutChangingTheCatalogOrder() {
         val program = TrainingCatalog.byId("full")
         val short = WorkoutDurationPlanner.build(program, level = 0, targetMinutes = 10)
-        val longer = WorkoutDurationPlanner.build(program, level = 0, targetMinutes = 20)
+        val longer = WorkoutDurationPlanner.build(program, level = 0, targetMinutes = 30)
 
         assertEquals(1, short.rounds)
         assertEquals(2, longer.rounds)
@@ -34,8 +34,25 @@ class WorkoutDurationPlannerTest {
         )
 
         assertTrue(plan.exceedsTarget)
-        assertEquals(11, plan.estimatedMinutes)
+        assertEquals(15, plan.estimatedMinutes)
         assertEquals(1, plan.rounds)
+    }
+
+    @Test fun estimatedDurationIncludesRequiredBetweenSetRest() {
+        val move = TrainingMove(
+            name = "Động tác thử",
+            dose = "2 hiệp × 8 lần",
+            steps = "Thực hiện có kiểm soát",
+            easier = "Giảm biên độ",
+            avoid = "Dừng nếu đau",
+            seconds = 60,
+            restSeconds = 50
+        )
+        val program = TrainingProgram("rest-test", "Thử nghỉ", "Kiểm tra", "Sức mạnh", listOf(move))
+        val plan = WorkoutDurationPlanner.build(program, level = 0, targetMinutes = 5)
+
+        assertEquals(110, plan.estimatedSeconds)
+        assertEquals(2, plan.estimatedMinutes)
     }
 
     @Test fun longProgramsAreCappedAtFourRounds() {

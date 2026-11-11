@@ -7,7 +7,7 @@ import java.util.Locale
 object WorkoutVoiceCommands {
     enum class Command {
         PAIN, PAUSE, STATUS, RESUME, NEXT, PREVIOUS, REPEAT, EASIER, SWAP_EASIER,
-        EASIER_AND_REST, SHORTER, SHORTER_REMAINING, REST, UNKNOWN
+        EASIER_AND_REST, SHORTER, SHORTER_REMAINING, REST, COMPLETE_SET, UNKNOWN
     }
 
     /** Human-readable action shown before applying fallible speech recognition. */
@@ -17,6 +17,7 @@ object WorkoutVoiceCommands {
             Command.PAIN -> "Dừng tập vì cảnh báo an toàn"
             Command.PAUSE -> "Tạm dừng buổi tập"
             Command.STATUS -> "Đọc tiến độ và thời gian còn lại"
+            Command.COMPLETE_SET -> "Xác nhận hoàn thành hiệp hiện tại"
             Command.RESUME -> "Tiếp tục buổi tập"
             Command.NEXT -> "Chuyển sang động tác tiếp theo"
             Command.PREVIOUS -> "Quay lại động tác trước"
@@ -67,6 +68,11 @@ object WorkoutVoiceCommands {
                 normalized.contains("con bao nhieu giay") || normalized.contains("thoi gian con lai") ||
                 normalized.contains("uoc tinh thoi gian") || normalized.contains("khi nao xong") ||
                 "progress" in words || "status" in words -> Command.STATUS
+            normalized.contains("chua xong hiep") || normalized.contains("chua hoan thanh hiep") ||
+                normalized.contains("khong xong hiep") || normalized.contains("khong hoan thanh hiep") ||
+                normalized.contains("chua xac nhan hiep") -> Command.UNKNOWN
+            normalized.contains("xong hiep") || normalized.contains("hoan thanh hiep") ||
+                normalized.contains("xac nhan hiep") -> Command.COMPLETE_SET
             (normalized.contains("de hon") || normalized.contains("giam do kho") || normalized.contains("nhe hon")) &&
                 (normalized.contains("nghi") || normalized.contains("can nghi")) -> Command.EASIER_AND_REST
             normalized.contains("nghi them") || normalized.contains("nghi mot chut") || normalized.contains("met roi") ||

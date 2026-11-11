@@ -405,8 +405,8 @@ class FitnessActivity:Activity() {
                 )
                 val durationSummary = buildString {
                     append("Thời lượng tối đa bạn chọn: ${planned.targetMinutes} phút • ")
-                    append("ước tính theo bộ đếm hướng dẫn: ${planned.estimatedMinutes} phút.")
-                    append(" Hiệp, thời gian nghỉ và tốc độ thực tế có thể làm buổi tập dài hơn hoặc ngắn hơn.")
+                    append("ước tính gồm thời gian nghỉ giữa hiệp theo giáo án: ${planned.estimatedMinutes} phút.")
+                    append(" Tốc độ thực hiện, chuyển động giữa bài và thời gian nghỉ thêm có thể làm buổi tập dài hơn hoặc ngắn hơn.")
                     if (planned.exceedsTarget) {
                         append("\nChương trình tối thiểu hiện dài hơn thời lượng bạn chọn; hãy cân nhắc chọn chương trình ngắn hơn.")
                     }
@@ -424,6 +424,7 @@ class FitnessActivity:Activity() {
                         val steps = planned.moves
                             .mapIndexed { i, move ->
                                 "${i + 1}. ${move.name} — ${move.dose}\n" +
+                                    "Nghỉ giữa hiệp đề xuất: ${move.restSeconds} giây\n" +
                                     "Cách tập: ${move.steps}\n" +
                                     "Dễ hơn: ${move.easier}\n" +
                                     "Lưu ý: ${move.avoid}"
@@ -493,7 +494,7 @@ class FitnessActivity:Activity() {
             val buttons=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
             buttons.addView(Button(this).apply { text="📖 Xem bài";isAllCaps=false;setOnClickListener {
                 val guide=planned.moves
-                    .mapIndexed { i,m->"${i+1}. ${m.name} — ${m.dose}\nCách tập: ${m.steps}\nDễ hơn: ${m.easier}\nLưu ý: ${m.avoid}" }
+                    .mapIndexed { i,m->"${i+1}. ${m.name} — ${m.dose}\nNghỉ giữa hiệp đề xuất: ${m.restSeconds} giây\nCách tập: ${m.steps}\nDễ hơn: ${m.easier}\nLưu ý: ${m.avoid}" }
                     .joinToString("\n\n")
                 AlertDialog.Builder(this@FitnessActivity)
                     .setTitle(program.name).setMessage(guide)

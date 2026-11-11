@@ -178,4 +178,27 @@ class FitnessNaturalRequestTest {
         assertNull(result.impact)
     }
 
+    @Test fun equipmentNegationDoesNotBecomePositiveEquipment() {
+        for (phrase in listOf(
+            "không có tạ",
+            "không còn tạ nữa",
+            "bỏ tạ đi",
+            "không có dây kháng lực",
+            "không có dụng cụ",
+            "tập tay không"
+        )) {
+            assertEquals("Failed for $phrase", 0, FitnessNaturalRequest.parse(phrase).equipment)
+        }
+    }
+
+    @Test fun anAvailableEquipmentAlternativeWinsOverAnotherMissingOption() {
+        assertEquals(2, FitnessNaturalRequest.parse("không có tạ, chỉ có dây kháng lực").equipment)
+        assertEquals(2, FitnessNaturalRequest.parse("không có dây, có tạ đơn").equipment)
+    }
+
+    @Test fun matOnlyRemainsDistinctFromNoEquipment() {
+        assertEquals(1, FitnessNaturalRequest.parse("có thảm, không có tạ").equipment)
+        assertEquals(1, FitnessNaturalRequest.parse("không có dụng cụ khác, chỉ có thảm").equipment)
+    }
+
 }

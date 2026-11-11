@@ -55,7 +55,9 @@ object WorkoutTargetCommand {
         WorkoutVoiceCommands.Command.SWAP_EASIER,
         WorkoutVoiceCommands.Command.EASIER_AND_REST,
         WorkoutVoiceCommands.Command.SHORTER,
-        WorkoutVoiceCommands.Command.SHORTER_REMAINING -> true
+        WorkoutVoiceCommands.Command.SHORTER_REMAINING,
+        // Set completion is a state-changing workout action, never a repetition edit.
+        WorkoutVoiceCommands.Command.COMPLETE_SET -> true
         WorkoutVoiceCommands.Command.REST,
         WorkoutVoiceCommands.Command.UNKNOWN -> false
     }

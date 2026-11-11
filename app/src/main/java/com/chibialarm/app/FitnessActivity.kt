@@ -404,11 +404,17 @@ class FitnessActivity:Activity() {
                     constraintResult.program, level.selectedItemPosition, mins[length.selectedItemPosition]
                 )
                 val durationSummary = buildString {
-                    append("Thời lượng tối đa bạn chọn: ${planned.targetMinutes} phút • ")
-                    append("ước tính gồm thời gian nghỉ giữa hiệp theo giáo án: ${planned.estimatedMinutes} phút.")
-                    append(" Tốc độ thực hiện, chuyển động giữa bài và thời gian nghỉ thêm có thể làm buổi tập dài hơn hoặc ngắn hơn.")
+                    append("Thời lượng mục tiêu: ${planned.targetMinutes} phút • ")
+                    append("ước tính ${planned.estimatedMinutes} phút.")
+                    append("\nVận động: ${planned.activeSeconds / 60} phút • ")
+                    append("nghỉ giữa hiệp: ${planned.prescribedRestSeconds / 60} phút • ")
+                    append("chuyển bài dự kiến: ${planned.transitionSeconds / 60} phút.")
+                    append("\nĐây là ước tính từ thư viện, không phải thời gian đo thực tế.")
                     if (planned.exceedsTarget) {
-                        append("\nChương trình tối thiểu hiện dài hơn thời lượng bạn chọn; hãy cân nhắc chọn chương trình ngắn hơn.")
+                        append("\nChuỗi bài tối thiểu đang dài hơn thời lượng bạn chọn; hãy chọn chương trình ngắn hơn.")
+                    } else if (planned.unallocatedSeconds >= 60) {
+                        val unallocatedMinutes = (planned.unallocatedSeconds + 59) / 60
+                        append("\nCòn khoảng ${unallocatedMinutes} phút chưa được phân bổ. Chibi không tự nhân đôi toàn bộ hiệp để lấp thời gian; hãy chọn chương trình dài hơn hoặc bổ sung khối bài phù hợp.")
                     }
                     if (constraintResult.notice.isNotBlank()) append("\n\n").append(constraintResult.notice)
                 }

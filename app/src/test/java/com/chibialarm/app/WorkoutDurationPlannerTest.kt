@@ -34,7 +34,7 @@ class WorkoutDurationPlannerTest {
         )
 
         assertTrue(plan.exceedsTarget)
-        assertEquals(17, plan.estimatedMinutes)
+        assertEquals(19, plan.estimatedMinutes)
         assertEquals(0, plan.unallocatedSeconds)
         assertEquals(1, plan.rounds)
     }
@@ -64,11 +64,11 @@ class WorkoutDurationPlannerTest {
             TrainingCatalog.byId("full"), level = 0, targetMinutes = 20
         )
 
-        assertEquals(660, plan.activeSeconds)
+        assertEquals(780, plan.activeSeconds)
         assertEquals(240, plan.prescribedRestSeconds)
         assertEquals(120, plan.transitionSeconds)
-        assertEquals(1_020, plan.estimatedSeconds)
-        assertEquals(180, plan.unallocatedSeconds)
+        assertEquals(1_140, plan.estimatedSeconds)
+        assertEquals(60, plan.unallocatedSeconds)
     }
 
     @Test fun transitionAllowanceReflectsExperienceWithoutChangingExercises() {
@@ -90,6 +90,35 @@ class WorkoutDurationPlannerTest {
         assertEquals(1, plan.rounds)
         assertEquals("Khởi động tại chỗ", plan.moves.first().name)
         assertEquals("Thả lỏng", plan.moves.last().name)
+    }
+
+    @Test fun minuteDoseUsesItsConservativeLowerBoundInsteadOfAnUnrelatedTimerHint() {
+        val warmup = TrainingMove(
+            name = "Khởi động thử",
+            dose = "3–5 phút",
+            steps = "Bắt đầu chậm",
+            easier = "Đi chậm",
+            avoid = "Dừng nếu khó chịu",
+            seconds = 120
+        )
+        val fixed = TrainingMove(
+            name = "Đi bộ thử",
+            dose = "2 phút",
+            steps = "Bước đều",
+            easier = "Giảm tốc",
+            avoid = "Dừng nếu chóng mặt",
+            seconds = 90
+        )
+        val plan = WorkoutDurationPlanner.build(
+            TrainingProgram("timed", "Thử thời lượng", "Kiểm tra", "Vận động nhẹ", listOf(warmup, fixed)),
+            level = 1,
+            targetMinutes = 5
+        )
+
+        assertEquals(300, plan.activeSeconds)
+        assertEquals(0, plan.prescribedRestSeconds)
+        assertEquals(15, plan.transitionSeconds)
+        assertEquals(315, plan.estimatedSeconds)
     }
 
     @Test fun rejectsInvalidInputs() {

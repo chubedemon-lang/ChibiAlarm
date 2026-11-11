@@ -1397,6 +1397,28 @@ class GuidedWorkoutActivity:Activity() {
             orientation = LinearLayout.VERTICAL
             setPadding(28, 20, 28, 12)
         }
+        // The modal gets its own exercise animation. Pause the background copy to
+        // avoid running two animators for the same movement while the guide is open.
+        poseView.motionEnabled = false
+        val pose = WorkoutPoseGuide.classify(move.name)
+        val phaseCaption = TextView(this).apply {
+            tag = "workout-step-phase-caption"
+            textSize = 14f
+            gravity = Gravity.CENTER
+            setPadding(8, 2, 8, 10)
+            setTextColor(Color.rgb(82, 66, 105))
+            text = "Pha: ${WorkoutPoseMotion.phaseCue(pose, false)} · Hình minh họa, không đánh giá tư thế."
+            contentDescription = text.toString()
+        }
+        val illustration = WorkoutPoseView(this).apply {
+            tag = "workout-step-pose-preview"
+            onPhaseChanged = { lowered ->
+                val cue = "Pha: ${WorkoutPoseMotion.phaseCue(pose, lowered)} · Hình minh họa, không đánh giá tư thế."
+                phaseCaption.text = cue
+                phaseCaption.contentDescription = cue
+            }
+            this.pose = pose
+        }
         val stepProgress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
             max = walkthrough.steps.size
             progress = walkthrough.position
@@ -1412,6 +1434,11 @@ class GuidedWorkoutActivity:Activity() {
             contentDescription = "Quay lại bước hướng dẫn trước"
             isEnabled = false
         }
+        container.addView(illustration, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            (140 * resources.displayMetrics.density).toInt()
+        ))
+        container.addView(phaseCaption)
         container.addView(stepProgress)
         container.addView(previousButton)
         container.addView(ScrollView(this).apply {
@@ -1454,7 +1481,11 @@ class GuidedWorkoutActivity:Activity() {
                 speak("Bước ${walkthrough.position}. ${walkthrough.currentStep}")
             }
         }
-        dialog.setOnDismissListener { spoken?.stop() }
+        dialog.setOnDismissListener {
+            spoken?.stop()
+            illustration.onPhaseChanged = null
+            poseView.motionEnabled = true
+        }
         dialog.show()
     }
 

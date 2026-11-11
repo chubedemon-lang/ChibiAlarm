@@ -15,6 +15,17 @@ class WorkoutPoseView(context: Context) : View(context) {
 
     private var movementPhase = false
     private var animator: ValueAnimator? = null
+
+    /** Allows a modal walkthrough to pause the background illustration while its own preview animates. */
+    var motionEnabled: Boolean = true
+        set(value) {
+            if (field == value) return
+            field = value
+            refreshMotion()
+        }
+
+    /** Optional visible phase label used by the step-by-step exercise guide. */
+    var onPhaseChanged: ((Boolean) -> Unit)? = null
     private val cuePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.rgb(65, 43, 105)
         textSize = 11f
@@ -46,8 +57,9 @@ class WorkoutPoseView(context: Context) : View(context) {
         animator?.cancel()
         animator = null
         movementPhase = false
+        onPhaseChanged?.invoke(false)
         contentDescription = WorkoutPoseMotion.accessibilityCue(pose, false)
-        if (!isAttachedToWindow || visibility != VISIBLE || windowVisibility != VISIBLE ||
+        if (!motionEnabled || !isAttachedToWindow || visibility != VISIBLE || windowVisibility != VISIBLE ||
             !WorkoutPoseMotion.hasMotion(pose) ||
             !areAnimatorsEnabled()) {
             invalidate()
@@ -62,6 +74,7 @@ class WorkoutPoseView(context: Context) : View(context) {
                 if (next != movementPhase) {
                     movementPhase = next
                     contentDescription = WorkoutPoseMotion.accessibilityCue(pose, next)
+                    onPhaseChanged?.invoke(next)
                     invalidate()
                 }
             }

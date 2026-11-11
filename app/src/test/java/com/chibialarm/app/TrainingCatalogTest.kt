@@ -27,7 +27,9 @@ class TrainingCatalogTest {
         assertEquals(60, moves.getValue("Squat không tạ").restSeconds)
         assertEquals(60, moves.getValue("Đứng lên – ngồi xuống").restSeconds)
         assertEquals(75, moves.getValue("Kéo tạ đơn hoặc dây kháng lực").restSeconds)
-        assertEquals(30, moves.getValue("Đi bộ nhanh tại chỗ").restSeconds)
+        assertEquals(30, moves.getValue("Siết bả vai đứng").restSeconds)
+        assertNull(WorkoutSetTracker.restGuidance(moves.getValue("Đi bộ nhanh tại chỗ").dose,
+            moves.getValue("Đi bộ nhanh tại chỗ").restSeconds))
         assertTrue(moves.values.all { it.restSeconds in 15..180 })
     }
 

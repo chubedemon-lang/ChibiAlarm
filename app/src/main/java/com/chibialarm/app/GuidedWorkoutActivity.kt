@@ -46,7 +46,7 @@ class GuidedWorkoutActivity:Activity() {
     private fun validSessionId(value:String?):String? = value?.takeIf {
         runCatching { UUID.fromString(it).toString()==it }.getOrDefault(false)
     }
-    private fun currentPlanFingerprint(): String = WorkoutConstraintFilter.fingerprint(originalMoves)
+    private fun currentPlanFingerprint(): String = WorkoutConstraintFilter.fingerprint(originalMoves, workoutConstraints)
     private var moves:List<TrainingMove> = emptyList()
     private var originalMoves:List<TrainingMove> = emptyList()
     private val substitutions=mutableMapOf<Int,TrainingMove>()
@@ -94,6 +94,7 @@ class GuidedWorkoutActivity:Activity() {
             .putString("planNames",WorkoutMidSessionPlanner.encodePlan(originalMoves))
             .putString("planFingerprint",currentPlanFingerprint())
             .putBoolean("avoidWristLoad",workoutConstraints.avoidWristLoad)
+            .putBoolean("avoidFloorPositions",workoutConstraints.avoidFloorPositions)
             .putString("extensionMoves",optionalExtensionNames.sorted().joinToString("\n"))
             .putString("sessionId",sessionId)
             .putInt("index",index).putLong("remaining",remainingMs.coerceIn(0L,600_000L))
@@ -127,7 +128,9 @@ class GuidedWorkoutActivity:Activity() {
         }
         workoutConstraints = WorkoutConstraintProfile(
             avoidWristLoad = workoutConstraints.avoidWristLoad ||
-                checkpoint.getBoolean("avoidWristLoad", false)
+                checkpoint.getBoolean("avoidWristLoad", false),
+            avoidFloorPositions = workoutConstraints.avoidFloorPositions ||
+                checkpoint.getBoolean("avoidFloorPositions", false)
         )
         optionalExtensionNames.clear()
         optionalExtensionNames.addAll(
@@ -137,7 +140,7 @@ class GuidedWorkoutActivity:Activity() {
         )
         val savedFingerprint = checkpoint.getString("planFingerprint", null)
         if ((savedFingerprint != null && savedFingerprint != currentPlanFingerprint()) ||
-            (savedFingerprint == null && workoutConstraints.avoidWristLoad)) {
+            (savedFingerprint == null && (workoutConstraints.avoidWristLoad || workoutConstraints.avoidFloorPositions))) {
             checkpoint.edit().clear().apply()
             Toast.makeText(this,
                 "Giáo án đã thay đổi theo lựa chọn hiện tại. Chibi không khôi phục hiệp cũ để tránh gán nhầm tiến độ; hãy bắt đầu buổi mới.",
@@ -280,7 +283,9 @@ class GuidedWorkoutActivity:Activity() {
         val baseProgram = TrainingCatalog.byId(intent.getStringExtra("program") ?: "starter")
         workoutConstraints = WorkoutConstraintProfile(
             avoidWristLoad = intent.getBooleanExtra("avoid_wrist_load", false) ||
-                savedInstanceState?.getBoolean("workout_avoid_wrist_load", false) == true
+                savedInstanceState?.getBoolean("workout_avoid_wrist_load", false) == true,
+            avoidFloorPositions = intent.getBooleanExtra("avoid_floor_positions", false) ||
+                savedInstanceState?.getBoolean("workout_avoid_floor_positions", false) == true
         )
         val constraintResult = WorkoutConstraintFilter.apply(baseProgram, workoutConstraints)
         if (!constraintResult.canStart) {
@@ -499,7 +504,7 @@ class GuidedWorkoutActivity:Activity() {
         // Restore the active exercise after rotation, but never auto-resume.
         val savedPlanFingerprint = savedInstanceState?.getString("workout_plan_fingerprint")
         val savedPlanCompatible = savedPlanFingerprint == currentPlanFingerprint() ||
-            (savedPlanFingerprint == null && !workoutConstraints.avoidWristLoad)
+            (savedPlanFingerprint == null && !workoutConstraints.avoidWristLoad && !workoutConstraints.avoidFloorPositions)
         if(savedInstanceState!=null &&
             savedInstanceState.getString("workout_program")==program.id &&
             savedPlanCompatible) {
@@ -552,6 +557,7 @@ class GuidedWorkoutActivity:Activity() {
         outState.putString("workout_program",program.id)
         outState.putString("workout_plan_names",WorkoutMidSessionPlanner.encodePlan(originalMoves))
         outState.putBoolean("workout_avoid_wrist_load",workoutConstraints.avoidWristLoad)
+        outState.putBoolean("workout_avoid_floor_positions",workoutConstraints.avoidFloorPositions)
         outState.putStringArrayList("workout_extension_names",ArrayList(optionalExtensionNames))
         outState.putString("workout_plan_fingerprint",currentPlanFingerprint())
         outState.putString("workout_session_id",sessionId)
@@ -688,6 +694,9 @@ class GuidedWorkoutActivity:Activity() {
                     if (request.avoidWristLoad) {
                         append("\nÁp dụng tránh chống tay/tải qua cổ tay cho phần chưa hoàn thành.")
                     }
+                    if (request.avoidFloorPositions) {
+                        append("\nBỏ các động tác phải nằm hoặc quỳ sàn chưa bắt đầu; không tự tạo bài thay thế chưa được tuyển chọn.")
+                    }
                     if (request.lowEnergy) {
                         append("\nƯu tiên biến thể nhẹ hơn và nghỉ riêng.")
                     }
@@ -734,7 +743,8 @@ class GuidedWorkoutActivity:Activity() {
                             it > index || (it == index && preview.currentMoveChanged)
                         }
                         workoutConstraints = WorkoutConstraintProfile(
-                            avoidWristLoad = workoutConstraints.avoidWristLoad || request.avoidWristLoad
+                            avoidWristLoad = workoutConstraints.avoidWristLoad || request.avoidWristLoad,
+                            avoidFloorPositions = workoutConstraints.avoidFloorPositions || request.avoidFloorPositions
                         )
                         if (preview.currentMoveChanged) {
                             remainingMs = minOf(

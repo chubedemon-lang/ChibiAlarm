@@ -54,7 +54,7 @@ object WorkoutMidSessionRequest {
         fun has(vararg phrases: String): Boolean = phrases.any(text::contains)
 
         val hasRemainingTime = Regex(
-            """\\bcon\\s+(?:[0-9]{1,3}|[a-z]+(?:\\s+[a-z]+){0,3})\\s+(?:phut|minute|min)\\b"""
+            """\bcon\s+(?:[0-9]{1,3}|[a-z]+(?:\s+[a-z]+){0,3})\s+(?:phut|minute|min)\b"""
         ).containsMatchIn(text)
         val remainingMinutes = if (hasRemainingTime) fitness.minutes else null
 
@@ -74,7 +74,7 @@ object WorkoutMidSessionRequest {
             "doi sang bai nhe", "thay bai nhe"
         )
 
-        val hasRestRequest = Regex("""\\b(nghi|rest)\\b""").containsMatchIn(text)
+        val hasRestRequest = Regex("""\b(nghi|rest)\b""").containsMatchIn(text)
         val explicitRest = if (hasRestRequest) WorkoutRestRequest.seconds(input) else null
         val restSeconds = explicitRest ?: if (lowEnergy) 60 else null
 

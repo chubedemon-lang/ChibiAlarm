@@ -16,6 +16,8 @@ import android.widget.*
 import java.util.Locale
 import java.util.UUID
 import com.chibialarm.app.fitness.RemainingWorkoutDuration
+import com.chibialarm.app.fitness.WorkoutMidSessionPlanner
+import com.chibialarm.app.fitness.WorkoutMidSessionRequest
 import com.chibialarm.app.rpg.RpgDatabase
 import com.chibialarm.app.rpg.RpgEngine
 import com.chibialarm.app.rpg.WorkoutRewardEvidence
@@ -54,6 +56,9 @@ class GuidedWorkoutActivity:Activity() {
     private var paused=true
     private var pausedForSafety=false
     private var workoutConstraints = WorkoutConstraintProfile()
+    private var workoutLevel = 0
+    // Names only: these are optional catalog extensions, not user transcripts.
+    private val optionalExtensionNames = mutableSetOf<String>()
     // One spoken cue per exercise; never speak while paused or during microphone input.
     private var tenSecondCueGiven=false
     private var shorterFromIndex=Int.MAX_VALUE
@@ -86,7 +91,10 @@ class GuidedWorkoutActivity:Activity() {
     private fun saveCheckpoint() {
         if (completed || checkpointDecisionPending || moves.isEmpty()) return
         checkpoint.edit().putString("program",program.id)
+            .putString("planNames",WorkoutMidSessionPlanner.encodePlan(originalMoves))
             .putString("planFingerprint",currentPlanFingerprint())
+            .putBoolean("avoidWristLoad",workoutConstraints.avoidWristLoad)
+            .putString("extensionMoves",optionalExtensionNames.sorted().joinToString("\n"))
             .putString("sessionId",sessionId)
             .putInt("index",index).putLong("remaining",remainingMs.coerceIn(0L,600_000L))
             .putBoolean("safety",pausedForSafety)
@@ -105,6 +113,28 @@ class GuidedWorkoutActivity:Activity() {
     }
     private fun offerCheckpoint() {
         if (checkpoint.getString("program",null)!=program.id) return
+        val savedPlanNames = checkpoint.getString("planNames", null)
+        if (!savedPlanNames.isNullOrBlank()) {
+            val restoredPlan = WorkoutMidSessionPlanner.decodePlan(savedPlanNames)
+            if (restoredPlan == null) {
+                checkpoint.edit().clear().apply()
+                Toast.makeText(this,"Không thể xác minh giáo án đã lưu; tiến độ cũ không được áp dụng nhầm.",Toast.LENGTH_LONG).show()
+                return
+            }
+            originalMoves = restoredPlan
+            moves = restoredPlan
+            program = program.copy(moves = restoredPlan)
+        }
+        workoutConstraints = WorkoutConstraintProfile(
+            avoidWristLoad = workoutConstraints.avoidWristLoad ||
+                checkpoint.getBoolean("avoidWristLoad", false)
+        )
+        optionalExtensionNames.clear()
+        optionalExtensionNames.addAll(
+            checkpoint.getString("extensionMoves", "").split("\\n")
+                .filter { name -> name.isNotBlank() && moves.any { it.name == name } }
+                .take(20)
+        )
         val savedFingerprint = checkpoint.getString("planFingerprint", null)
         if ((savedFingerprint != null && savedFingerprint != currentPlanFingerprint()) ||
             (savedFingerprint == null && workoutConstraints.avoidWristLoad)) {
@@ -249,7 +279,8 @@ class GuidedWorkoutActivity:Activity() {
         super.onCreate(savedInstanceState)
         val baseProgram = TrainingCatalog.byId(intent.getStringExtra("program") ?: "starter")
         workoutConstraints = WorkoutConstraintProfile(
-            avoidWristLoad = intent.getBooleanExtra("avoid_wrist_load", false)
+            avoidWristLoad = intent.getBooleanExtra("avoid_wrist_load", false) ||
+                savedInstanceState?.getBoolean("workout_avoid_wrist_load", false) == true
         )
         val constraintResult = WorkoutConstraintFilter.apply(baseProgram, workoutConstraints)
         if (!constraintResult.canStart) {
@@ -259,6 +290,7 @@ class GuidedWorkoutActivity:Activity() {
         }
         program = constraintResult.program
         val level=intent.getIntExtra("level",0).coerceIn(0,2)
+        workoutLevel = level
         val minutes=WorkoutDurationChoices.guidedMinutes(intent.getIntExtra("minutes",15))
         val extensionPreferences = WorkoutExtensionPreferences(
             goal = intent.getIntExtra("extension_goal", 0).coerceIn(0, 5),
@@ -270,6 +302,20 @@ class GuidedWorkoutActivity:Activity() {
         val planned=WorkoutDurationPlanner.build(program,level,minutes,extensionPreferences)
         moves=planned.moves
         originalMoves=moves.toList()
+        optionalExtensionNames.clear()
+        optionalExtensionNames.addAll(planned.extensionMoves.map { it.name })
+        val restoredPlanNames = savedInstanceState?.getString("workout_plan_names")
+        if (!restoredPlanNames.isNullOrBlank()) {
+            WorkoutMidSessionPlanner.decodePlan(restoredPlanNames)?.let { restoredPlan ->
+                originalMoves = restoredPlan
+                moves = restoredPlan
+                program = program.copy(moves = restoredPlan)
+            }
+        }
+        savedInstanceState?.getStringArrayList("workout_extension_names")?.let { names ->
+            optionalExtensionNames.clear()
+            optionalExtensionNames.addAll(names.filter { name -> moves.any { it.name == name } }.take(20))
+        }
         val root=LinearLayout(this).apply {
             orientation=1;setPadding(24,27,24,24);setBackgroundColor(Color.rgb(247,240,252))
         }
@@ -504,6 +550,9 @@ class GuidedWorkoutActivity:Activity() {
         // Save monotonic elapsed duration, not an absolute deadline.
         pause()
         outState.putString("workout_program",program.id)
+        outState.putString("workout_plan_names",WorkoutMidSessionPlanner.encodePlan(originalMoves))
+        outState.putBoolean("workout_avoid_wrist_load",workoutConstraints.avoidWristLoad)
+        outState.putStringArrayList("workout_extension_names",ArrayList(optionalExtensionNames))
         outState.putString("workout_plan_fingerprint",currentPlanFingerprint())
         outState.putString("workout_session_id",sessionId)
         outState.putString("workout_rep_targets",repTargets.entries.joinToString(",") { "${it.key}:${it.value}" })
@@ -574,7 +623,161 @@ class GuidedWorkoutActivity:Activity() {
             }.setNegativeButton("Giữ nguyên", null).show()
     }
 
+    private fun stopForSafety() {
+        pause()
+        pausedForSafety=true
+        renderSetControls()
+        control.text="⚠️ Đã dừng vì đau"
+        saveCheckpoint()
+        AlertDialog.Builder(this).setTitle("⚠️ Đã dừng vì bạn báo đau")
+            .setMessage("Không cố tập khi đau. Hãy kết thúc buổi tập nếu triệu chứng tiếp diễn; tìm trợ giúp y tế phù hợp nếu đau nhiều hoặc có dấu hiệu bất thường. Chibi sẽ không tự tiếp tục bằng giọng nói.")
+            .setPositiveButton("Đã hiểu",null).show()
+        speak("Đã dừng tập vì bạn báo đau. Hãy ưu tiên an toàn.")
+    }
+
+    private fun applyMidSessionRequest(request: WorkoutMidSessionRequest.Request) {
+        if (pausedForSafety || completed || resting || index !in moves.indices) {
+            Toast.makeText(this,"Buổi tập đang dừng hoặc chưa thể điều chỉnh lúc này.",Toast.LENGTH_LONG).show()
+            return
+        }
+        if (completedMoveIndices.any { it > index } || completedSetsByMove.keys.any { it > index }) {
+            Toast.makeText(this,"Đã có hiệp ở bước phía sau được ghi nhận. Hãy quay tới bước cuối trước khi đổi phần còn lại.",Toast.LENGTH_LONG).show()
+            return
+        }
+
+        pause()
+        val beforeMoves = moves.toList()
+        val beforeFingerprint = currentPlanFingerprint()
+        val beforeIndex = index
+        val beforeRemaining = remainingMs
+        val beforeCompletedSets = completedSetsByMove[index] ?: 0
+        val result = WorkoutMidSessionPlanner.preview(
+            currentMoves = beforeMoves,
+            currentIndex = beforeIndex,
+            completedCurrentSets = beforeCompletedSets,
+            currentStepLocked = beforeIndex in completedMoveIndices,
+            constraints = workoutConstraints,
+            request = request,
+            remainingCurrentSeconds = ((beforeRemaining + 999L) / 1000L).coerceIn(0L, 3_600L).toInt(),
+            extensionMoveNames = optionalExtensionNames,
+            level = workoutLevel
+        )
+
+        when (result) {
+            is WorkoutMidSessionPlanner.Result.Blocked -> {
+                AlertDialog.Builder(this).setTitle("Chibi chưa thể đổi giáo án an toàn")
+                    .setMessage(result.reason)
+                    .setPositiveButton("Đã hiểu",null).show()
+            }
+            WorkoutMidSessionPlanner.Result.Unsupported -> {
+                Toast.makeText(this,"Chibi chưa tìm được thay đổi phù hợp. Giáo án vẫn được giữ nguyên.",Toast.LENGTH_LONG).show()
+            }
+            is WorkoutMidSessionPlanner.Result.Proposed -> {
+                val preview = result.preview
+                fun durationLabel(seconds: Int): String =
+                    "\${seconds / 60} phút \${seconds % 60} giây"
+                val summary = buildString {
+                    if (preview.replacements.isNotEmpty()) {
+                        append("Thay động tác:\\n")
+                        preview.replacements.forEach { append("• ").append(it).append("\\n") }
+                    }
+                    if (preview.removedMoves.isNotEmpty()) {
+                        append("\\nBỏ các bước chưa bắt đầu:\\n")
+                        preview.removedMoves.forEach { append("• ").append(it).append("\\n") }
+                    }
+                    if (request.avoidWristLoad) {
+                        append("\\nÁp dụng tránh chống tay/tải qua cổ tay cho phần chưa hoàn thành.")
+                    }
+                    if (request.lowEnergy) {
+                        append("\\nƯu tiên biến thể nhẹ hơn và nghỉ riêng.")
+                    }
+                    if (preview.requestedMinutes != null) {
+                        append("\\nMục tiêu thời gian còn lại: ").append(preview.requestedMinutes).append(" phút.")
+                        append("\\nƯớc tính sau điều chỉnh: ").append(durationLabel(preview.estimatedRemainingSeconds)).append(".")
+                    }
+                    if (preview.targetExceeded) {
+                        append("\\nPhần bài chính và nghỉ bắt buộc vẫn dài hơn mục tiêu. Chibi không tự cắt hiệp bắt buộc hoặc hứa chắc thời gian hoàn thành.")
+                    }
+                    if (preview.restSeconds > 0) {
+                        append("\\nSau khi áp dụng sẽ nghỉ riêng ").append(preview.restSeconds).append(" giây; thời gian nghỉ không tính là vận động.")
+                    }
+                    if (!preview.changed && preview.restSeconds == 0) {
+                        append("\\nKhông có bài tùy chọn nào cần bỏ; các hiệp bắt buộc được giữ nguyên.")
+                    }
+                    append("\\n\\nCác hiệp đã xác nhận không bị sửa. Đây là gợi ý offline từ thư viện, không phải chẩn đoán hay đánh giá tư thế.")
+                }
+                AlertDialog.Builder(this).setTitle("🐰 Xem trước điều chỉnh giữa buổi")
+                    .setMessage(summary)
+                    .setPositiveButton("Áp dụng") { _, _ ->
+                        if (pausedForSafety || completed || resting || index != beforeIndex ||
+                            moves != beforeMoves || currentPlanFingerprint() != beforeFingerprint ||
+                            remainingMs != beforeRemaining ||
+                            (completedSetsByMove[index] ?: 0) != beforeCompletedSets
+                        ) {
+                            Toast.makeText(this,"Buổi tập đã thay đổi. Hãy xem trước lại.",Toast.LENGTH_LONG).show()
+                            return@setPositiveButton
+                        }
+
+                        moves = preview.after
+                        originalMoves = moves.toList()
+                        program = program.copy(moves = moves)
+                        substitutions.clear()
+                        optionalExtensionNames.clear()
+                        optionalExtensionNames.addAll(preview.extensionMoveNames)
+                        completedMoveIndices.removeAll {
+                            it > index || (it == index && preview.currentMoveChanged)
+                        }
+                        completedSetsByMove.keys.removeAll {
+                            it > index || (it == index && preview.currentMoveChanged)
+                        }
+                        repTargets.keys.removeAll {
+                            it > index || (it == index && preview.currentMoveChanged)
+                        }
+                        workoutConstraints = WorkoutConstraintProfile(
+                            avoidWristLoad = workoutConstraints.avoidWristLoad || request.avoidWristLoad
+                        )
+                        if (preview.currentMoveChanged) {
+                            remainingMs = minOf(
+                                remainingMs,
+                                moves[index].seconds.coerceAtLeast(0) * 1_000L
+                            )
+                        }
+                        heading.text = "\${index + 1}/\${moves.size} • \${moves[index].name}"
+                        poseView.pose = WorkoutPoseGuide.classify(moves[index].name)
+                        renderDose()
+                        renderSetControls()
+                        progress.max = moves.size
+                        progress.progress = index
+                        counter.text = clockText(remainingMs)
+                        control.text = "▶ Tiếp tục"
+                        saveCheckpoint()
+
+                        val cue = if (preview.currentMoveChanged) {
+                            "Đã đổi sang \${moves[index].name}. Hãy kiểm tra hướng dẫn trước khi tập tiếp."
+                        } else {
+                            "Đã cập nhật phần còn lại của giáo án. Các hiệp đã xác nhận được giữ nguyên."
+                        }
+                        if (preview.restSeconds > 0) startSetRest(preview.restSeconds, cue)
+                        else speak(cue)
+                    }
+                    .setNegativeButton("Giữ nguyên",null)
+                    .show()
+            }
+        }
+    }
+
     private fun handleCoachCommand(utterance:String) {
+        when (val parsed = WorkoutMidSessionRequest.parse(utterance)) {
+            WorkoutMidSessionRequest.Result.SafetyStop -> {
+                stopForSafety()
+                return
+            }
+            is WorkoutMidSessionRequest.Result.Proposed -> {
+                applyMidSessionRequest(parsed.request)
+                return
+            }
+            WorkoutMidSessionRequest.Result.Unsupported -> Unit
+        }
         // Safety words always take precedence over any numeric exercise request.
         val spokenReps = com.chibialarm.app.fitness.WorkoutTargetCommand.spokenReps(utterance)
         if (spokenReps != null && WorkoutVoiceCommands.mayEditReps(utterance)) {
@@ -583,19 +786,7 @@ class GuidedWorkoutActivity:Activity() {
         }
 
         when(WorkoutVoiceCommands.parse(utterance)) {
-            WorkoutVoiceCommands.Command.PAIN -> {
-                pause()
-                pausedForSafety=true
-                renderSetControls()
-                control.text="⚠️ Đã dừng vì đau"
-                // Persist the safety lock after setting it, including when recognition
-                // arrives while the workout is already paused.
-                saveCheckpoint()
-                AlertDialog.Builder(this).setTitle("⚠️ Đã dừng vì bạn báo đau")
-                    .setMessage("Không cố tập khi đau. Hãy kết thúc buổi tập nếu triệu chứng tiếp diễn; tìm trợ giúp y tế phù hợp nếu đau nhiều hoặc có dấu hiệu bất thường. Chibi sẽ không tự tiếp tục bằng giọng nói.")
-                    .setPositiveButton("Đã hiểu",null).show()
-                speak("Đã dừng tập vì bạn báo đau. Hãy ưu tiên an toàn.")
-            }
+            WorkoutVoiceCommands.Command.PAIN -> stopForSafety()
             WorkoutVoiceCommands.Command.PAUSE -> { pause();speak("Đã tạm dừng.") }
             WorkoutVoiceCommands.Command.STATUS -> {
                 val plan = currentSetPlan()

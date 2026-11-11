@@ -131,7 +131,7 @@ class GuidedWorkoutActivity:Activity() {
         )
         optionalExtensionNames.clear()
         optionalExtensionNames.addAll(
-            checkpoint.getString("extensionMoves", "").split("\\n")
+            checkpoint.getString("extensionMoves", "").split("\n")
                 .filter { name -> name.isNotBlank() && moves.any { it.name == name } }
                 .take(20)
         )
@@ -675,36 +675,36 @@ class GuidedWorkoutActivity:Activity() {
             is WorkoutMidSessionPlanner.Result.Proposed -> {
                 val preview = result.preview
                 fun durationLabel(seconds: Int): String =
-                    "\${seconds / 60} phút \${seconds % 60} giây"
+                    "${seconds / 60} phút ${seconds % 60} giây"
                 val summary = buildString {
                     if (preview.replacements.isNotEmpty()) {
-                        append("Thay động tác:\\n")
-                        preview.replacements.forEach { append("• ").append(it).append("\\n") }
+                        append("Thay động tác:\n")
+                        preview.replacements.forEach { append("• ").append(it).append("\n") }
                     }
                     if (preview.removedMoves.isNotEmpty()) {
-                        append("\\nBỏ các bước chưa bắt đầu:\\n")
-                        preview.removedMoves.forEach { append("• ").append(it).append("\\n") }
+                        append("\nBỏ các bước chưa bắt đầu:\n")
+                        preview.removedMoves.forEach { append("• ").append(it).append("\n") }
                     }
                     if (request.avoidWristLoad) {
-                        append("\\nÁp dụng tránh chống tay/tải qua cổ tay cho phần chưa hoàn thành.")
+                        append("\nÁp dụng tránh chống tay/tải qua cổ tay cho phần chưa hoàn thành.")
                     }
                     if (request.lowEnergy) {
-                        append("\\nƯu tiên biến thể nhẹ hơn và nghỉ riêng.")
+                        append("\nƯu tiên biến thể nhẹ hơn và nghỉ riêng.")
                     }
                     if (preview.requestedMinutes != null) {
-                        append("\\nMục tiêu thời gian còn lại: ").append(preview.requestedMinutes).append(" phút.")
-                        append("\\nƯớc tính sau điều chỉnh: ").append(durationLabel(preview.estimatedRemainingSeconds)).append(".")
+                        append("\nMục tiêu thời gian còn lại: ").append(preview.requestedMinutes).append(" phút.")
+                        append("\nƯớc tính sau điều chỉnh: ").append(durationLabel(preview.estimatedRemainingSeconds)).append(".")
                     }
                     if (preview.targetExceeded) {
-                        append("\\nPhần bài chính và nghỉ bắt buộc vẫn dài hơn mục tiêu. Chibi không tự cắt hiệp bắt buộc hoặc hứa chắc thời gian hoàn thành.")
+                        append("\nPhần bài chính và nghỉ bắt buộc vẫn dài hơn mục tiêu. Chibi không tự cắt hiệp bắt buộc hoặc hứa chắc thời gian hoàn thành.")
                     }
                     if (preview.restSeconds > 0) {
-                        append("\\nSau khi áp dụng sẽ nghỉ riêng ").append(preview.restSeconds).append(" giây; thời gian nghỉ không tính là vận động.")
+                        append("\nSau khi áp dụng sẽ nghỉ riêng ").append(preview.restSeconds).append(" giây; thời gian nghỉ không tính là vận động.")
                     }
                     if (!preview.changed && preview.restSeconds == 0) {
-                        append("\\nKhông có bài tùy chọn nào cần bỏ; các hiệp bắt buộc được giữ nguyên.")
+                        append("\nKhông có bài tùy chọn nào cần bỏ; các hiệp bắt buộc được giữ nguyên.")
                     }
-                    append("\\n\\nCác hiệp đã xác nhận không bị sửa. Đây là gợi ý offline từ thư viện, không phải chẩn đoán hay đánh giá tư thế.")
+                    append("\n\nCác hiệp đã xác nhận không bị sửa. Đây là gợi ý offline từ thư viện, không phải chẩn đoán hay đánh giá tư thế.")
                 }
                 AlertDialog.Builder(this).setTitle("🐰 Xem trước điều chỉnh giữa buổi")
                     .setMessage(summary)
@@ -742,7 +742,7 @@ class GuidedWorkoutActivity:Activity() {
                                 moves[index].seconds.coerceAtLeast(0) * 1_000L
                             )
                         }
-                        heading.text = "\${index + 1}/\${moves.size} • \${moves[index].name}"
+                        heading.text = "${index + 1}/${moves.size} • ${moves[index].name}"
                         poseView.pose = WorkoutPoseGuide.classify(moves[index].name)
                         renderDose()
                         renderSetControls()
@@ -753,7 +753,7 @@ class GuidedWorkoutActivity:Activity() {
                         saveCheckpoint()
 
                         val cue = if (preview.currentMoveChanged) {
-                            "Đã đổi sang \${moves[index].name}. Hãy kiểm tra hướng dẫn trước khi tập tiếp."
+                            "Đã đổi sang ${moves[index].name}. Hãy kiểm tra hướng dẫn trước khi tập tiếp."
                         } else {
                             "Đã cập nhật phần còn lại của giáo án. Các hiệp đã xác nhận được giữ nguyên."
                         }

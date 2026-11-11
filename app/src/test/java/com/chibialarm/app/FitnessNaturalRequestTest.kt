@@ -221,4 +221,22 @@ class FitnessNaturalRequestTest {
         assertTrue(result.reply.contains("Không bắt đầu tập"))
     }
 
+
+    @Test fun wristOptOutIsNotShadowedByTheRestrictionPhraseItContains() {
+        assertEquals(false, FitnessNaturalRequest.parse("bỏ hạn chế cổ tay").avoidWristLoad)
+        assertEquals(false, FitnessNaturalRequest.parse("không cần tránh cổ tay").avoidWristLoad)
+        assertEquals(
+            true,
+            FitnessNaturalRequest.parse("có thể chống tay nhưng vẫn hạn chế cổ tay").avoidWristLoad
+        )
+    }
+
+    @Test fun floorOptOutIsNotShadowedByTheAvoidancePhraseItContains() {
+        assertEquals(false, FitnessNaturalRequest.parse("không cần tránh nằm sàn").avoidFloorPositions)
+        assertEquals(
+            true,
+            FitnessNaturalRequest.parse("có thể nằm sàn nhưng không quỳ sàn").avoidFloorPositions
+        )
+    }
+
 }

@@ -1,6 +1,7 @@
 package com.chibialarm.app
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Test
 import com.chibialarm.app.WorkoutVoiceCommands.Command as C
 
@@ -50,6 +51,25 @@ class WorkoutVoiceCommandsTest {
             assertEquals(phrase, C.STATUS, WorkoutVoiceCommands.parse(phrase))
         }
         assertEquals("Đọc tiến độ và thời gian còn lại", WorkoutVoiceCommands.describe(C.STATUS))
+    }
+
+    @Test fun stepByStepGuideCanBeOpenedWithNaturalVietnameseCommands() {
+        for (phrase in listOf(
+            "Hướng dẫn từng bước",
+            "Đọc từng bước",
+            "Xem từng bước",
+            "Mở hướng dẫn"
+        )) {
+            assertEquals(phrase, C.STEP_GUIDE, WorkoutVoiceCommands.parse(phrase))
+        }
+        assertEquals("Mở hướng dẫn từng bước cho động tác hiện tại",
+            WorkoutVoiceCommands.describe(C.STEP_GUIDE))
+        assertFalse(WorkoutVoiceCommands.mayEditReps("Hướng dẫn từng bước"))
+    }
+
+    @Test fun safetyAndPauseTakePriorityOverStepByStepGuide() {
+        assertEquals(C.PAIN, WorkoutVoiceCommands.parse("Đau gối, hướng dẫn từng bước"))
+        assertEquals(C.PAUSE, WorkoutVoiceCommands.parse("Tạm dừng và mở hướng dẫn"))
     }
 
     @Test fun safetyAndPauseTakePriorityOverStatusRequests() {

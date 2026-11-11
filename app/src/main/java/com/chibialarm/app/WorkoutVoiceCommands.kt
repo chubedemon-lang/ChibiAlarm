@@ -6,7 +6,7 @@ import java.util.Locale
 /** Small, offline command interpreter. Unrecognized speech never controls a workout. */
 object WorkoutVoiceCommands {
     enum class Command {
-        PAIN, PAUSE, STATUS, RESUME, NEXT, PREVIOUS, REPEAT, EASIER, SWAP_EASIER,
+        PAIN, PAUSE, STATUS, STEP_GUIDE, RESUME, NEXT, PREVIOUS, REPEAT, EASIER, SWAP_EASIER,
         EASIER_AND_REST, SHORTER, SHORTER_REMAINING, REST, COMPLETE_SET, UNKNOWN
     }
 
@@ -17,6 +17,7 @@ object WorkoutVoiceCommands {
             Command.PAIN -> "Dừng tập vì cảnh báo an toàn"
             Command.PAUSE -> "Tạm dừng buổi tập"
             Command.STATUS -> "Đọc tiến độ và thời gian còn lại"
+            Command.STEP_GUIDE -> "Mở hướng dẫn từng bước cho động tác hiện tại"
             Command.COMPLETE_SET -> "Xác nhận hoàn thành hiệp hiện tại"
             Command.RESUME -> "Tiếp tục buổi tập"
             Command.NEXT -> "Chuyển sang động tác tiếp theo"
@@ -68,6 +69,8 @@ object WorkoutVoiceCommands {
                 normalized.contains("con bao nhieu giay") || normalized.contains("thoi gian con lai") ||
                 normalized.contains("uoc tinh thoi gian") || normalized.contains("khi nao xong") ||
                 "progress" in words || "status" in words -> Command.STATUS
+            normalized.contains("huong dan tung buoc") || normalized.contains("doc tung buoc") ||
+                normalized.contains("xem tung buoc") || normalized.contains("mo huong dan") -> Command.STEP_GUIDE
             normalized.contains("chua xong hiep") || normalized.contains("chua hoan thanh hiep") ||
                 normalized.contains("khong xong hiep") || normalized.contains("khong hoan thanh hiep") ||
                 normalized.contains("chua xac nhan hiep") -> Command.UNKNOWN

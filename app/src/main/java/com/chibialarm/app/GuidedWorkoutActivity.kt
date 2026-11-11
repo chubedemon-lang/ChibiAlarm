@@ -589,14 +589,14 @@ class GuidedWorkoutActivity:Activity() {
                 val request=Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                     putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                     putExtra(RecognizerIntent.EXTRA_LANGUAGE,"vi-VN")
-                    putExtra(RecognizerIntent.EXTRA_PROMPT,"Ví dụ: nghỉ thêm, đổi bài, không dùng tạ/dây, dễ hơn, dừng lại")
+                    putExtra(RecognizerIntent.EXTRA_PROMPT,"Ví dụ: hướng dẫn từng bước, nghỉ thêm, đổi bài, không dùng tạ/dây, dễ hơn, dừng lại")
                 }
                 try { startActivityForResult(request,voiceRequest) }
                 catch (_:Exception) { Toast.makeText(this,"Thiết bị chưa có dịch vụ nhận giọng nói. Hãy nhập yêu cầu bằng chữ.",Toast.LENGTH_LONG).show() }
             }.setNegativeButton("Hủy",null).show()
     }
     private fun requestTypedCommand() {
-        val field=EditText(this).apply { hint="Ví dụ: đọc tiến độ, còn 10 phút, không dùng tạ/dây, nghỉ thêm, dễ hơn";setSingleLine(false) }
+        val field=EditText(this).apply { hint="Ví dụ: hướng dẫn từng bước, đọc tiến độ, còn 10 phút, đổi bài, nghỉ thêm";setSingleLine(false) }
         AlertDialog.Builder(this).setTitle("💬 Chibi Coach • lệnh offline")
             .setMessage("Điều khiển buổi tập bằng chữ, không gửi dữ liệu lên mạng.")
             .setView(field).setPositiveButton("Gửi"){_,_->handleCoachCommand(field.text.toString())}
@@ -893,6 +893,7 @@ class GuidedWorkoutActivity:Activity() {
                     )
                 ))
             }
+            WorkoutVoiceCommands.Command.STEP_GUIDE -> showStepByStepGuide()
             WorkoutVoiceCommands.Command.COMPLETE_SET -> confirmSpokenSetCompletion()
             WorkoutVoiceCommands.Command.RESUME -> resume()
             WorkoutVoiceCommands.Command.NEXT -> nextMove()
@@ -945,7 +946,7 @@ class GuidedWorkoutActivity:Activity() {
             }
             WorkoutVoiceCommands.Command.UNKNOWN -> {
                 AlertDialog.Builder(this).setTitle("Chibi chưa hiểu yêu cầu")
-                    .setMessage("Bạn có thể nói: đọc tiến độ, tạm dừng, tiếp tục, bài tiếp theo, bài trước, đổi động tác, nhắc lại, dễ hơn, rút ngắn hoặc nghỉ thêm. Đây là bộ lệnh offline, chưa phải hội thoại AI tự do.")
+                    .setMessage("Bạn có thể nói: hướng dẫn từng bước, đọc tiến độ, tạm dừng, tiếp tục, bài tiếp theo, bài trước, đổi động tác, nhắc lại, dễ hơn, rút ngắn hoặc nghỉ thêm. Đây là bộ lệnh offline, chưa phải hội thoại AI tự do.")
                     .setPositiveButton("Đóng",null).show()
             }
         }
@@ -1382,6 +1383,11 @@ class GuidedWorkoutActivity:Activity() {
         catch(_:Exception) { Toast.makeText(this,"Không tìm thấy ứng dụng mở liên kết",Toast.LENGTH_LONG).show() }
     }
     private fun showStepByStepGuide() {
+        if (pausedForSafety) {
+            Toast.makeText(this, "Buổi tập đang dừng vì đau; hãy nghỉ, không mở hướng dẫn vận động.", Toast.LENGTH_LONG).show()
+            return
+        }
+        if (completed || index !in moves.indices) return
         // A step-by-step walkthrough is opt-in and never consumes workout time.
         pause()
         spoken?.stop()

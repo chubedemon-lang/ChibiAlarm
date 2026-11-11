@@ -164,7 +164,7 @@ class FitnessNaturalRequestTest {
 
 
     @Test fun floorPositionAvoidanceIsAPlanPreferenceNotAnInjuryReport() {
-        for (phrase in listOf("không nằm sàn", "đừng quỳ sàn", "tránh xuống sàn")) {
+        for (phrase in listOf("không nằm sàn", "đừng quỳ sàn", "tránh xuống sàn", "đừng nằm hoặc quỳ sàn")) {
             val result = FitnessNaturalRequest.parse(phrase)
             assertEquals("Failed for $phrase", true, result.avoidFloorPositions)
             assertNull("Failed for $phrase", result.impact)

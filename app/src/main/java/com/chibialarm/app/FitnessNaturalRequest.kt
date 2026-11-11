@@ -126,6 +126,9 @@ object FitnessNaturalRequest {
     fun parse(input: String): Result {
         val text = normalize(input.take(1000))
         fun has(vararg phrases: String) = phrases.any { text.contains(it) }
+        fun hasWholePhrase(vararg phrases: String) = phrases.any { phrase ->
+            Regex("(?:^| )" + Regex.escape(phrase) + "(?: |$)").containsMatchIn(text)
+        }
         // Acute/non-local symptoms remain conservative stop signals. Musculoskeletal
         // pain is parsed separately so "đầu gối" alone is not mistaken for "đau gối".
         val symptoms = listOf(
@@ -168,10 +171,32 @@ object FitnessNaturalRequest {
             has("co kinh nghiem", "nang cao", "tap lau nam", "advanced") -> 2
             else -> null
         }
+        // Equipment phrases need word boundaries and explicit negation. In particular,
+        // substring matching made "không có tạ" accidentally match the positive phrase "có tạ".
+        val noDumbbell = hasWholePhrase(
+            "khong co ta", "khong con ta", "khong dung ta", "bo ta", "het ta",
+            "khong co ta don", "khong con ta don", "khong dung ta don", "bo ta don"
+        )
+        val noBand = hasWholePhrase(
+            "khong co day", "khong con day", "khong dung day", "bo day", "het day",
+            "khong co day khang luc", "khong con day khang luc",
+            "khong dung day khang luc", "bo day khang luc"
+        )
+        val hasDumbbell = hasWholePhrase("ta don", "co ta", "dung ta", "su dung ta") && !noDumbbell
+        val hasBand = hasWholePhrase(
+            "day khang luc", "co day", "dung day", "su dung day"
+        ) && !noBand
+        val hasMat = hasWholePhrase("tham tap", "co tham") &&
+            !hasWholePhrase("khong co tham", "khong con tham", "khong dung tham", "bo tham")
+        val explicitlyNoEquipment = hasWholePhrase(
+            "khong dung cu", "khong co dung cu", "tay khong",
+            "khong con dung cu", "het dung cu"
+        )
         val equipment = when {
-            has("khong dung cu", "khong co dung cu", "tay khong") -> 0
-            has("ta don", "day khang luc", "co ta") -> 2
-            has("tham tap", "co tham") -> 1
+            // A reported available alternative wins: no dumbbell but a band is still usable.
+            hasDumbbell || hasBand -> 2
+            hasMat -> 1
+            explicitlyNoEquipment || noDumbbell || noBand -> 0
             else -> null
         }
         val duration = parseDuration(text)

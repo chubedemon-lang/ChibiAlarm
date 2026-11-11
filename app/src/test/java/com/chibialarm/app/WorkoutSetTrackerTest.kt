@@ -64,6 +64,13 @@ class WorkoutSetTrackerTest {
         }
     }
 
+    @Test fun usesExerciseSpecificRestAndRejectsOutOfRangeOverrides() {
+        assertEquals(75, WorkoutSetTracker.parse("2 hiệp × 8–10 lần", 75)?.defaultRestSeconds)
+        assertEquals(30, WorkoutSetTracker.parse("3 × 15 giây", 30)?.defaultRestSeconds)
+        assertNull(WorkoutSetTracker.parse("2 hiệp × 8 lần", 14))
+        assertNull(WorkoutSetTracker.parse("2 hiệp × 8 lần", 181))
+    }
+
     @Test fun completingSetsIsBoundedAndIdempotentAtTarget() {
         val plan = WorkoutSetTracker.parse("2 hiệp × 8–12 lần")!!
         assertEquals(1, WorkoutSetTracker.complete(0, plan))

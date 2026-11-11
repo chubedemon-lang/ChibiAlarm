@@ -16,6 +16,7 @@ import android.widget.*
 import java.util.Locale
 import java.util.UUID
 import com.chibialarm.app.fitness.RemainingWorkoutDuration
+import com.chibialarm.app.fitness.WorkoutSessionTimeEstimate
 import com.chibialarm.app.fitness.WorkoutMidSessionPlanner
 import com.chibialarm.app.fitness.WorkoutMidSessionRequest
 import com.chibialarm.app.rpg.RpgDatabase
@@ -833,7 +834,18 @@ class GuidedWorkoutActivity:Activity() {
                         restSecondsRemaining = if (resting) secondsLeft(restRemainingMs) else 0,
                         exerciseSecondsRemaining = if (resting) 0 else secondsLeft(remainingMs),
                         pausedForSafety = pausedForSafety,
-                        nextMoveName = moves.getOrNull(index + 1)?.name
+                        nextMoveName = moves.getOrNull(index + 1)?.name,
+                        estimatedSessionSecondsRemaining = if (pausedForSafety) null else
+                            WorkoutSessionTimeEstimate.seconds(
+                                moves = moves,
+                                currentIndex = index,
+                                completedMoves = completedMoveIndices,
+                                completedSets = completedSetsByMove,
+                                currentExerciseRemainingSeconds = if (resting) 0 else secondsLeft(remainingMs),
+                                resting = resting,
+                                restSecondsRemaining = if (resting) secondsLeft(restRemainingMs) else 0,
+                                level = workoutLevel
+                            )
                     )
                 ))
             }

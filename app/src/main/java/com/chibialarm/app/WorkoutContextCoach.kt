@@ -33,7 +33,9 @@ object WorkoutContextCoach {
         val restSecondsRemaining: Int = 0,
         val exerciseSecondsRemaining: Int = 0,
         val pausedForSafety: Boolean = false,
-        val nextMoveName: String? = null
+        val nextMoveName: String? = null,
+        /** Approximate remaining session time, including prescribed rests and transitions. */
+        val estimatedSessionSecondsRemaining: Int? = null
     ) {
         init {
             require(totalMoves in 1..500)
@@ -41,6 +43,8 @@ object WorkoutContextCoach {
             require(currentMoveIndex in 0 until totalMoves)
             require(restSecondsRemaining in 0..600)
             require(exerciseSecondsRemaining in 0..600)
+            require(estimatedSessionSecondsRemaining == null ||
+                estimatedSessionSecondsRemaining in 0..86_400)
         }
     }
 
@@ -103,6 +107,13 @@ object WorkoutContextCoach {
             }
 
             if (next != null) append(" Động tác tiếp theo: ").append(next).append(".")
+            progress.estimatedSessionSecondsRemaining?.let { estimate ->
+                val minutes = estimate / 60
+                val seconds = estimate % 60
+                append(" Ước tính phần còn lại khoảng ")
+                if (minutes > 0) append(minutes).append(" phút ")
+                append(seconds).append(" giây, gồm thời gian nhắc động tác, nghỉ và chuyển bước; đây chỉ là ước tính.")
+            }
             append(" Số hiệp là xác nhận của bạn, không phải cảm biến tự đếm.")
         }.take(900)
     }

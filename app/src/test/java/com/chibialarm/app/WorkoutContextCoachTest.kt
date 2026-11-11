@@ -86,6 +86,36 @@ class WorkoutContextCoachTest {
         assertTrue(text.contains("không tự tiếp tục"))
     }
 
+
+    @Test fun progressCueIncludesAnApproximateWholeSessionEstimate() {
+        val text = WorkoutContextCoach.progressScript(
+            WorkoutContextCoach.Progress(
+                completedMoves = 1,
+                totalMoves = 3,
+                currentMoveIndex = 1,
+                currentMoveName = "Squat",
+                estimatedSessionSecondsRemaining = 95
+            )
+        )
+        assertTrue(text.contains("Ước tính phần còn lại khoảng 1 phút 35 giây"))
+        assertTrue(text.contains("nghỉ và chuyển bước"))
+        assertTrue(text.contains("đây chỉ là ước tính"))
+    }
+
+    @Test fun safetyLockDoesNotPresentAWorkoutTimeEstimate() {
+        val text = WorkoutContextCoach.progressScript(
+            WorkoutContextCoach.Progress(
+                completedMoves = 0,
+                totalMoves = 2,
+                currentMoveIndex = 0,
+                currentMoveName = "Squat",
+                pausedForSafety = true
+            )
+        )
+        assertTrue(text.contains("đang khóa an toàn"))
+        assertFalse(text.contains("Ước tính phần còn lại"))
+    }
+
     @Test fun emptyAndOversizedCatalogFieldsAreBounded() {
         val text = WorkoutContextCoach.script(
             TrainingMove("", "", "x".repeat(2000), "", "", 60)

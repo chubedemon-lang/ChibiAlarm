@@ -69,23 +69,30 @@ object WorkoutMidSessionPlanner {
         currentMoves.drop(currentIndex).forEachIndexed { offset, move ->
             val isCurrent = offset == 0
             val mustAvoid = !WorkoutConstraintFilter.isAllowed(move, effectiveProfile)
+            val mustRemoveEquipment = request.avoidExternalLoad && requiresExternalLoad(move)
+            val mustChange = mustAvoid || mustRemoveEquipment
             val canReplace = !isCurrent || (!currentStepLocked && completedCurrentSets == 0)
 
-            if (isCurrent && mustAvoid && !canReplace) {
-                return Result.Blocked(
-                    "Động tác hiện tại đã có hiệp được ghi nhận nhưng không phù hợp với hạn chế vận động mới. " +
+            if (isCurrent && mustChange && !canReplace) {
+                val reason = if (mustRemoveEquipment && !mustAvoid) {
+                    "Động tác hiện tại cần tạ hoặc dây kháng lực nhưng đã có hiệp được ghi nhận. " +
+                        "Chibi không thể đổi hồi tố; hãy kết thúc bước an toàn trước khi đổi phần còn lại."
+                } else {
+                    "Động tác hiện tại không phù hợp với hạn chế vận động mới và đã có hiệp được ghi nhận. " +
                         "Chibi không thể đổi hồi tố; hãy dừng buổi tập và tạo phiên an toàn mới."
-                )
+                }
+                return Result.Blocked(reason)
             }
 
             val mayChooseEasier = request.preferEasier && canReplace
-            val candidates = if (canReplace && (mustAvoid || mayChooseEasier)) {
+            val candidates = if (canReplace && (mustChange || mayChooseEasier)) {
                 WorkoutMoveSubstitution.alternativesFor(move, effectiveProfile)
             } else {
                 emptyList()
             }
             val replacement = candidates.firstOrNull {
-                it.name !in usedNames && it.name !in reservedFutureNames && it.name != move.name
+                it.name !in usedNames && it.name !in reservedFutureNames && it.name != move.name &&
+                    (!request.avoidExternalLoad || !requiresExternalLoad(it))
             }
 
             when {
@@ -99,13 +106,15 @@ object WorkoutMidSessionPlanner {
                         extensions += replacement.name
                     }
                 }
-                mustAvoid && isCurrent -> {
-                    return Result.Blocked(
-                        "Chưa có biến thể được tuyển chọn phù hợp với hạn chế vận động cho động tác hiện tại. " +
-                            "Chibi không tự bịa bài thay thế."
-                    )
+                mustChange && isCurrent -> {
+                    val reason = if (mustRemoveEquipment) {
+                        "Chưa có biến thể không dùng tạ/dây được tuyển chọn cho động tác hiện tại. Chibi không tự bịa bài thay thế."
+                    } else {
+                        "Chưa có biến thể được tuyển chọn phù hợp với hạn chế vận động cho động tác hiện tại. Chibi không tự bịa bài thay thế."
+                    }
+                    return Result.Blocked(reason)
                 }
-                mustAvoid -> {
+                mustChange -> {
                     removed += move.name
                     extensions.remove(move.name)
                 }
@@ -170,6 +179,10 @@ object WorkoutMidSessionPlanner {
             )
         )
     }
+
+    private fun requiresExternalLoad(move: TrainingMove): Boolean =
+        move.name.contains("tạ đơn", ignoreCase = true) ||
+            move.name.contains("dây kháng lực", ignoreCase = true)
 
     private fun isMainExercise(move: TrainingMove): Boolean =
         move.name !in setOf("Khởi động tại chỗ", "Thả lỏng", "Giãn cơ và thở chậm")

@@ -588,14 +588,14 @@ class GuidedWorkoutActivity:Activity() {
                 val request=Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                     putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                     putExtra(RecognizerIntent.EXTRA_LANGUAGE,"vi-VN")
-                    putExtra(RecognizerIntent.EXTRA_PROMPT,"Ví dụ: nghỉ thêm, bài tiếp theo, đổi động tác, dừng lại")
+                    putExtra(RecognizerIntent.EXTRA_PROMPT,"Ví dụ: nghỉ thêm, đổi bài, không dùng tạ/dây, dễ hơn, dừng lại")
                 }
                 try { startActivityForResult(request,voiceRequest) }
                 catch (_:Exception) { Toast.makeText(this,"Thiết bị chưa có dịch vụ nhận giọng nói. Hãy nhập yêu cầu bằng chữ.",Toast.LENGTH_LONG).show() }
             }.setNegativeButton("Hủy",null).show()
     }
     private fun requestTypedCommand() {
-        val field=EditText(this).apply { hint="Ví dụ: đọc tiến độ, nghỉ thêm, đổi động tác, dễ hơn, tiếp tục";setSingleLine(false) }
+        val field=EditText(this).apply { hint="Ví dụ: đọc tiến độ, còn 10 phút, không dùng tạ/dây, nghỉ thêm, dễ hơn";setSingleLine(false) }
         AlertDialog.Builder(this).setTitle("💬 Chibi Coach • lệnh offline")
             .setMessage("Điều khiển buổi tập bằng chữ, không gửi dữ liệu lên mạng.")
             .setView(field).setPositiveButton("Gửi"){_,_->handleCoachCommand(field.text.toString())}
@@ -696,6 +696,9 @@ class GuidedWorkoutActivity:Activity() {
                     }
                     if (request.avoidFloorPositions) {
                         append("\nBỏ các động tác phải nằm hoặc quỳ sàn chưa bắt đầu; không tự tạo bài thay thế chưa được tuyển chọn.")
+                    }
+                    if (request.avoidExternalLoad) {
+                        append("\nLoại bỏ tạ và dây kháng lực khỏi phần chưa hoàn thành; chỉ dùng biến thể đã có trong thư viện.")
                     }
                     if (request.lowEnergy) {
                         append("\nƯu tiên biến thể nhẹ hơn và nghỉ riêng.")

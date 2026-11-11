@@ -16,7 +16,8 @@ object WorkoutMidSessionRequest {
         val avoidWristLoad: Boolean = false,
         val avoidFloorPositions: Boolean = false,
         val preferEasier: Boolean = false,
-        val restSeconds: Int? = null
+        val restSeconds: Int? = null,
+        val avoidExternalLoad: Boolean = false
     ) {
         init {
             require(remainingMinutes == null || remainingMinutes in 5..120)
@@ -80,13 +81,20 @@ object WorkoutMidSessionRequest {
             "nhe hon", "de hon", "giam do kho", "doi bai nhe",
             "doi sang bai nhe", "thay bai nhe"
         )
+        // A user may lose access to equipment mid-session. Only explicit negative
+        // phrases request bodyweight alternatives; positive equipment mentions do not.
+        val avoidExternalLoad = has(
+            "khong dung cu", "khong co dung cu", "khong can dung cu", "tay khong",
+            "khong dung ta", "khong co ta", "bo ta",
+            "khong dung day khang luc", "khong co day khang luc", "bo day khang luc"
+        )
 
         val hasRestRequest = Regex("""\b(nghi|rest)\b""").containsMatchIn(text)
         val explicitRest = if (hasRestRequest) WorkoutRestRequest.seconds(input) else null
         val restSeconds = explicitRest ?: if (lowEnergy) 60 else null
 
         if (remainingMinutes == null && !lowEnergy && !avoidWristLoad && !avoidFloorPositions &&
-            !preferEasier && restSeconds == null
+            !preferEasier && restSeconds == null && !avoidExternalLoad
         ) return Result.Unsupported
 
         return Result.Proposed(
@@ -96,7 +104,8 @@ object WorkoutMidSessionRequest {
                 avoidWristLoad = avoidWristLoad,
                 avoidFloorPositions = avoidFloorPositions,
                 preferEasier = preferEasier,
-                restSeconds = restSeconds
+                restSeconds = restSeconds,
+                avoidExternalLoad = avoidExternalLoad
             )
         )
     }

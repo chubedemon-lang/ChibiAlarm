@@ -274,4 +274,87 @@ class WorkoutMidSessionPlannerTest {
         assertTrue(result is WorkoutMidSessionPlanner.Result.Blocked)
     }
 
+
+    @Test fun explicitNoEquipmentRequestIsNotMistakenForLowEnergyOrAnEasierRequest() {
+        val parsed = WorkoutMidSessionRequest.parse("Tao không dùng tạ hoặc dây kháng lực nữa")
+        assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
+        val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+        assertTrue(request.avoidExternalLoad)
+        assertFalse(request.lowEnergy)
+        assertFalse(request.preferEasier)
+        assertNull(request.restSeconds)
+    }
+
+    @Test fun positiveEquipmentMentionDoesNotCreateABodyweightOnlyRequest() {
+        assertSame(
+            WorkoutMidSessionRequest.Result.Unsupported,
+            WorkoutMidSessionRequest.parse("Tao có tạ và dây kháng lực")
+        )
+    }
+
+    @Test fun noEquipmentMidSessionReplacesOnlyRemainingWeightedCatalogMoves() {
+        val moves = listOf(
+            move("Khởi động tại chỗ"),
+            move("Kéo tạ đơn hoặc dây kháng lực"),
+            move("Gập hông với tạ đơn hoặc dây"),
+            move("Đẩy vai với tạ đơn hoặc dây"),
+            move("Thả lỏng")
+        )
+        val parsed = WorkoutMidSessionRequest.parse("Không có dụng cụ, còn 10 phút")
+        assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
+        val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+        assertTrue(request.avoidExternalLoad)
+        assertEquals(10, request.remainingMinutes)
+        assertFalse(request.preferEasier)
+
+        val result = WorkoutMidSessionPlanner.preview(
+            currentMoves = moves,
+            currentIndex = 1,
+            completedCurrentSets = 0,
+            currentStepLocked = false,
+            constraints = WorkoutConstraintProfile(),
+            request = request,
+            remainingCurrentSeconds = 90,
+            extensionMoveNames = setOf("Gập hông với tạ đơn hoặc dây"),
+            level = 0
+        )
+        assertTrue(result is WorkoutMidSessionPlanner.Result.Proposed)
+        val preview = (result as WorkoutMidSessionPlanner.Result.Proposed).preview
+        assertEquals(
+            listOf(
+                "Khởi động tại chỗ",
+                "Siết bả vai đứng",
+                "Gập hông không dụng cụ",
+                "Mở vai và ngực",
+                "Thả lỏng"
+            ),
+            preview.after.map { it.name }
+        )
+        assertEquals(3, preview.replacements.size)
+        assertEquals(setOf("Gập hông không dụng cụ"), preview.extensionMoveNames)
+        assertFalse(preview.after.any {
+            it.name.contains("tạ đơn", ignoreCase = true) ||
+                it.name.contains("dây kháng lực", ignoreCase = true)
+        })
+    }
+
+    @Test fun noEquipmentPreferenceCannotRewriteAWeightedMoveAfterASetWasConfirmed() {
+        val result = WorkoutMidSessionPlanner.preview(
+            currentMoves = listOf(
+                move("Kéo tạ đơn hoặc dây kháng lực"),
+                move("Squat không tạ"),
+                move("Thả lỏng")
+            ),
+            currentIndex = 0,
+            completedCurrentSets = 1,
+            currentStepLocked = true,
+            constraints = WorkoutConstraintProfile(),
+            request = WorkoutMidSessionRequest.Request(avoidExternalLoad = true),
+            remainingCurrentSeconds = 30,
+            extensionMoveNames = emptySet(),
+            level = 0
+        )
+        assertTrue(result is WorkoutMidSessionPlanner.Result.Blocked)
+    }
+
 }

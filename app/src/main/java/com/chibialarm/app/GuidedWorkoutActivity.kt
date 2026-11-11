@@ -870,8 +870,10 @@ class GuidedWorkoutActivity:Activity() {
         AlertDialog.Builder(this).setTitle("🔄 Đổi động tác hiện tại")
             .setItems(options.map { "${it.name} • ${it.dose}" }.toTypedArray()) { _, choice ->
                 val replacement = options.getOrNull(choice) ?: return@setItems
+                val restGuidance = WorkoutSetTracker.restGuidance(replacement.dose, replacement.restSeconds)
+                    ?.let { "$it\n" }.orEmpty()
                 AlertDialog.Builder(this).setTitle("Xác nhận thay động tác")
-                    .setMessage("${original.name} → ${replacement.name}\n\nMục tiêu: ${replacement.dose}\nNghỉ giữa hiệp đề xuất: ${replacement.restSeconds} giây\nCách tập: ${replacement.steps}\nDễ hơn nữa: ${replacement.easier}\nLưu ý: ${replacement.avoid}\n\nChỉ thay bước hiện tại chưa được ghi nhận hoàn thành. Các bước khác và thời gian còn lại được giữ nguyên. Chỉ chọn nếu phù hợp với cơ thể bạn; đây là gợi ý offline, không phải tư vấn điều trị.")
+                    .setMessage("${original.name} → ${replacement.name}\n\nMục tiêu: ${replacement.dose}\n$restGuidanceCách tập: ${replacement.steps}\nDễ hơn nữa: ${replacement.easier}\nLưu ý: ${replacement.avoid}\n\nChỉ thay bước hiện tại chưa được ghi nhận hoàn thành. Các bước khác và thời gian còn lại được giữ nguyên. Chỉ chọn nếu phù hợp với cơ thể bạn; đây là gợi ý offline, không phải tư vấn điều trị.")
                     .setPositiveButton("Đổi động tác") { _, _ ->
                         if (pausedForSafety || completed || resting || index != selectedIndex ||
                             index !in moves.indices || (completedSetsByMove[index] ?: 0) > 0 ||

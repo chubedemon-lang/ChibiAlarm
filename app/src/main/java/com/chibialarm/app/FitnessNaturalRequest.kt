@@ -146,6 +146,7 @@ object FitnessNaturalRequest {
             "khong nam san", "tranh nam san", "dung nam san",
             "khong quy san", "tranh quy san", "dung quy san",
             "khong xuong san", "tranh xuong san", "dung xuong san",
+            "khong nam", "tranh nam", "dung nam", "khong quy", "tranh quy", "dung quy",
             "khong tap duoi san", "tranh bai nam san", "khong nam xuong san"
         )
         val energy = when {

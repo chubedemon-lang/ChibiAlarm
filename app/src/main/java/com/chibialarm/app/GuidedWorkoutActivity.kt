@@ -893,6 +893,7 @@ class GuidedWorkoutActivity:Activity() {
                     )
                 ))
             }
+            WorkoutVoiceCommands.Command.COMPLETE_SET -> confirmSpokenSetCompletion()
             WorkoutVoiceCommands.Command.RESUME -> resume()
             WorkoutVoiceCommands.Command.NEXT -> nextMove()
             WorkoutVoiceCommands.Command.PREVIOUS -> { if(!pausedForSafety) { pause();if(index>0)index--;displayStep();speak("Bài "+moves[index].name) } }

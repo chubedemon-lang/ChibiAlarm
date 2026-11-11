@@ -4,6 +4,7 @@ package com.chibialarm.app
 object WorkoutPoseMotion {
     fun hasMotion(pose: WorkoutPoseGuide.Pose): Boolean = when (pose) {
         WorkoutPoseGuide.Pose.SQUAT,
+        WorkoutPoseGuide.Pose.HIP_HINGE,
         WorkoutPoseGuide.Pose.PUSH_UP,
         WorkoutPoseGuide.Pose.KNEE_PUSH_UP,
         WorkoutPoseGuide.Pose.WALL_PUSH_UP,

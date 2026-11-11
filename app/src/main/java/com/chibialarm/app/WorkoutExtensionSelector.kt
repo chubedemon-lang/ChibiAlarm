@@ -100,6 +100,12 @@ object WorkoutExtensionSelector {
         require(availableSeconds >= 0)
         if (availableSeconds == 0) return emptyList()
 
+        // Only extend a complete curated session. Short/custom one-move plans and desk breaks
+        // must not be padded with unrelated exercises merely because a target is longer.
+        val hasWarmUp = baseMoves.firstOrNull()?.name == "Khởi động tại chỗ"
+        val hasCoolDown = baseMoves.lastOrNull()?.name in setOf("Thả lỏng", "Giãn cơ và thở chậm")
+        if (baseMoves.size < 4 || !hasWarmUp || !hasCoolDown) return emptyList()
+
         val catalog = TrainingCatalog.allMoves.associateBy { it.name }
         val existingNames = baseMoves.map { it.name }.toSet()
         val usedFamilies = baseMoves.mapNotNull { familyByName[it.name] }.toMutableSet()

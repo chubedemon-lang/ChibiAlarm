@@ -5,7 +5,7 @@ import org.junit.Test
 
 class WorkoutMoveSubstitutionTest {
     private fun catalogMove(name: String): TrainingMove =
-        TrainingCatalog.programs.flatMap { it.moves }.first { it.name == name }
+        TrainingCatalog.allMoves.first { it.name == name }
 
     @Test fun offersOnlyCuratedLowerImpactAlternatives() {
         val squat = catalogMove("Squat không tạ")
@@ -15,7 +15,7 @@ class WorkoutMoveSubstitutionTest {
         val push = catalogMove("Chống đẩy sàn")
         assertTrue(TrainingCatalog.allMoves.any { it.name == "Chống đẩy gối" })
         assertEquals(
-            listOf("Chống đẩy gối", "Chống đẩy tường"),
+            listOf("Chống đẩy gối", "Chống đẩy tường", "Ép ngực tường bằng cẳng tay"),
             WorkoutMoveSubstitution.alternativesFor(push).map { it.name }
         )
         assertTrue(WorkoutMoveSubstitution.alternativesFor(catalogMove("Khởi động tại chỗ")).isEmpty())
@@ -64,6 +64,53 @@ class WorkoutMoveSubstitutionTest {
         assertEquals("Khởi động tại chỗ", restored[2].name)
     }
 
+    @Test fun wristAvoidanceOffersOnlyForearmSupportedPressAlternatives() {
+        val profile = WorkoutConstraintProfile(avoidWristLoad = true)
+        val push = catalogMove("Chống đẩy sàn")
+        val kneePush = catalogMove("Chống đẩy gối")
+        val inclinePush = catalogMove("Chống đẩy trên bề mặt cao")
+        val shoulderPress = catalogMove("Đẩy vai với tạ đơn hoặc dây")
+
+        for (move in listOf(push, kneePush, inclinePush, shoulderPress)) {
+            val alternatives = WorkoutMoveSubstitution.alternativesFor(move, profile)
+            assertTrue(move.name, alternatives.isNotEmpty())
+            assertTrue(move.name, alternatives.all { WorkoutConstraintFilter.isAllowed(it, profile) })
+            assertTrue(move.name, alternatives.any { it.name == "Ép ngực tường bằng cẳng tay" })
+            assertFalse(move.name, alternatives.any { it.name.contains("Chống đẩy") })
+        }
+    }
+
+    @Test fun wristSafeAlternativeCanBeAppliedAndRestoredFromCheckpoint() {
+        val profile = WorkoutConstraintProfile(avoidWristLoad = true)
+        val original = catalogMove("Chống đẩy sàn")
+        val replacement = catalogMove("Ép ngực tường bằng cẳng tay")
+        val base = listOf(original, catalogMove("Squat không tạ"))
+
+        val changed = WorkoutMoveSubstitution.replace(base, 0, replacement, profile)
+        assertNotNull(changed)
+        assertEquals(replacement, changed!![0])
+        assertTrue(WorkoutConstraintFilter.isAllowed(changed[0], profile))
+
+        val encoded = WorkoutMoveSubstitution.encode(mapOf(0 to replacement), base, profile)
+        val restored = WorkoutMoveSubstitution.apply(base, encoded, profile)
+        assertEquals(replacement, restored[0])
+        assertTrue(restored.all { WorkoutConstraintFilter.isAllowed(it, profile) })
+    }
+
+    @Test fun wristAvoidanceDoesNotOfferOrRestoreHandLoadingEasierAlternatives() {
+        val profile = WorkoutConstraintProfile(avoidWristLoad = true)
+        val push = catalogMove("Chống đẩy sàn")
+        val plank = catalogMove("Plank khuỷu hoặc plank gối")
+        val birdDog = catalogMove("Bird-dog")
+
+        assertFalse(WorkoutMoveSubstitution.alternativesFor(push, profile)
+            .any { it.name.contains("Chống đẩy") })
+        val base = listOf(plank)
+        assertNull(WorkoutMoveSubstitution.replace(base, 0, birdDog, profile))
+        val unsafeCheckpoint = "0:Bird-dog"
+        assertTrue(WorkoutMoveSubstitution.decode(unsafeCheckpoint, base, profile).isEmpty())
+    }
+
     @Test fun malformedDuplicateAndOversizedCheckpointEntriesAreIgnored() {
         val base = listOf(catalogMove("Squat không tạ"))
         val valid = WorkoutMoveSubstitution.encode(
@@ -76,19 +123,4 @@ class WorkoutMoveSubstitutionTest {
         assertTrue(WorkoutMoveSubstitution.decode("x:bad;0:%ZZ", base).isEmpty())
         assertTrue(WorkoutMoveSubstitution.decode("a".repeat(4_097), base).isEmpty())
     }
-
-    @Test fun wristAvoidanceDoesNotOfferOrRestoreHandLoadingEasierAlternatives() {
-        val profile = WorkoutConstraintProfile(avoidWristLoad = true)
-        val push = catalogMove("Chống đẩy sàn")
-        assertTrue(WorkoutMoveSubstitution.alternativesFor(push, profile).isEmpty())
-
-        val plank = catalogMove("Plank khuỷu hoặc plank gối")
-        val birdDog = catalogMove("Bird-dog")
-        val base = listOf(plank)
-        assertNull(WorkoutMoveSubstitution.replace(base, 0, birdDog, profile))
-        val unsafeCheckpoint = "0:Bird-dog"
-        assertTrue(WorkoutMoveSubstitution.decode(unsafeCheckpoint, base, profile).isEmpty())
-    }
-
-
 }

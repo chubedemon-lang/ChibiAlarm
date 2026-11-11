@@ -22,6 +22,15 @@ class TrainingCatalogTest {
         assertTrue(resistanceMoves.all { it.dose.contains("hiệp") })
     }
 
+    @Test fun exerciseRestRecommendationsAreBoundedAndMatchEffort() {
+        val moves = TrainingCatalog.allMoves.associateBy { it.name }
+        assertEquals(60, moves.getValue("Squat không tạ").restSeconds)
+        assertEquals(60, moves.getValue("Đứng lên – ngồi xuống").restSeconds)
+        assertEquals(75, moves.getValue("Kéo tạ đơn hoặc dây kháng lực").restSeconds)
+        assertEquals(30, moves.getValue("Đi bộ nhanh tại chỗ").restSeconds)
+        assertTrue(moves.values.all { it.restSeconds in 15..180 })
+    }
+
     @Test fun programIdentifiersRemainUnique() {
         val ids = TrainingCatalog.programs.map { it.id }
         assertEquals(ids.size, ids.toSet().size)

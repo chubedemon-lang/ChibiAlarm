@@ -71,6 +71,22 @@ class WorkoutSessionTimeEstimateTest {
         assertEquals(105, estimate)
     }
 
+    @Test fun pausedExerciseTimerIsCountedAlongsideTheCurrentRest() {
+        val estimate = WorkoutSessionTimeEstimate.seconds(
+            moves = moves,
+            currentIndex = 1,
+            completedMoves = setOf(0),
+            completedSets = mapOf(1 to 1),
+            // startSetRest pauses the exercise clock; its remaining time is still pending.
+            currentExerciseRemainingSeconds = 42,
+            resting = true,
+            restSecondsRemaining = 18,
+            level = 1
+        )
+        // 42 active + 18 current rest + 60 cool-down + 15 transition.
+        assertEquals(135, estimate)
+    }
+
     @Test fun estimateIsBoundedAndRejectsInvalidSessionState() {
         val huge = List(500) {
             TrainingMove("Timed $it", "60 phút", "Move", "Easy", "Stop if painful", 3_600)

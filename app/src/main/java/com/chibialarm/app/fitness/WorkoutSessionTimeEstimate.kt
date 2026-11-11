@@ -47,8 +47,10 @@ object WorkoutSessionTimeEstimate {
         remainingIndices.forEach { index ->
             val move = moves[index]
             if (index == currentIndex) {
-                total += if (resting) restSecondsRemaining.toLong()
-                    else currentExerciseRemainingSeconds.toLong()
+                // The exercise timer is paused, not discarded, during a separate rest countdown.
+                // Count both clocks so the ETA includes the remaining active block after rest.
+                total += currentExerciseRemainingSeconds.toLong()
+                if (resting) total += restSecondsRemaining.toLong()
 
                 val plan = WorkoutSetTracker.parse(move.dose, move.restSeconds)
                 if (plan != null) {

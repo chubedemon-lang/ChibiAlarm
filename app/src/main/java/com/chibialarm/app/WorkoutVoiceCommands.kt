@@ -16,7 +16,7 @@ object WorkoutVoiceCommands {
         return when (command) {
             Command.PAIN -> "Dừng tập vì cảnh báo an toàn"
             Command.PAUSE -> "Tạm dừng buổi tập"
-            Command.STATUS -> "Đọc tiến độ buổi tập hiện tại"
+            Command.STATUS -> "Đọc tiến độ và thời gian còn lại"
             Command.RESUME -> "Tiếp tục buổi tập"
             Command.NEXT -> "Chuyển sang động tác tiếp theo"
             Command.PREVIOUS -> "Quay lại động tác trước"
@@ -62,6 +62,10 @@ object WorkoutVoiceCommands {
                 normalized.contains("het suc") || "pause" in words -> Command.PAUSE
             normalized.contains("tien do") || normalized.contains("con bao nhieu bai") ||
                 normalized.contains("con may bai") || normalized.contains("bao nhieu hiep") ||
+                normalized.contains("con bao lau") || normalized.contains("bao lau nua") ||
+                normalized.contains("may phut nua") || normalized.contains("con bao nhieu phut") ||
+                normalized.contains("con bao nhieu giay") || normalized.contains("thoi gian con lai") ||
+                normalized.contains("uoc tinh thoi gian") || normalized.contains("khi nao xong") ||
                 "progress" in words || "status" in words -> Command.STATUS
             (normalized.contains("de hon") || normalized.contains("giam do kho") || normalized.contains("nhe hon")) &&
                 (normalized.contains("nghi") || normalized.contains("can nghi")) -> Command.EASIER_AND_REST

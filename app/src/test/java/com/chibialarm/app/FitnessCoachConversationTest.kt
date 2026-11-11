@@ -211,6 +211,39 @@ class FitnessCoachConversationTest {
         assertEquals(30, second.minutes)
     }
 
+    @Test fun combinedPermissionPhraseRelaxesWristAndFloorPreferences() {
+        val previous = FitnessCoachConversation.merge(
+            null,
+            FitnessNaturalRequest.parse("không chống tay, không nằm sàn")
+        )
+        val next = FitnessNaturalRequest.parse("có thể chống tay và nằm sàn")
+        val updated = FitnessCoachConversation.merge(previous, next)
+
+        assertEquals(false, updated.avoidWristLoad)
+        assertEquals(false, updated.avoidFloorPositions)
+    }
+
+    @Test fun combinedPermissionPhraseSupportsReverseOrder() {
+        val previous = FitnessCoachConversation.merge(
+            null,
+            FitnessNaturalRequest.parse("không chống tay, không nằm sàn")
+        )
+        val next = FitnessNaturalRequest.parse("có thể nằm sàn và chống tay")
+        val updated = FitnessCoachConversation.merge(previous, next)
+
+        assertEquals(false, updated.avoidWristLoad)
+        assertEquals(false, updated.avoidFloorPositions)
+    }
+
+    @Test fun explicitMovementRestrictionWinsOverPermissionInSameUtterance() {
+        val parsed = FitnessNaturalRequest.parse(
+            "có thể chống tay nhưng không chống tay; có thể nằm sàn nhưng không quỳ sàn"
+        )
+
+        assertEquals(true, parsed.avoidWristLoad)
+        assertEquals(true, parsed.avoidFloorPositions)
+    }
+
     @Test fun relaxingMovementPreferenceNeverClearsAnEarlierPainStop() {
         val first = FitnessCoachConversation.merge(
             null,

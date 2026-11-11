@@ -32,7 +32,8 @@ class WorkoutConstraintFilterTest {
         val result = WorkoutConstraintFilter.apply(TrainingCatalog.byId("weighted"), wristOnly)
         assertTrue(result.program.moves.none { it.name.contains("tạ đơn hoặc dây") })
         assertTrue(result.program.moves.any { it.name == "Siết bả vai đứng" })
-        assertTrue(result.program.moves.any { it.name == "Nâng hông trên sàn" })
+        assertTrue(result.program.moves.any { it.name == "Gập hông không dụng cụ" })
+        assertTrue(result.program.moves.any { it.name == "Mở vai và ngực" })
         assertTrue(result.program.moves.all { WorkoutConstraintFilter.isAllowed(it, wristOnly) })
     }
 

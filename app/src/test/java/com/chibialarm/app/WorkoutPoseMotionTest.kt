@@ -9,6 +9,7 @@ class WorkoutPoseMotionTest {
     @Test fun dynamicExercisesHaveTwoPhases() {
         for (pose in listOf(
             WorkoutPoseGuide.Pose.SQUAT,
+            WorkoutPoseGuide.Pose.HIP_HINGE,
             WorkoutPoseGuide.Pose.PUSH_UP,
             WorkoutPoseGuide.Pose.KNEE_PUSH_UP,
             WorkoutPoseGuide.Pose.WALL_PUSH_UP,
@@ -25,6 +26,8 @@ class WorkoutPoseMotionTest {
 
     @Test fun movementCuesDescribeBothPhases() {
         assertEquals("Đứng lên", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.SQUAT, false))
+        assertEquals("Đứng thẳng", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.HIP_HINGE, false))
+        assertEquals("Đẩy hông ra sau", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.HIP_HINGE, true))
         assertEquals("Hạ hông", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.SQUAT, true))
         assertEquals("Đẩy lên", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.PUSH_UP, false))
         assertEquals("Hạ ngực", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.PUSH_UP, true))

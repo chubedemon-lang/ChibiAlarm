@@ -80,7 +80,8 @@ object FitnessCoachConversation {
             // Never silently downgrade an earlier injury warning in the same conversation.
             impact = if (previous.impact == 2 || next.impact == 2) 2 else next.impact ?: previous.impact,
             reply = next.reply,
-            avoidWristLoad = next.avoidWristLoad ?: previous.avoidWristLoad
+            avoidWristLoad = next.avoidWristLoad ?: previous.avoidWristLoad,
+            avoidFloorPositions = next.avoidFloorPositions ?: previous.avoidFloorPositions
         )
     }
 }

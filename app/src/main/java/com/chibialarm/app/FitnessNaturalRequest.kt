@@ -220,13 +220,13 @@ object FitnessNaturalRequest {
         val duration = parseDuration(text)
         val detected = listOf(goal, level, energy, equipment, duration).count { it != null } +
             (if (injury || lowImpact) 1 else 0) +
-            (if (avoidWristLoad) 1 else 0) +
-            (if (avoidFloorPositions) 1 else 0)
+            (if (avoidWristLoad != null) 1 else 0) +
+            (if (avoidFloorPositions != null) 1 else 0)
         val reply = when {
             injury -> "Mày báo đau hoặc có dấu hiệu cần thận trọng. Tao đã chọn mức hạn chế vận động cao nhất. Không bắt đầu tập khi đang có triệu chứng; hãy tham khảo chuyên gia y tế. Kiểm tra các lựa chọn trước khi tiếp tục."
-            avoidWristLoad && avoidFloorPositions -> "Tao đã ghi nhận mày muốn tránh tải qua cổ tay và tránh nằm/quỳ sàn. Tao sẽ lọc các động tác đã được xác định trong thư viện, không tự bịa bài thay thế. Hãy xem lại giáo án trước khi bắt đầu."
-            avoidWristLoad -> "Tao đã ghi nhận mày muốn tránh chống tay hoặc cầm tải qua cổ tay. Tao sẽ thay các động tác phù hợp trong thư viện và cho mày xem trước. Nếu đang đau, tê hoặc sưng, đừng bắt đầu tập; hãy xin tư vấn chuyên môn."
-            avoidFloorPositions -> "Tao đã ghi nhận mày muốn tránh các động tác phải nằm hoặc quỳ sàn. Tao sẽ bỏ các động tác đã được xác định trong thư viện; có thể cần chọn chương trình khác nếu không còn đủ bài phù hợp."
+            avoidWristLoad == true && avoidFloorPositions == true -> "Tao đã ghi nhận mày muốn tránh tải qua cổ tay và tránh nằm/quỳ sàn. Tao sẽ lọc các động tác đã được xác định trong thư viện, không tự bịa bài thay thế. Hãy xem lại giáo án trước khi bắt đầu."
+            avoidWristLoad == true -> "Tao đã ghi nhận mày muốn tránh chống tay hoặc cầm tải qua cổ tay. Tao sẽ thay các động tác phù hợp trong thư viện và cho mày xem trước. Nếu đang đau, tê hoặc sưng, đừng bắt đầu tập; hãy xin tư vấn chuyên môn."
+            avoidFloorPositions == true -> "Tao đã ghi nhận mày muốn tránh các động tác phải nằm hoặc quỳ sàn. Tao sẽ bỏ các động tác đã được xác định trong thư viện; có thể cần chọn chương trình khác nếu không còn đủ bài phù hợp."
             detected == 0 -> "Tao chưa hiểu rõ mục tiêu. Hãy thử: 'giãn cơ 15 phút không dụng cụ'. Mày vẫn có thể chọn thủ công."
             else -> "Tao đã điền những thông tin nhận ra vào biểu mẫu. Kiểm tra lại mục tiêu, thời gian, dụng cụ và hạn chế vận động rồi bấm 'Gợi ý chương trình phù hợp'. Đây là gợi ý offline, không phải tư vấn y khoa."
         }
@@ -238,8 +238,8 @@ object FitnessNaturalRequest {
             equipment = equipment,
             impact = if (injury) 2 else if (lowImpact) 1 else null,
             reply = reply,
-            avoidWristLoad = if (avoidWristLoad) true else null,
-            avoidFloorPositions = if (avoidFloorPositions) true else null
+            avoidWristLoad = avoidWristLoad,
+            avoidFloorPositions = avoidFloorPositions
         )
     }
 }

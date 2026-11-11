@@ -171,4 +171,57 @@ class WorkoutMidSessionPlannerTest {
         assertNull(WorkoutMidSessionPlanner.decodePlan("not-a-catalog-exercise"))
         assertNull(WorkoutMidSessionPlanner.decodePlan("x".repeat(8_193)))
     }
+
+    @Test fun spokenFloorPreferenceIsRecognizedWithoutTreatingBodyPositionAsPain() {
+        val result = WorkoutMidSessionRequest.parse("Còn 10 phút, đừng nằm hoặc quỳ sàn")
+        assertTrue(result is WorkoutMidSessionRequest.Result.Proposed)
+        val request = (result as WorkoutMidSessionRequest.Result.Proposed).request
+        assertEquals(10, request.remainingMinutes)
+        assertTrue(request.avoidFloorPositions)
+        assertFalse(request.lowEnergy)
+    }
+
+    @Test fun midSessionFloorPreferenceRemovesUnstartedFloorMovesAndPreservesTheCurrentStep() {
+        val moves = listOf(
+            move("Khởi động tại chỗ"),
+            move("Bird-dog"),
+            move("Squat không tạ"),
+            move("Plank khuỷu hoặc plank gối"),
+            move("Thả lỏng")
+        )
+        val result = WorkoutMidSessionPlanner.preview(
+            currentMoves = moves,
+            currentIndex = 0,
+            completedCurrentSets = 0,
+            currentStepLocked = false,
+            constraints = WorkoutConstraintProfile(),
+            request = WorkoutMidSessionRequest.Request(avoidFloorPositions = true),
+            remainingCurrentSeconds = 90,
+            extensionMoveNames = emptySet(),
+            level = 0
+        )
+        assertTrue(result is WorkoutMidSessionPlanner.Result.Proposed)
+        val preview = (result as WorkoutMidSessionPlanner.Result.Proposed).preview
+        assertEquals(moves.first(), preview.after.first())
+        assertTrue(preview.after.any { it.name == "Squat không tạ" })
+        assertFalse(preview.after.any { it.name == "Bird-dog" })
+        assertFalse(preview.after.any { it.name == "Plank khuỷu hoặc plank gối" })
+        assertTrue(preview.removedMoves.contains("Bird-dog"))
+    }
+
+    @Test fun newFloorRestrictionCannotRewriteAnAlreadyStartedFloorExercise() {
+        val result = WorkoutMidSessionPlanner.preview(
+            currentMoves = listOf(move("Bird-dog"), move("Squat không tạ"), move("Thả lỏng")),
+            currentIndex = 0,
+            completedCurrentSets = 1,
+            currentStepLocked = true,
+            constraints = WorkoutConstraintProfile(),
+            request = WorkoutMidSessionRequest.Request(avoidFloorPositions = true),
+            remainingCurrentSeconds = 30,
+            extensionMoveNames = emptySet(),
+            level = 0
+        )
+        assertTrue(result is WorkoutMidSessionPlanner.Result.Blocked)
+    }
+
 }

@@ -201,4 +201,24 @@ class FitnessNaturalRequestTest {
         assertEquals(1, FitnessNaturalRequest.parse("không có dụng cụ khác, chỉ có thảm").equipment)
     }
 
+    @Test fun explicitConsentCanClearMovementPreferencesWithoutDiagnosingPain() {
+        val wrist = FitnessNaturalRequest.parse("có thể chống tay, không cần tránh cổ tay")
+        assertEquals(false, wrist.avoidWristLoad)
+        assertNull(wrist.impact)
+
+        val floor = FitnessNaturalRequest.parse("có thể nằm sàn và quỳ sàn")
+        assertEquals(false, floor.avoidFloorPositions)
+        assertNull(floor.impact)
+
+        assertEquals(false, FitnessNaturalRequest.parse("bỏ hạn chế cổ tay").avoidWristLoad)
+        assertEquals(false, FitnessNaturalRequest.parse("bỏ hạn chế nằm sàn").avoidFloorPositions)
+    }
+
+    @Test fun clearingMovementPreferenceDoesNotHideActivePain() {
+        val result = FitnessNaturalRequest.parse("bỏ hạn chế cổ tay nhưng cổ tay đang đau")
+        assertEquals(false, result.avoidWristLoad)
+        assertEquals(2, result.impact)
+        assertTrue(result.reply.contains("Không bắt đầu tập"))
+    }
+
 }

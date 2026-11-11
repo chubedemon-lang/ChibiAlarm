@@ -130,6 +130,10 @@ object TrainingCatalog {
         "Đứng chân rộng bằng hông, giữ tạ nhẹ trước đùi hoặc đứng trên dây chắc chắn. Đẩy hông ra sau, gối hơi chùng, nghiêng thân trong tầm thoải mái rồi đứng lên.",
         "Tập động tác gập hông không dụng cụ trước hoặc giảm biên độ.",
         "Không cong lưng, không hạ sâu khi chưa kiểm soát; không dùng tải nặng.",90,75)
+    private val bodyweightHipHinge=exercise("Gập hông không dụng cụ","2 hiệp × 8–10 lần",
+        "Đứng chân rộng bằng hông, gối hơi chùng. Đẩy hông ra sau, giữ lưng trung lập và nghiêng thân nhẹ trong tầm thoải mái; siết mông để trở về đứng thẳng. Không cần tạ.",
+        "Giảm biên độ; đặt tay lên hông hoặc vịn nhẹ ghế chắc chắn để giữ thăng bằng.",
+        "Không gập sâu hoặc cong lưng; dừng nếu đau, tê, chóng mặt hoặc mất thăng bằng.",80,45)
     private val resistancePress=exercise("Đẩy vai với tạ đơn hoặc dây","2 hiệp × 6–10 lần",
         "Ngồi hoặc đứng vững, giữ tạ nhẹ ngang vai hoặc đặt giữa dây dưới bàn chân. Đẩy lên có kiểm soát, không khóa cứng khuỷu, hạ về ngang vai.",
         "Dùng tải rất nhẹ, tập từng tay hoặc giảm biên độ.",

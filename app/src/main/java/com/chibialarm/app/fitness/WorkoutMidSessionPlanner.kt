@@ -54,7 +54,8 @@ object WorkoutMidSessionPlanner {
         ) return Result.Unsupported
 
         val effectiveProfile = WorkoutConstraintProfile(
-            avoidWristLoad = constraints.avoidWristLoad || request.avoidWristLoad
+            avoidWristLoad = constraints.avoidWristLoad || request.avoidWristLoad,
+            avoidFloorPositions = constraints.avoidFloorPositions || request.avoidFloorPositions
         )
         val prefix = currentMoves.take(currentIndex)
         val usedNames = prefix.mapTo(mutableSetOf()) { it.name }
@@ -67,13 +68,12 @@ object WorkoutMidSessionPlanner {
 
         currentMoves.drop(currentIndex).forEachIndexed { offset, move ->
             val isCurrent = offset == 0
-            val mustAvoid = effectiveProfile.avoidWristLoad &&
-                !WorkoutConstraintFilter.isAllowed(move, effectiveProfile)
+            val mustAvoid = !WorkoutConstraintFilter.isAllowed(move, effectiveProfile)
             val canReplace = !isCurrent || (!currentStepLocked && completedCurrentSets == 0)
 
             if (isCurrent && mustAvoid && !canReplace) {
                 return Result.Blocked(
-                    "Động tác hiện tại đã có hiệp được ghi nhận và còn chịu tải qua cổ tay. " +
+                    "Động tác hiện tại đã có hiệp được ghi nhận nhưng không phù hợp với hạn chế vận động mới. " +
                         "Chibi không thể đổi hồi tố; hãy dừng buổi tập và tạo phiên an toàn mới."
                 )
             }
@@ -101,7 +101,7 @@ object WorkoutMidSessionPlanner {
                 }
                 mustAvoid && isCurrent -> {
                     return Result.Blocked(
-                        "Chưa có biến thể được tuyển chọn an toàn cho động tác hiện tại. " +
+                        "Chưa có biến thể được tuyển chọn phù hợp với hạn chế vận động cho động tác hiện tại. " +
                             "Chibi không tự bịa bài thay thế."
                     )
                 }

@@ -23,12 +23,26 @@ object WorkoutContextCoach {
         }
     }
 
+    /** Aggregate counts across every set-based exercise in the active plan. */
+    data class SessionSetProgress(
+        val completedRequired: Int,
+        val totalRequired: Int,
+        val optionalRemaining: Int = 0
+    ) {
+        init {
+            require(totalRequired in 1..10_000)
+            require(completedRequired in 0..totalRequired)
+            require(optionalRemaining in 0..10_000)
+        }
+    }
+
     data class Progress(
         val completedMoves: Int,
         val totalMoves: Int,
         val currentMoveIndex: Int,
         val currentMoveName: String,
         val sets: SetProgress? = null,
+        val sessionSets: SessionSetProgress? = null,
         val resting: Boolean = false,
         val restSecondsRemaining: Int = 0,
         val exerciseSecondsRemaining: Int = 0,
@@ -110,6 +124,26 @@ object WorkoutContextCoach {
                             append("Đã đủ hiệp bắt buộc; còn tối đa ").append(optionalRemaining)
                                 .append(" hiệp tùy chọn nếu bạn vẫn thấy thoải mái.")
                         else -> append("Đã ghi nhận đủ số hiệp bắt buộc.")
+                    }
+                }
+            }
+
+            progress.sessionSets?.let { session ->
+                append(" Toàn buổi, bạn đã tự xác nhận ")
+                    .append(session.completedRequired).append(" trên ")
+                    .append(session.totalRequired).append(" hiệp bắt buộc. ")
+                if (progress.pausedForSafety) {
+                    append("Buổi tập đang khóa an toàn; không cần cố hoàn thành phần còn lại.")
+                } else {
+                    val remainingRequired = (session.totalRequired - session.completedRequired).coerceAtLeast(0)
+                    if (remainingRequired > 0) {
+                        append("Còn ").append(remainingRequired).append(" hiệp bắt buộc trong toàn buổi.")
+                    } else {
+                        append("Đã đủ hiệp bắt buộc trong toàn buổi.")
+                    }
+                    if (session.optionalRemaining > 0) {
+                        append(" Có tối đa ").append(session.optionalRemaining)
+                            .append(" hiệp tùy chọn nếu bạn vẫn thấy thoải mái.")
                     }
                 }
             }

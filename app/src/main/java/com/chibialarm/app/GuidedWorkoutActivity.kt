@@ -694,7 +694,7 @@ class GuidedWorkoutActivity:Activity() {
         }
         if (resting) {
             if (request.isRestOnly) {
-                confirmRestExtension(request.restSeconds)
+                confirmRestExtension(request.restSeconds ?: return)
             } else {
                 Toast.makeText(
                     this,

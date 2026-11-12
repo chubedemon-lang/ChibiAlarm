@@ -93,14 +93,30 @@ object WorkoutContextCoach {
                     "${sets.targetMin} đến ${sets.targetMax} ${sets.unit}"
                 }
                 append("Bạn đã tự xác nhận ").append(sets.completed)
-                    .append(" trên ").append(sets.maximum).append(" hiệp; tối thiểu ")
-                    .append(sets.required).append(" hiệp, mục tiêu mỗi hiệp ")
-                    .append(target).append(". ")
+                    .append(" trên ").append(sets.maximum).append(" hiệp. ")
+
+                if (progress.pausedForSafety) {
+                    append("Buổi tập đang khóa an toàn; không cần cố hoàn thành thêm hiệp.")
+                } else {
+                    append("Tối thiểu ").append(sets.required)
+                        .append(" hiệp, mục tiêu mỗi hiệp ").append(target).append(". ")
+                    val requiredRemaining = (sets.required - sets.completed).coerceAtLeast(0)
+                    val optionalRemaining = (sets.maximum - maxOf(sets.completed, sets.required))
+                        .coerceAtLeast(0)
+                    when {
+                        requiredRemaining > 0 ->
+                            append("Còn ").append(requiredRemaining).append(" hiệp bắt buộc theo giáo án.")
+                        optionalRemaining > 0 ->
+                            append("Đã đủ hiệp bắt buộc; còn tối đa ").append(optionalRemaining)
+                                .append(" hiệp tùy chọn nếu bạn vẫn thấy thoải mái.")
+                        else -> append("Đã ghi nhận đủ số hiệp bắt buộc.")
+                    }
+                }
             }
 
             when {
                 progress.pausedForSafety ->
-                    append("Buổi tập đang khóa an toàn vì bạn đã báo đau. Hãy nghỉ; Chibi sẽ không tự tiếp tục.")
+                    append(" Buổi tập đang khóa an toàn vì bạn đã báo đau. Hãy nghỉ; Chibi sẽ không tự tiếp tục.")
                 progress.resting ->
                     append("Bạn đang nghỉ riêng, còn ").append(progress.restSecondsRemaining)
                         .append(" giây. Thời gian nghỉ không tính vào thời gian vận động.")

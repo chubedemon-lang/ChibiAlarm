@@ -16,7 +16,7 @@ object WorkoutVoiceCommands {
         return when (command) {
             Command.PAIN -> "Dừng tập vì cảnh báo an toàn"
             Command.PAUSE -> "Tạm dừng buổi tập"
-            Command.STATUS -> "Đọc tiến độ và thời gian còn lại"
+            Command.STATUS -> "Đọc tiến độ, số hiệp và thời gian còn lại"
             Command.STEP_GUIDE -> "Mở hướng dẫn từng bước cho động tác hiện tại"
             Command.COMPLETE_SET -> "Xác nhận hoàn thành hiệp hiện tại"
             Command.RESUME -> "Tiếp tục buổi tập"
@@ -64,6 +64,8 @@ object WorkoutVoiceCommands {
                 normalized.contains("het suc") || "pause" in words -> Command.PAUSE
             normalized.contains("tien do") || normalized.contains("con bao nhieu bai") ||
                 normalized.contains("con may bai") || normalized.contains("bao nhieu hiep") ||
+                normalized.contains("con may hiep") || normalized.contains("may hiep nua") ||
+                normalized.contains("hiep con lai") || normalized.contains("so hiep con lai") ||
                 normalized.contains("con bao lau") || normalized.contains("bao lau nua") ||
                 normalized.contains("may phut nua") || normalized.contains("con bao nhieu phut") ||
                 normalized.contains("con bao nhieu giay") || normalized.contains("thoi gian con lai") ||
@@ -80,7 +82,7 @@ object WorkoutVoiceCommands {
                 (normalized.contains("nghi") || normalized.contains("can nghi")) -> Command.EASIER_AND_REST
             normalized.contains("nghi them") || normalized.contains("nghi mot chut") || normalized.contains("met roi") ||
                 normalized.contains("hoi met") || normalized.contains("met qua") ||
-                normalized.contains("met lam") || Regex("""\bnghi(?: them)?\s+[0-9]{1,3}\s*(?:giay|gi|s|phut)\b""").containsMatchIn(normalized) ||
+                normalized.contains("met lam") || Regex("""\\bnghi(?: them)?\\s+[0-9]{1,3}\\s*(?:giay|gi|s|phut)\\b""").containsMatchIn(normalized) ||
                 normalized.contains("nghi mot phut") || normalized.contains("nghi hai phut") ||
                 normalized.contains("nghi chin muoi giay") || normalized.contains("nghi sau muoi giay") ||
                 normalized.contains("nghi ba muoi giay") || normalized.contains("can nghi") ||

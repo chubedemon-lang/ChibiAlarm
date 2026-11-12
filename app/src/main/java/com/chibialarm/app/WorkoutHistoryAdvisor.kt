@@ -74,7 +74,11 @@ object WorkoutHistoryAdvisor {
         if (previous.id != recommended.id) return null
 
         val alternative = eligibleAlternatives.asSequence()
-            .filter { it.id != recommended.id && it.category == recommended.category }
+            .filter {
+                it.id != recommended.id &&
+                    it.category == recommended.category &&
+                    difficultyRank(it.id) <= difficultyRank(recommended.id)
+            }
             .distinctBy { it.id }
             .minWithOrNull(
                 compareBy<TrainingProgram> { moveOverlapCount(it, previous) }
@@ -86,6 +90,12 @@ object WorkoutHistoryAdvisor {
             previousProgramName = previous.name,
             reason = "Hôm qua bạn đã ghi buổi ${previous.name}. Để đổi nội dung thay vì lặp nguyên giáo án, Chibi gợi ý ${alternative.name} trong cùng nhóm ${recommended.category}. Đây chỉ là gợi ý đa dạng bài tập, không phải đánh giá hồi phục."
         )
+    }
+
+    private fun difficultyRank(programId: String): Int = when (programId) {
+        "advanced", "weighted" -> 2
+        "full", "legs", "upper", "core" -> 1
+        else -> 0
     }
 
     private fun moveOverlapCount(first: TrainingProgram, second: TrainingProgram): Int {

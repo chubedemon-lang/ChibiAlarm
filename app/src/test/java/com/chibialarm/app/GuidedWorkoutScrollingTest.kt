@@ -4,6 +4,7 @@ import android.app.AlertDialog
 import android.widget.Button
 import android.widget.ScrollView
 import android.widget.TextView
+import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
 import org.junit.Assert.assertEquals
@@ -12,6 +13,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.robolectric.shadows.ShadowAlertDialog
+import org.robolectric.Shadows.shadowOf
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
@@ -82,6 +84,8 @@ class GuidedWorkoutScrollingTest {
             backgroundPose.motionEnabled)
 
         dialog.dismiss()
+        // Dialog dispatches its dismissal message on the main looper.
+        shadowOf(Looper.getMainLooper()).idle()
         assertTrue("The background illustration should be restored after dismissal",
             backgroundPose.motionEnabled)
         activity.finish()

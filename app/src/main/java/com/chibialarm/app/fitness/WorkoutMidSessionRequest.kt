@@ -93,7 +93,8 @@ object WorkoutMidSessionRequest {
         // phrases request bodyweight alternatives; positive equipment mentions do not.
         val avoidExternalLoad = has(
             "khong dung cu", "khong co dung cu", "khong can dung cu", "tay khong",
-            "khong dung ta", "khong co ta", "bo ta",
+            "khong dung ta", "khong co ta", "bo ta", "khong mang ta", "de ta o nha",
+            "khong co do tap", "khong co thiet bi", "khong mang dung cu",
             "khong dung day khang luc", "khong co day khang luc", "bo day khang luc"
         )
 

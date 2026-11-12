@@ -89,7 +89,7 @@ class WorkoutHistoryConversationTest {
         )
 
         assertNotNull(answer)
-        assertTrue(answer!!.contains("Chưa có buổi tập nào"))
+        assertTrue(answer!!.contains("Không tìm thấy buổi tập hợp lệ"))
         assertTrue(answer.contains("trên thiết bị"))
     }
 
@@ -118,7 +118,7 @@ class WorkoutHistoryConversationTest {
         )
 
         assertNotNull(answer)
-        assertTrue(answer!!.contains("Chưa có buổi tập nào"))
+        assertTrue(answer!!.contains("Không tìm thấy buổi tập hợp lệ"))
     }
 
     @Test fun monthQuestionUsesCalendarMonthRatherThanSevenDays() {
@@ -134,6 +134,16 @@ class WorkoutHistoryConversationTest {
         assertNotNull(answer)
         assertTrue(answer!!.contains("20 phút"))
         assertFalse(answer.contains("110 phút"))
+    }
+
+    @Test fun generalPlanPhraseContainingTongTheIsNotMistakenForAHistoryQuestion() {
+        assertNull(
+            WorkoutHistoryConversation.answer(
+                "Tập toàn thân tổng thể 20 phút không dụng cụ",
+                listOf(workout(today, 20)),
+                today
+            )
+        )
     }
 
     @Test fun historyAnswerIsLocaleIndependent() {

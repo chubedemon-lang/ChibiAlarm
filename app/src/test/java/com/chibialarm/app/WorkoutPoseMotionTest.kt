@@ -55,12 +55,25 @@ class WorkoutPoseMotionTest {
             WorkoutPoseGuide.Pose.SQUAT,
             "Đặt chân rộng bằng vai, giữ bàn chân vững.",
             2,
-            3
+            3,
+            true
         )
-        assertTrue(cue.contains("hạ hông"))
+        assertTrue(cue.contains("Hạ hông"))
         assertTrue(cue.contains("Bước 2 trên 3"))
         assertTrue(cue.contains("Đặt chân rộng bằng vai"))
         assertTrue(cue.length <= 340)
+    }
+
+    @Test fun spokenStepCueTracksTheCurrentIllustrationPhase() {
+        val lowered = WorkoutPoseMotion.spokenStepCue(
+            WorkoutPoseGuide.Pose.SQUAT, "Giữ bàn chân vững.", 1, 2, true
+        )
+        val upright = WorkoutPoseMotion.spokenStepCue(
+            WorkoutPoseGuide.Pose.SQUAT, "Giữ bàn chân vững.", 1, 2, false
+        )
+        assertTrue(lowered.contains("Hạ hông"))
+        assertTrue(upright.contains("Đứng lên"))
+        assertFalse(lowered == upright)
     }
 
     @Test fun spokenStepCueBoundsInvalidProgressAndLongInstructions() {

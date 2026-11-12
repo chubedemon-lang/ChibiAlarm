@@ -491,21 +491,7 @@ class FitnessActivity:Activity() {
                         "\n\nGợi ý offline theo quy tắc trên máy, không phải AI chẩn đoán hay tư vấn y khoa.")
                     .setPositiveButton("▶ Bắt đầu"){_,_->startProgram(p, constraintProfile)}
                     .setNeutralButton("📖 Xem từng bước") { _, _ ->
-                        val steps = planned.moves
-                            .mapIndexed { i, move ->
-                                val rest = WorkoutSetTracker.restGuidance(move.dose, move.restSeconds)
-                                    ?.let { "$it\n" }.orEmpty()
-                                "${i + 1}. ${move.name} — ${move.dose}\n" +
-                                    rest +
-                                    "Cách tập: ${move.steps}\n" +
-                                    "Dễ hơn: ${move.easier}\n" +
-                                    "Lưu ý: ${move.avoid}"
-                            }.joinToString("\n\n")
-                        AlertDialog.Builder(this@FitnessActivity)
-                            .setTitle("📖 ${p.name} • hướng dẫn trước khi tập")
-                            .setMessage(steps + "\n\nBạn có thể quay lại để thay đổi mục tiêu hoặc thời lượng.")
-                            .setPositiveButton("▶ Bắt đầu") { _, _ -> startProgram(p, constraintProfile) }
-                            .setNegativeButton("Đóng", null).show()
+                        showProgramPreview(p, planned.moves, constraintProfile)
                     }
                     .setNegativeButton("Chọn bài khác",null).show()
             }
@@ -548,6 +534,124 @@ class FitnessActivity:Activity() {
         } })
         setContentView(ScrollView(this).apply { addView(root) })
     }
+    /**
+     * Browse one exercise at a time with its animated pose cue, exact dose, rest and
+     * numbered instructions. The illustration is informational and never assesses form.
+     */
+    private fun showProgramPreview(
+        program: TrainingProgram,
+        moves: List<TrainingMove>,
+        constraints: WorkoutConstraintProfile
+    ) {
+        var preview = WorkoutLibraryPreview.start(moves)
+        if (preview == null) {
+            Toast.makeText(this, "Chưa có động tác phù hợp để xem trước.", Toast.LENGTH_LONG).show()
+            return
+        }
+
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(20, 12, 20, 16)
+        }
+        val position = txt("", 14f)
+        val heading = txt("", 21f)
+        val pose = WorkoutPoseView(this).apply {
+            importantForAccessibility = android.view.View.IMPORTANT_FOR_ACCESSIBILITY_YES
+            layoutParams = LinearLayout.LayoutParams(
+                -1,
+                (140 * resources.displayMetrics.density).toInt()
+            )
+        }
+        val dose = txt("", 16f)
+        val rest = txt("", 14f)
+        val steps = txt("", 14f)
+        val easier = txt("", 14f)
+        val caution = txt("", 14f)
+        val previous = Button(this).apply { text = "← Bài trước" }
+        val next = Button(this).apply { text = "Bài tiếp →" }
+        val navigation = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            addView(previous, LinearLayout.LayoutParams(0, -2, 1f))
+            addView(next, LinearLayout.LayoutParams(0, -2, 1f))
+        }
+        val speak = Button(this).apply {
+            text = "🔊 Nghe hướng dẫn"
+            setOnClickListener {
+                if (speechReady) {
+                    sayFollowUp(WorkoutContextCoach.script(preview.currentMove))
+                } else {
+                    Toast.makeText(
+                        this@FitnessActivity,
+                        "Bật giọng Chibi trước để nghe hướng dẫn.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
+
+        content.addView(position)
+        content.addView(heading)
+        content.addView(pose)
+        content.addView(txt(
+            "Hình minh họa chuyển động, không phân tích kỹ thuật hoặc đánh giá tư thế thực tế.",
+            12f
+        ))
+        content.addView(dose)
+        content.addView(rest)
+        content.addView(steps)
+        content.addView(easier)
+        content.addView(caution)
+        content.addView(speak)
+        content.addView(navigation)
+        content.addView(txt(program.caution, 12f))
+
+        fun renderPreview() {
+            val move = preview.currentMove
+            position.text = "Bài ${preview.position}/${preview.size}"
+            heading.text = move.name
+            pose.pose = WorkoutPoseGuide.classify(move.name)
+            dose.text = "🎯 Mục tiêu: ${move.dose}"
+            rest.text = WorkoutSetTracker.restGuidance(move.dose, move.restSeconds)
+                ?: "⏱ Nghỉ thêm khi cần; động tác này không có cấu trúc hiệp lặp."
+            steps.text = "📖 Hướng dẫn từng bước\n" +
+                WorkoutStepGuide.split(move.steps).mapIndexed { index, step ->
+                    "${index + 1}. $step"
+                }.joinToString("\n")
+            easier.text = "🌿 Dễ hơn: ${move.easier}"
+            caution.text = "⚠️ Lưu ý: ${move.avoid}"
+            previous.isEnabled = preview.canGoPrevious
+            next.isEnabled = preview.canGoNext
+        }
+
+        previous.setOnClickListener {
+            preview = preview.previous()
+            renderPreview()
+        }
+        next.setOnClickListener {
+            preview = preview.next()
+            renderPreview()
+        }
+
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("📚 ${program.name} • thư viện bài tập")
+            .setView(ScrollView(this).apply { addView(content) })
+            .setPositiveButton("▶ Bắt đầu", null)
+            .setNegativeButton("Đóng", null)
+            .create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                dialog.dismiss()
+                startProgram(program, constraints)
+            }
+        }
+        dialog.setOnDismissListener {
+            pose.motionEnabled = false
+            speechOutput?.stop()
+        }
+        renderPreview()
+        dialog.show()
+    }
+
     private fun drawPrograms(container:LinearLayout,category:String) {
         container.removeAllViews()
         TrainingCatalog.programs.filter { category=="Tất cả" || it.category==category }.forEach { program ->
@@ -568,17 +672,7 @@ class FitnessActivity:Activity() {
             if (constrained.notice.isNotBlank()) card.addView(txt(constrained.notice,12f))
             val buttons=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
             buttons.addView(Button(this).apply { text="📖 Xem bài";isAllCaps=false;setOnClickListener {
-                val guide=planned.moves
-                    .mapIndexed { i,m->
-                        val rest = WorkoutSetTracker.restGuidance(m.dose, m.restSeconds)?.let { "$it\n" }.orEmpty()
-                        "${i+1}. ${m.name} — ${m.dose}\n" + rest +
-                            "Cách tập: ${m.steps}\nDễ hơn: ${m.easier}\nLưu ý: ${m.avoid}"
-                    }
-                    .joinToString("\n\n")
-                AlertDialog.Builder(this@FitnessActivity)
-                    .setTitle(program.name).setMessage(guide)
-                    .setPositiveButton("🎙 Bắt đầu"){_,_->startProgram(program, constraints)}
-                    .setNegativeButton("Đóng",null).show()
+                showProgramPreview(program, planned.moves, constraints)
             } },LinearLayout.LayoutParams(0,-2,1f))
             buttons.addView(Button(this).apply { text="▶ Tập ngay";isAllCaps=false;setOnClickListener {
                 startProgram(program, constraints)

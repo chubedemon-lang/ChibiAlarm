@@ -19,6 +19,7 @@ import com.chibialarm.app.fitness.RemainingWorkoutDuration
 import com.chibialarm.app.fitness.WorkoutSessionTimeEstimate
 import com.chibialarm.app.fitness.WorkoutMidSessionPlanner
 import com.chibialarm.app.fitness.WorkoutMidSessionRequest
+import com.chibialarm.app.fitness.WorkoutMidSessionPreviewFormatter
 import com.chibialarm.app.rpg.RpgDatabase
 import com.chibialarm.app.rpg.RpgEngine
 import com.chibialarm.app.rpg.WorkoutRewardEvidence
@@ -725,8 +726,6 @@ class GuidedWorkoutActivity:Activity() {
             }
             is WorkoutMidSessionPlanner.Result.Proposed -> {
                 val preview = result.preview
-                fun durationLabel(seconds: Int): String =
-                    "${seconds / 60} phút ${seconds % 60} giây"
                 val summary = buildString {
                     if (preview.replacements.isNotEmpty()) {
                         append("Thay động tác:\n")
@@ -754,20 +753,13 @@ class GuidedWorkoutActivity:Activity() {
                     if (request.lowEnergy) {
                         append("\nƯu tiên biến thể nhẹ hơn và nghỉ riêng.")
                     }
-                    if (preview.requestedMinutes != null) {
-                        append("\nMục tiêu thời gian còn lại: ").append(preview.requestedMinutes).append(" phút.")
-                        append("\nƯớc tính sau điều chỉnh: ").append(durationLabel(preview.estimatedRemainingSeconds)).append(".")
-                    }
-                    if (preview.targetExceeded) {
-                        append("\nPhần bài chính và nghỉ bắt buộc vẫn dài hơn mục tiêu. Chibi không tự cắt hiệp bắt buộc hoặc hứa chắc thời gian hoàn thành.")
-                    }
-                    if (preview.restSeconds > 0) {
-                        append("\nSau khi áp dụng sẽ nghỉ riêng ").append(preview.restSeconds).append(" giây; thời gian nghỉ không tính là vận động.")
-                    }
                     if (!preview.changed && preview.restSeconds == 0) {
                         append("\nKhông có bài tùy chọn nào cần bỏ; các hiệp bắt buộc được giữ nguyên.")
                     }
+                    append("\n\n")
+                    append(WorkoutMidSessionPreviewFormatter.format(preview))
                     append("\n\nCác hiệp đã xác nhận không bị sửa. Đây là gợi ý offline từ thư viện, không phải chẩn đoán hay đánh giá tư thế.")
+                }
                 }
                 AlertDialog.Builder(this).setTitle("🐰 Xem trước điều chỉnh giữa buổi")
                     .setMessage(summary)
@@ -1489,14 +1481,13 @@ class GuidedWorkoutActivity:Activity() {
                 )
             }
         }
-        dialog.show()
-        // Attach after show so the modal lifecycle callback is observed consistently
-        // by Android and Robolectric before restoring the background illustration.
+        // Register before show so every dismissal path restores the background animator.
         dialog.setOnDismissListener {
             spoken?.stop()
             illustration.onPhaseChanged = null
             poseView.motionEnabled = true
         }
+        dialog.show()
     }
 
     private fun renderDose() {

@@ -54,6 +54,10 @@ object WorkoutHistoryConversation {
             }
             .toList()
 
+        if (isNextWeekPlanQuestion(text)) {
+            return suggestNextWeekPlan(entries, today)
+        }
+
         if (isComparisonQuestion(text)) {
             return compareRecentPeriods(entries, today)
         }
@@ -157,8 +161,72 @@ object WorkoutHistoryConversation {
 
     private fun isComparisonQuestion(text: String): Boolean {
         val mentionsBothWeeks = text.contains("tuan nay") && text.contains("tuan truoc")
-        val asksForComparison = has(text, "so sanh", "nhieu hon", "it hon", "tang hay giam", "khac gi")
+        // Vietnamese users naturally say "so với tuần trước"; recognize it alongside
+        // explicit comparison verbs so the history router does not fall through to planning.
+        val asksForComparison = has(
+            text, "so sanh", "so voi", "nhieu hon", "it hon", "tang hay giam", "khac gi", "the nao"
+        )
         return mentionsBothWeeks && asksForComparison
+    }
+
+    private fun isNextWeekPlanQuestion(text: String): Boolean {
+        val mentionsNextWeek = has(text, "tuan toi", "tuan sau")
+        val asksForPlan = has(
+            text, "ke hoach", "lich tap", "dieu chinh", "nen tap", "sap xep", "may buoi", "the nao"
+        )
+        return mentionsNextWeek && asksForPlan
+    }
+
+    /**
+     * Proposes a conservative next-week frequency from logged active days only.
+     * It never writes the routine or increases the target to "catch up" missed activity.
+     */
+    private fun suggestNextWeekPlan(entries: List<Entry>, today: LocalDate): String {
+        val currentStart = today.minusDays(6)
+        val previousStart = today.minusDays(13)
+
+        fun summarize(start: LocalDate, endExclusive: LocalDate): PeriodSummary {
+            val selected = entries.filter { !it.date.isBefore(start) && it.date.isBefore(endExclusive) }
+            return PeriodSummary(
+                sessions = selected.size,
+                activeDays = selected.map { it.date }.distinct().size,
+                minutes = selected.sumOf { it.minutes.toLong() }
+                    .coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+            )
+        }
+
+        val current = summarize(currentStart, today.plusDays(1))
+        val previous = summarize(previousStart, currentStart)
+        if (current.sessions == 0 && previous.sessions == 0) {
+            return "Chưa đủ nhật ký trong hai tuần gần nhất để gợi ý lịch tuần tới. Hãy ghi lại vài buổi trước; Chibi sẽ không tự đoán số ngày tập."
+        }
+
+        // Keep next week's starting target at or below the most recent observed frequency.
+        // If the latest week has no logged activity but the previous one does, suggest only
+        // one optional light day rather than asking the user to make up missed sessions.
+        val targetDays = current.activeDays.coerceIn(0, 7).let { if (it == 0) 1 else it }
+        val target = if (current.activeDays == 0) {
+            "1 ngày vận động nhẹ, nếu phù hợp"
+        } else {
+            "$targetDays ngày vận động, xen kẽ ngày nghỉ"
+        }
+        val trend = when {
+            current.activeDays < previous.activeDays ->
+                "Tuần vừa rồi có ít ngày vận động được ghi nhận hơn tuần trước."
+            current.activeDays > previous.activeDays ->
+                "Tuần vừa rồi có nhiều ngày vận động được ghi nhận hơn tuần trước."
+            else ->
+                "Số ngày vận động được ghi nhận giữa hai tuần không đổi."
+        }
+
+        return buildString {
+            append("Gợi ý lịch tuần tới (bản nháp, chưa tự thay đổi lịch):")
+            append("\n• $trend")
+            append("\n• Nhật ký: ${current.activeDays} ngày vận động tuần vừa rồi; ${previous.activeDays} ngày ở tuần trước.")
+            append("\n• Mục tiêu khởi đầu: $target.")
+            append("\n• Không cần tập bù những ngày đã bỏ lỡ; giữ thời lượng vừa với quỹ thời gian hiện có.")
+            append("\nĐây là gợi ý theo số ngày đã ghi, không đánh giá thể lực hay hồi phục. Hãy kiểm tra mục tiêu, thời lượng, dụng cụ và hạn chế vận động rồi tự xác nhận ngày cụ thể trong Lịch trình.")
+        }
     }
 
     private fun isRecentListQuestion(text: String): Boolean {
@@ -203,7 +271,8 @@ object WorkoutHistoryConversation {
             "so buoi", "so ngay", "so phut", "khi nao", "gan nhat",
             "nhat ky", "lich su"
         )
-        return (hasSubject && (asksForHistory || isRecentListQuestion(text))) || isComparisonQuestion(text)
+        return (hasSubject && (asksForHistory || isRecentListQuestion(text))) ||
+            isComparisonQuestion(text) || isNextWeekPlanQuestion(text)
     }
 
     private fun normalize(input: String): String {

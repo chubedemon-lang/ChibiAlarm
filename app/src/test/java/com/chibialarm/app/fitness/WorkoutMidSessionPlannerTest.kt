@@ -477,4 +477,26 @@ class WorkoutMidSessionPlannerTest {
         assertFalse(request.allowFloorPositions)
     }
 
+    @Test fun pureRestRequestCanExtendAnActiveRestWithoutChangingThePlan() {
+        val parsed = WorkoutMidSessionRequest.parse("Nghỉ thêm 30 giây")
+        assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
+        val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+
+        assertTrue(request.isRestOnly)
+        assertEquals(30, request.restSeconds)
+        assertNull(request.remainingMinutes)
+        assertFalse(request.avoidWristLoad)
+        assertFalse(request.avoidExternalLoad)
+    }
+
+    @Test fun combinedRestAndPlanChangeIsNotMistakenForRestOnly() {
+        val parsed = WorkoutMidSessionRequest.parse("Nghỉ thêm 30 giây và đừng chống tay")
+        assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
+        val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+
+        assertFalse(request.isRestOnly)
+        assertEquals(30, request.restSeconds)
+        assertTrue(request.avoidWristLoad)
+    }
+
 }

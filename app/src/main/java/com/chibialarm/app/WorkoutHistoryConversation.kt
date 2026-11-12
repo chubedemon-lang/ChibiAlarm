@@ -1,0 +1,134 @@
+package com.chibialarm.app
+
+import java.text.Normalizer
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
+import java.util.Locale
+
+/**
+ * Answers simple workout-history questions from the on-device journal.
+ *
+ * Only structured date, activity name and duration are read. Free-text notes,
+ * safety preferences and health details are never inspected or returned.
+ * This is a local journal summary, not a recovery or medical assessment.
+ */
+object WorkoutHistoryConversation {
+    private const val MAX_RECORDS = 10_000
+    private val dateFormat = DateTimeFormatter.ofPattern("dd/MM/yyyy", Locale.ROOT)
+
+    private data class Entry(
+        val date: LocalDate,
+        val name: String,
+        val minutes: Int,
+        val originalIndex: Int
+    )
+
+    private data class Window(
+        val label: String,
+        val start: LocalDate
+    )
+
+    fun answer(
+        input: String,
+        workouts: List<Workout>,
+        today: LocalDate = LocalDate.now()
+    ): String? {
+        val text = normalize(input.take(300))
+        if (!isHistoryQuestion(text)) return null
+
+        val entries = workouts.asSequence()
+            .take(MAX_RECORDS)
+            .mapIndexedNotNull { index, workout ->
+                val date = runCatching { LocalDate.parse(workout.date) }.getOrNull()
+                    ?: return@mapIndexedNotNull null
+                if (date.isAfter(today) || workout.minutes !in 1..600) {
+                    return@mapIndexedNotNull null
+                }
+                Entry(
+                    date = date,
+                    name = workout.name.trim().take(90).ifBlank { "Buổi tập" },
+                    minutes = workout.minutes,
+                    originalIndex = index
+                )
+            }
+            .toList()
+
+        if (isLatestQuestion(text)) {
+            val latest = entries.maxWithOrNull(
+                compareBy<Entry> { it.date }.thenBy { it.originalIndex }
+            ) ?: return "Nhật ký trên máy chưa có buổi tập hợp lệ nào được ghi. Nếu vừa tập, hãy lưu buổi đó trong mục Nhật ký tập."
+
+            val daysAgo = ChronoUnit.DAYS.between(latest.date, today)
+            val whenText = when (daysAgo) {
+                0L -> "hôm nay"
+                1L -> "hôm qua"
+                else -> "$daysAgo ngày trước"
+            }
+            return "Buổi gần nhất được ghi là ${latest.name}, vào $whenText (${latest.date.format(dateFormat)}), thời lượng ${latest.minutes} phút. Đây là dữ liệu nhật ký tự ghi trên thiết bị, không phải số đo tự động."
+        }
+
+        val window = chooseWindow(text, today)
+        val selected = entries.filter { !it.date.isBefore(window.start) }
+        if (selected.isEmpty()) {
+            return "Chưa có buổi tập nào được ghi trong ${window.label}. Nhật ký chỉ phản ánh những buổi bạn đã lưu trên thiết bị."
+        }
+
+        val sessions = selected.size
+        val activeDays = selected.map { it.date }.distinct().size
+        val totalMinutes = selected.sumOf { it.minutes.toLong() }
+            .coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+
+        val asksSessions = has(text, "may buoi", "bao nhieu buoi", "so buoi", "may lan", "bao nhieu lan")
+        val asksDays = has(text, "may ngay", "bao nhieu ngay", "ngay van dong", "so ngay")
+        val asksMinutes = has(text, "may phut", "bao nhieu phut", "tong thoi gian", "bao lau")
+        val asksSpecificValue = asksSessions || asksDays || asksMinutes
+
+        val parts = buildList {
+            if (asksSessions || !asksSpecificValue) add("$sessions buổi đã ghi")
+            if (asksDays || !asksSpecificValue) add("$activeDays ngày có vận động được ghi nhận")
+            if (asksMinutes || !asksSpecificValue) add("$totalMinutes phút")
+        }
+        return "Trong ${window.label}: ${parts.joinToString(" • ")}. Các con số được tổng hợp từ nhật ký cục bộ; chúng không đánh giá thể lực hay mức độ hồi phục."
+    }
+
+    private fun chooseWindow(text: String, today: LocalDate): Window = when {
+        has(text, "hom nay", "ngay hom nay") ->
+            Window("hôm nay", today)
+        has(text, "thang nay") ->
+            Window("tháng này", today.withDayOfMonth(1))
+        has(text, "30 ngay", "mot thang qua") ->
+            Window("30 ngày gần nhất", today.minusDays(29))
+        else ->
+            Window("7 ngày gần nhất", today.minusDays(6))
+    }
+
+    private fun isLatestQuestion(text: String): Boolean =
+        has(text, "lan gan nhat", "buoi gan nhat", "buoi moi nhat", "gan nhat tap",
+            "khi nao tap", "bao lau roi chua tap", "chua tap bao lau")
+
+    private fun isHistoryQuestion(text: String): Boolean {
+        val hasSubject = has(text, "tap", "buoi", "van dong", "nhat ky", "lich su")
+        val asksForHistory = has(
+            text, "bao nhieu", "may buoi", "may ngay", "may phut", "bao lau",
+            "tong", "so buoi", "so ngay", "so phut", "khi nao", "gan nhat",
+            "nhat ky", "lich su"
+        )
+        return hasSubject && asksForHistory
+    }
+
+    private fun normalize(input: String): String {
+        val withoutDiacritics = Normalizer.normalize(
+            input.lowercase(Locale.ROOT).replace('đ', 'd'),
+            Normalizer.Form.NFD
+        )
+        return withoutDiacritics
+            .replace(Regex("\\p{M}+"), "")
+            .replace(Regex("[^a-z0-9 ]"), " ")
+            .replace(Regex("\\s+"), " ")
+            .trim()
+    }
+
+    private fun has(text: String, vararg phrases: String): Boolean =
+        phrases.any { text.contains(it) }
+}

@@ -54,6 +54,23 @@ object WorkoutHistoryConversation {
             }
             .toList()
 
+        if (isRecentListQuestion(text)) {
+            val requestedCount = recentListCount(text)
+            val recent = entries
+                .sortedWith(compareByDescending<Entry> { it.date }.thenByDescending { it.originalIndex })
+                .take(requestedCount)
+            if (recent.isEmpty()) {
+                return "Không tìm thấy buổi tập hợp lệ trong nhật ký trên máy."
+            }
+            val lines = recent.mapIndexed { index, entry ->
+                (index + 1).toString() + ". " + entry.date.format(dateFormat) +
+                    " — " + entry.name + " • " + entry.minutes + " phút"
+            }
+            return "Đây là " + recent.size + " buổi gần nhất đã ghi trong nhật ký:\n" +
+                lines.joinToString("\n") +
+                "\nChỉ hiển thị ngày, tên hoạt động và thời lượng; ghi chú riêng tư không được đọc."
+        }
+
         if (isLatestQuestion(text)) {
             val latest = entries.maxWithOrNull(
                 compareBy<Entry> { it.date }.thenBy { it.originalIndex }
@@ -92,6 +109,24 @@ object WorkoutHistoryConversation {
         return "Trong ${window.label}: ${parts.joinToString(" • ")}. Các con số được tổng hợp từ nhật ký cục bộ; chúng không đánh giá thể lực hay mức độ hồi phục."
     }
 
+    private fun isRecentListQuestion(text: String): Boolean {
+        val asksForList = has(
+            text, "liet ke", "danh sach", "xem cac buoi", "cac buoi gan day",
+            "cac buoi vua qua", "buoi tap gan day", "buoi tap vua qua"
+        )
+        val asksForCountedRecent = Regex(
+            """(?:^| )\d{1,2} buoi (?:tap )?(?:gan nhat|gan day|vua qua)(?: |$)"""
+        ).containsMatchIn(text)
+        return asksForList || asksForCountedRecent
+    }
+
+    private fun recentListCount(text: String): Int {
+        val requested = Regex(
+            """(?:^| )(\d{1,2}) buoi (?:tap )?(?:gan nhat|gan day|vua qua)(?: |$)"""
+        ).find(text)?.groupValues?.getOrNull(1)?.toIntOrNull()
+        return (requested ?: 5).coerceIn(1, 10)
+    }
+
     private fun chooseWindow(text: String, today: LocalDate): Window = when {
         has(text, "hom nay", "ngay hom nay") ->
             Window("hôm nay", today)
@@ -116,7 +151,7 @@ object WorkoutHistoryConversation {
             "so buoi", "so ngay", "so phut", "khi nao", "gan nhat",
             "nhat ky", "lich su"
         )
-        return hasSubject && asksForHistory
+        return hasSubject && (asksForHistory || isRecentListQuestion(text))
     }
 
     private fun normalize(input: String): String {

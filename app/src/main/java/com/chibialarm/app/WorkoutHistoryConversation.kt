@@ -54,6 +54,10 @@ object WorkoutHistoryConversation {
             }
             .toList()
 
+        if (isComparisonQuestion(text)) {
+            return compareRecentPeriods(entries, today)
+        }
+
         if (isRecentListQuestion(text)) {
             val requestedCount = recentListCount(text)
             val recent = entries
@@ -109,6 +113,54 @@ object WorkoutHistoryConversation {
         return "Trong ${window.label}: ${parts.joinToString(" • ")}. Các con số được tổng hợp từ nhật ký cục bộ; chúng không đánh giá thể lực hay mức độ hồi phục."
     }
 
+    private data class PeriodSummary(
+        val sessions: Int,
+        val activeDays: Int,
+        val minutes: Int
+    )
+
+    /** Compare two fixed seven-day windows; this describes logged activity, not recovery. */
+    private fun compareRecentPeriods(entries: List<Entry>, today: LocalDate): String {
+        val currentStart = today.minusDays(6)
+        val previousStart = today.minusDays(13)
+        fun summarize(start: LocalDate, endExclusive: LocalDate): PeriodSummary {
+            val selected = entries.filter { !it.date.isBefore(start) && it.date.isBefore(endExclusive) }
+            val minutes = selected.sumOf { it.minutes.toLong() }
+                .coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+            return PeriodSummary(
+                sessions = selected.size,
+                activeDays = selected.map { it.date }.distinct().size,
+                minutes = minutes
+            )
+        }
+
+        val current = summarize(currentStart, today.plusDays(1))
+        val previous = summarize(previousStart, currentStart)
+        if (current.sessions == 0 && previous.sessions == 0) {
+            return "Chưa có buổi tập hợp lệ trong hai giai đoạn để so sánh. Nhật ký chỉ phản ánh những buổi bạn đã lưu trên thiết bị."
+        }
+
+        fun delta(value: Int, unit: String): String = when {
+            value > 0 -> "+$value $unit"
+            value < 0 -> "$value $unit"
+            else -> "không đổi"
+        }
+
+        return buildString {
+            append("So sánh 7 ngày gần nhất với 7 ngày liền trước (dựa trên nhật ký tự ghi):")
+            append("\\n• Buổi tập: ${current.sessions} so với ${previous.sessions} (${delta(current.sessions - previous.sessions, "buổi")})")
+            append("\\n• Ngày có vận động: ${current.activeDays} so với ${previous.activeDays} (${delta(current.activeDays - previous.activeDays, "ngày")})")
+            append("\\n• Thời lượng: ${current.minutes} so với ${previous.minutes} phút (${delta(current.minutes - previous.minutes, "phút")})")
+            append("\\nĐây chỉ là so sánh dữ liệu đã ghi; không đo cường độ, chất lượng buổi tập hay khả năng hồi phục.")
+        }
+    }
+
+    private fun isComparisonQuestion(text: String): Boolean {
+        val mentionsBothWeeks = text.contains("tuan nay") && text.contains("tuan truoc")
+        val asksForComparison = has(text, "so sanh", "nhieu hon", "it hon", "tang hay giam", "khac gi")
+        return mentionsBothWeeks && asksForComparison
+    }
+
     private fun isRecentListQuestion(text: String): Boolean {
         val asksForList = has(
             text, "liet ke", "danh sach", "xem cac buoi", "cac buoi gan day",
@@ -151,7 +203,7 @@ object WorkoutHistoryConversation {
             "so buoi", "so ngay", "so phut", "khi nao", "gan nhat",
             "nhat ky", "lich su"
         )
-        return hasSubject && (asksForHistory || isRecentListQuestion(text))
+        return (hasSubject && (asksForHistory || isRecentListQuestion(text))) || isComparisonQuestion(text)
     }
 
     private fun normalize(input: String): String {

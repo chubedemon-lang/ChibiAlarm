@@ -760,7 +760,6 @@ class GuidedWorkoutActivity:Activity() {
                     append(WorkoutMidSessionPreviewFormatter.format(preview))
                     append("\n\nCác hiệp đã xác nhận không bị sửa. Đây là gợi ý offline từ thư viện, không phải chẩn đoán hay đánh giá tư thế.")
                 }
-                }
                 AlertDialog.Builder(this).setTitle("🐰 Xem trước điều chỉnh giữa buổi")
                     .setMessage(summary)
                     .setPositiveButton("Áp dụng") { _, _ ->

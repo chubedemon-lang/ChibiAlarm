@@ -14,6 +14,11 @@ class WorkoutPoseView(context: Context) : View(context) {
         set(value) { field = value; contentDescription = WorkoutPoseMotion.accessibilityCue(value, false); refreshMotion() }
 
     private var movementPhase = false
+
+    /** Current alternate illustration phase, exposed for matching one-shot spoken guidance. */
+    val isInAlternatePose: Boolean
+        get() = movementPhase
+
     private var animator: ValueAnimator? = null
 
     /** Allows a modal walkthrough to pause the background illustration while its own preview animates. */

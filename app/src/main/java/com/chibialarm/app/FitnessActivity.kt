@@ -87,10 +87,35 @@ class FitnessActivity:Activity() {
         text=s;textSize=size;setTextColor(Color.rgb(73,59,88));setPadding(7,6,7,7)
     }
     private fun panel(bg:Int)=GradientDrawable().apply { setColor(bg);cornerRadius=33f }
+    /** Restore only validated, coarse selections handed off by the offline coach. */
+    private fun restoreCoachHandoff(source: Intent): FitnessNaturalRequest.Result? {
+        val keys = listOf(
+            "coach_goal", "coach_level", "coach_energy", "coach_minutes",
+            "coach_equipment", "coach_impact",
+            "coach_avoid_wrist_load", "coach_avoid_floor_positions"
+        )
+        if (keys.none(source::hasExtra)) return null
+        fun intValue(key: String): Int? =
+            if (source.hasExtra(key)) source.getIntExtra(key, Int.MIN_VALUE) else null
+        fun booleanValue(key: String): Boolean? =
+            if (source.hasExtra(key)) source.getBooleanExtra(key, false) else null
+        return FitnessCoachSessionSnapshot(
+            goal = intValue("coach_goal"),
+            level = intValue("coach_level"),
+            energy = intValue("coach_energy"),
+            minutes = intValue("coach_minutes"),
+            equipment = intValue("coach_equipment"),
+            impact = intValue("coach_impact"),
+            avoidWristLoad = booleanValue("coach_avoid_wrist_load"),
+            avoidFloorPositions = booleanValue("coach_avoid_floor_positions")
+        ).restore()
+    }
+
     override fun onCreate(savedInstanceState:Bundle?) {
         super.onCreate(savedInstanceState)
         // Retain only coarse selections across a configuration change. Raw speech/text is never kept.
         conversation = FitnessCoachSessionSnapshot.restore(lastNonConfigurationInstance as? FitnessCoachSessionSnapshot)
+            ?: restoreCoachHandoff(intent)
         render()
     }
 

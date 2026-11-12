@@ -75,7 +75,7 @@ object FitnessCoachConversation {
             question == FitnessCoachFollowUp.Question.MOVEMENT_LIMITS && parsed.impact != null ->
                 parsed
             question == FitnessCoachFollowUp.Question.MOVEMENT_LIMITS && answer in negativeReplies ->
-                parsed.copy(impact = 0, reply = "Đã ghi nhận mày không cần tránh nhảy. Tao vẫn sẽ kiểm tra riêng cổ tay và tư thế sàn.")
+                parsed.copy(impact = 0, reply = "Đã ghi nhận không có hạn chế về nhảy. Tao vẫn sẽ kiểm tra riêng cổ tay và tư thế sàn.")
             question == FitnessCoachFollowUp.Question.MOVEMENT_LIMITS && answer in affirmativeReplies ->
                 parsed.copy(impact = 1, reply = "Đã ghi nhận ưu tiên bài ít tác động, không nhảy.")
             question == FitnessCoachFollowUp.Question.WRIST_LOAD && answer in noWristRestrictionReplies ->

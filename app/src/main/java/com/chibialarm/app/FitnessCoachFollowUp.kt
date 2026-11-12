@@ -52,7 +52,7 @@ object FitnessCoachFollowUp {
                     if (parsed.avoidFloorPositions == true) add("tư thế nằm hoặc quỳ sàn")
                 }
                 if (noted.isEmpty()) {
-                    "Mày có cần tránh nhảy hoặc ưu tiên bài ít tác động không? Trả lời có/không."
+                    "Mày có hạn chế vận động nào khiến cần tránh nhảy hoặc ưu tiên bài ít tác động không? Trả lời có/không."
                 } else {
                     "Tao đã ghi nhận hạn chế ${noted.joinToString(" và ")}. Còn về nhảy, mày có cần tránh nhảy hoặc ưu tiên bài ít tác động không?"
                 }

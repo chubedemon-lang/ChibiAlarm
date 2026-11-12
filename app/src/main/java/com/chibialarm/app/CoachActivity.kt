@@ -29,13 +29,18 @@ class CoachActivity:Activity() {
     private fun restoreFitnessContext(state: Bundle?): FitnessNaturalRequest.Result? {
         if (state?.getBoolean("fitness_context_present") != true) return null
         fun value(key: String): Int? = if (state.containsKey(key)) state.getInt(key) else null
+        fun booleanValue(key: String): Boolean? =
+            if (state.containsKey(key)) state.getBoolean(key) else null
         return FitnessNaturalRequest.Result(
             goal = value("fitness_goal"),
+            level = value("fitness_level"),
             energy = value("fitness_energy"),
             minutes = value("fitness_minutes"),
             equipment = value("fitness_equipment"),
             impact = value("fitness_impact"),
-            reply = ""
+            reply = "",
+            avoidWristLoad = booleanValue("fitness_avoid_wrist_load"),
+            avoidFloorPositions = booleanValue("fitness_avoid_floor_positions")
         )
     }
 
@@ -47,6 +52,9 @@ class CoachActivity:Activity() {
             context.minutes?.let { outState.putInt("fitness_minutes", it) }
             context.equipment?.let { outState.putInt("fitness_equipment", it) }
             context.impact?.let { outState.putInt("fitness_impact", it) }
+            context.level?.let { outState.putInt("fitness_level", it) }
+            context.avoidWristLoad?.let { outState.putBoolean("fitness_avoid_wrist_load", it) }
+            context.avoidFloorPositions?.let { outState.putBoolean("fitness_avoid_floor_positions", it) }
         }
         super.onSaveInstanceState(outState)
     }
@@ -68,6 +76,9 @@ class CoachActivity:Activity() {
             current?.minutes?.let { intent.putExtra("coach_minutes",it) }
             current?.equipment?.let { intent.putExtra("coach_equipment",it) }
             current?.impact?.let { intent.putExtra("coach_impact",it) }
+            current?.level?.let { intent.putExtra("coach_level",it) }
+            current?.avoidWristLoad?.let { intent.putExtra("coach_avoid_wrist_load",it) }
+            current?.avoidFloorPositions?.let { intent.putExtra("coach_avoid_floor_positions",it) }
             startActivity(intent)
         } })
         buttons.addView(Button(this).apply { text="🗑 Xóa chat";setOnClickListener {

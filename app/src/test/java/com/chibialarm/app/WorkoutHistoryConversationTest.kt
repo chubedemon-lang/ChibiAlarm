@@ -270,4 +270,68 @@ class WorkoutHistoryConversationTest {
             java.util.Locale.setDefault(original)
         }
     }
+
+    @Test fun comparisonQuestionRecognizesNaturalSoVoiPhrasing() {
+        val answer = WorkoutHistoryConversation.answer(
+            "Tuần này so với tuần trước thế nào?",
+            listOf(
+                workout(today, 30),
+                workout(today.minusDays(7), 20)
+            ),
+            today
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("So sánh 7 ngày gần nhất"))
+        assertTrue(answer.contains("Buổi tập: 1 so với 1"))
+    }
+
+    @Test fun nextWeekPlanUsesRecentFrequencyWithoutAskingUserToCatchUp() {
+        val answer = WorkoutHistoryConversation.answer(
+            "Tuần này tao tập ít hơn tuần trước, tuần tới điều chỉnh lịch thế nào?",
+            listOf(
+                workout(today, 25),
+                workout(today.minusDays(2), 20),
+                workout(today.minusDays(7), 30),
+                workout(today.minusDays(9), 25),
+                workout(today.minusDays(11), 20)
+            ),
+            today
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("Gợi ý lịch tuần tới"))
+        assertTrue(answer.contains("2 ngày vận động, xen kẽ ngày nghỉ"))
+        assertTrue(answer.contains("chưa tự thay đổi lịch"))
+        assertTrue(answer.contains("Không cần tập bù"))
+    }
+
+    @Test fun nextWeekPlanWithNoCurrentWeekActivitySuggestsOnlyOneOptionalLightDay() {
+        val answer = WorkoutHistoryConversation.answer(
+            "Tuần tới tao nên tập mấy buổi?",
+            listOf(
+                workout(today.minusDays(8), 25),
+                workout(today.minusDays(10), 20)
+            ),
+            today
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("1 ngày vận động nhẹ, nếu phù hợp"))
+        assertTrue(answer.contains("Không cần tập bù"))
+        assertFalse(answer.contains("3 ngày vận động"))
+    }
+
+    @Test fun nextWeekPlanDoesNotInventFrequencyWithoutAnyRecentHistory() {
+        val answer = WorkoutHistoryConversation.answer(
+            "Tuần tới tao nên tập mấy buổi?",
+            emptyList(),
+            today
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("Chưa đủ nhật ký"))
+        assertFalse(answer.contains("Mục tiêu khởi đầu"))
+    }
+
 }

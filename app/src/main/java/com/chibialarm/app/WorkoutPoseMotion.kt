@@ -44,7 +44,7 @@ object WorkoutPoseMotion {
         WorkoutPoseGuide.Pose.HIP_HINGE -> "Đứng chân rộng bằng hông, gối hơi chùng. Đẩy hông ra sau, giữ lưng trung lập và nghiêng thân nhẹ; siết mông để đứng thẳng. Không cần tạ."
         WorkoutPoseGuide.Pose.RESISTANCE_ROW -> "Giữ thân gập hông nhẹ và lưng trung lập. Kéo khuỷu sát thân, đưa tải về gần hông rồi hạ chậm. Không giật hoặc xoay thân; kiểm tra dây và điểm neo trước khi tập."
         WorkoutPoseGuide.Pose.RESISTANCE_HINGE -> "Đứng chân rộng bằng hông, giữ tải nhẹ sát đùi. Đẩy hông ra sau, gối hơi chùng và lưng trung lập; đưa hông về trước để đứng lên. Không hạ sâu hoặc dùng tải nặng."
-        WorkoutPoseGuide.Pose.RESISTANCE_PRESS -> "Đứng hoặc ngồi vững, giữ tạ nhẹ ngang vai. Đẩy lên trong biên độ thoải mái rồi hạ chậm. Không ưỡn lưng hoặc nín thở; dừng nếu đau vai."
+        WorkoutPoseGuide.Pose.RESISTANCE_PRESS -> "Đứng hoặc ngồi vững, giữ tạ nhẹ ngang vai. Đẩy lên trong biên độ thoải mái rồi hạ chậm. Không ưỡn lưng, không nín thở; dừng nếu đau vai."
         WorkoutPoseGuide.Pose.PUSH_UP -> "Minh họa chống đẩy sàn. Hạ ngực có kiểm soát, sau đó đẩy lên. Có thể chọn biến thể dễ hơn nếu cần."
         WorkoutPoseGuide.Pose.KNEE_PUSH_UP -> "Minh họa chống đẩy gối. Đặt hai gối trên sàn, giữ thân từ vai tới gối ổn định, hạ ngực vừa tầm rồi đẩy lên."
         WorkoutPoseGuide.Pose.WALL_PUSH_UP -> "Minh họa chống đẩy tường. Đứng cách tường một khoảng thoải mái, đặt tay ngang ngực, gập khuỷu đưa thân gần tường rồi đẩy ra."
@@ -71,6 +71,28 @@ object WorkoutPoseMotion {
         WorkoutPoseGuide.Pose.STANDING -> "Chưa có minh họa riêng cho động tác này. Hãy đọc hướng dẫn từng bước bên dưới trước khi tập."
     }
 
+    /**
+     * Conservative breathing prompts for a spoken step. The alternate illustration
+     * phase is the lowering/return phase for these resistance patterns; other movements
+     * get a neutral reminder rather than an invented inhale/exhale mapping.
+     */
+    fun breathingCue(pose: WorkoutPoseGuide.Pose, returnPhase: Boolean): String = when (pose) {
+        WorkoutPoseGuide.Pose.SQUAT,
+        WorkoutPoseGuide.Pose.HIP_HINGE,
+        WorkoutPoseGuide.Pose.RESISTANCE_ROW,
+        WorkoutPoseGuide.Pose.RESISTANCE_HINGE,
+        WorkoutPoseGuide.Pose.RESISTANCE_PRESS,
+        WorkoutPoseGuide.Pose.PUSH_UP,
+        WorkoutPoseGuide.Pose.KNEE_PUSH_UP,
+        WorkoutPoseGuide.Pose.WALL_PUSH_UP,
+        WorkoutPoseGuide.Pose.INCLINE_PUSH_UP,
+        WorkoutPoseGuide.Pose.LUNGE,
+        WorkoutPoseGuide.Pose.BRIDGE,
+        WorkoutPoseGuide.Pose.CALF_RAISE ->
+            if (returnPhase) "Hít vào khi hạ hoặc trở về." else "Thở ra khi dùng lực."
+        else -> "Thở đều, không nín thở."
+    }
+
     /** Spoken context for the selected walkthrough step; bounded for short on-device TTS. */
     fun spokenStepCue(
         pose: WorkoutPoseGuide.Pose,
@@ -84,7 +106,7 @@ object WorkoutPoseMotion {
         val safeStep = step.trim().replace(Regex("\\s+"), " ")
             .take(180)
             .ifBlank { "Thực hiện chậm trong biên độ thoải mái." }
-        return "${WorkoutPoseGuide.label(pose)}. ${phaseCue(pose, alternatePhase)}. " +
+        return "${WorkoutPoseGuide.label(pose)}. ${phaseCue(pose, alternatePhase)}. ${breathingCue(pose, alternatePhase)} " +
             "Bước $safePosition trên $safeTotal: $safeStep"
     }
 

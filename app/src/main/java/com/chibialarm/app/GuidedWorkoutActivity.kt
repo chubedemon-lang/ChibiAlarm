@@ -688,8 +688,29 @@ class GuidedWorkoutActivity:Activity() {
     }
 
     private fun applyMidSessionRequest(request: WorkoutMidSessionRequest.Request) {
-        if (pausedForSafety || completed || resting || index !in moves.indices) {
+        if (pausedForSafety || completed || index !in moves.indices) {
             Toast.makeText(this,"Buổi tập đang dừng hoặc chưa thể điều chỉnh lúc này.",Toast.LENGTH_LONG).show()
+            return
+        }
+        if (resting) {
+            val restOnly = request.restSeconds != null &&
+                request.remainingMinutes == null &&
+                !request.lowEnergy &&
+                !request.avoidWristLoad &&
+                !request.avoidFloorPositions &&
+                !request.preferEasier &&
+                !request.avoidExternalLoad &&
+                !request.allowWristLoad &&
+                !request.allowFloorPositions
+            if (restOnly) {
+                confirmRestExtension(request.restSeconds)
+            } else {
+                Toast.makeText(
+                    this,
+                    "Đang trong thời gian nghỉ. Chibi chưa đổi giáo án kết hợp lúc này; hãy gửi lại yêu cầu sau khi nghỉ.",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
             return
         }
         if (completedMoveIndices.any { it > index } || completedSetsByMove.keys.any { it > index }) {
@@ -961,6 +982,73 @@ class GuidedWorkoutActivity:Activity() {
             }
         }
     }
+    /**
+     * Extend an existing rest countdown only after a preview and explicit confirmation.
+     * The exercise countdown is preserved and the combined rest is capped at ten minutes.
+     */
+    private fun confirmRestExtension(addedSeconds: Int) {
+        if (pausedForSafety || completed || !resting || index !in moves.indices) return
+        val wasRunning = !paused
+        pause()
+        val beforeRemaining = restRemainingMs
+        val preview = WorkoutRestAdjustment.previewExtension(beforeRemaining, addedSeconds)
+        if (preview == null) {
+            Toast.makeText(
+                this,
+                "Thời gian nghỉ đã đạt giới hạn 10 phút hoặc yêu cầu không hợp lệ.",
+                Toast.LENGTH_LONG
+            ).show()
+            if (wasRunning && resting && !pausedForSafety) resume()
+            return
+        }
+
+        val selectedIndex = index
+        val exerciseRemaining = remainingMs
+        val addedSecondsActual = ((preview.actualAddedMs + 999L) / 1_000L).toInt()
+        val totalSeconds = ((preview.afterRemainingMs + 999L) / 1_000L).toInt()
+        val capNotice = if (preview.wasCapped) {
+            "\\nTổng thời gian nghỉ được giới hạn tối đa 10 phút."
+        } else {
+            ""
+        }
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("⏱ Xác nhận kéo dài thời gian nghỉ")
+            .setMessage(
+                "Thời gian nghỉ còn: ${(beforeRemaining + 999L) / 1_000L} giây → ${totalSeconds} giây.\\n" +
+                    "Thêm thực tế: ${addedSecondsActual} giây.\\n" +
+                    "Thời gian động tác còn lại được giữ nguyên; nghỉ không tính vào phút vận động." +
+                    capNotice
+            )
+            .setPositiveButton("Thêm & tiếp tục nghỉ") { _, _ ->
+                if (pausedForSafety || completed || !resting || !paused ||
+                    index != selectedIndex || restRemainingMs != beforeRemaining ||
+                    remainingMs != exerciseRemaining
+                ) {
+                    Toast.makeText(
+                        this,
+                        "Bộ đếm đã thay đổi. Hãy yêu cầu lại để xem trước thời gian mới.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    return@setPositiveButton
+                }
+                restRemainingMs = preview.afterRemainingMs
+                restDeadline = 0L
+                counter.text = restCounterText(restRemainingMs)
+                control.text = "▶ Tiếp tục nghỉ"
+                saveCheckpoint()
+                speak("Đã thêm ${addedSecondsActual} giây nghỉ. Còn ${totalSeconds} giây.")
+                resume()
+            }
+            .setNegativeButton("Giữ nguyên") { _, _ ->
+                if (wasRunning && resting && !pausedForSafety) resume()
+            }
+            .create()
+        dialog.setOnCancelListener {
+            if (wasRunning && resting && !pausedForSafety) resume()
+        }
+        dialog.show()
+    }
+
     /**
      * Spoken rest requests are proposals, not immediate timer mutations.
      * Guard against stale dialogs after moving to another exercise or changing the timer.

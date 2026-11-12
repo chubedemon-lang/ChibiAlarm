@@ -47,7 +47,10 @@ class WorkoutMidSessionPreviewFormatterTest {
         assertTrue(text.contains("1. Bước trước — Khởi động tại chỗ"))
         assertTrue(text.contains("2. Đang tập — Đứng lên – ngồi xuống"))
         assertTrue(text.contains("2 hiệp × 6–10 lần"))
-        assertTrue(text.contains("3. Tiếp theo — Chống đẩy tường"))
+        assertTrue(text.contains("3. Tiếp theo — Ép ngực tường bằng cẳng tay"))
+        assertTrue(text.contains("Thay đổi đề xuất:"))
+        assertTrue(text.contains("Squat không tạ → Đứng lên – ngồi xuống"))
+        assertTrue(text.contains("Chống đẩy tường → Ép ngực tường bằng cẳng tay"))
         assertTrue(text.contains("Thời gian còn lại ước tính:"))
         assertFalse(text.contains("Đã hoàn thành — Khởi động"))
     }

@@ -92,8 +92,8 @@ class GuidedWorkoutActivity:Activity() {
     private var completed=false
     // Do not overwrite a saved session before the user chooses Restore or Start over.
     private var checkpointDecisionPending=false
-    private fun saveCheckpoint() {
-        if (completed || checkpointDecisionPending || moves.isEmpty()) return
+    private fun saveCheckpoint(): Boolean {
+        if (completed || checkpointDecisionPending || moves.isEmpty()) return true
         checkpoint.edit().putString("program",program.id)
             .putString("planNames",WorkoutMidSessionPlanner.encodePlan(originalMoves))
             .putString("planFingerprint",currentPlanFingerprint())
@@ -115,7 +115,8 @@ class GuidedWorkoutActivity:Activity() {
             .putBoolean("setTimerExpired",setTimerExpired)
             .putBoolean("started",activeElapsedMs()>0L)
             .putLong("elapsed",activeElapsedMs())
-            .putLong("savedAt",System.currentTimeMillis()).apply()
+            // Commit synchronously: Android may kill this process immediately after onPause.
+            .putLong("savedAt",System.currentTimeMillis()).commit()
     }
     private fun offerCheckpoint() {
         if (checkpoint.getString("program",null)!=program.id) return

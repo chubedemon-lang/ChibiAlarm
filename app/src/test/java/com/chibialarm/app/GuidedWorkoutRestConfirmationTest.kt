@@ -248,4 +248,55 @@ class GuidedWorkoutRestConfirmationTest {
         activity.finish()
     }
 
+
+    @Test fun onPauseSynchronouslyPersistsCheckpointAndRestoreKeepsProgressPaused() {
+        val sessionId = "550e8400-e29b-41d4-a716-446655440099"
+        val firstController = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup()
+        val first = firstController.get()
+
+        fun field(name: String) = GuidedWorkoutActivity::class.java.getDeclaredField(name).apply {
+            isAccessible = true
+        }
+        field("sessionId").set(first, sessionId)
+        field("index").setInt(first, 1)
+        field("remainingMs").setLong(first, 37_000L)
+        field("resting").setBoolean(first, true)
+        field("restRemainingMs").setLong(first, 45_000L)
+        @Suppress("UNCHECKED_CAST")
+        (field("completedMoveIndices").get(first) as MutableSet<Int>).add(0)
+
+        val save = GuidedWorkoutActivity::class.java.getDeclaredMethod("saveCheckpoint").apply {
+            isAccessible = true
+        }
+        assertTrue("Checkpoint must report a successful synchronous disk commit", save.invoke(first) as Boolean)
+
+        firstController.pause()
+        val saved = RuntimeEnvironment.getApplication()
+            .getSharedPreferences("chibi_workout_checkpoint_guest", Context.MODE_PRIVATE)
+        assertEquals(sessionId, saved.getString("sessionId", null))
+        assertEquals(1, saved.getInt("index", -1))
+        assertEquals(37_000L, saved.getLong("remaining", -1L))
+        assertEquals(45_000L, saved.getLong("restRemaining", -1L))
+        firstController.stop().destroy()
+
+        val restoredController = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup()
+        val restored = restoredController.get()
+        val dialog = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
+        assertTrue("A process recreation should offer the saved workout", dialog.isShowing)
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertEquals(sessionId, field("sessionId").get(restored))
+        assertEquals(1, field("index").getInt(restored))
+        assertEquals(37_000L, remaining(restored))
+        assertTrue(field("resting").getBoolean(restored))
+        assertEquals(45_000L, field("restRemainingMs").getLong(restored))
+        assertTrue("Restored workouts must remain paused until the user resumes",
+            field("paused").getBoolean(restored))
+        @Suppress("UNCHECKED_CAST")
+        assertTrue((field("completedMoveIndices").get(restored) as Set<Int>).contains(0))
+
+        restoredController.pause().stop().destroy()
+    }
+
 }

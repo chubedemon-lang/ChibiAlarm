@@ -146,6 +146,64 @@ class WorkoutHistoryConversationTest {
         )
     }
 
+    @Test fun recentListReturnsNewestEntriesFirstWithoutPrivateNotes() {
+        val answer = WorkoutHistoryConversation.answer(
+            "Liệt kê 3 buổi gần nhất",
+            listOf(
+                workout(today.minusDays(3), 25, "Đi bộ", "private older note"),
+                workout(today, 30, "Tập sức mạnh", "private current note"),
+                workout(today.minusDays(1), 20, "Giãn cơ", "private middle note")
+            ),
+            today
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("Đây là 3 buổi gần nhất"))
+        assertTrue(answer.contains("Tập sức mạnh • 30 phút"))
+        assertTrue(answer.contains("Giãn cơ • 20 phút"))
+        assertTrue(answer.contains("Đi bộ • 25 phút"))
+        assertTrue(answer.indexOf("12/11/2026") < answer.indexOf("11/11/2026"))
+        assertTrue(answer.indexOf("11/11/2026") < answer.indexOf("09/11/2026"))
+        assertFalse(answer.contains("private"))
+        assertFalse(answer.contains("older note"))
+    }
+
+    @Test fun recentListDefaultsToFiveAndCapsRequestedCountAtTen() {
+        val history = (0..11).map { offset ->
+            workout(today.minusDays(offset.toLong()), 10 + offset, "Buổi " + offset)
+        }
+
+        val defaultAnswer = WorkoutHistoryConversation.answer(
+            "Liệt kê các buổi tập gần đây",
+            history,
+            today
+        )
+        assertNotNull(defaultAnswer)
+        assertTrue(defaultAnswer!!.contains("Đây là 5 buổi gần nhất"))
+        assertFalse(defaultAnswer.contains("Buổi 5 • 15 phút"))
+
+        val boundedAnswer = WorkoutHistoryConversation.answer(
+            "Cho tao xem 99 buổi gần nhất",
+            history,
+            today
+        )
+        assertNotNull(boundedAnswer)
+        assertTrue(boundedAnswer!!.contains("Đây là 10 buổi gần nhất"))
+        assertFalse(boundedAnswer.contains("Buổi 11 • 21 phút"))
+    }
+
+    @Test fun recentListWithNoValidRecordsReturnsLocalJournalMessage() {
+        val answer = WorkoutHistoryConversation.answer(
+            "Cho xem danh sách các buổi gần đây",
+            listOf(workout(today.plusDays(1), 20)),
+            today
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("Không tìm thấy buổi tập hợp lệ"))
+        assertFalse(answer.contains("private"))
+    }
+
     @Test fun historyAnswerIsLocaleIndependent() {
         val original = java.util.Locale.getDefault()
         try {

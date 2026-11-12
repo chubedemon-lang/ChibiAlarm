@@ -45,7 +45,7 @@ class WorkoutSetRepetitionLogTest {
 
     @Test fun malformedDuplicateAndOutOfRangeEntriesAreIgnored() {
         val raw = "0:8.10,0:12,1:20.21,2:8,9:4,bad,1:999"
-        assertEquals(mapOf(0 to listOf(8, 10)),
+        assertEquals(mapOf(0 to listOf(8, 10), 1 to listOf(0)),
             WorkoutSetRepetitionLog.decode(raw, moves, mapOf(0 to 2, 1 to 1)))
         assertEquals(listOf(0), WorkoutSetRepetitionLog.decode(null, moves, mapOf(1 to 1))[1])
     }
@@ -60,6 +60,9 @@ class WorkoutSetRepetitionLogTest {
         val restored = WorkoutSetRepetitionLog.decode(null, moves, mapOf(0 to 1))
         val updated = WorkoutSetRepetitionLog.append(restored, 0, 1, 9, plan)
         assertEquals(listOf(0, 9), updated[0])
+        val encoded = WorkoutSetRepetitionLog.encode(updated, moves)
+        assertEquals("0:-.9", encoded)
+        assertEquals(updated, WorkoutSetRepetitionLog.decode(encoded, moves, mapOf(0 to 2)))
         assertEquals("Squat: hiệp 2: 9 lần", WorkoutSetRepetitionLog.summary(updated, moves))
     }
 }

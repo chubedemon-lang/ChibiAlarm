@@ -138,23 +138,23 @@ object WorkoutSetHistoryConversation {
             val separator = segment.indexOf(':')
             if (separator !in 1..80) return@segment null
             val name = segment.substring(0, separator).trim().take(80)
-            if (name.isBlank()) return@mapNotNull null
+            if (name.isBlank()) return@segment null
             val body = segment.substring(separator + 1)
             val matches = setPattern.findAll(body).take(MAX_SETS + 1).toList()
-            if (matches.isEmpty() || matches.size > MAX_SETS) return@mapNotNull null
+            if (matches.isEmpty() || matches.size > MAX_SETS) return@segment null
             val residue = setPattern.replace(body, "").replace(",", "").trim()
-            if (residue.isNotEmpty()) return@mapNotNull null
+            if (residue.isNotEmpty()) return@segment null
 
             val values = matches.mapNotNull value@{ match ->
-                val index = match.groupValues[1].toIntOrNull() ?: return@mapNotNull null
-                val value = match.groupValues[2].toIntOrNull() ?: return@mapNotNull null
+                val index = match.groupValues[1].toIntOrNull() ?: return@value null
+                val value = match.groupValues[2].toIntOrNull() ?: return@value null
                 val unit = match.groupValues[3].lowercase(Locale.ROOT)
                 val maximum = if (unit == "giây") 600 else 200
-                if (index !in 1..MAX_SETS || value !in 1..maximum) return@mapNotNull null
+                if (index !in 1..MAX_SETS || value !in 1..maximum) return@value null
                 SetValue(index, value, unit)
             }
             if (values.size != matches.size || values.map { it.index }.distinct().size != values.size) {
-                return@mapNotNull null
+                return@segment null
             }
             MoveLog(name, values.sortedBy { it.index })
         }

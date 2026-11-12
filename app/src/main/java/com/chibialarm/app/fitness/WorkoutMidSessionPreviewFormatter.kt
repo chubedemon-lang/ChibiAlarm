@@ -9,6 +9,16 @@ object WorkoutMidSessionPreviewFormatter {
 
     fun format(preview: WorkoutMidSessionPlanner.Preview): String = buildString {
         append("Giáo án sau điều chỉnh:\n")
+        if (preview.replacements.isNotEmpty() || preview.removedMoves.isNotEmpty()) {
+            append("Thay đổi đề xuất:\n")
+            preview.replacements.forEach { replacement ->
+                append("• ").append(replacement).append('\n')
+            }
+            preview.removedMoves.distinct().forEach { removed ->
+                append("• Bỏ khỏi phần còn lại: ").append(removed).append('\n')
+            }
+            append('\n')
+        }
         val startIndex = if (preview.currentIndex >= MAX_VISIBLE_MOVES) preview.currentIndex else 0
         if (startIndex > 0) {
             append("… ")

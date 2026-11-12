@@ -543,8 +543,7 @@ class FitnessActivity:Activity() {
         moves: List<TrainingMove>,
         constraints: WorkoutConstraintProfile
     ) {
-        var preview = WorkoutLibraryPreview.start(moves)
-        if (preview == null) {
+        var preview = WorkoutLibraryPreview.start(moves) ?: run {
             Toast.makeText(this, "Chưa có động tác phù hợp để xem trước.", Toast.LENGTH_LONG).show()
             return
         }
@@ -561,6 +560,10 @@ class FitnessActivity:Activity() {
                 -1,
                 (140 * resources.displayMetrics.density).toInt()
             )
+        }
+        val phaseCaption = txt("", 14f)
+        pose.onPhaseChanged = { alternate ->
+            phaseCaption.text = "↔ " + WorkoutPoseMotion.phaseCue(pose.pose, alternate)
         }
         val dose = txt("", 16f)
         val rest = txt("", 14f)
@@ -592,6 +595,7 @@ class FitnessActivity:Activity() {
         content.addView(position)
         content.addView(heading)
         content.addView(pose)
+        content.addView(phaseCaption)
         content.addView(txt(
             "Hình minh họa chuyển động, không phân tích kỹ thuật hoặc đánh giá tư thế thực tế.",
             12f
@@ -610,6 +614,7 @@ class FitnessActivity:Activity() {
             position.text = "Bài ${preview.position}/${preview.size}"
             heading.text = move.name
             pose.pose = WorkoutPoseGuide.classify(move.name)
+            phaseCaption.text = "↔ " + WorkoutPoseMotion.phaseCue(pose.pose, pose.isInAlternatePose)
             dose.text = "🎯 Mục tiêu: ${move.dose}"
             rest.text = WorkoutSetTracker.restGuidance(move.dose, move.restSeconds)
                 ?: "⏱ Nghỉ thêm khi cần; động tác này không có cấu trúc hiệp lặp."

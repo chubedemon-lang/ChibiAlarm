@@ -5,6 +5,9 @@ object WorkoutPoseMotion {
     fun hasMotion(pose: WorkoutPoseGuide.Pose): Boolean = when (pose) {
         WorkoutPoseGuide.Pose.SQUAT,
         WorkoutPoseGuide.Pose.HIP_HINGE,
+        WorkoutPoseGuide.Pose.RESISTANCE_ROW,
+        WorkoutPoseGuide.Pose.RESISTANCE_HINGE,
+        WorkoutPoseGuide.Pose.RESISTANCE_PRESS,
         WorkoutPoseGuide.Pose.PUSH_UP,
         WorkoutPoseGuide.Pose.KNEE_PUSH_UP,
         WorkoutPoseGuide.Pose.WALL_PUSH_UP,
@@ -39,6 +42,9 @@ object WorkoutPoseMotion {
     fun spokenWalkthrough(pose: WorkoutPoseGuide.Pose): String = when (pose) {
         WorkoutPoseGuide.Pose.SQUAT -> "Minh họa squat. Hạ hông từ từ, sau đó đứng lên. Chỉ xuống sâu trong mức thoải mái."
         WorkoutPoseGuide.Pose.HIP_HINGE -> "Đứng chân rộng bằng hông, gối hơi chùng. Đẩy hông ra sau, giữ lưng trung lập và nghiêng thân nhẹ; siết mông để đứng thẳng. Không cần tạ."
+        WorkoutPoseGuide.Pose.RESISTANCE_ROW -> "Giữ thân gập hông nhẹ và lưng trung lập. Kéo khuỷu sát thân, đưa tải về gần hông rồi hạ chậm. Không giật hoặc xoay thân; kiểm tra dây và điểm neo trước khi tập."
+        WorkoutPoseGuide.Pose.RESISTANCE_HINGE -> "Đứng chân rộng bằng hông, giữ tải nhẹ sát đùi. Đẩy hông ra sau, gối hơi chùng và lưng trung lập; đưa hông về trước để đứng lên. Không hạ sâu hoặc dùng tải nặng."
+        WorkoutPoseGuide.Pose.RESISTANCE_PRESS -> "Đứng hoặc ngồi vững, giữ tạ nhẹ ngang vai. Đẩy lên trong biên độ thoải mái rồi hạ chậm. Không ưỡn lưng hoặc nín thở; dừng nếu đau vai."
         WorkoutPoseGuide.Pose.PUSH_UP -> "Minh họa chống đẩy sàn. Hạ ngực có kiểm soát, sau đó đẩy lên. Có thể chọn biến thể dễ hơn nếu cần."
         WorkoutPoseGuide.Pose.KNEE_PUSH_UP -> "Minh họa chống đẩy gối. Đặt hai gối trên sàn, giữ thân từ vai tới gối ổn định, hạ ngực vừa tầm rồi đẩy lên."
         WorkoutPoseGuide.Pose.WALL_PUSH_UP -> "Minh họa chống đẩy tường. Đứng cách tường một khoảng thoải mái, đặt tay ngang ngực, gập khuỷu đưa thân gần tường rồi đẩy ra."
@@ -86,6 +92,9 @@ object WorkoutPoseMotion {
     fun phaseCue(pose: WorkoutPoseGuide.Pose, lowered: Boolean): String = when (pose) {
         WorkoutPoseGuide.Pose.SQUAT -> if (lowered) "Hạ hông" else "Đứng lên"
         WorkoutPoseGuide.Pose.HIP_HINGE -> if (lowered) "Đẩy hông ra sau" else "Đứng thẳng"
+        WorkoutPoseGuide.Pose.RESISTANCE_ROW -> if (lowered) "Hạ tay có kiểm soát" else "Kéo khuỷu về sau"
+        WorkoutPoseGuide.Pose.RESISTANCE_HINGE -> if (lowered) "Đẩy hông ra sau" else "Đứng thẳng, đưa hông về trước"
+        WorkoutPoseGuide.Pose.RESISTANCE_PRESS -> if (lowered) "Hạ tải ngang vai" else "Đẩy tải lên"
         WorkoutPoseGuide.Pose.PUSH_UP -> if (lowered) "Hạ ngực" else "Đẩy lên"
         WorkoutPoseGuide.Pose.KNEE_PUSH_UP -> if (lowered) "Hạ ngực" else "Đẩy lên từ điểm tựa gối"
         WorkoutPoseGuide.Pose.WALL_PUSH_UP -> if (lowered) "Gập khuỷu về tường" else "Đẩy ra khỏi tường"

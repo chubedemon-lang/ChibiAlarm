@@ -70,14 +70,15 @@ object WorkoutPoseMotion {
         pose: WorkoutPoseGuide.Pose,
         step: String,
         position: Int,
-        total: Int
+        total: Int,
+        alternatePhase: Boolean = false
     ): String {
         val safeTotal = total.coerceIn(1, 100)
         val safePosition = position.coerceIn(1, safeTotal)
         val safeStep = step.trim().replace(Regex("\\s+"), " ")
             .take(180)
             .ifBlank { "Thực hiện chậm trong biên độ thoải mái." }
-        return "${WorkoutPoseGuide.label(pose)}. ${phaseCue(pose, false)}. " +
+        return "${WorkoutPoseGuide.label(pose)}. ${phaseCue(pose, alternatePhase)}. " +
             "Bước $safePosition trên $safeTotal: $safeStep"
     }
 

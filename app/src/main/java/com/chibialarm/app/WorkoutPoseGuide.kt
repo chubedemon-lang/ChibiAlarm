@@ -23,7 +23,7 @@ object WorkoutPoseGuide {
             listOf("cat-cow", "cat cow", "mèo-bò").any { it in text } -> Pose.CAT_COW
             listOf("nâng hông", "glute bridge", "bridge").any { it in text } -> Pose.BRIDGE
             listOf("kéo tạ đơn hoặc dây kháng lực", "bent-over row", "dumbbell row", "resistance band row").any { it in text } -> Pose.RESISTANCE_ROW
-            listOf("gập hông với tạ đơn hoặc dây", "dumbbell romanian deadlift", "resistance hinge").any { it in text } -> Pose.RESISTANCE_HINGE
+            listOf("gập hông với tạ đơn hoặc dây", "romanian deadlift", "resistance hinge").any { it in text } -> Pose.RESISTANCE_HINGE
             listOf("đẩy vai với tạ đơn hoặc dây", "overhead press", "shoulder press").any { it in text } -> Pose.RESISTANCE_PRESS
             listOf("gập hông không dụng cụ", "hip hinge").any { it in text } -> Pose.HIP_HINGE
             listOf("nâng gối luân phiên có điểm tựa", "supported march").any { it in text } -> Pose.SUPPORTED_MARCH

@@ -94,7 +94,7 @@ class GuidedWorkoutActivity:Activity() {
     private var checkpointDecisionPending=false
     private fun saveCheckpoint(): Boolean {
         if (completed || checkpointDecisionPending || moves.isEmpty()) return true
-        checkpoint.edit().putString("program",program.id)
+        return checkpoint.edit().putString("program",program.id)
             .putString("planNames",WorkoutMidSessionPlanner.encodePlan(originalMoves))
             .putString("planFingerprint",currentPlanFingerprint())
             .putBoolean("avoidWristLoad",workoutConstraints.avoidWristLoad)

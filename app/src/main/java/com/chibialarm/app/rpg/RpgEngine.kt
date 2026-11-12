@@ -58,6 +58,7 @@ data class WorkoutRewardEvidence(
     val sessionId: String,
     val activeMinutes: Int,
     val completedMoves: Int,
+    /** Required sets only; optional sets remain journaled but do not increase XP. */
     val selfReportedSets: Int
 )
 
@@ -292,7 +293,8 @@ class RpgEngine(private val db: RpgDatabase) {
      * retries idempotent. Evidence is deliberately coarse and contains no notes,
      * symptoms, transcript, media or device identifiers.
      *
-     * XP = completed moves + 2 per self-confirmed set, capped at 30 per session.
+     * XP = completed moves + 2 per self-confirmed REQUIRED set, capped at 30 per session.
+     * Optional sets are intentionally excluded so rewards do not pressure extra volume.
      * This is a game reward, not verification that an exercise was performed.
      */
     suspend fun awardWorkoutSessions(sessions: List<WorkoutRewardEvidence>): Int =

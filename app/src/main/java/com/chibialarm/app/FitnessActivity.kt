@@ -369,6 +369,29 @@ class FitnessActivity:Activity() {
                 if (request.isBlank()) {
                     naturalRequest.error="Hãy mô tả buổi tập bạn muốn"
                 } else {
+                    val historyAnswer = WorkoutHistoryConversation.answer(
+                        request,
+                        WorkoutData.history(this@FitnessActivity)
+                    )
+                    if (historyAnswer != null) {
+                        // Answer from structured local journal fields only; notes never enter chat or TTS.
+                        coachTranscript.addUser(request)
+                        coachTranscript.addChibi(historyAnswer)
+                        renderCoachTranscript()
+                        sayFollowUp(historyAnswer)
+                        naturalRequest.text.clear()
+                        AlertDialog.Builder(this@FitnessActivity)
+                            .setTitle("📊 Nhật ký tập luyện")
+                            .setMessage(historyAnswer)
+                            .setPositiveButton("Đã hiểu", null)
+                            .setNeutralButton("Hỏi tiếp") { _, _ ->
+                                naturalRequest.requestFocus()
+                                (getSystemService(INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager)
+                                    ?.showSoftInput(naturalRequest, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+                            }
+                            .show()
+                        return@setOnClickListener
+                    }
                     val parsed=FitnessCoachConversation.merge(conversation, FitnessCoachConversation.parseReply(conversation, request))
                     conversation=parsed
                     val nextQuestion = FitnessCoachFollowUp.nextQuestion(parsed)

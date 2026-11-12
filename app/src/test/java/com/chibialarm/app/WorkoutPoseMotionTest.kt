@@ -50,6 +50,30 @@ class WorkoutPoseMotionTest {
         assertEquals("Nhón gót", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.CALF_RAISE, false))
     }
 
+    @Test fun spokenStepCueIncludesExerciseContextAndTheSelectedStep() {
+        val cue = WorkoutPoseMotion.spokenStepCue(
+            WorkoutPoseGuide.Pose.SQUAT,
+            "Đặt chân rộng bằng vai, giữ bàn chân vững.",
+            2,
+            3
+        )
+        assertTrue(cue.contains("hạ hông"))
+        assertTrue(cue.contains("Bước 2 trên 3"))
+        assertTrue(cue.contains("Đặt chân rộng bằng vai"))
+        assertTrue(cue.length <= 340)
+    }
+
+    @Test fun spokenStepCueBoundsInvalidProgressAndLongInstructions() {
+        val cue = WorkoutPoseMotion.spokenStepCue(
+            WorkoutPoseGuide.Pose.STANDING,
+            "Hướng dẫn ".repeat(80),
+            0,
+            0
+        )
+        assertTrue(cue.contains("Bước 1 trên 1"))
+        assertTrue(cue.length <= 340)
+    }
+
     @Test fun staticCuesDoNotDependOnAnimationPhase() {
         for (pose in listOf(
             WorkoutPoseGuide.Pose.PLANK,

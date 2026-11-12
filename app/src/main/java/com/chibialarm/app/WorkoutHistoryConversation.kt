@@ -148,10 +148,10 @@ object WorkoutHistoryConversation {
 
         return buildString {
             append("So sánh 7 ngày gần nhất với 7 ngày liền trước (dựa trên nhật ký tự ghi):")
-            append("\\n• Buổi tập: ${current.sessions} so với ${previous.sessions} (${delta(current.sessions - previous.sessions, "buổi")})")
-            append("\\n• Ngày có vận động: ${current.activeDays} so với ${previous.activeDays} (${delta(current.activeDays - previous.activeDays, "ngày")})")
-            append("\\n• Thời lượng: ${current.minutes} so với ${previous.minutes} phút (${delta(current.minutes - previous.minutes, "phút")})")
-            append("\\nĐây chỉ là so sánh dữ liệu đã ghi; không đo cường độ, chất lượng buổi tập hay khả năng hồi phục.")
+            append("\n• Buổi tập: ${current.sessions} so với ${previous.sessions} (${delta(current.sessions - previous.sessions, "buổi")})")
+            append("\n• Ngày có vận động: ${current.activeDays} so với ${previous.activeDays} (${delta(current.activeDays - previous.activeDays, "ngày")})")
+            append("\n• Thời lượng: ${current.minutes} so với ${previous.minutes} phút (${delta(current.minutes - previous.minutes, "phút")})")
+            append("\nĐây chỉ là so sánh dữ liệu đã ghi; không đo cường độ, chất lượng buổi tập hay khả năng hồi phục.")
         }
     }
 

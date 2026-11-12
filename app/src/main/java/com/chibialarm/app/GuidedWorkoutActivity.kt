@@ -1746,7 +1746,9 @@ class GuidedWorkoutActivity:Activity() {
         val timerCompletedMoves=completedMoveIndices.count { position ->
             setPlan(position)==null
         }
+        // Keep every self-reported set in the journal, but only required sets affect XP.
         val selfReportedSets=completedSetsByMove.values.sum()
+        val requiredSetsForReward=WorkoutSetTracker.requiredSetsForReward(completedSetsByMove,moves)
         if (!WorkoutCompletionTracker.canLog(completedMoveIndices,moves.size,elapsedMs)) {
             val reason=if(completedCount < WorkoutCompletionTracker.MIN_COMPLETED_MOVES_TO_LOG)
                 "Hãy để bộ đếm hoàn tất động tác theo thời gian hoặc tự xác nhận đủ hiệp cho ít nhất 2 động tác khác nhau. Bỏ qua không được tính."
@@ -1785,7 +1787,7 @@ class GuidedWorkoutActivity:Activity() {
             sessionId = sessionId,
             activeMinutes = mins,
             completedMoves = completedCount,
-            selfReportedSets = selfReportedSets
+            selfReportedSets = requiredSetsForReward
         )
         rewardScope.launch {
             try {
@@ -1819,6 +1821,13 @@ class GuidedWorkoutActivity:Activity() {
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(105, 72, 145))
             setPadding(8, 10, 8, 14)
+        })
+        panel.addView(TextView(this).apply {
+            text = "EXP tính từ động tác hoàn thành và hiệp bắt buộc đã tự xác nhận. Hiệp tùy chọn vẫn được lưu vào nhật ký, không cần tập thêm để nhận thưởng."
+            textSize = 12f
+            gravity = Gravity.CENTER
+            setTextColor(Color.rgb(95, 80, 110))
+            setPadding(8, 0, 8, 10)
         })
         panel.addView(TextView(this).apply {
             text = "🐰 Chibi cấp ${display.level} • Tổng ${display.totalXp} EXP"

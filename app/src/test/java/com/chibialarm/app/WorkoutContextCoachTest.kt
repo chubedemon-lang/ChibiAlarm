@@ -56,6 +56,58 @@ class WorkoutContextCoachTest {
         assertTrue(text.contains("không phải cảm biến tự đếm"))
     }
 
+    @Test fun progressCueReportsRequiredAndOptionalSetsAcrossTheWholeSession() {
+        val text = WorkoutContextCoach.progressScript(
+            WorkoutContextCoach.Progress(
+                completedMoves = 1,
+                totalMoves = 4,
+                currentMoveIndex = 1,
+                currentMoveName = "Squat",
+                sets = WorkoutContextCoach.SetProgress(
+                    completed = 1, required = 2, maximum = 3,
+                    targetMin = 8, targetMax = 12, unit = "lần"
+                ),
+                sessionSets = WorkoutContextCoach.SessionSetProgress(
+                    completedRequired = 3,
+                    totalRequired = 7,
+                    optionalRemaining = 2
+                )
+            )
+        )
+        assertTrue(text.contains("Toàn buổi, bạn đã tự xác nhận 3 trên 7 hiệp bắt buộc"))
+        assertTrue(text.contains("Còn 4 hiệp bắt buộc trong toàn buổi"))
+        assertTrue(text.contains("tối đa 2 hiệp tùy chọn"))
+    }
+
+    @Test fun wholeSessionSetSummaryDoesNotPressureAfterSafetyStop() {
+        val text = WorkoutContextCoach.progressScript(
+            WorkoutContextCoach.Progress(
+                completedMoves = 1,
+                totalMoves = 4,
+                currentMoveIndex = 1,
+                currentMoveName = "Squat",
+                pausedForSafety = true,
+                sessionSets = WorkoutContextCoach.SessionSetProgress(
+                    completedRequired = 2,
+                    totalRequired = 7,
+                    optionalRemaining = 2
+                )
+            )
+        )
+        assertTrue(text.contains("đã tự xác nhận 2 trên 7 hiệp bắt buộc"))
+        assertTrue(text.contains("không cần cố hoàn thành phần còn lại"))
+        assertFalse(text.contains("Còn 5 hiệp bắt buộc trong toàn buổi"))
+        assertFalse(text.contains("hiệp tùy chọn"))
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun wholeSessionSetSummaryRejectsCompletedCountAboveTarget() {
+        WorkoutContextCoach.SessionSetProgress(
+            completedRequired = 4,
+            totalRequired = 3
+        )
+    }
+
     @Test fun progressCueStatesRemainingRequiredSetsExplicitly() {
         val text = WorkoutContextCoach.progressScript(
             WorkoutContextCoach.Progress(

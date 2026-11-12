@@ -446,8 +446,23 @@ class FitnessActivity:Activity() {
                         .show()
                     return@setOnClickListener
                 }
-                val p=TrainingCatalog.byId(recommendation.programId)
                 val constraintProfile = currentWorkoutConstraintProfile()
+                val baseProgram = TrainingCatalog.byId(recommendation.programId)
+                // Alternatives are filtered before history-based selection; a past workout
+                // must never bypass today's equipment or movement restrictions.
+                val eligibleAlternatives = TrainingCatalog.programs.filter { candidate ->
+                    candidate.id != baseProgram.id &&
+                        (candidate.id != "advanced" || level.selectedItemPosition >= 2) &&
+                        (candidate.id != "weighted" ||
+                            (equipment == 2 && level.selectedItemPosition >= 1)) &&
+                        WorkoutConstraintFilter.apply(candidate, constraintProfile).canStart
+                }
+                val historySuggestion = WorkoutHistoryAdvisor.suggestVariety(
+                    baseProgram,
+                    WorkoutData.history(this@FitnessActivity),
+                    eligibleAlternatives
+                )
+                val p = historySuggestion?.program ?: baseProgram
                 val constraintResult = WorkoutConstraintFilter.apply(p, constraintProfile)
                 if (!constraintResult.canStart) {
                     AlertDialog.Builder(this@FitnessActivity)
@@ -488,6 +503,7 @@ class FitnessActivity:Activity() {
                         "Vận động: "+impactOptions[impact]+"\n\n"+
                         durationSummary+"\n\n"+
                         recommendation.explanation+
+                        (historySuggestion?.let { "\n\n📚 " + it.reason } ?: "")+
                         "\n\nGợi ý offline theo quy tắc trên máy, không phải AI chẩn đoán hay tư vấn y khoa.")
                     .setPositiveButton("▶ Bắt đầu"){_,_->startProgram(p, constraintProfile)}
                     .setNeutralButton("📖 Xem từng bước") { _, _ ->

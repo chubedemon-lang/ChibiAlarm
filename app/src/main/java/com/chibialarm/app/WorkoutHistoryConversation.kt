@@ -34,6 +34,9 @@ object WorkoutHistoryConversation {
         workouts: List<Workout>,
         today: LocalDate = LocalDate.now()
     ): String? {
+        val setHistoryAnswer = WorkoutSetHistoryConversation.answer(input, workouts, today)
+        if (setHistoryAnswer != null) return setHistoryAnswer
+
         val text = normalize(input.take(300))
         if (!isHistoryQuestion(text)) return null
 

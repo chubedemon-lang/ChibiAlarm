@@ -218,6 +218,8 @@ class WorkoutHistoryConversationTest {
 
         assertNotNull(answer)
         assertTrue(answer!!.contains("Buổi tập: 2 so với 2 (không đổi)"))
+        assertTrue(answer.contains("\\n• Buổi tập:").not())
+        assertTrue(answer.contains("\n• Buổi tập:"))
         assertTrue(answer.contains("Ngày có vận động: 2 so với 2 (không đổi)"))
         assertTrue(answer.contains("Thời lượng: 50 so với 45 phút (+5 phút)"))
         assertTrue(answer.contains("không đo cường độ"))

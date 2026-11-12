@@ -1,6 +1,7 @@
 package com.chibialarm.app
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -41,21 +42,93 @@ class FitnessCoachFollowUpTest {
         val start = FitnessNaturalRequest.parse("giãn cơ 15 phút, đang tập đều, không dụng cụ")
         assertEquals(FitnessCoachFollowUp.Question.MOVEMENT_LIMITS, FitnessCoachFollowUp.nextQuestionType(start))
 
-        val withoutRestrictions = FitnessCoachConversation.merge(
+        val noJumpRestriction = FitnessCoachConversation.merge(
             start,
             FitnessCoachConversation.parseReply(start, "không")
         )
-        assertEquals(FitnessCoachFollowUp.Question.ENERGY, FitnessCoachFollowUp.nextQuestionType(withoutRestrictions))
+        assertEquals(FitnessCoachFollowUp.Question.WRIST_LOAD, FitnessCoachFollowUp.nextQuestionType(noJumpRestriction))
+
+        val noWristRestriction = FitnessCoachConversation.merge(
+            noJumpRestriction,
+            FitnessCoachConversation.parseReply(noJumpRestriction, "không")
+        )
+        assertEquals(FitnessCoachFollowUp.Question.FLOOR_POSITIONS, FitnessCoachFollowUp.nextQuestionType(noWristRestriction))
+
+        val noFloorRestriction = FitnessCoachConversation.merge(
+            noWristRestriction,
+            FitnessCoachConversation.parseReply(noWristRestriction, "không")
+        )
+        assertEquals(FitnessCoachFollowUp.Question.ENERGY, FitnessCoachFollowUp.nextQuestionType(noFloorRestriction))
 
         val ready = FitnessCoachConversation.merge(
-            withoutRestrictions,
-            FitnessCoachConversation.parseReply(withoutRestrictions, "khỏe")
+            noFloorRestriction,
+            FitnessCoachConversation.parseReply(noFloorRestriction, "khỏe")
         )
         assertEquals(FitnessCoachFollowUp.Question.COMPLETE, FitnessCoachFollowUp.nextQuestionType(ready))
+    }
+
+    @Test fun aWristRestrictionGivenEarlyIsKeptWhileTheCoachClarifiesJumping() {
+        val start = FitnessNaturalRequest.parse("giãn cơ 15 phút, đang tập đều, không dụng cụ")
+        val partial = FitnessCoachConversation.merge(
+            start,
+            FitnessCoachConversation.parseReply(start, "không chống tay")
+        )
+
+        assertTrue(partial.avoidWristLoad == true)
+        assertEquals(FitnessCoachFollowUp.Question.MOVEMENT_LIMITS, FitnessCoachFollowUp.nextQuestionType(partial))
+        assertTrue(FitnessCoachFollowUp.nextQuestion(partial).contains("cổ tay"))
+        assertTrue(FitnessCoachFollowUp.nextQuestion(partial).contains("nhảy"))
+
+        val jumpPreference = FitnessCoachConversation.merge(
+            partial,
+            FitnessCoachConversation.parseReply(partial, "không")
+        )
+        assertEquals(FitnessCoachFollowUp.Question.FLOOR_POSITIONS, FitnessCoachFollowUp.nextQuestionType(jumpPreference))
+        assertTrue(jumpPreference.avoidWristLoad == true)
+    }
+
+    @Test fun yesAnswersSetTheSpecificMovementRestrictionBeingAsked() {
+        val start = FitnessNaturalRequest.parse("giãn cơ 15 phút, đang tập đều, không dụng cụ")
+        val noJump = FitnessCoachConversation.merge(start, FitnessCoachConversation.parseReply(start, "không"))
+        val wrist = FitnessCoachConversation.merge(noJump, FitnessCoachConversation.parseReply(noJump, "có"))
+        assertTrue(wrist.avoidWristLoad == true)
+        assertEquals(FitnessCoachFollowUp.Question.FLOOR_POSITIONS, FitnessCoachFollowUp.nextQuestionType(wrist))
+
+        val floor = FitnessCoachConversation.merge(wrist, FitnessCoachConversation.parseReply(wrist, "có"))
+        assertTrue(floor.avoidFloorPositions == true)
+        assertEquals(FitnessCoachFollowUp.Question.ENERGY, FitnessCoachFollowUp.nextQuestionType(floor))
+    }
+
+    @Test fun explicitNoRestrictionPhrasesAreNotTurnedIntoRestrictions() {
+        val start = FitnessNaturalRequest.parse("giãn cơ 15 phút, đang tập đều, không dụng cụ")
+        val noJump = FitnessCoachConversation.merge(start, FitnessCoachConversation.parseReply(start, "không"))
+        val noWrist = FitnessCoachConversation.merge(
+            noJump,
+            FitnessCoachConversation.parseReply(noJump, "không có hạn chế cổ tay")
+        )
+        assertFalse(noWrist.avoidWristLoad ?: true)
+        assertEquals(FitnessCoachFollowUp.Question.FLOOR_POSITIONS, FitnessCoachFollowUp.nextQuestionType(noWrist))
+
+        val noFloor = FitnessCoachConversation.merge(
+            noWrist,
+            FitnessCoachConversation.parseReply(noWrist, "không cần tránh nằm sàn")
+        )
+        assertFalse(noFloor.avoidFloorPositions ?: true)
+        assertEquals(FitnessCoachFollowUp.Question.ENERGY, FitnessCoachFollowUp.nextQuestionType(noFloor))
     }
 
     @Test fun safetyPromptAlwaysWinsOverMissingProfileFields() {
         val parsed = FitnessNaturalRequest.parse("đau gối, chưa biết tập gì, 15 phút")
         assertEquals(FitnessCoachFollowUp.Question.SAFETY_STOP, FitnessCoachFollowUp.nextQuestionType(parsed))
+    }
+
+    @Test fun anEarlierSafetyStopCannotBeClearedByLaterNoAnswers() {
+        val injured = FitnessNaturalRequest.parse("đau gối, giãn cơ 15 phút, đang tập đều, không dụng cụ")
+        val laterNo = FitnessCoachConversation.merge(
+            injured,
+            FitnessCoachConversation.parseReply(injured, "không")
+        )
+        assertEquals(2, laterNo.impact)
+        assertEquals(FitnessCoachFollowUp.Question.SAFETY_STOP, FitnessCoachFollowUp.nextQuestionType(laterNo))
     }
 }

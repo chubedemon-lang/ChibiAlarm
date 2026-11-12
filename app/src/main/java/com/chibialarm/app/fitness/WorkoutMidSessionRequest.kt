@@ -29,6 +29,18 @@ object WorkoutMidSessionRequest {
             require(!(avoidWristLoad && allowWristLoad))
             require(!(avoidFloorPositions && allowFloorPositions))
         }
+
+        /** True only when the request changes the rest countdown and nothing else. */
+        val isRestOnly: Boolean
+            get() = restSeconds != null &&
+                remainingMinutes == null &&
+                !lowEnergy &&
+                !avoidWristLoad &&
+                !avoidFloorPositions &&
+                !preferEasier &&
+                !avoidExternalLoad &&
+                !allowWristLoad &&
+                !allowFloorPositions
     }
 
     sealed class Result {

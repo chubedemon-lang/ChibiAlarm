@@ -109,12 +109,56 @@ class WorkoutPoseView(context: Context) : View(context) {
         fun line(x1: Float, y1: Float, x2: Float, y2: Float) =
             canvas.drawLine(x1, y1, x2, y2, paint)
         fun head(x: Float, y: Float) = canvas.drawCircle(x, y, 10f, paint)
+        fun dumbbell(x: Float, y: Float) {
+            line(x - 7f, y, x + 7f, y)
+            canvas.drawCircle(x - 7f, y, 3f, paint)
+            canvas.drawCircle(x + 7f, y, 3f, paint)
+        }
         when (pose) {
             WorkoutPoseGuide.Pose.SQUAT -> {
                 head(120f, if (movementPhase) 12f else 22f); line(120f, if (movementPhase) 23f else 33f, 118f, 66f)
                 line(118f, 46f, 93f, 62f); line(118f, 46f, 145f, 61f)
                 line(118f, 66f, 91f, 83f); line(91f, 83f, 91f, 108f)
                 line(118f, 66f, 149f, 83f); line(149f, 83f, 149f, 108f)
+            }
+            WorkoutPoseGuide.Pose.RESISTANCE_ROW -> {
+                // Bent-over row: a stable hinged torso while the elbows travel back and down.
+                head(151f, 24f); line(140f, 36f, 122f, 69f)
+                line(122f, 69f, 104f, 108f); line(122f, 69f, 145f, 86f)
+                line(145f, 86f, 158f, 108f)
+                if (movementPhase) {
+                    line(140f, 42f, 111f, 59f); line(111f, 59f, 108f, 78f); dumbbell(108f, 84f)
+                    line(140f, 42f, 166f, 59f); line(166f, 59f, 174f, 78f); dumbbell(174f, 84f)
+                } else {
+                    line(140f, 42f, 130f, 67f); line(130f, 67f, 126f, 89f); dumbbell(126f, 95f)
+                    line(140f, 42f, 151f, 67f); line(151f, 67f, 155f, 89f); dumbbell(155f, 95f)
+                }
+            }
+            WorkoutPoseGuide.Pose.RESISTANCE_HINGE -> {
+                // A light load stays close to the legs through the hip-hinge pattern.
+                if (movementPhase) {
+                    head(158f, 25f); line(148f, 37f, 122f, 69f)
+                    line(148f, 42f, 157f, 64f); line(157f, 64f, 164f, 84f); dumbbell(164f, 90f)
+                    line(122f, 69f, 105f, 108f); line(122f, 69f, 145f, 84f)
+                    line(145f, 84f, 157f, 108f)
+                } else {
+                    head(120f, 20f); line(120f, 31f, 120f, 69f)
+                    line(120f, 43f, 99f, 62f); line(120f, 43f, 141f, 62f)
+                    line(99f, 62f, 99f, 77f); dumbbell(99f, 83f)
+                    line(141f, 62f, 141f, 77f); dumbbell(141f, 83f)
+                    line(120f, 69f, 102f, 108f); line(120f, 69f, 139f, 108f)
+                }
+            }
+            WorkoutPoseGuide.Pose.RESISTANCE_PRESS -> {
+                head(120f, 20f); line(120f, 31f, 120f, 72f)
+                line(120f, 72f, 101f, 108f); line(120f, 72f, 139f, 108f)
+                if (movementPhase) {
+                    line(120f, 44f, 96f, 57f); line(96f, 57f, 96f, 39f); dumbbell(96f, 33f)
+                    line(120f, 44f, 144f, 57f); line(144f, 57f, 144f, 39f); dumbbell(144f, 33f)
+                } else {
+                    line(120f, 44f, 99f, 24f); line(99f, 24f, 99f, 9f); dumbbell(99f, 7f)
+                    line(120f, 44f, 141f, 24f); line(141f, 24f, 141f, 9f); dumbbell(141f, 7f)
+                }
             }
             WorkoutPoseGuide.Pose.HIP_HINGE -> {
                 if (movementPhase) {

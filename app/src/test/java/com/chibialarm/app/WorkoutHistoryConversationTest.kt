@@ -204,6 +204,55 @@ class WorkoutHistoryConversationTest {
         assertFalse(answer.contains("private"))
     }
 
+    @Test fun comparesRecentSevenDaysWithThePreviousSevenDaysWithoutReadingNotes() {
+        val answer = WorkoutHistoryConversation.answer(
+            "Tuần này so với tuần trước thế nào?",
+            listOf(
+                workout(today, 30, "Toàn thân", "private current note"),
+                workout(today.minusDays(1), 20, "Giãn cơ", "private second note"),
+                workout(today.minusDays(7), 15, "Đi bộ", "private previous note"),
+                workout(today.minusDays(9), 30, "Sức mạnh", "private older note")
+            ),
+            today
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("Buổi tập: 2 so với 2 (không đổi)"))
+        assertTrue(answer.contains("Ngày có vận động: 2 so với 2 (không đổi)"))
+        assertTrue(answer.contains("Thời lượng: 50 so với 45 phút (+5 phút)"))
+        assertTrue(answer.contains("không đo cường độ"))
+        assertFalse(answer.contains("private"))
+    }
+
+    @Test fun comparisonReportsDecreasesWithoutCallingThemFailure() {
+        val answer = WorkoutHistoryConversation.answer(
+            "Tuần này tao tập ít hơn tuần trước không?",
+            listOf(
+                workout(today, 30, "Đi bộ"),
+                workout(today.minusDays(7), 20, "Sức mạnh"),
+                workout(today.minusDays(9), 25, "Giãn cơ")
+            ),
+            today
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("Buổi tập: 1 so với 2 (-1 buổi)"))
+        assertTrue(answer.contains("Thời lượng: 30 so với 45 phút (-15 phút)"))
+        assertFalse(answer.contains("thất bại"))
+    }
+
+    @Test fun comparisonWithNoValidEntriesExplainsTheLocalJournalLimit() {
+        val answer = WorkoutHistoryConversation.answer(
+            "So sánh tuần này với tuần trước",
+            emptyList(),
+            today
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("Chưa có buổi tập hợp lệ"))
+        assertTrue(answer.contains("trên thiết bị"))
+    }
+
     @Test fun historyAnswerIsLocaleIndependent() {
         val original = java.util.Locale.getDefault()
         try {

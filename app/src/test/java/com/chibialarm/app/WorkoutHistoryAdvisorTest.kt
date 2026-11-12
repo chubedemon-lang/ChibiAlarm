@@ -123,6 +123,19 @@ class WorkoutHistoryAdvisorTest {
         }
     }
 
+    @Test fun varietyHintNeverEscalatesABeginnerStarterPlan() {
+        val recommended = TrainingCatalog.byId("starter")
+        val previous = workout(today.minusDays(1).toString(), name = recommended.name)
+        assertNull(
+            WorkoutHistoryAdvisor.suggestVariety(
+                recommended,
+                listOf(previous),
+                listOf(TrainingCatalog.byId("full")),
+                today
+            )
+        )
+    }
+
     @Test fun noSuggestionWhenNoEligibleSameCategoryAlternativeExists() {
         val recommended = TrainingCatalog.byId("full")
         val previous = workout(today.minusDays(1).toString(), name = recommended.name)

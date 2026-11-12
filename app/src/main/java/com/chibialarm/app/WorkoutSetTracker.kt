@@ -62,6 +62,22 @@ object WorkoutSetTracker {
     fun isComplete(completedSets: Int, plan: Plan): Boolean =
         completedSets in plan.requiredSets..plan.maximumSets
 
+    /**
+     * Count confirmed sets only up to each move's required minimum for RPG rewards.
+     * Optional sets remain in the workout journal but do not increase XP, so the
+     * reward system never nudges a user to exceed the prescribed workload.
+     * Invalid counts and non-set-based moves are ignored.
+     */
+    fun requiredSetsForReward(progress: Map<Int, Int>, moves: List<TrainingMove>): Int {
+        require(moves.size <= MAX_MOVES)
+        return moves.mapIndexedNotNull { index, move ->
+            val plan = parse(move.dose) ?: return@mapIndexedNotNull null
+            val reported = progress[index] ?: return@mapIndexedNotNull null
+            if (reported !in 0..plan.maximumSets) return@mapIndexedNotNull null
+            minOf(reported, plan.requiredSets)
+        }.sum()
+    }
+
     fun encode(progress: Map<Int, Int>, moves: List<TrainingMove>): String {
         require(moves.size in 1..MAX_MOVES)
         return progress.entries.asSequence()

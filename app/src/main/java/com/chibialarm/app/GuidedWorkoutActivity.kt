@@ -1925,7 +1925,8 @@ class GuidedWorkoutActivity:Activity() {
             if(substitutionSummary.isNotBlank()) append(" Thay động tác: $substitutionSummary.")
         }
         val saved=WorkoutData.appendSession(this,Workout(
-            LifeData.today(),program.name,mins,workoutNote,sessionId,completedCount,selfReportedSets))
+            LifeData.today(),program.name,mins,workoutNote,sessionId,completedCount,selfReportedSets,
+            setLog = setValueSummary))
         if(!saved) {
             Toast.makeText(this,"Chưa lưu được buổi tập. Tiến độ vẫn được giữ để thử lại.",Toast.LENGTH_LONG).show()
             return

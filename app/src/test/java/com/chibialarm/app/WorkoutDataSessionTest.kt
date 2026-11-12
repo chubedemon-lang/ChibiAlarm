@@ -48,7 +48,8 @@ class WorkoutDataSessionTest {
             note = "3 động tác; 4 hiệp tự xác nhận",
             sessionId = "550e8400-e29b-41d4-a716-446655440010",
             completedMoves = 3,
-            selfReportedSets = 4
+            selfReportedSets = 4,
+            setLog = "Squat: hiệp 1: 9 lần, hiệp 2: 10 lần"
         )
 
         assertTrue(WorkoutData.appendSession(context, guided))
@@ -58,6 +59,8 @@ class WorkoutDataSessionTest {
         assertEquals(2, history.size)
         assertEquals(legacy, history[0])
         assertEquals(guided, history[1])
+        assertEquals("Squat: hiệp 1: 9 lần, hiệp 2: 10 lần", history[1].setLog)
+        assertEquals("", history[0].setLog) // legacy entries decode without the additive field
     }
 
     @Test fun malformedLegacyJournalIsNeverSilentlyReplaced() {
@@ -78,6 +81,21 @@ class WorkoutDataSessionTest {
         // The ordinary save path also refuses to overwrite data it cannot parse.
         WorkoutData.save(context, emptyList())
         assertEquals(corrupt, prefs.getString("history", null))
+    }
+
+    @Test fun rejectsOversizedPerSetDetailWithoutWritingJournal() {
+        val oversized = Workout(
+            date = "2026-11-12",
+            name = "Toàn thân",
+            minutes = 8,
+            note = "guided",
+            sessionId = "550e8400-e29b-41d4-a716-446655440013",
+            completedMoves = 3,
+            selfReportedSets = 4,
+            setLog = "x".repeat(1_201)
+        )
+        assertFalse(WorkoutData.appendSession(context, oversized))
+        assertTrue(WorkoutData.history(context).isEmpty())
     }
 
     @Test fun invalidOrInsufficientSessionEvidenceIsNotAppended() {

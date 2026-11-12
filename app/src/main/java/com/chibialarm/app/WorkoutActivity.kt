@@ -19,7 +19,9 @@ data class Workout(
     val note:String,
     val sessionId:String = "",
     val completedMoves:Int = 0,
-    val selfReportedSets:Int = 0
+    val selfReportedSets:Int = 0,
+    /** Bounded, self-reported per-set values; empty for legacy/manual entries. */
+    val setLog:String = ""
 )
 
 object WorkoutData {
@@ -39,7 +41,8 @@ object WorkoutData {
                     o.optString("note"),
                     o.optString("sessionId"),
                     o.optInt("completedMoves", 0),
-                    o.optInt("selfReportedSets", 0)
+                    o.optInt("selfReportedSets", 0),
+                    o.optString("setLog", "")
                 )
             }
         } catch (_:Exception) { null }
@@ -61,6 +64,9 @@ object WorkoutData {
                 item.put("sessionId",workout.sessionId)
                     .put("completedMoves",workout.completedMoves)
                     .put("selfReportedSets",workout.selfReportedSets)
+                if (workout.setLog.isNotBlank()) {
+                    item.put("setLog", workout.setLog.take(1_200))
+                }
             }
             arr.put(item)
         }
@@ -83,7 +89,8 @@ object WorkoutData {
         val id=workout.sessionId
         val validId=runCatching { java.util.UUID.fromString(id).toString()==id }.getOrDefault(false)
         if (!validId || workout.minutes !in 1..600 ||
-            workout.completedMoves !in 2..500 || workout.selfReportedSets !in 0..2_000) return false
+            workout.completedMoves !in 2..500 || workout.selfReportedSets !in 0..2_000 ||
+            workout.setLog.length > 1_200) return false
         synchronized(lock) {
             // A malformed legacy journal is not an empty journal. Preserve it and ask
             // the user to recover/export it rather than replacing unknown bytes.
@@ -128,8 +135,11 @@ class WorkoutActivity:Activity() {
             root.addView(line)
         }
         root.addView(Button(this).apply { text="📤 Chia sẻ báo cáo CSV";setOnClickListener {
-            val csv="date,exercise,minutes,note\n"+all.joinToString("\n") {
-                listOf(it.date,it.name,it.minutes.toString(),it.note).joinToString(",") { value->
+            val csv="date,exercise,minutes,note,completed_moves,self_reported_sets,set_log\n"+all.joinToString("\n") {
+                listOf(
+                    it.date, it.name, it.minutes.toString(), it.note,
+                    it.completedMoves.toString(), it.selfReportedSets.toString(), it.setLog
+                ).joinToString(",") { value ->
                     "\""+value.replace("\"","\"\"").replace("\r"," ").replace("\n"," ")+"\""
                 }
             }
@@ -148,6 +158,17 @@ class WorkoutActivity:Activity() {
             }
             row.addView(text("${w.date}\n${w.name} • ${w.minutes} phút"+(if(w.note.isBlank())"" else "\n"+w.note),15f),
                 LinearLayout.LayoutParams(0,-2,1f))
+            if (w.setLog.isNotBlank()) row.addView(Button(this).apply {
+                text = "Hiệp"
+                contentDescription = "Xem chi tiết số hiệp tự khai báo của ${w.name}"
+                setOnClickListener {
+                    AlertDialog.Builder(this@WorkoutActivity)
+                        .setTitle("Chi tiết hiệp • ${w.name}")
+                        .setMessage(w.setLog + "\n\nSố liệu do bạn tự khai báo; không phải kết quả đo từ camera hoặc thiết bị y tế.")
+                        .setPositiveButton("Đóng", null)
+                        .show()
+                }
+            })
             row.addView(Button(this).apply { text="🗑";setOnClickListener {
                 AlertDialog.Builder(this@WorkoutActivity).setTitle("Xóa buổi tập?")
                     .setPositiveButton("Xóa"){_,_->

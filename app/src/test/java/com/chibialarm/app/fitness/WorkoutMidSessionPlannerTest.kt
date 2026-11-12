@@ -293,6 +293,23 @@ class WorkoutMidSessionPlannerTest {
         )
     }
 
+    @Test fun colloquialNoEquipmentRequestsDoNotAssumeFatigueOrAskForAnEasierPlan() {
+        val utterances = listOf(
+            "Hôm nay tao không mang tạ",
+            "Tao để tạ ở nhà rồi",
+            "Không có thiết bị tập hôm nay",
+            "Đổi bài tập tay không"
+        )
+        utterances.forEach { utterance ->
+            val parsed = WorkoutMidSessionRequest.parse(utterance)
+            assertTrue(utterance, parsed is WorkoutMidSessionRequest.Result.Proposed)
+            val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+            assertTrue(utterance, request.avoidExternalLoad)
+            assertFalse(utterance, request.lowEnergy)
+            assertFalse(utterance, request.preferEasier)
+        }
+    }
+
     @Test fun noEquipmentMidSessionReplacesOnlyRemainingWeightedCatalogMoves() {
         val moves = listOf(
             move("Khởi động tại chỗ"),

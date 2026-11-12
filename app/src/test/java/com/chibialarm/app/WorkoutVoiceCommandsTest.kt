@@ -37,6 +37,11 @@ class WorkoutVoiceCommandsTest {
             "Xem tiến độ hiện tại",
             "Còn bao nhiêu bài",
             "Tao đã làm bao nhiêu hiệp",
+            "Còn bao nhiêu hiệp?",
+            "Còn mấy hiệp?",
+            "Mấy hiệp nữa?",
+            "Tôi còn mấy hiệp?",
+            "Số hiệp còn lại",
             "Còn bao lâu?",
             "Bao lâu nữa xong?",
             "Mấy phút nữa?",
@@ -50,7 +55,7 @@ class WorkoutVoiceCommandsTest {
         )) {
             assertEquals(phrase, C.STATUS, WorkoutVoiceCommands.parse(phrase))
         }
-        assertEquals("Đọc tiến độ và thời gian còn lại", WorkoutVoiceCommands.describe(C.STATUS))
+        assertEquals("Đọc tiến độ, số hiệp và thời gian còn lại", WorkoutVoiceCommands.describe(C.STATUS))
     }
 
     @Test fun stepByStepGuideCanBeOpenedWithNaturalVietnameseCommands() {

@@ -66,6 +66,20 @@ class WorkoutLibraryPreviewTest {
         assertEquals("March", preview.next().currentMove.name)
     }
 
+    @Test fun selectedPreviewMoveProvidesItsOwnAnimatedPhaseCaption() {
+        val first = WorkoutLibraryPreview.start(
+            listOf(move("Squat"), move("Chống đẩy tường"))
+        )!!
+
+        val squatPose = WorkoutPoseGuide.classify(first.currentMove.name)
+        assertEquals("Đứng lên", WorkoutPoseMotion.phaseCue(squatPose, false))
+        assertEquals("Hạ hông", WorkoutPoseMotion.phaseCue(squatPose, true))
+
+        val wallPushPose = WorkoutPoseGuide.classify(first.next().currentMove.name)
+        assertEquals("Đẩy ra khỏi tường", WorkoutPoseMotion.phaseCue(wallPushPose, false))
+        assertEquals("Gập khuỷu về tường", WorkoutPoseMotion.phaseCue(wallPushPose, true))
+    }
+
     @Test fun emptyAndOversizedPlansCannotOpenAPreview() {
         assertNull(WorkoutLibraryPreview.start(emptyList()))
         assertNull(

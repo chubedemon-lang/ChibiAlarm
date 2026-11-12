@@ -65,6 +65,22 @@ object WorkoutPoseMotion {
         WorkoutPoseGuide.Pose.STANDING -> "Chưa có minh họa riêng cho động tác này. Hãy đọc hướng dẫn từng bước bên dưới trước khi tập."
     }
 
+    /** Spoken context for the selected walkthrough step; bounded for short on-device TTS. */
+    fun spokenStepCue(
+        pose: WorkoutPoseGuide.Pose,
+        step: String,
+        position: Int,
+        total: Int
+    ): String {
+        val safeTotal = total.coerceIn(1, 100)
+        val safePosition = position.coerceIn(1, safeTotal)
+        val safeStep = step.trim().replace(Regex("\\s+"), " ")
+            .take(180)
+            .ifBlank { "Thực hiện chậm trong biên độ thoải mái." }
+        return "${WorkoutPoseGuide.label(pose)}. ${phaseCue(pose, false)}. " +
+            "Bước $safePosition trên $safeTotal: $safeStep"
+    }
+
     /** Short, explicit phase cues to accompany the two-frame drawing. */
     fun phaseCue(pose: WorkoutPoseGuide.Pose, lowered: Boolean): String = when (pose) {
         WorkoutPoseGuide.Pose.SQUAT -> if (lowered) "Hạ hông" else "Đứng lên"

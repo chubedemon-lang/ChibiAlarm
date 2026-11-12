@@ -48,7 +48,7 @@ class WorkoutContextCoachTest {
         assertTrue(text.contains("2 trên 5 động tác"))
         assertTrue(text.contains("Đang ở bước 3: Squat không tạ"))
         assertTrue(text.contains("tự xác nhận 1 trên 3 hiệp"))
-        assertTrue(text.contains("tối thiểu 2 hiệp"))
+        assertTrue(text.contains("Tối thiểu 2 hiệp"))
         assertTrue(text.contains("8 đến 12 lần"))
         assertTrue(text.contains("Còn 1 hiệp bắt buộc theo giáo án"))
         assertTrue(text.contains("còn 42 giây"))

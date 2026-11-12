@@ -182,15 +182,21 @@ object WorkoutSetHistoryConversation {
     private fun containsToken(text: String, token: String): Boolean =
         (" " + text + " ").contains(" " + token + " ")
 
-    private fun isSetQuestion(text: String): Boolean =
-        listOf(
-            "so sanh", "so voi", "tien bo", "lan truoc", "lan nay",
-            "hai buoi", "2 buoi", "bao nhieu lan", "may lan",
-            "bao nhieu rep", "so rep", "so hiep", "may hiep"
+    private fun isSetQuestion(text: String): Boolean {
+        val asksSetValues = listOf(
+            "bao nhieu lan", "may lan", "bao nhieu rep", "so rep", "so hiep", "may hiep"
         ).any { text.contains(it) }
+        val mentionsWeekComparison = listOf(
+            "tuan nay", "tuan truoc", "tuan vua roi", "tuan truoc do"
+        ).any { text.contains(it) }
+        val asksExerciseComparison = !mentionsWeekComparison && listOf(
+            "so sanh", "so voi", "tien bo", "lan truoc", "lan nay", "hai buoi", "2 buoi"
+        ).any { text.contains(it) }
+        return asksSetValues || asksExerciseComparison
+    }
 
     private fun formatSets(sets: List<SetValue>): String =
-        sets.joinToString(", ") { "hiệp " + it.index + ": " + it.value + " " + it.unit }
+        sets.joinToString(", ") { "Hiệp " + it.index + ": " + it.value + " " + it.unit }
 
     private fun normalize(input: String): String {
         val withoutDiacritics = Normalizer.normalize(

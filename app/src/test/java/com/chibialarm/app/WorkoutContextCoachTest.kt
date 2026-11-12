@@ -50,9 +50,63 @@ class WorkoutContextCoachTest {
         assertTrue(text.contains("tự xác nhận 1 trên 3 hiệp"))
         assertTrue(text.contains("tối thiểu 2 hiệp"))
         assertTrue(text.contains("8 đến 12 lần"))
+        assertTrue(text.contains("Còn 1 hiệp bắt buộc theo giáo án"))
         assertTrue(text.contains("còn 42 giây"))
         assertTrue(text.contains("Nâng hông trên sàn"))
         assertTrue(text.contains("không phải cảm biến tự đếm"))
+    }
+
+    @Test fun progressCueStatesRemainingRequiredSetsExplicitly() {
+        val text = WorkoutContextCoach.progressScript(
+            WorkoutContextCoach.Progress(
+                completedMoves = 1,
+                totalMoves = 3,
+                currentMoveIndex = 1,
+                currentMoveName = "Squat",
+                sets = WorkoutContextCoach.SetProgress(
+                    completed = 1, required = 3, maximum = 4,
+                    targetMin = 8, targetMax = 8, unit = "lần"
+                )
+            )
+        )
+        assertTrue(text.contains("Còn 2 hiệp bắt buộc theo giáo án"))
+    }
+
+    @Test fun progressCueSeparatesOptionalSetsAfterRequiredTarget() {
+        val text = WorkoutContextCoach.progressScript(
+            WorkoutContextCoach.Progress(
+                completedMoves = 1,
+                totalMoves = 3,
+                currentMoveIndex = 1,
+                currentMoveName = "Squat",
+                sets = WorkoutContextCoach.SetProgress(
+                    completed = 2, required = 2, maximum = 3,
+                    targetMin = 8, targetMax = 12, unit = "lần"
+                )
+            )
+        )
+        assertTrue(text.contains("Đã đủ hiệp bắt buộc; còn tối đa 1 hiệp tùy chọn"))
+        assertTrue(text.contains("nếu bạn vẫn thấy thoải mái"))
+    }
+
+    @Test fun safetyLockDoesNotPressureUserToFinishRemainingSets() {
+        val text = WorkoutContextCoach.progressScript(
+            WorkoutContextCoach.Progress(
+                completedMoves = 1,
+                totalMoves = 3,
+                currentMoveIndex = 1,
+                currentMoveName = "Squat",
+                sets = WorkoutContextCoach.SetProgress(
+                    completed = 1, required = 2, maximum = 3,
+                    targetMin = 8, targetMax = 12, unit = "lần"
+                ),
+                pausedForSafety = true
+            )
+        )
+        assertTrue(text.contains("không cần cố hoàn thành thêm hiệp"))
+        assertTrue(text.contains("không tự tiếp tục"))
+        assertFalse(text.contains("Còn 1 hiệp bắt buộc"))
+        assertFalse(text.contains("hiệp tùy chọn"))
     }
 
     @Test fun restStatusUsesItsOwnCountdownAndDoesNotCallItExerciseTime() {
@@ -85,7 +139,6 @@ class WorkoutContextCoachTest {
         assertTrue(text.contains("đang khóa an toàn"))
         assertTrue(text.contains("không tự tiếp tục"))
     }
-
 
     @Test fun progressCueIncludesAnApproximateWholeSessionEstimate() {
         val text = WorkoutContextCoach.progressScript(

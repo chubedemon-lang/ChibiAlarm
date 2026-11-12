@@ -1478,7 +1478,15 @@ class GuidedWorkoutActivity:Activity() {
                 }
             }
             dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
-                speak(WorkoutPoseMotion.spokenStepCue(\n                    pose, walkthrough.currentStep, walkthrough.position, walkthrough.steps.size\n                ))
+                speak(
+                    WorkoutPoseMotion.spokenStepCue(
+                        pose,
+                        walkthrough.currentStep,
+                        walkthrough.position,
+                        walkthrough.steps.size,
+                        illustration.isInAlternatePose
+                    )
+                )
             }
         }
         dialog.show()

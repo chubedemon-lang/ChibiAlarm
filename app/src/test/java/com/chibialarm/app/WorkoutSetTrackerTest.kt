@@ -97,6 +97,25 @@ class WorkoutSetTrackerTest {
         assertEquals(3, WorkoutSetTracker.complete(3, plan))
     }
 
+    @Test fun rewardBasisCountsRequiredSetsButNotOptionalSetsOrTimedMoves() {
+        val moves = listOf(
+            move("2–3 hiệp × 8–12 lần"),
+            move("3 hiệp × 10 lần"),
+            move("3–5 phút")
+        )
+        val progress = mapOf(0 to 3, 1 to 2, 2 to 3, 99 to 4)
+
+        // The optional third set on move 0 is recorded, but only its required two count for XP.
+        assertEquals(4, WorkoutSetTracker.requiredSetsForReward(progress, moves))
+    }
+
+    @Test fun rewardBasisIgnoresCorruptSetCounts() {
+        val moves = listOf(move("2 hiệp × 8 lần"))
+        assertEquals(0, WorkoutSetTracker.requiredSetsForReward(mapOf(0 to 99), moves))
+        assertEquals(0, WorkoutSetTracker.requiredSetsForReward(mapOf(0 to -1), moves))
+        assertEquals(0, WorkoutSetTracker.requiredSetsForReward(emptyMap(), emptyList()))
+    }
+
     @Test fun checkpointRoundTripKeepsOnlyValidSetBasedMoves() {
         val moves = listOf(
             move("2 hiệp × 8–12 lần"),

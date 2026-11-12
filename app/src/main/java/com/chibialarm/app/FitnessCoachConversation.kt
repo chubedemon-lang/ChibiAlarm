@@ -7,6 +7,24 @@ import java.util.Locale
  * no health-related free text is persisted or sent to a server.
  */
 object FitnessCoachConversation {
+    private val affirmativeReplies = setOf(
+        "có", "co", "cần", "can", "đúng", "dung", "phải", "phai", "có nhé", "co nhe"
+    )
+    private val negativeReplies = setOf(
+        "không", "khong", "không có", "khong co", "không cần", "khong can",
+        "không hạn chế", "khong han che", "không nhé", "khong nhe"
+    )
+    private val noWristRestrictionReplies = negativeReplies + setOf(
+        "không có hạn chế cổ tay", "khong co han che co tay",
+        "không cần tránh cổ tay", "khong can tranh co tay",
+        "cổ tay bình thường", "co tay binh thuong"
+    )
+    private val noFloorRestrictionReplies = negativeReplies + setOf(
+        "không có hạn chế nằm sàn", "khong co han che nam san",
+        "không cần tránh nằm sàn", "khong can tranh nam san",
+        "có thể nằm sàn", "co the nam san", "nằm sàn được", "nam san duoc"
+    )
+
     /**
      * Interpret short answers only in the context of the question Chibi last asked.
      * Never infer that a bare "không" means there is no injury: safety constraints
@@ -54,12 +72,32 @@ object FitnessCoachConversation {
             question == FitnessCoachFollowUp.Question.EQUIPMENT &&
                 answer in setOf("tạ", "ta", "tạ đơn", "ta don", "dây", "day", "dây kháng lực", "day khang luc") ->
                 parsed.copy(equipment = 2, reply = "Đã ghi nhận có tạ hoặc dây kháng lực. Hãy kiểm tra dụng cụ được chọn.")
-            question == FitnessCoachFollowUp.Question.MOVEMENT_LIMITS &&
-                answer in setOf("không", "khong", "không có", "khong co", "không hạn chế", "khong han che") ->
-                parsed.copy(impact = 0, reply = "Đã ghi nhận mày không khai báo hạn chế vận động. Nếu thấy đau hoặc chóng mặt, hãy dừng tập.")
-            question == FitnessCoachFollowUp.Question.MOVEMENT_LIMITS &&
-                answer in setOf("tránh nhảy", "tranh nhay", "không nhảy", "khong nhay", "ít tác động", "it tac dong") ->
+            question == FitnessCoachFollowUp.Question.MOVEMENT_LIMITS && parsed.impact != null ->
+                parsed
+            question == FitnessCoachFollowUp.Question.MOVEMENT_LIMITS && answer in negativeReplies ->
+                parsed.copy(impact = 0, reply = "Đã ghi nhận mày không cần tránh nhảy. Tao vẫn sẽ kiểm tra riêng cổ tay và tư thế sàn.")
+            question == FitnessCoachFollowUp.Question.MOVEMENT_LIMITS && answer in affirmativeReplies ->
                 parsed.copy(impact = 1, reply = "Đã ghi nhận ưu tiên bài ít tác động, không nhảy.")
+            question == FitnessCoachFollowUp.Question.WRIST_LOAD && answer in noWristRestrictionReplies ->
+                parsed.copy(avoidWristLoad = false, reply = "Đã ghi nhận không cần tránh tải qua cổ tay.")
+            question == FitnessCoachFollowUp.Question.WRIST_LOAD && parsed.avoidWristLoad != null ->
+                parsed.copy(reply = if (parsed.avoidWristLoad) {
+                    "Đã ghi nhận cần tránh chống tay và tải qua cổ tay."
+                } else {
+                    "Đã ghi nhận không cần tránh tải qua cổ tay."
+                })
+            question == FitnessCoachFollowUp.Question.WRIST_LOAD && answer in affirmativeReplies ->
+                parsed.copy(avoidWristLoad = true, reply = "Đã ghi nhận cần tránh chống tay và tải qua cổ tay.")
+            question == FitnessCoachFollowUp.Question.FLOOR_POSITIONS && answer in noFloorRestrictionReplies ->
+                parsed.copy(avoidFloorPositions = false, reply = "Đã ghi nhận có thể thực hiện các tư thế nằm hoặc quỳ sàn.")
+            question == FitnessCoachFollowUp.Question.FLOOR_POSITIONS && parsed.avoidFloorPositions != null ->
+                parsed.copy(reply = if (parsed.avoidFloorPositions) {
+                    "Đã ghi nhận cần tránh các tư thế nằm hoặc quỳ sàn."
+                } else {
+                    "Đã ghi nhận có thể thực hiện các tư thế nằm hoặc quỳ sàn."
+                })
+            question == FitnessCoachFollowUp.Question.FLOOR_POSITIONS && answer in affirmativeReplies ->
+                parsed.copy(avoidFloorPositions = true, reply = "Đã ghi nhận cần tránh các tư thế nằm hoặc quỳ sàn.")
             question == FitnessCoachFollowUp.Question.ENERGY &&
                 answer in setOf("mệt", "met", "hơi mệt", "hoi met", "ít năng lượng", "it nang luong") ->
                 parsed.copy(energy = 0, reply = "Đã ghi nhận mức năng lượng thấp. Tao sẽ ưu tiên buổi tập nhẹ.")

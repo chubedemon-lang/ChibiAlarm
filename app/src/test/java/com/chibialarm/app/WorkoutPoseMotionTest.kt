@@ -10,6 +10,9 @@ class WorkoutPoseMotionTest {
         for (pose in listOf(
             WorkoutPoseGuide.Pose.SQUAT,
             WorkoutPoseGuide.Pose.HIP_HINGE,
+            WorkoutPoseGuide.Pose.RESISTANCE_ROW,
+            WorkoutPoseGuide.Pose.RESISTANCE_HINGE,
+            WorkoutPoseGuide.Pose.RESISTANCE_PRESS,
             WorkoutPoseGuide.Pose.PUSH_UP,
             WorkoutPoseGuide.Pose.KNEE_PUSH_UP,
             WorkoutPoseGuide.Pose.WALL_PUSH_UP,
@@ -31,6 +34,10 @@ class WorkoutPoseMotionTest {
     @Test fun movementCuesDescribeBothPhases() {
         assertEquals("Đứng lên", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.SQUAT, false))
         assertEquals("Đứng thẳng", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.HIP_HINGE, false))
+        assertEquals("Kéo khuỷu về sau", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.RESISTANCE_ROW, false))
+        assertEquals("Hạ tay có kiểm soát", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.RESISTANCE_ROW, true))
+        assertEquals("Đẩy tải lên", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.RESISTANCE_PRESS, false))
+        assertEquals("Hạ tải ngang vai", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.RESISTANCE_PRESS, true))
         assertEquals("Đẩy hông ra sau", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.HIP_HINGE, true))
         assertEquals("Hạ hông", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.SQUAT, true))
         assertEquals("Đẩy lên", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.PUSH_UP, false))
@@ -121,6 +128,9 @@ class WorkoutPoseMotionTest {
         assertTrue(WorkoutPoseMotion.spokenWalkthrough(WorkoutPoseGuide.Pose.STANDING).contains("Chưa có minh họa riêng"))
         assertTrue(WorkoutPoseMotion.spokenWalkthrough(WorkoutPoseGuide.Pose.WALL_PUSH_UP).contains("tường"))
         assertTrue(WorkoutPoseMotion.spokenWalkthrough(WorkoutPoseGuide.Pose.INCLINE_PUSH_UP).contains("chắc chắn"))
+        assertTrue(WorkoutPoseMotion.spokenWalkthrough(WorkoutPoseGuide.Pose.RESISTANCE_ROW).contains("lưng trung lập"))
+        assertTrue(WorkoutPoseMotion.spokenWalkthrough(WorkoutPoseGuide.Pose.RESISTANCE_HINGE).contains("tải nhẹ"))
+        assertTrue(WorkoutPoseMotion.spokenWalkthrough(WorkoutPoseGuide.Pose.RESISTANCE_PRESS).contains("không nín thở"))
         assertTrue(WorkoutPoseMotion.spokenWalkthrough(WorkoutPoseGuide.Pose.KNEE_PUSH_UP).contains("hai gối"))
     }
 

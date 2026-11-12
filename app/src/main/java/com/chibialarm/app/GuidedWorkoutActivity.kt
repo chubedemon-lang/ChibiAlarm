@@ -858,6 +858,24 @@ class GuidedWorkoutActivity:Activity() {
                         unit = it.unit
                     )
                 }
+                val sessionSetPlans = moves.mapIndexedNotNull { moveIndex, move ->
+                    val plan = WorkoutSetTracker.parse(move.dose, move.restSeconds)
+                        ?: return@mapIndexedNotNull null
+                    val confirmed = (completedSetsByMove[moveIndex] ?: 0)
+                        .coerceIn(0, plan.maximumSets)
+                    plan to confirmed
+                }
+                val sessionSetProgress = if (sessionSetPlans.isEmpty()) null else {
+                    WorkoutContextCoach.SessionSetProgress(
+                        completedRequired = sessionSetPlans.sumOf { (plan, confirmed) ->
+                            minOf(plan.requiredSets, confirmed)
+                        },
+                        totalRequired = sessionSetPlans.sumOf { (plan, _) -> plan.requiredSets },
+                        optionalRemaining = sessionSetPlans.sumOf { (plan, confirmed) ->
+                            (plan.maximumSets - maxOf(plan.requiredSets, confirmed)).coerceAtLeast(0)
+                        }
+                    )
+                }
                 speak(WorkoutContextCoach.progressScript(
                     WorkoutContextCoach.Progress(
                         completedMoves = completedMoveIndices.count { it in moves.indices },
@@ -865,6 +883,7 @@ class GuidedWorkoutActivity:Activity() {
                         currentMoveIndex = index,
                         currentMoveName = moves[index].name,
                         sets = setProgress,
+                        sessionSets = sessionSetProgress,
                         resting = resting,
                         restSecondsRemaining = if (resting) secondsLeft(restRemainingMs) else 0,
                         exerciseSecondsRemaining = if (resting) 0 else secondsLeft(remainingMs),

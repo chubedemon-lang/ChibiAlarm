@@ -134,9 +134,9 @@ object WorkoutSetHistoryConversation {
     }
 
     private fun parseMoves(raw: String): List<MoveLog> =
-        raw.take(MAX_LOG_CHARS).split(';').take(MAX_MOVES).mapNotNull { segment ->
+        raw.take(MAX_LOG_CHARS).split(';').take(MAX_MOVES).mapNotNull segment@{ segment ->
             val separator = segment.indexOf(':')
-            if (separator !in 1..80) return@mapNotNull null
+            if (separator !in 1..80) return@segment null
             val name = segment.substring(0, separator).trim().take(80)
             if (name.isBlank()) return@mapNotNull null
             val body = segment.substring(separator + 1)
@@ -145,7 +145,7 @@ object WorkoutSetHistoryConversation {
             val residue = setPattern.replace(body, "").replace(",", "").trim()
             if (residue.isNotEmpty()) return@mapNotNull null
 
-            val values = matches.mapNotNull { match ->
+            val values = matches.mapNotNull value@{ match ->
                 val index = match.groupValues[1].toIntOrNull() ?: return@mapNotNull null
                 val value = match.groupValues[2].toIntOrNull() ?: return@mapNotNull null
                 val unit = match.groupValues[3].lowercase(Locale.ROOT)
@@ -198,7 +198,7 @@ object WorkoutSetHistoryConversation {
             Normalizer.Form.NFD
         )
         return withoutDiacritics
-            .replace(Regex("\\p{M}+"), " ")
+            .replace(Regex("\\p{M}+"), "")
             .replace(Regex("[^a-z0-9 ]"), " ")
             .replace(Regex("\\s+"), " ")
             .trim()

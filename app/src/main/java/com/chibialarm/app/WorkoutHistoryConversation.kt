@@ -105,7 +105,8 @@ object WorkoutHistoryConversation {
 
     private fun isLatestQuestion(text: String): Boolean =
         has(text, "lan gan nhat", "buoi gan nhat", "buoi moi nhat", "gan nhat tap",
-            "khi nao tap", "bao lau roi chua tap", "chua tap bao lau")
+            "khi nao tap", "bao lau roi chua tap", "chua tap bao lau") ||
+            (text.contains("bao lau") && text.contains("chua tap"))
 
     private fun isHistoryQuestion(text: String): Boolean {
         val hasSubject = has(text, "tap", "buoi", "van dong", "nhat ky", "lich su")

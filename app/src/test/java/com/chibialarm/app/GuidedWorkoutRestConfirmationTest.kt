@@ -214,6 +214,7 @@ class GuidedWorkoutRestConfirmationTest {
         assertEquals(exerciseBefore, remaining(activity))
 
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+        shadowOf(Looper.getMainLooper()).idle()
         assertEquals(75_000L, restRemainingField.getLong(activity))
         assertEquals(exerciseBefore, remaining(activity))
         assertTrue("A paused rest must remain paused after extension", pausedField.getBoolean(activity))
@@ -241,6 +242,7 @@ class GuidedWorkoutRestConfirmationTest {
         val before = remainingField.getLong(activity)
         assertTrue(before in 44_000L..45_000L)
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+        shadowOf(Looper.getMainLooper()).idle()
         assertEquals(before + 30_000L, remainingField.getLong(activity))
         assertTrue("A previously running rest should continue", !pausedField.getBoolean(activity))
         activity.finish()

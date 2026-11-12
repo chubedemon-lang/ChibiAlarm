@@ -1662,7 +1662,10 @@ class GuidedWorkoutActivity:Activity() {
             else "${plan.requiredSets} hiệp"
         setProgress.text="Hiệp tự xác nhận: $done/${plan.maximumSets} • $setDescription • $target"
         val actualValues=actualSetValuesByMove[index].orEmpty()
-        if(actualValues.isNotEmpty()) setProgress.append("\\nGiá trị tự khai báo: "+actualValues.mapIndexed { set,value -> "Hiệp ${set+1}: $value ${plan.unit}" }.joinToString(" • "))
+        val actualValueLabels=actualValues.mapIndexedNotNull { set,value ->
+            if(value<=0) null else "Hiệp ${set+1}: $value ${plan.unit}"
+        }
+        if(actualValueLabels.isNotEmpty()) setProgress.append("\nGiá trị tự khai báo: "+actualValueLabels.joinToString(" • "))
         if(setTimerExpired) setProgress.append("\nHết thời gian gợi ý; chỉ xác nhận hiệp sau khi bạn thực hiện.")
         setProgress.contentDescription=setProgress.text
         completeSetButton.isEnabled=done<plan.maximumSets && !pausedForSafety && !resting
@@ -1733,7 +1736,7 @@ class GuidedWorkoutActivity:Activity() {
             currentSetPlan()!=plan || (completedSetsByMove[selectedIndex] ?: 0)!=before
         ) return
         val updated=runCatching {
-            WorkoutSetRepetitionLog.append(actualSetValuesByMove,selectedIndex,actualValue,plan)
+            WorkoutSetRepetitionLog.append(actualSetValuesByMove,selectedIndex,before,actualValue,plan)
         }.getOrElse {
             Toast.makeText(this,"Không thể xác minh dữ liệu hiệp. Tiến độ cũ được giữ nguyên.",Toast.LENGTH_LONG).show()
             return

@@ -71,6 +71,21 @@ class WorkoutPoseMotionTest {
         assertTrue(cue.length <= 340)
     }
 
+    @Test fun spokenStepCueIncludesPhaseMatchedBreathingGuidance() {
+        val lowering = WorkoutPoseMotion.spokenStepCue(
+            WorkoutPoseGuide.Pose.SQUAT, "Giữ bàn chân vững.", 1, 2, true
+        )
+        val effort = WorkoutPoseMotion.spokenStepCue(
+            WorkoutPoseGuide.Pose.SQUAT, "Đứng lên có kiểm soát.", 2, 2, false
+        )
+        val staticHold = WorkoutPoseMotion.spokenStepCue(
+            WorkoutPoseGuide.Pose.PLANK, "Giữ thân ổn định.", 1, 1, false
+        )
+        assertTrue(lowering.contains("Hít vào khi hạ hoặc trở về"))
+        assertTrue(effort.contains("Thở ra khi dùng lực"))
+        assertTrue(staticHold.contains("Thở đều, không nín thở"))
+    }
+
     @Test fun spokenStepCueTracksTheCurrentIllustrationPhase() {
         val lowered = WorkoutPoseMotion.spokenStepCue(
             WorkoutPoseGuide.Pose.SQUAT, "Giữ bàn chân vững.", 1, 2, true

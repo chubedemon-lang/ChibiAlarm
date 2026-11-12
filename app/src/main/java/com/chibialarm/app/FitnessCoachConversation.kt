@@ -17,8 +17,14 @@ object FitnessCoachConversation {
         if (previous == null) return parsed
         val answer = input.trim().lowercase(Locale.ROOT)
         val question = FitnessCoachFollowUp.nextQuestion(previous).lowercase(Locale.ROOT)
-        val shortMinutes = Regex("^([0-9]{1,3})$").matchEntire(answer)
-            ?.groupValues?.get(1)?.toIntOrNull()?.takeIf { it in 5..120 }
+        // Speech-to-text replies often omit the unit ("mười lăm" instead of
+        // "mười lăm phút"). Add the unit only while Chibi is explicitly asking
+        // for duration; the same words in other conversation turns stay ambiguous.
+        val contextualMinutes = if (
+            previous.minutes == null && question.contains("bao nhiêu phút")
+        ) {
+            parsed.minutes ?: FitnessNaturalRequest.parse("$input phút").minutes
+        } else null
         return when {
             previous.impact == 2 -> parsed
             previous.goal == null && question.contains("sức mạnh, tim mạch") &&
@@ -39,8 +45,8 @@ object FitnessCoachConversation {
                         else -> "Đã ghi nhận mày có kinh nghiệm. Tao sẽ vẫn để mày kiểm tra cường độ trước khi tập."
                     }
                 )
-            previous.minutes == null && question.contains("bao nhiêu phút") && shortMinutes != null ->
-                parsed.copy(minutes = shortMinutes, reply = "Tao đã ghi nhận $shortMinutes phút cho buổi tập. Mày có thể trả lời câu hỏi tiếp theo.")
+            previous.minutes == null && question.contains("bao nhiêu phút") && contextualMinutes != null ->
+                parsed.copy(minutes = contextualMinutes, reply = "Tao đã ghi nhận $contextualMinutes phút cho buổi tập. Mày có thể trả lời câu hỏi tiếp theo.")
             previous.equipment == null && question.contains("thảm, tạ") &&
                 answer in setOf("không", "khong", "không có", "khong co", "tay không", "tay khong") ->
                 parsed.copy(equipment = 0, reply = "Đã ghi nhận tập không dụng cụ. Tao sẽ ưu tiên bài phù hợp.")

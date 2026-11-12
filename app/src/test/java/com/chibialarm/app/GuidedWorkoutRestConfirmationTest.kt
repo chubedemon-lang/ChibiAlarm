@@ -1,5 +1,7 @@
 package com.chibialarm.app
 
+import com.chibialarm.app.fitness.WorkoutMidSessionRequest
+
 import android.app.AlertDialog
 import android.content.Context
 import android.os.Looper
@@ -181,6 +183,39 @@ class GuidedWorkoutRestConfirmationTest {
         val targets = GuidedWorkoutActivity::class.java.getDeclaredField("repTargets")
         targets.isAccessible = true
         assertTrue((targets.get(activity) as Map<*, *>).isEmpty())
+        activity.finish()
+    }
+
+
+    @Test fun restOnlyMidSessionRequestExtendsActiveRestOnlyAfterConfirmation() {
+        val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup().get()
+        val restingField = GuidedWorkoutActivity::class.java.getDeclaredField("resting")
+            .apply { isAccessible = true }
+        val pausedField = GuidedWorkoutActivity::class.java.getDeclaredField("paused")
+            .apply { isAccessible = true }
+        val restRemainingField = GuidedWorkoutActivity::class.java.getDeclaredField("restRemainingMs")
+            .apply { isAccessible = true }
+        restingField.setBoolean(activity, true)
+        pausedField.setBoolean(activity, true)
+        restRemainingField.setLong(activity, 45_000L)
+        val exerciseBefore = remaining(activity)
+
+        val apply = GuidedWorkoutActivity::class.java.getDeclaredMethod(
+            "applyMidSessionRequest",
+            WorkoutMidSessionRequest.Request::class.java
+        ).apply { isAccessible = true }
+        val request = WorkoutMidSessionRequest.Request(restSeconds = 30)
+        assertTrue(request.isRestOnly)
+        apply.invoke(activity, request)
+
+        val dialog = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
+        assertTrue(dialog.isShowing)
+        assertEquals(45_000L, restRemainingField.getLong(activity))
+        assertEquals(exerciseBefore, remaining(activity))
+
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+        assertEquals(75_000L, restRemainingField.getLong(activity))
+        assertEquals(exerciseBefore, remaining(activity))
         activity.finish()
     }
 

@@ -78,6 +78,8 @@ class GuidedWorkoutActivity:Activity() {
     // Timed moves use the timer; set-based moves require explicit user confirmation.
     private val completedMoveIndices=sortedSetOf<Int>()
     private val completedSetsByMove=mutableMapOf<Int,Int>()
+    // Values are self-reported; never inferred from the timer, audio or camera.
+    private val actualSetValuesByMove=mutableMapOf<Int,List<Int>>()
     private lateinit var setProgress:TextView
     private lateinit var completeSetButton:Button
     private lateinit var restSetButton:Button
@@ -107,6 +109,7 @@ class GuidedWorkoutActivity:Activity() {
             .putString("substitutions",WorkoutMoveSubstitution.encode(substitutions,originalMoves,workoutConstraints))
             .putString("completedMoves",WorkoutCompletionTracker.encode(completedMoveIndices,moves.size))
             .putString("completedSets",WorkoutSetTracker.encode(completedSetsByMove,moves))
+            .putString("setValues",WorkoutSetRepetitionLog.encode(actualSetValuesByMove,moves))
             .putBoolean("resting",resting)
             .putLong("restRemaining",restRemainingMs.coerceIn(0L,600_000L))
             .putBoolean("setTimerExpired",setTimerExpired)
@@ -178,6 +181,8 @@ class GuidedWorkoutActivity:Activity() {
                 completedMoveIndices.addAll(WorkoutCompletionTracker.decode(checkpoint.getString("completedMoves",null),moves.size))
                 completedSetsByMove.clear()
                 completedSetsByMove.putAll(WorkoutSetTracker.decode(checkpoint.getString("completedSets",null),moves))
+                actualSetValuesByMove.clear()
+                actualSetValuesByMove.putAll(WorkoutSetRepetitionLog.decode(checkpoint.getString("setValues",null),moves,completedSetsByMove))
                 completedMoveIndices.removeAll { position ->
                     val plan=setPlan(position)
                     plan!=null && !WorkoutSetTracker.isComplete(completedSetsByMove[position] ?: 0,plan)
@@ -796,6 +801,9 @@ class GuidedWorkoutActivity:Activity() {
                         completedSetsByMove.keys.removeAll {
                             it > index || (it == index && preview.currentMoveChanged)
                         }
+                        actualSetValuesByMove.keys.removeAll {
+                            it > index || (it == index && preview.currentMoveChanged)
+                        }
                         repTargets.keys.removeAll {
                             it > index || (it == index && preview.currentMoveChanged)
                         }
@@ -1010,7 +1018,7 @@ class GuidedWorkoutActivity:Activity() {
                     "Thời gian động tác còn lại được giữ nguyên; nghỉ không tính vào phút vận động." +
                     capNotice
             )
-            .setPositiveButton("Thêm & tiếp tục nghỉ") { _, _ ->
+            .setPositiveButton(if (wasRunning) "Thêm & tiếp tục nghỉ" else "Thêm, giữ tạm dừng") { _, _ ->
                 if (pausedForSafety || completed || !resting || !paused ||
                     index != selectedIndex || restRemainingMs != beforeRemaining ||
                     remainingMs != exerciseRemaining
@@ -1028,7 +1036,14 @@ class GuidedWorkoutActivity:Activity() {
                 control.text = "▶ Tiếp tục nghỉ"
                 saveCheckpoint()
                 speak("Đã thêm ${addedSecondsActual} giây nghỉ. Còn ${totalSeconds} giây.")
-                resume()
+                if (wasRunning) {
+                    resume()
+                } else {
+                    // Extending a paused rest must not silently restart its countdown.
+                    paused = true
+                    control.text = "▶ Tiếp tục nghỉ"
+                    counter.text = restCounterText(restRemainingMs)
+                }
             }
             .setNegativeButton("Giữ nguyên") { _, _ ->
                 if (wasRunning && resting && !pausedForSafety) resume()
@@ -1646,6 +1661,8 @@ class GuidedWorkoutActivity:Activity() {
             "Tối thiểu ${plan.requiredSets} hiệp, có thể thêm đến ${plan.maximumSets}"
             else "${plan.requiredSets} hiệp"
         setProgress.text="Hiệp tự xác nhận: $done/${plan.maximumSets} • $setDescription • $target"
+        val actualValues=actualSetValuesByMove[index].orEmpty()
+        if(actualValues.isNotEmpty()) setProgress.append("\\nGiá trị tự khai báo: "+actualValues.mapIndexed { set,value -> "Hiệp ${set+1}: $value ${plan.unit}" }.joinToString(" • "))
         if(setTimerExpired) setProgress.append("\nHết thời gian gợi ý; chỉ xác nhận hiệp sau khi bạn thực hiện.")
         setProgress.contentDescription=setProgress.text
         completeSetButton.isEnabled=done<plan.maximumSets && !pausedForSafety && !resting
@@ -1662,7 +1679,7 @@ class GuidedWorkoutActivity:Activity() {
         restSetButton.text="⏱ Nghỉ theo giáo án (${plan.defaultRestSeconds} giây)"
     }
 
-    /** The user confirms a set after doing it; no camera or automatic rep counting is implied. */
+    /** The user records the value actually completed; this is self-report, not sensor counting. */
     private fun completeCurrentSet() {
         if(pausedForSafety || completed || resting || index !in moves.indices) return
         val plan=currentSetPlan() ?: return
@@ -1672,21 +1689,72 @@ class GuidedWorkoutActivity:Activity() {
         }
         val before=completedSetsByMove[index] ?: 0
         if(before>=plan.maximumSets) return
+        val selectedIndex=index
+        val wasRunning=!paused
         pause()
+        val maximumValue=if(plan.unit=="giây") 600 else 200
+        val field=EditText(this).apply {
+            inputType=android.text.InputType.TYPE_CLASS_NUMBER
+            hint="Giá trị thực tế (1–$maximumValue)"
+            setText(plan.targetMin.toString())
+            selectAll()
+        }
+        val dialog=AlertDialog.Builder(this)
+            .setTitle("Ghi nhận hiệp ${before+1}")
+            .setMessage("Động tác: ${moves[selectedIndex].name}\nNhập số ${plan.unit} bạn thực sự hoàn thành. Chibi không tự đếm và không dùng camera để xác minh.")
+            .setView(field)
+            .setPositiveButton("Xác nhận hiệp",null)
+            .setNegativeButton("Hủy") { _, _ -> if(wasRunning && !pausedForSafety && !completed && index==selectedIndex) resume() }
+            .create()
+        dialog.setOnCancelListener { if(wasRunning && !pausedForSafety && !completed && index==selectedIndex) resume() }
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val actual=field.text.toString().trim().toIntOrNull()
+                if(actual==null || actual !in 1..maximumValue) {
+                    field.error="Nhập từ 1 đến $maximumValue"
+                    return@setOnClickListener
+                }
+                if(pausedForSafety || completed || resting || index!=selectedIndex ||
+                    currentSetPlan()!=plan || (completedSetsByMove[selectedIndex] ?: 0)!=before
+                ) {
+                    dialog.dismiss()
+                    Toast.makeText(this,"Buổi tập đã thay đổi. Hãy kiểm tra lại trước khi ghi hiệp.",Toast.LENGTH_LONG).show()
+                    return@setOnClickListener
+                }
+                dialog.dismiss()
+                recordCurrentSet(actual,selectedIndex,before,plan)
+            }
+        }
+        dialog.show()
+    }
+
+    private fun recordCurrentSet(actualValue:Int,selectedIndex:Int,before:Int,plan:WorkoutSetTracker.Plan) {
+        if(pausedForSafety || completed || resting || index!=selectedIndex ||
+            currentSetPlan()!=plan || (completedSetsByMove[selectedIndex] ?: 0)!=before
+        ) return
+        val updated=runCatching {
+            WorkoutSetRepetitionLog.append(actualSetValuesByMove,selectedIndex,actualValue,plan)
+        }.getOrElse {
+            Toast.makeText(this,"Không thể xác minh dữ liệu hiệp. Tiến độ cũ được giữ nguyên.",Toast.LENGTH_LONG).show()
+            return
+        }
+        actualSetValuesByMove.clear()
+        actualSetValuesByMove.putAll(updated)
         val after=WorkoutSetTracker.complete(before,plan)
-        completedSetsByMove[index]=after
-        if(WorkoutSetTracker.isComplete(after,plan)) completedMoveIndices.add(index)
+        completedSetsByMove[selectedIndex]=after
+        if(WorkoutSetTracker.isComplete(after,plan)) completedMoveIndices.add(selectedIndex)
         renderSetControls()
         saveCheckpoint()
+        val valueText="$actualValue ${plan.unit} tự khai báo"
         if(after<plan.maximumSets) {
             val message=if(after>=plan.requiredSets)
-                "Đã đủ hiệp tối thiểu. Bạn có thể nghỉ rồi thêm hiệp tùy chọn nếu còn sức."
-                else "Đã tự xác nhận hiệp $after/${plan.requiredSets}. Nghỉ trước hiệp tiếp theo."
+                "Đã ghi hiệp $after: $valueText. Đã đủ hiệp tối thiểu; chỉ thêm hiệp tùy chọn nếu còn sức."
+                else "Đã ghi hiệp $after/${plan.requiredSets}: $valueText. Nghỉ trước hiệp tiếp theo."
             Toast.makeText(this,message,Toast.LENGTH_LONG).show()
             speak(message)
             startSetRest(plan.defaultRestSeconds)
         } else {
-            val message="Đã tự xác nhận đủ $after hiệp cho ${moves[index].name}."
+            val message="Đã ghi đủ $after hiệp cho ${moves[selectedIndex].name}; $valueText."
             Toast.makeText(this,message,Toast.LENGTH_LONG).show()
             speak(message)
         }
@@ -1847,8 +1915,10 @@ class GuidedWorkoutActivity:Activity() {
         val substitutionSummary=substitutions.entries.sortedBy { it.key }.joinToString("; ") { (position,replacement) ->
             "${originalMoves.getOrNull(position)?.name ?: "Động tác"} → ${replacement.name}"
         }
+        val setValueSummary=WorkoutSetRepetitionLog.summary(actualSetValuesByMove,moves)
         val workoutNote=buildString {
-            append("Chibi Coach: $completedCount/${moves.size} động tác được ghi nhận; $setCompletedMoves động tác tự xác nhận hiệp ($selfReportedSets hiệp); $timerCompletedMoves động tác theo bộ đếm; $mins phút hoạt động. Số hiệp là tự khai báo, không được cảm biến xác minh.")
+            append("Chibi Coach: $completedCount/${moves.size} động tác được ghi nhận; $setCompletedMoves động tác tự xác nhận hiệp ($selfReportedSets hiệp); $timerCompletedMoves động tác theo bộ đếm; $mins phút hoạt động. Số hiệp và giá trị từng hiệp là tự khai báo, không được cảm biến xác minh.")
+            if(setValueSummary.isNotBlank()) append(" Giá trị từng hiệp: $setValueSummary.")
             if(substitutionSummary.isNotBlank()) append(" Thay động tác: $substitutionSummary.")
         }
         val saved=WorkoutData.appendSession(this,Workout(

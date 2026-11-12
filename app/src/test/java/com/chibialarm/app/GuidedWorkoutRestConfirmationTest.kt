@@ -216,6 +216,33 @@ class GuidedWorkoutRestConfirmationTest {
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
         assertEquals(75_000L, restRemainingField.getLong(activity))
         assertEquals(exerciseBefore, remaining(activity))
+        assertTrue("A paused rest must remain paused after extension", pausedField.getBoolean(activity))
+        val resume = GuidedWorkoutActivity::class.java.getDeclaredMethod("resume").apply { isAccessible = true }
+        resume.invoke(activity)
+        assertTrue("The extended rest can be resumed explicitly", !pausedField.getBoolean(activity))
+        activity.finish()
+    }
+
+    @Test fun extendingRunningRestKeepsItRunningAndAddsTheRequestedDuration() {
+        val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup().get()
+        val restingField = GuidedWorkoutActivity::class.java.getDeclaredField("resting").apply { isAccessible = true }
+        val pausedField = GuidedWorkoutActivity::class.java.getDeclaredField("paused").apply { isAccessible = true }
+        val deadlineField = GuidedWorkoutActivity::class.java.getDeclaredField("restDeadline").apply { isAccessible = true }
+        val remainingField = GuidedWorkoutActivity::class.java.getDeclaredField("restRemainingMs").apply { isAccessible = true }
+        restingField.setBoolean(activity, true)
+        pausedField.setBoolean(activity, false)
+        remainingField.setLong(activity, 45_000L)
+        deadlineField.setLong(activity, android.os.SystemClock.elapsedRealtime() + 45_000L)
+        val apply = GuidedWorkoutActivity::class.java.getDeclaredMethod(
+            "applyMidSessionRequest", WorkoutMidSessionRequest.Request::class.java
+        ).apply { isAccessible = true }
+        apply.invoke(activity, WorkoutMidSessionRequest.Request(restSeconds = 30))
+        val dialog = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
+        val before = remainingField.getLong(activity)
+        assertTrue(before in 44_000L..45_000L)
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+        assertEquals(before + 30_000L, remainingField.getLong(activity))
+        assertTrue("A previously running rest should continue", !pausedField.getBoolean(activity))
         activity.finish()
     }
 

@@ -6,7 +6,7 @@ package com.chibialarm.app
  */
 object WorkoutPoseGuide {
     enum class Pose {
-        SQUAT, HIP_HINGE, PLANK, PUSH_UP, KNEE_PUSH_UP, WALL_PUSH_UP, INCLINE_PUSH_UP, LUNGE,
+        SQUAT, HIP_HINGE, RESISTANCE_ROW, RESISTANCE_HINGE, RESISTANCE_PRESS, PLANK, PUSH_UP, KNEE_PUSH_UP, WALL_PUSH_UP, INCLINE_PUSH_UP, LUNGE,
         BRIDGE, BIRD_DOG, DEAD_BUG, CAT_COW,
         MARCH, SUPPORTED_MARCH, HIP_ABDUCTION, SEATED_HAMSTRING_STRETCH,
         SCAPULAR_SQUEEZE, FOREARM_WALL_PRESS, SIDE_STEP, SEATED_KNEE_RAISE,
@@ -22,6 +22,9 @@ object WorkoutPoseGuide {
             listOf("dead bug").any { it in text } -> Pose.DEAD_BUG
             listOf("cat-cow", "cat cow", "mèo-bò").any { it in text } -> Pose.CAT_COW
             listOf("nâng hông", "glute bridge", "bridge").any { it in text } -> Pose.BRIDGE
+            listOf("kéo tạ đơn hoặc dây kháng lực", "bent-over row", "dumbbell row", "resistance band row").any { it in text } -> Pose.RESISTANCE_ROW
+            listOf("gập hông với tạ đơn hoặc dây", "dumbbell romanian deadlift", "resistance hinge").any { it in text } -> Pose.RESISTANCE_HINGE
+            listOf("đẩy vai với tạ đơn hoặc dây", "overhead press", "shoulder press").any { it in text } -> Pose.RESISTANCE_PRESS
             listOf("gập hông không dụng cụ", "hip hinge").any { it in text } -> Pose.HIP_HINGE
             listOf("nâng gối luân phiên có điểm tựa", "supported march").any { it in text } -> Pose.SUPPORTED_MARCH
             listOf("dang chân sang bên có điểm tựa", "hip abduction").any { it in text } -> Pose.HIP_ABDUCTION
@@ -50,6 +53,9 @@ object WorkoutPoseGuide {
     fun label(pose: Pose): String = when (pose) {
         Pose.SQUAT -> "Minh họa: hạ hông và gập gối"
         Pose.HIP_HINGE -> "Minh họa: đẩy hông ra sau, giữ lưng trung lập"
+        Pose.RESISTANCE_ROW -> "Minh họa: kéo khuỷu về sau, giữ thân ổn định"
+        Pose.RESISTANCE_HINGE -> "Minh họa: gập hông với tải nhẹ, giữ lưng trung lập"
+        Pose.RESISTANCE_PRESS -> "Minh họa: đẩy tải nhẹ qua đầu, không ưỡn lưng"
         Pose.PLANK -> "Minh họa: giữ thân người thẳng"
         Pose.PUSH_UP -> "Minh họa: chống đẩy sàn, thân người thẳng"
         Pose.KNEE_PUSH_UP -> "Minh họa: chống đẩy với hai gối làm điểm tựa"

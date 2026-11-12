@@ -693,16 +693,7 @@ class GuidedWorkoutActivity:Activity() {
             return
         }
         if (resting) {
-            val restOnly = request.restSeconds != null &&
-                request.remainingMinutes == null &&
-                !request.lowEnergy &&
-                !request.avoidWristLoad &&
-                !request.avoidFloorPositions &&
-                !request.preferEasier &&
-                !request.avoidExternalLoad &&
-                !request.allowWristLoad &&
-                !request.allowFloorPositions
-            if (restOnly) {
+            if (request.isRestOnly) {
                 confirmRestExtension(request.restSeconds)
             } else {
                 Toast.makeText(

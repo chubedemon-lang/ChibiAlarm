@@ -15,6 +15,8 @@ object FitnessCoachFollowUp {
         DURATION,
         EQUIPMENT,
         MOVEMENT_LIMITS,
+        WRIST_LOAD,
+        FLOOR_POSITIONS,
         ENERGY,
         COMPLETE
     }
@@ -26,6 +28,8 @@ object FitnessCoachFollowUp {
         parsed.minutes == null -> Question.DURATION
         parsed.equipment == null -> Question.EQUIPMENT
         parsed.impact == null -> Question.MOVEMENT_LIMITS
+        parsed.avoidWristLoad == null -> Question.WRIST_LOAD
+        parsed.avoidFloorPositions == null -> Question.FLOOR_POSITIONS
         parsed.energy == null -> Question.ENERGY
         else -> Question.COMPLETE
     }
@@ -42,8 +46,21 @@ object FitnessCoachFollowUp {
                 "Mày có bao nhiêu phút? Ví dụ: 15 phút."
             Question.EQUIPMENT ->
                 "Mày có thảm, tạ, dây kháng lực hay muốn tập tay không?"
-            Question.MOVEMENT_LIMITS ->
-                "Mày có cần tránh nhảy hoặc hạn chế vận động nào không?"
+            Question.MOVEMENT_LIMITS -> {
+                val noted = buildList {
+                    if (parsed.avoidWristLoad == true) add("cổ tay")
+                    if (parsed.avoidFloorPositions == true) add("tư thế nằm hoặc quỳ sàn")
+                }
+                if (noted.isEmpty()) {
+                    "Mày có cần tránh nhảy hoặc ưu tiên bài ít tác động không? Trả lời có/không."
+                } else {
+                    "Tao đã ghi nhận hạn chế ${noted.joinToString(" và ")}. Còn về nhảy, mày có cần tránh nhảy hoặc ưu tiên bài ít tác động không?"
+                }
+            }
+            Question.WRIST_LOAD ->
+                "Mày có cần tránh chống tay hoặc chịu tải qua cổ tay không? Trả lời có/không."
+            Question.FLOOR_POSITIONS ->
+                "Mày có cần tránh các tư thế nằm hoặc quỳ sàn không? Trả lời có/không."
             Question.ENERGY ->
                 "Hôm nay mày thấy mệt hay còn nhiều năng lượng?"
             Question.COMPLETE ->

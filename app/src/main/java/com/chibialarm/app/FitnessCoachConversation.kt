@@ -16,27 +16,25 @@ object FitnessCoachConversation {
         val parsed = FitnessNaturalRequest.parse(input)
         if (previous == null) return parsed
         val answer = input.trim().lowercase(Locale.ROOT)
-        val question = FitnessCoachFollowUp.nextQuestion(previous).lowercase(Locale.ROOT)
+        val question = FitnessCoachFollowUp.nextQuestionType(previous)
         // Speech-to-text replies often omit the unit ("mười lăm" instead of
         // "mười lăm phút"). Add the unit only while Chibi is explicitly asking
         // for duration; the same words in other conversation turns stay ambiguous.
-        val contextualMinutes = if (
-            previous.minutes == null && question.contains("bao nhiêu phút")
-        ) {
+        val contextualMinutes = if (question == FitnessCoachFollowUp.Question.DURATION) {
             parsed.minutes ?: FitnessNaturalRequest.parse("$input phút").minutes
         } else null
         return when {
-            previous.impact == 2 -> parsed
-            previous.goal == null && question.contains("sức mạnh, tim mạch") &&
+            question == FitnessCoachFollowUp.Question.SAFETY_STOP -> parsed
+            question == FitnessCoachFollowUp.Question.GOAL &&
                 answer in setOf("sức mạnh", "suc manh", "tăng cơ", "tang co") ->
                 parsed.copy(goal = 0, reply = "Đã ghi nhận mục tiêu sức mạnh. Tao sẽ gợi ý bài phù hợp với thể lực.")
-            previous.goal == null && question.contains("sức mạnh, tim mạch") &&
+            question == FitnessCoachFollowUp.Question.GOAL &&
                 answer in setOf("tim mạch", "tim mach", "cardio", "giảm cân", "giam can") ->
                 parsed.copy(goal = 1, reply = "Đã ghi nhận mục tiêu tim mạch. Tao sẽ hỏi thêm về thời gian và dụng cụ.")
-            previous.goal == null && question.contains("sức mạnh, tim mạch") &&
+            question == FitnessCoachFollowUp.Question.GOAL &&
                 answer in setOf("giãn cơ", "gian co", "yoga") ->
                 parsed.copy(goal = 2, reply = "Đã ghi nhận mục tiêu giãn cơ. Tao sẽ ưu tiên vận động nhẹ.")
-            previous.level == null && question.contains("trình độ") && parsed.level != null ->
+            question == FitnessCoachFollowUp.Question.LEVEL && parsed.level != null ->
                 parsed.copy(
                     goal = null,
                     reply = when (parsed.level) {
@@ -45,30 +43,30 @@ object FitnessCoachConversation {
                         else -> "Đã ghi nhận mày có kinh nghiệm. Tao sẽ vẫn để mày kiểm tra cường độ trước khi tập."
                     }
                 )
-            previous.minutes == null && question.contains("bao nhiêu phút") && contextualMinutes != null ->
+            question == FitnessCoachFollowUp.Question.DURATION && contextualMinutes != null ->
                 parsed.copy(minutes = contextualMinutes, reply = "Tao đã ghi nhận $contextualMinutes phút cho buổi tập. Mày có thể trả lời câu hỏi tiếp theo.")
-            previous.equipment == null && question.contains("thảm, tạ") &&
+            question == FitnessCoachFollowUp.Question.EQUIPMENT &&
                 answer in setOf("không", "khong", "không có", "khong co", "tay không", "tay khong") ->
                 parsed.copy(equipment = 0, reply = "Đã ghi nhận tập không dụng cụ. Tao sẽ ưu tiên bài phù hợp.")
-            previous.equipment == null && question.contains("thảm, tạ") &&
+            question == FitnessCoachFollowUp.Question.EQUIPMENT &&
                 answer in setOf("thảm", "tham", "thảm tập", "tham tap") ->
                 parsed.copy(equipment = 1, reply = "Đã ghi nhận có thảm tập.")
-            previous.equipment == null && question.contains("thảm, tạ") &&
+            question == FitnessCoachFollowUp.Question.EQUIPMENT &&
                 answer in setOf("tạ", "ta", "tạ đơn", "ta don", "dây", "day", "dây kháng lực", "day khang luc") ->
                 parsed.copy(equipment = 2, reply = "Đã ghi nhận có tạ hoặc dây kháng lực. Hãy kiểm tra dụng cụ được chọn.")
-            previous.impact == null && question.contains("hạn chế vận động") &&
+            question == FitnessCoachFollowUp.Question.MOVEMENT_LIMITS &&
                 answer in setOf("không", "khong", "không có", "khong co", "không hạn chế", "khong han che") ->
                 parsed.copy(impact = 0, reply = "Đã ghi nhận mày không khai báo hạn chế vận động. Nếu thấy đau hoặc chóng mặt, hãy dừng tập.")
-            previous.impact == null && question.contains("hạn chế vận động") &&
+            question == FitnessCoachFollowUp.Question.MOVEMENT_LIMITS &&
                 answer in setOf("tránh nhảy", "tranh nhay", "không nhảy", "khong nhay", "ít tác động", "it tac dong") ->
                 parsed.copy(impact = 1, reply = "Đã ghi nhận ưu tiên bài ít tác động, không nhảy.")
-            previous.energy == null && question.contains("mệt") &&
+            question == FitnessCoachFollowUp.Question.ENERGY &&
                 answer in setOf("mệt", "met", "hơi mệt", "hoi met", "ít năng lượng", "it nang luong") ->
                 parsed.copy(energy = 0, reply = "Đã ghi nhận mức năng lượng thấp. Tao sẽ ưu tiên buổi tập nhẹ.")
-            previous.energy == null && question.contains("mệt") &&
+            question == FitnessCoachFollowUp.Question.ENERGY &&
                 answer in setOf("khỏe", "khoe", "nhiều năng lượng", "nhieu nang luong") ->
                 parsed.copy(energy = 2, reply = "Đã ghi nhận mày còn nhiều năng lượng.")
-            previous.energy == null && question.contains("mệt") &&
+            question == FitnessCoachFollowUp.Question.ENERGY &&
                 answer in setOf("bình thường", "binh thuong", "vừa", "vua") ->
                 parsed.copy(energy = 1, reply = "Đã ghi nhận mức năng lượng bình thường.")
             else -> parsed

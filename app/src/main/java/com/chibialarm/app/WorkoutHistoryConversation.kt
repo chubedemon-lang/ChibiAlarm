@@ -37,8 +37,8 @@ object WorkoutHistoryConversation {
         val text = normalize(input.take(300))
         if (!isHistoryQuestion(text)) return null
 
-        val entries = workouts.asSequence()
-            .take(MAX_RECORDS)
+        // Keep the newest records when a long-lived journal exceeds the processing cap.
+        val entries = workouts.takeLast(MAX_RECORDS)
             .mapIndexedNotNull { index, workout ->
                 val date = runCatching { LocalDate.parse(workout.date) }.getOrNull()
                     ?: return@mapIndexedNotNull null
@@ -57,7 +57,7 @@ object WorkoutHistoryConversation {
         if (isLatestQuestion(text)) {
             val latest = entries.maxWithOrNull(
                 compareBy<Entry> { it.date }.thenBy { it.originalIndex }
-            ) ?: return "Nhật ký trên máy chưa có buổi tập hợp lệ nào được ghi. Nếu vừa tập, hãy lưu buổi đó trong mục Nhật ký tập."
+            ) ?: return "Không tìm thấy buổi tập hợp lệ trong nhật ký trên máy. Nếu vừa tập, hãy lưu buổi đó trong mục Nhật ký tập."
 
             val daysAgo = ChronoUnit.DAYS.between(latest.date, today)
             val whenText = when (daysAgo) {
@@ -71,7 +71,7 @@ object WorkoutHistoryConversation {
         val window = chooseWindow(text, today)
         val selected = entries.filter { !it.date.isBefore(window.start) }
         if (selected.isEmpty()) {
-            return "Chưa có buổi tập nào được ghi trong ${window.label}. Nhật ký chỉ phản ánh những buổi bạn đã lưu trên thiết bị."
+            return "Không tìm thấy buổi tập hợp lệ trong ${window.label}. Nhật ký chỉ phản ánh những buổi bạn đã lưu trên thiết bị."
         }
 
         val sessions = selected.size
@@ -104,7 +104,7 @@ object WorkoutHistoryConversation {
     }
 
     private fun isLatestQuestion(text: String): Boolean =
-        has(text, "lan gan nhat", "buoi gan nhat", "buoi moi nhat", "gan nhat tap",
+        has(text, "lan gan nhat", "lan cuoi", "buoi gan nhat", "buoi moi nhat", "gan nhat tap",
             "khi nao tap", "bao lau roi chua tap", "chua tap bao lau") ||
             (text.contains("bao lau") && text.contains("chua tap"))
 
@@ -112,7 +112,8 @@ object WorkoutHistoryConversation {
         val hasSubject = has(text, "tap", "buoi", "van dong", "nhat ky", "lich su")
         val asksForHistory = has(
             text, "bao nhieu", "may buoi", "may ngay", "may phut", "bao lau",
-            "tong", "so buoi", "so ngay", "so phut", "khi nao", "gan nhat",
+            "tong buoi", "tong so", "tong phut", "tong thoi gian",
+            "so buoi", "so ngay", "so phut", "khi nao", "gan nhat",
             "nhat ky", "lich su"
         )
         return hasSubject && asksForHistory

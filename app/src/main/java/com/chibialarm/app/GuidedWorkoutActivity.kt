@@ -1478,15 +1478,17 @@ class GuidedWorkoutActivity:Activity() {
                 }
             }
             dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
-                speak("Bước ${walkthrough.position}. ${walkthrough.currentStep}")
+                speak(WorkoutPoseMotion.spokenStepCue(\n                    pose, walkthrough.currentStep, walkthrough.position, walkthrough.steps.size\n                ))
             }
         }
+        dialog.show()
+        // Attach after show so the modal lifecycle callback is observed consistently
+        // by Android and Robolectric before restoring the background illustration.
         dialog.setOnDismissListener {
             spoken?.stop()
             illustration.onPhaseChanged = null
             poseView.motionEnabled = true
         }
-        dialog.show()
     }
 
     private fun renderDose() {

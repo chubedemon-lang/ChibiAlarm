@@ -9,8 +9,8 @@ import java.util.Locale
 /**
  * Answers simple workout-history questions from the on-device journal.
  *
- * Only structured date, activity name and duration are read. Free-text notes,
- * safety preferences and health details are never inspected or returned.
+ * Only structured date, activity name, duration and self-reported set values are read.
+ * Free-text notes, safety preferences and health details are never inspected or returned.
  * This is a local journal summary, not a recovery or medical assessment.
  */
 object WorkoutHistoryConversation {

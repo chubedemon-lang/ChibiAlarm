@@ -18,7 +18,7 @@ class WorkoutSetRepetitionLogTest {
         val third = WorkoutSetRepetitionLog.append(second, 1, 0, 22, timed)
         assertEquals(listOf(9, 10), third[0])
         assertEquals(listOf(22), third[1])
-        assertEquals(emptyList<Int>(), third[2] ?: emptyList())
+        assertNull(third[2])
     }
 
     @Test fun rejectsValuesOutsideTheExerciseUnitBounds() {

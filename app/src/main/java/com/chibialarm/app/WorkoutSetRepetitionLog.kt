@@ -46,6 +46,7 @@ object WorkoutSetRepetitionLog {
     fun decode(raw: String?, moves: List<TrainingMove>, confirmedSets: Map<Int, Int>): Map<Int, List<Int>> {
         if (moves.isEmpty() || moves.size > MAX_MOVES) return emptyMap()
         val result = sortedMapOf<Int, List<Int>>()
+        val seenIndices = mutableSetOf<Int>()
         confirmedSets.forEach { (index, count) ->
             val plan = moves.getOrNull(index)?.let { WorkoutSetTracker.parse(it.dose) }
             if (plan != null && count in 1..plan.maximumSets) result[index] = List(count) { 0 }
@@ -55,7 +56,7 @@ object WorkoutSetRepetitionLog {
             val separator = entry.indexOf(':')
             if (separator <= 0 || separator != entry.lastIndexOf(':')) return@forEach
             val index = entry.substring(0, separator).toIntOrNull() ?: return@forEach
-            if (index !in moves.indices) return@forEach
+            if (index !in moves.indices || index in seenIndices) return@forEach
             val plan = WorkoutSetTracker.parse(moves[index].dose) ?: return@forEach
             val confirmed = confirmedSets[index] ?: 0
             if (confirmed !in 1..plan.maximumSets) return@forEach
@@ -66,6 +67,7 @@ object WorkoutSetRepetitionLog {
             }
             if (values.size != encodedValues.size || values.any { it !in 0..maximumValue(plan) }) return@forEach
             result[index] = values + List(confirmed - values.size) { 0 }
+            seenIndices.add(index)
         }
         return result
     }

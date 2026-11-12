@@ -63,6 +63,28 @@ class WorkoutPoseGuideTest {
         }
     }
 
+    @Test fun weightedProgramExercisesUseDedicatedAnimatedIllustrations() {
+        val expected = mapOf(
+            "Kéo tạ đơn hoặc dây kháng lực" to WorkoutPoseGuide.Pose.RESISTANCE_ROW,
+            "Gập hông với tạ đơn hoặc dây" to WorkoutPoseGuide.Pose.RESISTANCE_HINGE,
+            "Đẩy vai với tạ đơn hoặc dây" to WorkoutPoseGuide.Pose.RESISTANCE_PRESS
+        )
+        val weighted = TrainingCatalog.byId("weighted")
+        for (move in weighted.moves) {
+            val pose = expected[move.name]
+            if (pose != null) {
+                assertEquals(move.name, pose, WorkoutPoseGuide.classify(move.name))
+                assertTrue("$move should animate", WorkoutPoseMotion.hasMotion(pose))
+                assertTrue(WorkoutPoseGuide.label(pose).contains("Minh họa:"))
+                assertTrue(WorkoutPoseMotion.spokenWalkthrough(pose).isNotBlank())
+            }
+        }
+        assertEquals(3, expected.size)
+        assertEquals(WorkoutPoseGuide.Pose.RESISTANCE_ROW, WorkoutPoseGuide.classify("Dumbbell row"))
+        assertEquals(WorkoutPoseGuide.Pose.RESISTANCE_HINGE, WorkoutPoseGuide.classify("Romanian deadlift"))
+        assertEquals(WorkoutPoseGuide.Pose.RESISTANCE_PRESS, WorkoutPoseGuide.classify("Overhead press"))
+    }
+
     @Test fun specificSidePlankIsNotCapturedByGenericPlankRule() {
         assertEquals(WorkoutPoseGuide.Pose.SIDE_PLANK, WorkoutPoseGuide.classify("Side plank"))
     }

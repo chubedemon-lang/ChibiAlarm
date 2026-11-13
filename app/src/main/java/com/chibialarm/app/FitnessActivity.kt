@@ -796,13 +796,16 @@ class FitnessActivity:Activity() {
             .putExtra("program",p.id).putExtra("level",l).putExtra("minutes",m)
             .putExtra("avoid_wrist_load", constraints.avoidWristLoad)
             .putExtra("avoid_floor_positions", constraints.avoidFloorPositions)
+            .putExtra("avoid_overhead_reach", constraints.avoidOverheadReach)
             .putExtra("extension_goal", recommendationGoalSpinner?.selectedItemPosition ?: 0)
             .putExtra("extension_energy", recommendationEnergySpinner?.selectedItemPosition ?: 1)
             .putExtra("extension_equipment", recommendationEquipmentSpinner?.selectedItemPosition ?: 0)
             .putExtra("extension_impact", effectiveImpactRestriction()))
     }
     private fun addRoutine(p:TrainingProgram) {
-        if (currentWorkoutConstraintProfile().avoidWristLoad || currentWorkoutConstraintProfile().avoidFloorPositions) {
+        if (currentWorkoutConstraintProfile().avoidWristLoad ||
+            currentWorkoutConstraintProfile().avoidFloorPositions ||
+            currentWorkoutConstraintProfile().avoidOverheadReach) {
             Toast.makeText(this, "Các hạn chế vận động chỉ áp dụng cho buổi hiện tại; lịch tuần chưa lưu bộ lọc này.", Toast.LENGTH_LONG).show()
             return
         }

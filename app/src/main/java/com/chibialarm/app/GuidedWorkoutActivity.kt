@@ -975,6 +975,15 @@ class GuidedWorkoutActivity:Activity() {
                     confirmExtraRest(WorkoutRestRequest.seconds(utterance))
                 }
             }
+            WorkoutVoiceCommands.Command.NO_EQUIPMENT -> {
+                when (val parsed = WorkoutMidSessionRequest.parse(utterance)) {
+                    is WorkoutMidSessionRequest.Result.Proposed -> applyMidSessionRequest(parsed.request)
+                    WorkoutMidSessionRequest.Result.SafetyStop -> stopForSafety()
+                    WorkoutMidSessionRequest.Result.Unsupported -> Toast.makeText(
+                        this, "Chưa thể xác định yêu cầu thay đổi dụng cụ.", Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
             WorkoutVoiceCommands.Command.UNKNOWN -> {
                 AlertDialog.Builder(this).setTitle("Chibi chưa hiểu yêu cầu")
                     .setMessage("Bạn có thể nói: hướng dẫn từng bước, đọc tiến độ, tạm dừng, tiếp tục, bài tiếp theo, bài trước, đổi động tác, nhắc lại, dễ hơn, rút ngắn hoặc nghỉ thêm. Đây là bộ lệnh offline, chưa phải hội thoại AI tự do.")

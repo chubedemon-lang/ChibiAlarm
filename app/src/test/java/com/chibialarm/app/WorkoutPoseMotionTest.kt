@@ -98,6 +98,60 @@ class WorkoutPoseMotionTest {
         assertFalse(lowered == upright)
     }
 
+    @Test fun walkthroughIllustrationPhaseFollowsTheSelectedInstruction() {
+        assertEquals(true, WorkoutPoseMotion.guidePhaseForStep(
+            WorkoutPoseGuide.Pose.SQUAT, "Hạ xuống theo khả năng"
+        ))
+        assertEquals(false, WorkoutPoseMotion.guidePhaseForStep(
+            WorkoutPoseGuide.Pose.SQUAT, "Đứng lên có kiểm soát"
+        ))
+        assertEquals(true, WorkoutPoseMotion.guidePhaseForStep(
+            WorkoutPoseGuide.Pose.WALL_PUSH_UP, "Gập khuỷu đưa ngực gần tường"
+        ))
+        assertEquals(false, WorkoutPoseMotion.guidePhaseForStep(
+            WorkoutPoseGuide.Pose.WALL_PUSH_UP, "Đẩy ra khỏi tường"
+        ))
+        assertEquals(true, WorkoutPoseMotion.guidePhaseForStep(
+            WorkoutPoseGuide.Pose.BRIDGE, "Hạ hông chậm"
+        ))
+        assertEquals(false, WorkoutPoseMotion.guidePhaseForStep(
+            WorkoutPoseGuide.Pose.BRIDGE, "Siết mông nâng hông"
+        ))
+        assertEquals(null, WorkoutPoseMotion.guidePhaseForStep(
+            WorkoutPoseGuide.Pose.SQUAT, "Chân rộng bằng vai"
+        ))
+        assertEquals(null, WorkoutPoseMotion.guidePhaseForStep(
+            WorkoutPoseGuide.Pose.SQUAT, "Hạ xuống rồi đứng lên"
+        ))
+        assertEquals(null, WorkoutPoseMotion.guidePhaseForStep(
+            WorkoutPoseGuide.Pose.PLANK, "Giữ thân ổn định"
+        ))
+    }
+
+    @Test fun neutralSetupStepDoesNotInventARepPhaseOrBreathingPattern() {
+        val cue = WorkoutPoseMotion.spokenInstructionStepCue(
+            WorkoutPoseGuide.Pose.SQUAT, "Chân rộng bằng vai.", 1, 5
+        )
+        assertTrue(cue.contains("Tư thế minh họa cho bước này"))
+        assertTrue(cue.contains("Thở đều, không nín thở"))
+        assertTrue(cue.contains("Bước 1 trên 5"))
+        assertFalse(cue.contains("Đứng lên."))
+        assertTrue(cue.length <= 340)
+    }
+
+    @Test fun selectedMovementStepGetsMatchingSpokenPhase() {
+        val lowering = WorkoutPoseMotion.spokenInstructionStepCue(
+            WorkoutPoseGuide.Pose.SQUAT, "Hạ xuống theo khả năng.", 3, 5
+        )
+        val standing = WorkoutPoseMotion.spokenInstructionStepCue(
+            WorkoutPoseGuide.Pose.SQUAT, "Đứng lên.", 4, 5
+        )
+        assertTrue(lowering.contains("Hạ hông"))
+        assertTrue(lowering.contains("Hít vào khi hạ hoặc trở về"))
+        assertTrue(standing.contains("Đứng lên"))
+        assertTrue(standing.contains("Thở ra khi dùng lực"))
+    }
+
     @Test fun spokenStepCueBoundsInvalidProgressAndLongInstructions() {
         val cue = WorkoutPoseMotion.spokenStepCue(
             WorkoutPoseGuide.Pose.STANDING,

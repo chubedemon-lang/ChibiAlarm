@@ -19,6 +19,20 @@ class WorkoutPoseView(context: Context) : View(context) {
     val isInAlternatePose: Boolean
         get() = movementPhase
 
+    /**
+     * Pins the illustration to the phase described by the selected walkthrough
+     * step. The caller must explicitly re-enable motion when the guide closes.
+     */
+    fun showGuideFrame(alternate: Boolean) {
+        if (motionEnabled) motionEnabled = false
+        animator?.cancel()
+        animator = null
+        movementPhase = alternate
+        contentDescription = WorkoutPoseMotion.accessibilityCue(pose, alternate)
+        onPhaseChanged?.invoke(alternate)
+        invalidate()
+    }
+
     private var animator: ValueAnimator? = null
 
     /** Allows a modal walkthrough to pause the background illustration while its own preview animates. */

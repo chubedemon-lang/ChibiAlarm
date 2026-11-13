@@ -532,32 +532,50 @@ class FitnessActivity:Activity() {
                     return@setOnClickListener
                 }
                 val constraintProfile = currentWorkoutConstraintProfile()
+                // Filter every candidate before history-based variety selection; a past
+                // workout must never reintroduce a move requiring unavailable equipment.
+                val filteredPrograms = TrainingCatalog.programs.associate { candidate ->
+                    val constrained = WorkoutConstraintFilter.apply(candidate, constraintProfile)
+                    candidate.id to (constrained to WorkoutEquipmentFilter.apply(
+                        constrained.program, equipment
+                    ))
+                }
                 val baseProgram = TrainingCatalog.byId(recommendation.programId)
-                // Alternatives are filtered before history-based selection; a past workout
-                // must never bypass today's equipment or movement restrictions.
+                val basePair = filteredPrograms[baseProgram.id]
+                    ?: error("Recommended program is missing from the catalog")
+                if (!basePair.second.canStart) {
+                    AlertDialog.Builder(this@FitnessActivity)
+                        .setTitle("Chưa có động tác phù hợp")
+                        .setMessage("Chương trình này không còn động tác chính phù hợp với dụng cụ và bộ lọc hiện tại. Hãy chọn dụng cụ khác hoặc xem chương trình khác.")
+                        .setPositiveButton("Đã hiểu", null).show()
+                    return@setOnClickListener
+                }
                 val eligibleAlternatives = TrainingCatalog.programs.filter { candidate ->
                     candidate.id != baseProgram.id &&
                         (candidate.id != "advanced" || level.selectedItemPosition >= 2) &&
                         (candidate.id != "weighted" ||
                             (equipment == 2 && level.selectedItemPosition >= 1)) &&
-                        WorkoutConstraintFilter.apply(candidate, constraintProfile).canStart
-                }
+                        filteredPrograms[candidate.id]?.second?.canStart == true
+                }.map { candidate -> filteredPrograms.getValue(candidate.id).second.program }
                 val historySuggestion = WorkoutHistoryAdvisor.suggestVariety(
-                    baseProgram,
+                    basePair.second.program,
                     WorkoutData.history(this@FitnessActivity),
                     eligibleAlternatives
                 )
-                val p = historySuggestion?.program ?: baseProgram
-                val constraintResult = WorkoutConstraintFilter.apply(p, constraintProfile)
-                if (!constraintResult.canStart) {
+                val selectedProgram = historySuggestion?.program ?: basePair.second.program
+                val selectedPair = filteredPrograms[selectedProgram.id] ?: basePair
+                val p = selectedPair.second.program
+                val constraintResult = selectedPair.first
+                val equipmentResult = selectedPair.second
+                if (!equipmentResult.canStart) {
                     AlertDialog.Builder(this@FitnessActivity)
                         .setTitle("Chưa có động tác phù hợp")
-                        .setMessage("Bộ lọc hiện tại không còn động tác chính trong chương trình này. Hãy chọn chương trình khác hoặc bỏ bộ lọc; đừng cố tập qua đau.")
+                        .setMessage("Không còn động tác chính phù hợp với dụng cụ đã chọn. Chibi chưa khởi chạy buổi tập.")
                         .setPositiveButton("Đã hiểu", null).show()
                     return@setOnClickListener
                 }
                 val planned=WorkoutDurationPlanner.build(
-                    constraintResult.program,
+                    equipmentResult.program,
                     level.selectedItemPosition,
                     mins[length.selectedItemPosition],
                     currentExtensionPreferences(constraintProfile)
@@ -581,6 +599,7 @@ class FitnessActivity:Activity() {
                         append("\nCòn khoảng ${unallocatedMinutes} phút chưa được phân bổ. Chibi không tự nhân đôi toàn bộ hiệp để lấp thời gian; hãy chọn chương trình dài hơn hoặc bổ sung khối bài phù hợp.")
                     }
                     if (constraintResult.notice.isNotBlank()) append("\n\n").append(constraintResult.notice)
+                    if (equipmentResult.notice.isNotBlank()) append("\n\n").append(equipmentResult.notice)
                 }
                 AlertDialog.Builder(this@FitnessActivity).setTitle("🐰 Chibi đề xuất: "+p.name)
                     .setMessage("Mục tiêu: "+goals[goal]+" • "+energyLevels[energy]+"\n"+
@@ -768,20 +787,26 @@ class FitnessActivity:Activity() {
             card.addView(txt(program.name,19f))
             val constraints = currentWorkoutConstraintProfile()
             val constrained = WorkoutConstraintFilter.apply(program, constraints)
-            val planned = WorkoutDurationPlanner.build(
+            val equipped = WorkoutEquipmentFilter.apply(
                 constrained.program,
+                recommendationEquipmentSpinner?.selectedItemPosition ?: 0
+            )
+            val planned = WorkoutDurationPlanner.build(
+                equipped.program,
                 level.selectedItemPosition,
                 mins[length.selectedItemPosition],
                 currentExtensionPreferences(constraints)
             )
-            card.addView(txt(program.subtitle+" • "+planned.moves.size+" bước • khoảng "+planned.estimatedMinutes+" phút",13f))
+            card.addView(txt(program.subtitle+" • "+planned.moves.size+" động tác phù hợp • khoảng "+planned.estimatedMinutes+" phút",13f))
             if (constrained.notice.isNotBlank()) card.addView(txt(constrained.notice,12f))
+            if (equipped.notice.isNotBlank()) card.addView(txt(equipped.notice,12f))
+            if (!equipped.canStart) card.addView(txt("Không còn động tác chính phù hợp với dụng cụ đã chọn.",12f))
             val buttons=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
-            buttons.addView(Button(this).apply { text="📖 Xem bài";isAllCaps=false;setOnClickListener {
-                showProgramPreview(program, planned.moves, constraints)
+            buttons.addView(Button(this).apply { text="📖 Xem bài";isAllCaps=false;isEnabled=equipped.canStart;setOnClickListener {
+                showProgramPreview(equipped.program, planned.moves, constraints)
             } },LinearLayout.LayoutParams(0,-2,1f))
-            buttons.addView(Button(this).apply { text="▶ Tập ngay";isAllCaps=false;setOnClickListener {
-                startProgram(program, constraints)
+            buttons.addView(Button(this).apply { text="▶ Tập ngay";isAllCaps=false;isEnabled=equipped.canStart;setOnClickListener {
+                startProgram(equipped.program, constraints)
             } },LinearLayout.LayoutParams(0,-2,1f))
             card.addView(buttons)
             card.addView(Button(this).apply { text="📆 Thêm lịch tuần";isAllCaps=false;setOnClickListener {
@@ -820,6 +845,17 @@ class FitnessActivity:Activity() {
                 .show()
             return
         }
+        val equipmentSelection = recommendationEquipmentSpinner?.selectedItemPosition ?: 0
+        val constrained = WorkoutConstraintFilter.apply(p, constraints)
+        val equipped = WorkoutEquipmentFilter.apply(constrained.program, equipmentSelection)
+        if (!equipped.canStart) {
+            AlertDialog.Builder(this)
+                .setTitle("Chưa có động tác phù hợp")
+                .setMessage(equipped.notice.ifBlank { "Không còn động tác chính phù hợp với dụng cụ đã chọn." })
+                .setPositiveButton("Đã hiểu", null)
+                .show()
+            return
+        }
         val l=level.selectedItemPosition
         val m=mins[length.selectedItemPosition]
         prefs.edit()
@@ -835,10 +871,14 @@ class FitnessActivity:Activity() {
             .putExtra("avoid_overhead_reach", constraints.avoidOverheadReach)
             .putExtra("extension_goal", recommendationGoalSpinner?.selectedItemPosition ?: 0)
             .putExtra("extension_energy", recommendationEnergySpinner?.selectedItemPosition ?: 1)
-            .putExtra("extension_equipment", recommendationEquipmentSpinner?.selectedItemPosition ?: 0)
+            .putExtra("extension_equipment", equipmentSelection)
             .putExtra("extension_impact", effectiveImpactRestriction()))
     }
     private fun addRoutine(p:TrainingProgram) {
+        if (!WorkoutEquipmentFilter.apply(p, recommendationEquipmentSpinner?.selectedItemPosition ?: 0).canStart) {
+            Toast.makeText(this, "Chưa có động tác phù hợp với dụng cụ đã chọn; chưa tạo lịch tuần.", Toast.LENGTH_LONG).show()
+            return
+        }
         if (currentWorkoutConstraintProfile().avoidWristLoad ||
             currentWorkoutConstraintProfile().avoidFloorPositions ||
             currentWorkoutConstraintProfile().avoidOverheadReach) {

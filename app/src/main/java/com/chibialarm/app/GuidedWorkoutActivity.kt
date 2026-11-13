@@ -312,12 +312,14 @@ class GuidedWorkoutActivity:Activity() {
                 savedInstanceState?.getBoolean("workout_avoid_overhead_reach", false) == true
         )
         val constraintResult = WorkoutConstraintFilter.apply(baseProgram, workoutConstraints)
-        if (!constraintResult.canStart) {
-            Toast.makeText(this, "Chưa có động tác chính phù hợp với bộ lọc đã chọn.", Toast.LENGTH_LONG).show()
+        val equipmentSelection = intent.getIntExtra("extension_equipment", 0).coerceIn(0, 2)
+        val equipmentResult = WorkoutEquipmentFilter.apply(constraintResult.program, equipmentSelection)
+        if (!equipmentResult.canStart) {
+            Toast.makeText(this, "Chưa có động tác chính phù hợp với bộ lọc và dụng cụ đã chọn.", Toast.LENGTH_LONG).show()
             finish()
             return
         }
-        program = constraintResult.program
+        program = equipmentResult.program
         val level=intent.getIntExtra("level",0).coerceIn(0,2)
         workoutLevel = level
         val minutes=WorkoutDurationChoices.guidedMinutes(intent.getIntExtra("minutes",15))
@@ -364,6 +366,11 @@ class GuidedWorkoutActivity:Activity() {
         })
         if (constraintResult.notice.isNotBlank()) root.addView(TextView(this).apply {
             text = constraintResult.notice
+            textSize = 13f
+            setPadding(4, 6, 4, 10)
+        })
+        if (equipmentResult.notice.isNotBlank()) root.addView(TextView(this).apply {
+            text = equipmentResult.notice
             textSize = 13f
             setPadding(4, 6, 4, 10)
         })

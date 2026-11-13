@@ -124,6 +124,9 @@ class WorkoutPoseMotionTest {
             WorkoutPoseGuide.Pose.SQUAT, "Hạ xuống rồi đứng lên"
         ))
         assertEquals(null, WorkoutPoseMotion.guidePhaseForStep(
+            WorkoutPoseGuide.Pose.LUNGE, "Bước lùi, hạ thân rồi trở về"
+        ))
+        assertEquals(null, WorkoutPoseMotion.guidePhaseForStep(
             WorkoutPoseGuide.Pose.PLANK, "Giữ thân ổn định"
         ))
     }
@@ -133,6 +136,7 @@ class WorkoutPoseMotionTest {
             WorkoutPoseGuide.Pose.SQUAT, "Chân rộng bằng vai.", 1, 5
         )
         assertTrue(cue.contains("Tư thế minh họa cho bước này"))
+        assertTrue(cue.contains("Minh họa: hạ hông và gập gối"))
         assertTrue(cue.contains("Thở đều, không nín thở"))
         assertTrue(cue.contains("Bước 1 trên 5"))
         assertFalse(cue.contains("Đứng lên."))

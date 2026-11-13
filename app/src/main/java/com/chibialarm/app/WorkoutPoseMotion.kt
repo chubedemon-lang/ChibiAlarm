@@ -88,7 +88,7 @@ object WorkoutPoseMotion {
             WorkoutPoseGuide.Pose.KNEE_PUSH_UP,
             WorkoutPoseGuide.Pose.WALL_PUSH_UP,
             WorkoutPoseGuide.Pose.INCLINE_PUSH_UP -> listOf("hạ ngực", "gập khuỷu", "đưa ngực gần tường") to listOf("đẩy lên", "đẩy ra")
-            WorkoutPoseGuide.Pose.LUNGE -> listOf("hạ gối", "hạ thân") to listOf("đứng lên")
+            WorkoutPoseGuide.Pose.LUNGE -> listOf("hạ gối", "hạ thân") to listOf("đứng lên", "trở về")
             WorkoutPoseGuide.Pose.BRIDGE -> listOf("hạ hông", "hạ chậm") to listOf("nâng hông", "siết mông nâng")
             WorkoutPoseGuide.Pose.BIRD_DOG -> listOf("thu tay", "thu chân") to listOf("duỗi tay", "duỗi chân")
             WorkoutPoseGuide.Pose.DEAD_BUG -> listOf("co về", "thu tay", "thu chân") to listOf("duỗi tay", "duỗi chân")
@@ -127,7 +127,7 @@ object WorkoutPoseMotion {
         val phase = guidePhaseForStep(pose, safeStep)
         val movement = phase?.let { phaseCue(pose, it) } ?: "Tư thế minh họa cho bước này"
         val breathing = phase?.let { breathingCue(pose, it) } ?: "Thở đều, không nín thở."
-        return "\${WorkoutPoseGuide.label(pose)}. $movement. $breathing Bước $safePosition trên $safeTotal: $safeStep"
+        return "${WorkoutPoseGuide.label(pose)}. $movement. $breathing Bước $safePosition trên $safeTotal: $safeStep"
     }
 
     /**

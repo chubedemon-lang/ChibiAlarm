@@ -50,7 +50,7 @@ object WorkoutEffortPlanAdvisor {
     private const val MAX_SETS = 20
 
     private val effortPattern = Regex(
-        """hiệp\\s+(\\d{1,2})\\s*:\\s*(Nhẹ,\\s*còn dư sức|Vừa sức|Khó,\\s*cần nghỉ thêm|Quá sức,\\s*tạm dừng)""",
+        """hiệp\s+(\d{1,2})\s*:\s*(Nhẹ,\s*còn dư sức|Vừa sức|Khó,\s*cần nghỉ thêm|Quá sức,\s*tạm dừng)""",
         RegexOption.IGNORE_CASE
     )
 

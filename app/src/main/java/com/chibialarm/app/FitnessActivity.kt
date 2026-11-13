@@ -44,6 +44,10 @@ class FitnessActivity:Activity() {
         coachTranscript.clear()
         coachTranscriptView = null
         coachTranscriptClearButton = null
+        coachRequestInput = null
+        historyEffortInsightView = null
+        historyEffortAction = null
+        effortPlanSuggestion = null
         speechOutput?.stop()
         speechOutput?.shutdown()
         speechOutput = null
@@ -80,6 +84,10 @@ class FitnessActivity:Activity() {
     private var historySummaryView: TextView? = null
     private var historySuggestionView: TextView? = null
     private var historyRecoveryButton: Button? = null
+    private var historyEffortInsightView: TextView? = null
+    private var historyEffortAction: Button? = null
+    private var coachRequestInput: EditText? = null
+    private var effortPlanSuggestion: WorkoutEffortPlanAdvisor.Suggestion? = null
     private val levels=arrayOf("🌱 Mới bắt đầu","🌿 Đang tập đều","🔥 Có kinh nghiệm")
     private val lengths=WorkoutDurationChoices.labels
     private val mins=WorkoutDurationChoices.minutes
@@ -142,7 +150,15 @@ class FitnessActivity:Activity() {
 
     /** Reads only coarse local workout totals; free-text journal notes never enter the advisor. */
     private fun refreshWorkoutHistoryInsight() {
-        val summary = WorkoutHistoryAdvisor.summarize(WorkoutData.history(this))
+        val workouts = WorkoutData.history(this)
+        val summary = WorkoutHistoryAdvisor.summarize(workouts)
+        val effortSuggestion = WorkoutEffortPlanAdvisor.suggest(workouts)
+        effortPlanSuggestion = effortSuggestion
+        historyEffortInsightView?.apply {
+            visibility = if (effortSuggestion != null) android.view.View.VISIBLE else android.view.View.GONE
+            text = effortSuggestion?.message.orEmpty()
+        }
+        historyEffortAction?.visibility = if (effortSuggestion != null) android.view.View.VISIBLE else android.view.View.GONE
         historySummaryView?.apply {
             visibility = if (summary.sessions > 0) android.view.View.VISIBLE else android.view.View.GONE
             text = "📊 Nhật ký 7 ngày: ${summary.sessions} buổi • ${summary.activeDays} ngày vận động • ${summary.totalMinutes} phút (ghi trên máy)."
@@ -191,6 +207,7 @@ class FitnessActivity:Activity() {
         }
         root.addView(naturalRequest)
         speechInput = naturalRequest
+        coachRequestInput = naturalRequest
         val transcriptPanel = txt("", 14f).apply {
             visibility = android.view.View.GONE
             maxHeight = (190 * resources.displayMetrics.density).toInt()
@@ -359,6 +376,25 @@ class FitnessActivity:Activity() {
         }
         historyRecoveryButton = historyRecovery
         root.addView(historyRecovery)
+        val effortInsight = txt("", 14f).apply { visibility = android.view.View.GONE }
+        historyEffortInsightView = effortInsight
+        root.addView(effortInsight)
+        val effortAction = Button(this).apply {
+            text = "💬 Hỏi Chibi về buổi nhẹ hơn"
+            isAllCaps = false
+            visibility = android.view.View.GONE
+            setOnClickListener {
+                val suggestion = effortPlanSuggestion ?: return@setOnClickListener
+                val input = coachRequestInput ?: return@setOnClickListener
+                input.setText(suggestion.prompt)
+                input.setSelection(input.text.length)
+                input.requestFocus()
+                (getSystemService(INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager)
+                    ?.showSoftInput(input, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+            }
+        }
+        historyEffortAction = effortAction
+        root.addView(effortAction)
         // Session-only handoff: no health preferences are written to SharedPreferences.
         // Review all selections before asking for a recommendation.
         if (intent.hasExtra("coach_goal")) goalSpinner.setSelection(intent.getIntExtra("coach_goal",0).coerceIn(0,goals.lastIndex))

@@ -258,7 +258,7 @@ class GuidedWorkoutRestConfirmationTest {
         val moves = field("moves").get(activity) as List<TrainingMove>
         val moveIndex = moves.indexOfFirst { WorkoutSetTracker.parse(it.dose) != null }
         assertTrue("The starter program should contain a set-based move", moveIndex >= 0)
-        val plan = WorkoutSetTracker.parse(moves[moveIndex].dose)!!
+        val plan = WorkoutSetTracker.parse(moves[moveIndex].dose, moves[moveIndex].restSeconds)!!
         val id = field("sessionId").get(activity) as String
         field("index").setInt(activity, moveIndex)
         @Suppress("UNCHECKED_CAST")

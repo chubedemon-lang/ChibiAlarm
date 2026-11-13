@@ -72,6 +72,65 @@ object WorkoutPoseMotion {
     }
 
     /**
+     * Select a still frame only when the current instruction clearly names one
+     * of the two illustrated movement phases. Setup, alignment and compound
+     * instructions remain neutral rather than showing a misleading phase.
+     */
+    fun guidePhaseForStep(pose: WorkoutPoseGuide.Pose, instruction: String): Boolean? {
+        val text = instruction.lowercase(java.util.Locale.ROOT)
+        val cues: Pair<List<String>, List<String>> = when (pose) {
+            WorkoutPoseGuide.Pose.SQUAT -> listOf("hạ hông", "hạ xuống", "ngồi xuống") to listOf("đứng lên")
+            WorkoutPoseGuide.Pose.HIP_HINGE,
+            WorkoutPoseGuide.Pose.RESISTANCE_HINGE -> listOf("đẩy hông ra sau", "nghiêng thân") to listOf("đứng thẳng", "đưa hông về trước")
+            WorkoutPoseGuide.Pose.RESISTANCE_ROW -> listOf("hạ tay", "hạ tải") to listOf("kéo khuỷu", "kéo tay")
+            WorkoutPoseGuide.Pose.RESISTANCE_PRESS -> listOf("hạ tải", "hạ về") to listOf("đẩy tải lên", "đẩy lên")
+            WorkoutPoseGuide.Pose.PUSH_UP,
+            WorkoutPoseGuide.Pose.KNEE_PUSH_UP,
+            WorkoutPoseGuide.Pose.WALL_PUSH_UP,
+            WorkoutPoseGuide.Pose.INCLINE_PUSH_UP -> listOf("hạ ngực", "gập khuỷu", "đưa ngực gần tường") to listOf("đẩy lên", "đẩy ra")
+            WorkoutPoseGuide.Pose.LUNGE -> listOf("hạ gối", "hạ thân") to listOf("đứng lên")
+            WorkoutPoseGuide.Pose.BRIDGE -> listOf("hạ hông", "hạ chậm") to listOf("nâng hông", "siết mông nâng")
+            WorkoutPoseGuide.Pose.BIRD_DOG -> listOf("thu tay", "thu chân") to listOf("duỗi tay", "duỗi chân")
+            WorkoutPoseGuide.Pose.DEAD_BUG -> listOf("co về", "thu tay", "thu chân") to listOf("duỗi tay", "duỗi chân")
+            WorkoutPoseGuide.Pose.CAT_COW -> listOf("cuộn lưng") to listOf("thả lưng")
+            WorkoutPoseGuide.Pose.MARCH,
+            WorkoutPoseGuide.Pose.SUPPORTED_MARCH -> listOf("hạ chân", "hạ gối", "đưa chân xuống") to listOf("nâng gối", "nhấc gối")
+            WorkoutPoseGuide.Pose.HIP_ABDUCTION -> listOf("hạ chân") to listOf("đưa chân sang bên", "nhấc chân")
+            WorkoutPoseGuide.Pose.SCAPULAR_SQUEEZE -> listOf("thả lỏng bả vai", "thả bả vai") to listOf("kéo nhẹ hai bả vai", "siết bả vai")
+            WorkoutPoseGuide.Pose.FOREARM_WALL_PRESS -> listOf("thả cẳng tay") to listOf("ấn nhẹ cẳng tay", "ấn cẳng tay")
+            WorkoutPoseGuide.Pose.SIDE_STEP -> listOf("đưa chân về", "khép chân") to listOf("bước ngang", "bước sang")
+            WorkoutPoseGuide.Pose.SEATED_KNEE_RAISE -> listOf("hạ chân") to listOf("nâng gối")
+            WorkoutPoseGuide.Pose.CALF_RAISE -> listOf("hạ gót") to listOf("nhón gót", "nâng gót")
+            else -> return null
+        }
+        val alternate = cues.first.any { it in text }
+        val primary = cues.second.any { it in text }
+        return when {
+            alternate && !primary -> true
+            primary && !alternate -> false
+            else -> null
+        }
+    }
+
+    /** Spoken step guidance that does not invent a movement phase for setup or hold cues. */
+    fun spokenInstructionStepCue(
+        pose: WorkoutPoseGuide.Pose,
+        step: String,
+        position: Int,
+        total: Int
+    ): String {
+        val safeTotal = total.coerceIn(1, 100)
+        val safePosition = position.coerceIn(1, safeTotal)
+        val safeStep = step.trim().replace(Regex("\\s+"), " ")
+            .take(180)
+            .ifBlank { "Thực hiện chậm trong biên độ thoải mái." }
+        val phase = guidePhaseForStep(pose, safeStep)
+        val movement = phase?.let { phaseCue(pose, it) } ?: "Tư thế minh họa cho bước này"
+        val breathing = phase?.let { breathingCue(pose, it) } ?: "Thở đều, không nín thở."
+        return "\${WorkoutPoseGuide.label(pose)}. $movement. $breathing Bước $safePosition trên $safeTotal: $safeStep"
+    }
+
+    /**
      * Conservative breathing prompts for a spoken step. The alternate illustration
      * phase is the lowering/return phase for these resistance patterns; other movements
      * get a neutral reminder rather than an invented inhale/exhale mapping.

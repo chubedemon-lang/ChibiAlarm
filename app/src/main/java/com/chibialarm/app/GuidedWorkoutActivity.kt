@@ -73,8 +73,7 @@ class GuidedWorkoutActivity:Activity() {
     private var spoken:TextToSpeech?=null
     private var ready=false
     // Last selected step cue is kept in memory only so voice can repeat that exact step.
-    private var lastGuideStepCue:String?=null
-    private var lastGuideStepMoveIndex:Int=-1
+    private var lastGuideStepCue:WorkoutStepGuide.SelectedCue?=null
     // Guest-only checkpoint; authenticated profiles must use isolated storage.
     private val checkpoint by lazy { getSharedPreferences("chibi_workout_checkpoint_guest", MODE_PRIVATE) }
     // Index-scoped rep guidance: completed steps are never retroactively edited.
@@ -1048,9 +1047,7 @@ class GuidedWorkoutActivity:Activity() {
             WorkoutVoiceCommands.Command.REPEAT_STEP -> {
                 val move = moves.getOrNull(index)
                 if (move != null && !pausedForSafety) {
-                    val cue = lastGuideStepCue.takeIf { lastGuideStepMoveIndex == index }
-                        ?: WorkoutStepGuide.spokenCue(move.name, move.steps, 1)
-                    speak(cue)
+                    speak(WorkoutStepGuide.repeatCue(index, lastGuideStepCue, move.name, move.steps))
                 }
             }
             WorkoutVoiceCommands.Command.EASIER_AND_REST -> {
@@ -1684,8 +1681,10 @@ class GuidedWorkoutActivity:Activity() {
             .setPositiveButton("Bước tiếp →", null)
             .create()
         fun renderStep() {
-            lastGuideStepCue = WorkoutStepGuide.spokenCue(move.name, move.steps, walkthrough.position)
-            lastGuideStepMoveIndex = index
+            lastGuideStepCue = WorkoutStepGuide.SelectedCue(
+                moveIndex = index,
+                speech = WorkoutStepGuide.spokenCue(move.name, move.steps, walkthrough.position)
+            )
             label.text = "Bước ${walkthrough.position}/${walkthrough.steps.size}\n\n" +
                 "${walkthrough.currentStep}\n\n🌿 Dễ hơn: ${move.easier}\n⚠️ ${move.avoid}"
             label.contentDescription =
@@ -1720,9 +1719,10 @@ class GuidedWorkoutActivity:Activity() {
             }
             dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
                 val cue = lastGuideStepCue
+                    ?.takeIf { it.moveIndex == index }
+                    ?.speech
                     ?: WorkoutStepGuide.spokenCue(move.name, move.steps, walkthrough.position)
-                lastGuideStepCue = cue
-                lastGuideStepMoveIndex = index
+                lastGuideStepCue = WorkoutStepGuide.SelectedCue(index, cue)
                 speak(cue)
             }
         }
@@ -1744,7 +1744,6 @@ class GuidedWorkoutActivity:Activity() {
     }
     private fun displayStep() {
         lastGuideStepCue = null
-        lastGuideStepMoveIndex = -1
         paused=true;handler.removeCallbacks(tick)
         resting=false
         restDeadline=0L

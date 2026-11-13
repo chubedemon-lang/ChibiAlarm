@@ -132,20 +132,46 @@ class CoachActivity:Activity() {
             messages.addView(bubble,LinearLayout.LayoutParams(-1,-2).apply { bottomMargin=11 })
         }
     }
-    private fun append(role:String,value:String) {
-        history.put(JSONObject().put("role",role).put("text",value.take(2500)))
+    /** Keep journal-derived health details transient; never copy them into chat history storage. */
+    private fun persistChatHistory() {
+        val durable = JSONArray()
+        for (index in 0 until history.length()) {
+            val item = history.optJSONObject(index) ?: continue
+            if (!item.optBoolean("ephemeral", false)) durable.put(item)
+        }
+        memory.edit().putString("messages", durable.toString()).apply()
+    }
+
+    private fun append(role:String,value:String,persist:Boolean=true) {
+        val item = JSONObject().put("role",role).put("text",value.take(2500))
+        if (!persist) item.put("ephemeral",true)
+        history.put(item)
         while(history.length()>14) history.remove(0)
-        memory.edit().putString("messages",history.toString()).apply();redraw()
+        persistChatHistory();redraw()
         if(role=="assistant" && autoSpeak && speakerReady) speaker?.speak(value.take(1100),TextToSpeech.QUEUE_FLUSH,null,"coach-reply")
     }
     private fun chat() {
         val question=prompt.text.toString().trim().take(900)
         if(question.isEmpty()) return
         prompt.setText("")
+
+        // Answer local journal questions before interpreting the message as a new plan reply.
+        // The prompt and answer remain visible only for this Activity session and are not persisted.
+        val journalReply = WorkoutHistoryConversation.answer(question, WorkoutData.history(this))
+        if (journalReply != null) {
+            append("user",question,persist=false)
+            append(
+                "assistant",
+                journalReply + "\\n\\n(Đọc từ nhật ký trên thiết bị; câu hỏi và kết quả không được lưu vào lịch sử chat.)",
+                persist=false
+            )
+            return
+        }
+
         append("user",question)
         val next=FitnessCoachConversation.parseReply(fitnessContext,question)
         fitnessContext=FitnessCoachConversation.merge(fitnessContext,next)
-        append("assistant",next.reply+"\n\n"+FitnessCoachFollowUp.nextQuestion(fitnessContext!!)+"\n(Chế độ Fitness ngoại tuyến)")
+        append("assistant",next.reply+"\\n\\n"+FitnessCoachFollowUp.nextQuestion(fitnessContext!!)+"\\n(Chế độ Fitness ngoại tuyến)")
     }
     /**
      * Android's speech recognizer may be provided by another app and may use

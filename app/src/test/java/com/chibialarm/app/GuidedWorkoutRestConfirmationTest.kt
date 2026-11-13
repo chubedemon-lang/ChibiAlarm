@@ -249,6 +249,44 @@ class GuidedWorkoutRestConfirmationTest {
     }
 
 
+    @Test fun finalSetEffortIsSavedWithoutStartingAnotherSetRest() {
+        val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup().get()
+        fun field(name: String) = GuidedWorkoutActivity::class.java.getDeclaredField(name).apply {
+            isAccessible = true
+        }
+        @Suppress("UNCHECKED_CAST")
+        val moves = field("moves").get(activity) as List<TrainingMove>
+        val moveIndex = moves.indexOfFirst { WorkoutSetTracker.parse(it.dose) != null }
+        assertTrue("The starter program should contain a set-based move", moveIndex >= 0)
+        val plan = WorkoutSetTracker.parse(moves[moveIndex].dose)!!
+        val id = field("sessionId").get(activity) as String
+        field("index").setInt(activity, moveIndex)
+        @Suppress("UNCHECKED_CAST")
+        (field("completedSetsByMove").get(activity) as MutableMap<Int, Int>)[moveIndex] = plan.maximumSets
+
+        val method = GuidedWorkoutActivity::class.java.getDeclaredMethod(
+            "showSetEffortCheckIn",
+            Int::class.javaPrimitiveType,
+            String::class.java,
+            Int::class.javaPrimitiveType,
+            WorkoutSetTracker.Plan::class.java,
+            Boolean::class.javaPrimitiveType
+        ).apply { isAccessible = true }
+        method.invoke(activity, moveIndex, id, plan.maximumSets, plan, false)
+
+        val dialog = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
+        assertTrue(dialog.isShowing)
+        val choices = dialog.listView
+        choices.performItemClick(choices.getChildAt(0), 0, choices.getItemIdAtPosition(0))
+        shadowOf(Looper.getMainLooper()).idle()
+
+        @Suppress("UNCHECKED_CAST")
+        val effort = field("effortLevelsByMove").get(activity) as Map<Int, List<WorkoutEffortFeedback.Level?>>
+        assertEquals(listOf(WorkoutEffortFeedback.Level.EASY), effort[moveIndex])
+        assertTrue("A final-set check-in must not start an extra rest timer", !field("resting").getBoolean(activity))
+        activity.finish()
+    }
+
     @Test fun onPauseSynchronouslyPersistsCheckpointAndRestoreKeepsProgressPaused() {
         val sessionId = "550e8400-e29b-41d4-a716-446655440099"
         val firstController = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup()

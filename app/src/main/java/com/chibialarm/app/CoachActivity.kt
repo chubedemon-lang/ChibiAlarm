@@ -40,7 +40,8 @@ class CoachActivity:Activity() {
             impact = value("fitness_impact"),
             reply = "",
             avoidWristLoad = booleanValue("fitness_avoid_wrist_load"),
-            avoidFloorPositions = booleanValue("fitness_avoid_floor_positions")
+            avoidFloorPositions = booleanValue("fitness_avoid_floor_positions"),
+            avoidOverheadReach = booleanValue("fitness_avoid_overhead_reach")
         )
     }
 
@@ -55,6 +56,7 @@ class CoachActivity:Activity() {
             context.level?.let { outState.putInt("fitness_level", it) }
             context.avoidWristLoad?.let { outState.putBoolean("fitness_avoid_wrist_load", it) }
             context.avoidFloorPositions?.let { outState.putBoolean("fitness_avoid_floor_positions", it) }
+            context.avoidOverheadReach?.let { outState.putBoolean("fitness_avoid_overhead_reach", it) }
         }
         super.onSaveInstanceState(outState)
     }
@@ -79,6 +81,7 @@ class CoachActivity:Activity() {
             current?.level?.let { intent.putExtra("coach_level",it) }
             current?.avoidWristLoad?.let { intent.putExtra("coach_avoid_wrist_load",it) }
             current?.avoidFloorPositions?.let { intent.putExtra("coach_avoid_floor_positions",it) }
+            current?.avoidOverheadReach?.let { intent.putExtra("coach_avoid_overhead_reach",it) }
             startActivity(intent)
         } })
         buttons.addView(Button(this).apply { text="🗑 Xóa chat";setOnClickListener {

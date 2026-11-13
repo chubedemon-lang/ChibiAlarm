@@ -14,6 +14,9 @@ object WorkoutMidSessionPreviewFormatter {
             preview.replacements.forEach { replacement ->
                 append("• ").append(replacement).append('\n')
             }
+            if (preview.replacements.isNotEmpty()) {
+                append("Lưu ý: bài thay thế có thể khác nhóm cơ hoặc cường độ; hãy đọc hướng dẫn và xác nhận trước khi áp dụng.\\n")
+            }
             preview.removedMoves.distinct().forEach { removed ->
                 append("• Bỏ khỏi phần còn lại: ").append(removed).append('\n')
             }

@@ -98,6 +98,22 @@ object FitnessCoachConversation {
                 })
             question == FitnessCoachFollowUp.Question.FLOOR_POSITIONS && answer in affirmativeReplies ->
                 parsed.copy(avoidFloorPositions = true, reply = "Đã ghi nhận cần tránh các tư thế nằm hoặc quỳ sàn.")
+            question == FitnessCoachFollowUp.Question.OVERHEAD_REACH && parsed.avoidOverheadReach != null ->
+                parsed.copy(reply = if (parsed.avoidOverheadReach) {
+                    "Đã ghi nhận cần tránh đưa tay hoặc tải lên quá đầu."
+                } else {
+                    "Đã ghi nhận có thể đưa tay hoặc tải lên quá đầu."
+                })
+            question == FitnessCoachFollowUp.Question.OVERHEAD_REACH && answer in negativeReplies ->
+                parsed.copy(
+                    avoidOverheadReach = false,
+                    reply = "Đã ghi nhận không cần tránh đưa tay hoặc tải lên quá đầu."
+                )
+            question == FitnessCoachFollowUp.Question.OVERHEAD_REACH && answer in affirmativeReplies ->
+                parsed.copy(
+                    avoidOverheadReach = true,
+                    reply = "Đã ghi nhận cần tránh đưa tay hoặc tải lên quá đầu."
+                )
             question == FitnessCoachFollowUp.Question.ENERGY &&
                 answer in setOf("mệt", "met", "hơi mệt", "hoi met", "ít năng lượng", "it nang luong") ->
                 parsed.copy(energy = 0, reply = "Đã ghi nhận mức năng lượng thấp. Tao sẽ ưu tiên buổi tập nhẹ.")

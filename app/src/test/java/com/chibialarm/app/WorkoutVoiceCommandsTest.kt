@@ -17,6 +17,10 @@ class WorkoutVoiceCommandsTest {
         assertEquals(C.PREVIOUS, WorkoutVoiceCommands.parse("quay lại"))
         assertEquals(C.REPEAT, WorkoutVoiceCommands.parse("nhắc lại"))
         assertEquals(C.REPEAT, WorkoutVoiceCommands.parse("nhac lai huong dan"))
+        assertEquals(C.REPEAT_STEP, WorkoutVoiceCommands.parse("Đọc lại bước vừa rồi"))
+        assertEquals(C.REPEAT_STEP, WorkoutVoiceCommands.parse("Nhắc lại bước này"))
+        assertEquals(C.REPEAT_STEP, WorkoutVoiceCommands.parse("Đọc lại bước đang xem"))
+        assertEquals(C.REPEAT, WorkoutVoiceCommands.parse("Nhắc lại toàn bộ hướng dẫn"))
         assertEquals(C.NEXT, WorkoutVoiceCommands.parse("bỏ qua bài này"))
         assertEquals(C.NEXT, WorkoutVoiceCommands.parse("chuyển bài"))
         assertEquals(C.EASIER, WorkoutVoiceCommands.parse("Nhẹ hơn"))
@@ -89,11 +93,15 @@ class WorkoutVoiceCommandsTest {
         assertEquals("Mở hướng dẫn từng bước cho động tác hiện tại",
             WorkoutVoiceCommands.describe(C.STEP_GUIDE))
         assertFalse(WorkoutVoiceCommands.mayEditReps("Hướng dẫn từng bước"))
+        assertFalse(WorkoutVoiceCommands.mayEditReps("Đọc lại bước vừa rồi"))
+        assertEquals("Đọc lại bước hướng dẫn đang xem", WorkoutVoiceCommands.describe(C.REPEAT_STEP))
     }
 
     @Test fun safetyAndPauseTakePriorityOverStepByStepGuide() {
         assertEquals(C.PAIN, WorkoutVoiceCommands.parse("Đau gối, hướng dẫn từng bước"))
         assertEquals(C.PAUSE, WorkoutVoiceCommands.parse("Tạm dừng và mở hướng dẫn"))
+        assertEquals(C.PAIN, WorkoutVoiceCommands.parse("Đau gối, đọc lại bước vừa rồi"))
+        assertEquals(C.PAUSE, WorkoutVoiceCommands.parse("Tạm dừng rồi nhắc lại bước này"))
     }
 
     @Test fun safetyAndPauseTakePriorityOverStatusRequests() {

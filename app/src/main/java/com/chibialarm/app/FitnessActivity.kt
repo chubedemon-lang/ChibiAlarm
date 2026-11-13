@@ -295,6 +295,14 @@ class FitnessActivity:Activity() {
         }
         root.addView(equipmentSpinner)
         recommendationEquipmentSpinner = equipmentSpinner
+        equipmentSpinner.onItemSelectedListener=object:android.widget.AdapterView.OnItemSelectedListener {
+            override fun onNothingSelected(parent:android.widget.AdapterView<*>?) {}
+            override fun onItemSelected(parent:android.widget.AdapterView<*>?,view:android.view.View?,position:Int,id:Long) {
+                if (::filter.isInitialized) {
+                    programContainer?.let { drawPrograms(it,categories[filter.selectedItemPosition]) }
+                }
+            }
+        }
         root.addView(txt("🦵 Mức độ vận động phù hợp",19f))
         val impactOptions=arrayOf("Không có hạn chế được báo","Ưu tiên bài ít tác động, không nhảy","Đang đau hoặc có chấn thương")
         val impactSpinner=Spinner(this).apply {

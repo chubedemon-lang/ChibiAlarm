@@ -95,4 +95,21 @@ class WorkoutMidSessionPreviewFormatterTest {
         assertTrue(text.contains("… 13 bước trước trong phiên được giữ nguyên"))
         assertTrue(text.contains("14. Đang tập — Động tác 14"))
     }
+
+    @Test fun previewExplainsThatAConstraintBasedReplacementMayNotBeEquivalent() {
+        val result = preview(
+            listOf(
+                move("Khởi động tại chỗ"),
+                move("Đẩy vai với tạ đơn hoặc dây"),
+                move("Thả lỏng")
+            ),
+            currentIndex = 1,
+            request = WorkoutMidSessionRequest.Request(avoidOverheadReach = true)
+        )
+
+        val text = WorkoutMidSessionPreviewFormatter.format(result)
+        assertTrue(text.contains("Đẩy vai với tạ đơn hoặc dây → Mở vai và ngực"))
+        assertTrue(text.contains("bài thay thế có thể khác nhóm cơ hoặc cường độ"))
+        assertTrue(text.contains("xác nhận trước khi áp dụng"))
+    }
 }

@@ -123,7 +123,8 @@ object FitnessCoachConversation {
             impact = if (previous.impact == 2 || next.impact == 2) 2 else next.impact ?: previous.impact,
             reply = next.reply,
             avoidWristLoad = next.avoidWristLoad ?: previous.avoidWristLoad,
-            avoidFloorPositions = next.avoidFloorPositions ?: previous.avoidFloorPositions
+            avoidFloorPositions = next.avoidFloorPositions ?: previous.avoidFloorPositions,
+            avoidOverheadReach = next.avoidOverheadReach ?: previous.avoidOverheadReach
         )
     }
 }

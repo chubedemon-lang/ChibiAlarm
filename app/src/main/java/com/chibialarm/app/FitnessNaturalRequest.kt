@@ -202,21 +202,21 @@ object FitnessNaturalRequest {
         // Strip explicit permission phrases before checking restrictions so
         // "không cần tránh đưa tay qua đầu" cannot become a false restriction.
         val overheadRelaxations = listOf(
-            "bo han che dua tay qua dau", "bo tranh dua tay qua dau",
-            "khong can tranh dua tay qua dau", "khong con can tranh dua tay qua dau",
-            "co the dua tay qua dau", "dua tay qua dau duoc",
-            "co the nang tay qua dau", "nang tay qua dau duoc",
-            "co the voi tay qua dau"
+            "bo han che dua tay qua headword", "bo tranh dua tay qua headword",
+            "khong can tranh dua tay qua headword", "khong con can tranh dua tay qua headword",
+            "co the dua tay qua headword", "dua tay qua headword duoc",
+            "co the nang tay qua headword", "nang tay qua headword duoc",
+            "co the voi tay qua headword"
         )
         val overheadRestrictionText = overheadRelaxations.fold(text) { remaining, phrase ->
             remaining.replace(phrase, " ")
         }
         val overheadRestrictions = listOf(
-            "khong dua tay qua dau", "tranh dua tay qua dau", "dung dua tay qua dau",
-            "khong nang tay qua dau", "tranh nang tay qua dau",
-            "khong day ta qua dau", "dung day ta qua dau", "tranh dong tac qua dau",
-            "khong voi tay qua dau", "han che dua tay qua dau",
-            "han che dong tac qua dau"
+            "khong dua tay qua headword", "tranh dua tay qua headword", "dung dua tay qua headword",
+            "khong nang tay qua headword", "tranh nang tay qua headword",
+            "khong day ta qua headword", "dung day ta qua headword", "tranh dong tac qua headword",
+            "khong voi tay qua headword", "han che dua tay qua headword",
+            "han che dong tac qua headword"
         )
         val avoidOverheadReach = when {
             overheadRestrictions.any(overheadRestrictionText::contains) -> true

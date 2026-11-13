@@ -16,6 +16,7 @@ object WorkoutMidSessionRequest {
         val lowEnergy: Boolean = false,
         val avoidWristLoad: Boolean = false,
         val avoidFloorPositions: Boolean = false,
+        val avoidOverheadReach: Boolean = false,
         val preferEasier: Boolean = false,
         val restSeconds: Int? = null,
         val avoidExternalLoad: Boolean = false,
@@ -23,6 +24,7 @@ object WorkoutMidSessionRequest {
         // relax a session-only constraint without treating an unrelated utterance as consent.
         val allowWristLoad: Boolean = false,
         val allowFloorPositions: Boolean = false,
+        val allowOverheadReach: Boolean = false,
         // Missing tools are tracked individually. A catalog move with alternative tools
         // remains valid while at least one of its declared options is available.
         val unavailableEquipment: Set<TrainingEquipment> = emptySet()
@@ -32,6 +34,7 @@ object WorkoutMidSessionRequest {
             require(restSeconds == null || restSeconds in 15..120)
             require(!(avoidWristLoad && allowWristLoad))
             require(!(avoidFloorPositions && allowFloorPositions))
+            require(!(avoidOverheadReach && allowOverheadReach))
         }
 
         /** True only when the request changes the rest countdown and nothing else. */
@@ -45,6 +48,8 @@ object WorkoutMidSessionRequest {
                 !avoidExternalLoad &&
                 !allowWristLoad &&
                 !allowFloorPositions &&
+                !avoidOverheadReach &&
+                !allowOverheadReach &&
                 unavailableEquipment.isEmpty()
     }
 
@@ -101,6 +106,8 @@ object WorkoutMidSessionRequest {
             "dung nam", "dung quy", "khong nam", "khong quy", "tranh nam", "tranh quy"
         )
         val allowFloorPositions = fitness.avoidFloorPositions == false
+        val avoidOverheadReach = fitness.avoidOverheadReach == true
+        val allowOverheadReach = fitness.avoidOverheadReach == false
 
         val preferEasier = lowEnergy || has(
             "nhe hon", "de hon", "giam do kho", "doi bai nhe",
@@ -148,6 +155,7 @@ object WorkoutMidSessionRequest {
 
         if (remainingMinutes == null && !lowEnergy && !avoidWristLoad && !avoidFloorPositions &&
             !allowWristLoad && !allowFloorPositions &&
+            !avoidOverheadReach && !allowOverheadReach &&
             !preferEasier && restSeconds == null && !avoidExternalLoad &&
             unavailableEquipment.isEmpty()
         ) return Result.Unsupported
@@ -163,6 +171,8 @@ object WorkoutMidSessionRequest {
                 avoidExternalLoad = avoidExternalLoad,
                 allowWristLoad = allowWristLoad,
                 allowFloorPositions = allowFloorPositions,
+                avoidOverheadReach = avoidOverheadReach,
+                allowOverheadReach = allowOverheadReach,
                 unavailableEquipment = unavailableEquipment
             )
         )

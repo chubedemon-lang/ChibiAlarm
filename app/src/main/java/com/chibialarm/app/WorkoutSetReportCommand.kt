@@ -22,8 +22,8 @@ object WorkoutSetReportCommand {
             """toi da thuc hien duoc|toi thuc hien duoc|toi da thuc hien|toi thuc hien|""" +
             """da lam duoc|da lam|da thuc hien duoc|da thuc hien|""" +
             """toi da giu duoc|toi giu duoc|da giu duoc|da giu|""" +
-            """toi da hoan thanh|da hoan thanh|hoan thanh|hiep nay)s+($number)s*""" +
-            """(lan|cai|reps?|nhip|giay|s)(?:s+(?:roi|xong))?$"""
+            """toi da hoan thanh|da hoan thanh|hoan thanh|hiep nay)\\s+($number)\\s*""" +
+            """(lan|cai|reps?|nhip|giay|s)(?:\\s+(?:roi|xong))?$"""
     )
 
     private val smallNumbers = mapOf(

@@ -67,6 +67,10 @@ object WorkoutEffortHistoryConversation {
             return "Chưa có check-in cảm nhận hợp lệ trong nhật ký trên máy. Hãy hoàn thành và lưu một buổi Guided Workout có chọn mức độ gắng sức trước nhé."
         }
 
+        if (isHardestQuestion(query)) {
+            return hardestEffortAnswer(sessions)
+        }
+
         if (query.contains("qua suc")) {
             val events = sessions.flatMap { session ->
                 session.moves.flatMap { move ->
@@ -177,11 +181,85 @@ object WorkoutEffortHistoryConversation {
             "hiệp " + it.index + ": " + it.level.label
         }
 
+    private data class HardestMove(
+        val name: String,
+        val hardSets: Int,
+        val veryHardSets: Int,
+        val worstSeverity: Int,
+        val latestDate: LocalDate
+    )
+
+    /**
+     * Ranks only the five most recent sessions with valid self-reported effort.
+     * It reports the user's labels; it does not infer injury risk or prescribe progression.
+     */
+    private fun hardestEffortAnswer(sessions: List<Session>): String {
+        val recent = sessions.take(5)
+        val ranked = recent
+            .flatMap { session -> session.moves.map { session to it } }
+            .groupBy { normalize(it.second.name) }
+            .values
+            .mapNotNull { observations ->
+                val levels = observations.flatMap { it.second.sets }.map { it.level }
+                val hard = levels.count { it == WorkoutEffortFeedback.Level.HARD }
+                val veryHard = levels.count { it == WorkoutEffortFeedback.Level.VERY_HARD }
+                val worst = levels.maxOfOrNull { level ->
+                    when (level) {
+                        WorkoutEffortFeedback.Level.EASY -> 0
+                        WorkoutEffortFeedback.Level.MODERATE -> 1
+                        WorkoutEffortFeedback.Level.HARD -> 2
+                        WorkoutEffortFeedback.Level.VERY_HARD -> 3
+                    }
+                } ?: return@mapNotNull null
+                if (worst < 2) return@mapNotNull null
+                val latestDate = observations.maxOf { it.first.date }
+                HardestMove(
+                    name = observations.first().second.name,
+                    hardSets = hard,
+                    veryHardSets = veryHard,
+                    worstSeverity = worst,
+                    latestDate = latestDate
+                )
+            }
+            .sortedWith(
+                compareByDescending<HardestMove> { it.worstSeverity }
+                    .thenByDescending { it.veryHardSets }
+                    .thenByDescending { it.hardSets }
+                    .thenByDescending { it.latestDate }
+                    .thenBy { normalize(it.name) }
+            )
+            .take(3)
+
+        if (ranked.isEmpty()) {
+            return "Trong ${recent.size} buổi có check-in gần nhất, chưa có hiệp nào bạn tự đánh dấu “Khó, cần nghỉ thêm” hoặc “Quá sức, tạm dừng”. Điều này không chứng minh các bài đều dễ hay an toàn; chỉ phản ánh dữ liệu bạn đã chọn."
+        }
+
+        val lines = ranked.map { move ->
+            val counts = buildList {
+                if (move.hardSets > 0) add("${move.hardSets} hiệp khó")
+                if (move.veryHardSets > 0) add("${move.veryHardSets} hiệp quá sức")
+            }.joinToString(", ")
+            "• ${move.name}: ${counts}; check-in gần nhất ${move.latestDate.format(dateFormat)}"
+        }
+        return "Trong ${recent.size} buổi có check-in gần nhất, các bài bạn tự đánh dấu khó nhất là:\\n" +
+            lines.joinToString("\\n") +
+            "\\nĐây là cảm nhận tự khai báo, không phải phép đo kỹ thuật, thể lực hay chẩn đoán y tế. Nếu có đau hoặc triệu chứng bất thường, hãy dừng bài tập thay vì dựa vào bảng xếp hạng này."
+    }
+
+    private fun isHardestQuestion(text: String): Boolean = listOf(
+        "bai nao met nhat", "bai nao lam tao duoi nhat", "bai nao lam minh duoi nhat",
+        "bai nao kho nhat", "dong tac nao kho nhat", "bai tap nao kho nhat",
+        "bai nao duoi nhat", "bai nao lam tao met", "dong tac nao met nhat"
+    ).any { text.contains(it) }
+
     private fun isEffortQuestion(text: String): Boolean = listOf(
         "cam nhan", "cam thay", "muc do gang suc", "gang suc", "qua suc",
         "hiep nao", "so sanh cam nhan", "so sanh muc do",
         "lan truoc kho", "lan truoc thay", "buoi truoc kho", "buoi truoc thay",
-        "kho hay de", "de hay kho"
+        "kho hay de", "de hay kho", "bai nao met nhat", "bai nao kho nhat",
+        "bai nao lam tao duoi nhat", "bai nao lam minh duoi nhat",
+        "dong tac nao kho nhat", "bai tap nao kho nhat", "bai nao duoi nhat",
+        "dong tac nao met nhat"
     ).any { text.contains(it) }
 
     private fun isComparisonQuestion(text: String): Boolean =

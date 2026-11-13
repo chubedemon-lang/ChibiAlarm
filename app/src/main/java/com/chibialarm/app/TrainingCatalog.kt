@@ -16,7 +16,8 @@ data class TrainingMove(
     val avoid:String,
     val seconds:Int=60,
     val restSeconds:Int=if (dose.contains("giây", ignoreCase=true)) 30 else 45,
-    val equipmentOptions:Set<TrainingEquipment> = emptySet()
+    val equipmentOptions:Set<TrainingEquipment> = emptySet(),
+    val requiresOverheadReach:Boolean = false
 ) {
     val requiresExternalLoad:Boolean
         get() = equipmentOptions.any { it == TrainingEquipment.DUMBBELL || it == TrainingEquipment.RESISTANCE_BAND }
@@ -34,8 +35,8 @@ data class TrainingProgram(
     val caution:String="Thở đều, tập trong phạm vi dễ chịu. Dừng khi đau, chóng mặt, đau ngực hoặc khó thở bất thường."
 )
 object TrainingCatalog {
-    private fun exercise(n:String,d:String,s:String,e:String,a:String="Nếu khó chịu hoặc mất kiểm soát kỹ thuật, dừng hoặc giảm mức độ.",secs:Int=60,restSecs:Int=if(d.contains("giây",ignoreCase=true))30 else 45,equipmentOptions:Set<TrainingEquipment> = emptySet())=
-        TrainingMove(n,d,s,e,a,secs,restSecs,equipmentOptions)
+    private fun exercise(n:String,d:String,s:String,e:String,a:String="Nếu khó chịu hoặc mất kiểm soát kỹ thuật, dừng hoặc giảm mức độ.",secs:Int=60,restSecs:Int=if(d.contains("giây",ignoreCase=true))30 else 45,equipmentOptions:Set<TrainingEquipment> = emptySet(),requiresOverheadReach:Boolean=false)=
+        TrainingMove(n,d,s,e,a,secs,restSecs,equipmentOptions,requiresOverheadReach)
     private val warm=exercise("Khởi động tại chỗ","3–5 phút",
         "Đi bộ tại chỗ, xoay vai và cổ chân chậm, nâng gối nhẹ. Tăng tốc từng chút.",
         "Bước chậm, có thể vịn ghế chắc chắn.","Không xoay giật khớp.",120)
@@ -147,7 +148,7 @@ object TrainingCatalog {
         "Ngồi hoặc đứng vững, giữ tạ nhẹ ngang vai hoặc đặt giữa dây dưới bàn chân. Đẩy lên có kiểm soát, không khóa cứng khuỷu, hạ về ngang vai.",
         "Dùng tải rất nhẹ, tập từng tay hoặc giảm biên độ.",
         "Không ưỡn lưng hay nín thở; dừng nếu đau vai hoặc tê.",90,75,
-        setOf(TrainingEquipment.DUMBBELL, TrainingEquipment.RESISTANCE_BAND))
+        setOf(TrainingEquipment.DUMBBELL, TrainingEquipment.RESISTANCE_BAND), requiresOverheadReach = true)
     val programs=listOf(
         TrainingProgram("starter","🌱 Bắt đầu nhẹ nhàng","Mới tập hoặc quay lại sau thời gian nghỉ","Toàn thân",listOf(warm,chairSquat,wallPush,bridge,stretch)),
         TrainingProgram("full","💪 Toàn thân không dụng cụ","Chân, thân trên và cơ trung tâm","Sức mạnh",listOf(warm,squat,wallPush,bridge,bird,plank,cool)),

@@ -282,7 +282,10 @@ class GuidedWorkoutRestConfirmationTest {
 
         @Suppress("UNCHECKED_CAST")
         val effort = field("effortLevelsByMove").get(activity) as Map<Int, List<WorkoutEffortFeedback.Level?>>
-        assertEquals(listOf(WorkoutEffortFeedback.Level.EASY), effort[moveIndex])
+        val savedEffort = effort[moveIndex]
+        assertEquals("Every confirmed set keeps its own slot, including unrated earlier sets", plan.maximumSets, savedEffort?.size)
+        assertTrue(savedEffort!!.dropLast(1).all { it == null })
+        assertEquals(WorkoutEffortFeedback.Level.EASY, savedEffort.last())
         assertTrue("A final-set check-in must not start an extra rest timer", !field("resting").getBoolean(activity))
         activity.finish()
     }

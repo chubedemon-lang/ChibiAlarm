@@ -17,6 +17,7 @@ object FitnessCoachFollowUp {
         MOVEMENT_LIMITS,
         WRIST_LOAD,
         FLOOR_POSITIONS,
+        OVERHEAD_REACH,
         ENERGY,
         COMPLETE
     }
@@ -30,6 +31,7 @@ object FitnessCoachFollowUp {
         parsed.impact == null -> Question.MOVEMENT_LIMITS
         parsed.avoidWristLoad == null -> Question.WRIST_LOAD
         parsed.avoidFloorPositions == null -> Question.FLOOR_POSITIONS
+        parsed.avoidOverheadReach == null -> Question.OVERHEAD_REACH
         parsed.energy == null -> Question.ENERGY
         else -> Question.COMPLETE
     }
@@ -50,6 +52,7 @@ object FitnessCoachFollowUp {
                 val noted = buildList {
                     if (parsed.avoidWristLoad == true) add("cổ tay")
                     if (parsed.avoidFloorPositions == true) add("tư thế nằm hoặc quỳ sàn")
+                    if (parsed.avoidOverheadReach == true) add("đưa tay hoặc tải lên quá đầu")
                 }
                 if (noted.isEmpty()) {
                     "Mày có hạn chế vận động nào khiến cần tránh nhảy hoặc ưu tiên bài ít tác động không? Trả lời có/không."
@@ -61,6 +64,8 @@ object FitnessCoachFollowUp {
                 "Mày có cần tránh chống tay hoặc chịu tải qua cổ tay không? Trả lời có/không."
             Question.FLOOR_POSITIONS ->
                 "Mày có cần tránh các tư thế nằm hoặc quỳ sàn không? Trả lời có/không."
+            Question.OVERHEAD_REACH ->
+                "Mày có cần tránh đưa tay hoặc tải lên quá đầu không? Trả lời có/không."
             Question.ENERGY ->
                 "Hôm nay mày thấy mệt hay còn nhiều năng lượng?"
             Question.COMPLETE ->

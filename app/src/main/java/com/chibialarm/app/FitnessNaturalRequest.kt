@@ -30,6 +30,9 @@ object FitnessNaturalRequest {
             .replace(Regex("đầu\\s+gối"), "kneecap")
             .replace(Regex("bắt\\s+đầu"), "beginning")
             .replace(Regex("đầu\\s+tiên"), "firstword")
+            // "đầu" means head in overhead-movement phrases, while "đau" means pain.
+            // Protect the standalone body-part word before removing Vietnamese diacritics.
+            .replace(Regex("(?<![\\p{L}\\p{N}])đầu(?![\\p{L}\\p{N}])"), "headword")
             .replace('đ', 'd')
         return Normalizer.normalize(protected, Normalizer.Form.NFD)
             .replace(Regex("\\p{M}+"), "")

@@ -101,6 +101,64 @@ class CoachRotationContextTest {
         fitnessController.pause().stop().destroy()
     }
 
+    @Test fun coachAnswersEffortHistoryLocallyWithoutPersistingJournalDetails() {
+        val coach = Robolectric.buildActivity(CoachActivity::class.java).setup().get()
+        val originalWorkouts = WorkoutData.history(coach)
+        val chatPreferences = coach.getSharedPreferences("coach_history", 0)
+        val previousChat = chatPreferences.getString("messages", null)
+
+        try {
+            chatPreferences.edit().remove("messages").commit()
+            val historyField = CoachActivity::class.java.getDeclaredField("history").apply {
+                isAccessible = true
+            }
+            historyField.set(coach, org.json.JSONArray())
+            WorkoutData.save(
+                coach,
+                listOf(
+                    Workout(
+                        date = java.time.LocalDate.now().toString(),
+                        name = "Guided workout",
+                        minutes = 25,
+                        note = "private knee detail",
+                        sessionId = "550e8400-e29b-41d4-a716-446655440071",
+                        completedMoves = 2,
+                        selfReportedSets = 1,
+                        effortLog = "Burpee: hiệp 1: Quá sức, tạm dừng"
+                    )
+                )
+            )
+
+            val prompt = CoachActivity::class.java.getDeclaredField("prompt").apply {
+                isAccessible = true
+            }.get(coach) as android.widget.EditText
+            prompt.setText("Bài nào làm tao đuối nhất?")
+            CoachActivity::class.java.getDeclaredMethod("chat").apply {
+                isAccessible = true
+            }.invoke(coach)
+
+            val transcript = historyField.get(coach) as org.json.JSONArray
+            assertEquals(2, transcript.length())
+            assertEquals("user", transcript.getJSONObject(0).optString("role"))
+            val reply = transcript.getJSONObject(1).optString("text")
+            assertTrue(reply.contains("Burpee"))
+            assertTrue(reply.contains("cảm nhận tự khai báo"))
+            assertFalse(reply.contains("private knee detail"))
+
+            val persisted = chatPreferences.getString("messages", "[]") ?: "[]"
+            assertFalse("Journal-derived exercise details must not be persisted in coach chat", persisted.contains("Burpee"))
+            assertFalse("The sensitive journal question must remain transient", persisted.contains("đuối"))
+        } finally {
+            WorkoutData.save(coach, originalWorkouts)
+            if (previousChat == null) {
+                chatPreferences.edit().remove("messages").commit()
+            } else {
+                chatPreferences.edit().putString("messages", previousChat).commit()
+            }
+            coach.finish()
+        }
+    }
+
     @Test fun noContextRemainsAbsentOnFreshLaunch() {
         val activity = Robolectric.buildActivity(CoachActivity::class.java).setup().get()
         val field = CoachActivity::class.java.getDeclaredField("fitnessContext").apply { isAccessible = true }

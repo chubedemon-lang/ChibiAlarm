@@ -17,7 +17,8 @@ object FitnessNaturalRequest {
         val impact: Int? = null,
         val reply: String,
         val avoidWristLoad: Boolean? = null,
-        val avoidFloorPositions: Boolean? = null
+        val avoidFloorPositions: Boolean? = null,
+        val avoidOverheadReach: Boolean? = null
     )
 
     private fun normalize(input: String): String {

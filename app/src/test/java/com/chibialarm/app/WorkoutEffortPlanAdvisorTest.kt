@@ -40,7 +40,7 @@ class WorkoutEffortPlanAdvisorTest {
         assertEquals(1, suggestion.hardSets)
         assertEquals(1, suggestion.veryHardSets)
         assertTrue(suggestion.message.contains("tự đánh dấu"))
-        assertTrue(suggestion.prompt.contains("hơi mệt"))
+        assertTrue(suggestion.prompt.contains("buổi tập nhẹ hơn"))
         assertTrue(suggestion.prompt.contains("không tự tăng số hiệp"))
         assertFalse(suggestion.message.contains("private health note"))
     }

@@ -225,7 +225,7 @@ object FitnessNaturalRequest {
         }
 
         val energy = when {
-            has("met", "het suc", "it nang luong") -> 0
+            has("met", "het suc", "it nang luong", "tap nhe hon", "buoi tap nhe hon", "uu tien van dong nhe") -> 0
             has("khoe", "nhieu nang luong", "sung suc") -> 2
             else -> null
         }

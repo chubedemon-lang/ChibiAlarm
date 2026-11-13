@@ -148,7 +148,7 @@ class FitnessActivity:Activity() {
             conversation?.impact, impactRestrictionSpinner?.selectedItemPosition ?: 0
         )
 
-    /** Reads only coarse local workout totals; free-text journal notes never enter the advisor. */
+    /** Reads coarse totals and structured effort labels; free-text journal notes never enter the advisor. */
     private fun refreshWorkoutHistoryInsight() {
         val workouts = WorkoutData.history(this)
         val summary = WorkoutHistoryAdvisor.summarize(workouts)

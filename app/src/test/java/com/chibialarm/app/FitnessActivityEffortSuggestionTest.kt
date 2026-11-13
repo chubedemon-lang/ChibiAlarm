@@ -70,7 +70,7 @@ class FitnessActivityEffortSuggestionTest {
         val input = allViews.filterIsInstance<EditText>().first {
             it.contentDescription?.toString() == "Yêu cầu giáo án bằng tiếng Việt"
         }
-        assertTrue(input.text.toString().contains("hơi mệt"))
+        assertTrue(input.text.toString().contains("buổi tập nhẹ hơn"))
         assertTrue(input.text.toString().contains("không tự tăng số hiệp"))
         controller.pause().stop().destroy()
     }

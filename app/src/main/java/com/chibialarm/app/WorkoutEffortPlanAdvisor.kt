@@ -145,8 +145,8 @@ object WorkoutEffortPlanAdvisor {
         }.joinToString(" và ")
 
         val message = "Trong ${sessions.size} buổi Guided Workout có check-in gần đây, " +
-            "bạn tự đánh dấu ${best.repeatedSessions} buổi có hiệp khó ở ${best.name} " +
-            "($severity). Nếu hôm nay bạn muốn, Chibi có thể mở gợi ý một buổi nhẹ hơn. " +
+            "bạn tự đánh dấu ${best.repeatedSessions} buổi có hiệp khó hoặc quá sức ở ${best.name} " +
+            "($severity). Chibi chưa tự thay đổi giáo án; nếu muốn, bạn có thể mở gợi ý một buổi nhẹ hơn. " +
             "Đây là cảm nhận tự khai báo, không phải phép đo thể lực hay đánh giá hồi phục. " +
             "Nếu có đau hoặc triệu chứng bất thường, hãy dừng tập thay vì cố hoàn thành giáo án."
 
@@ -157,7 +157,7 @@ object WorkoutEffortPlanAdvisor {
             veryHardSets = best.veryHardSets,
             latestDate = best.latestDate,
             message = message,
-            prompt = "Hôm nay tao hơi mệt, muốn một buổi tập nhẹ hơn, " +
+            prompt = "Tao muốn xem một buổi tập nhẹ hơn dựa trên lịch sử check-in, " +
                 "ưu tiên vận động nhẹ và không tự tăng số hiệp."
         )
     }

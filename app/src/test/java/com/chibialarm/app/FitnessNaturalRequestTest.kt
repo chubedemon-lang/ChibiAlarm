@@ -14,6 +14,15 @@ class FitnessNaturalRequestTest {
         assertNull(result.level)
     }
 
+    @Test fun explicitLighterPlanRequestDoesNotInventFatigueOrInjury() {
+        val result = FitnessNaturalRequest.parse(
+            "Tao muốn xem một buổi tập nhẹ hơn dựa trên lịch sử check-in, ưu tiên vận động nhẹ và không tự tăng số hiệp."
+        )
+        assertEquals(0, result.energy)
+        assertNull(result.impact)
+        assertNull(result.minutes)
+    }
+
     @Test fun parsesTrainingExperienceLevels() {
         assertEquals(0, FitnessNaturalRequest.parse("Mới bắt đầu, muốn tập nhẹ").level)
         assertEquals(1, FitnessNaturalRequest.parse("Tôi đang tập đều mỗi tuần").level)

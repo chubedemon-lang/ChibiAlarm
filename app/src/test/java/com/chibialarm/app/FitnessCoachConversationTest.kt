@@ -169,11 +169,13 @@ class FitnessCoachConversationTest {
 
 
 
-    @Test fun overheadReachPreferenceSurvivesLaterConversationTurns() {
-        val first = FitnessNaturalRequest.Result(
-            reply = "Đã chọn tránh đưa tay quá đầu.",
-            avoidOverheadReach = true
+    @Test fun spokenOverheadRestrictionSurvivesLaterConversationTurnsAndCanBeRelaxedExplicitly() {
+        val first = FitnessCoachConversation.merge(
+            null,
+            FitnessNaturalRequest.parse("không đưa tay qua đầu")
         )
+        assertEquals(true, first.avoidOverheadReach)
+
         val second = FitnessCoachConversation.merge(
             first,
             FitnessNaturalRequest.parse("sức mạnh 30 phút")
@@ -181,6 +183,14 @@ class FitnessCoachConversationTest {
         assertEquals(true, second.avoidOverheadReach)
         assertEquals(0, second.goal)
         assertEquals(30, second.minutes)
+
+        val relaxed = FitnessCoachConversation.merge(
+            second,
+            FitnessNaturalRequest.parse("có thể đưa tay qua đầu")
+        )
+        assertEquals(false, relaxed.avoidOverheadReach)
+        assertEquals(0, relaxed.goal)
+        assertEquals(30, relaxed.minutes)
     }
 
     @Test fun floorPositionPreferenceSurvivesLaterConversationTurns() {

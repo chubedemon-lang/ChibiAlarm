@@ -162,7 +162,7 @@ class CoachActivity:Activity() {
             append("user",question,persist=false)
             append(
                 "assistant",
-                journalReply + "\\n\\n(Đọc từ nhật ký trên thiết bị; câu hỏi và kết quả không được lưu vào lịch sử chat.)",
+                journalReply + "\n\n(Đọc từ nhật ký trên thiết bị; câu hỏi và kết quả không được lưu vào lịch sử chat.)",
                 persist=false
             )
             return
@@ -171,7 +171,7 @@ class CoachActivity:Activity() {
         append("user",question)
         val next=FitnessCoachConversation.parseReply(fitnessContext,question)
         fitnessContext=FitnessCoachConversation.merge(fitnessContext,next)
-        append("assistant",next.reply+"\\n\\n"+FitnessCoachFollowUp.nextQuestion(fitnessContext!!)+"\\n(Chế độ Fitness ngoại tuyến)")
+        append("assistant",next.reply+"\n\n"+FitnessCoachFollowUp.nextQuestion(fitnessContext!!)+"\n(Chế độ Fitness ngoại tuyến)")
     }
     /**
      * Android's speech recognizer may be provided by another app and may use

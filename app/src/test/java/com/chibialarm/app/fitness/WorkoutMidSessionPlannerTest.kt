@@ -25,6 +25,74 @@ class WorkoutMidSessionPlannerTest {
         assertEquals(60, request.restSeconds)
     }
 
+    @Test fun spokenOverheadRestrictionRemovesOnlyTheUnstartedOverheadMove() {
+        val moves = listOf(
+            move("Khởi động tại chỗ"),
+            move("Đẩy vai với tạ đơn hoặc dây"),
+            move("Kéo tạ đơn hoặc dây kháng lực"),
+            move("Thả lỏng")
+        )
+        val parsed = WorkoutMidSessionRequest.parse("đừng đưa tay quá đầu")
+        assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
+        val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+        assertTrue(request.avoidOverheadReach)
+        assertFalse(request.allowOverheadReach)
+
+        val result = WorkoutMidSessionPlanner.preview(
+            currentMoves = moves,
+            currentIndex = 0,
+            completedCurrentSets = 0,
+            currentStepLocked = false,
+            constraints = WorkoutConstraintProfile(),
+            request = request,
+            remainingCurrentSeconds = 60,
+            extensionMoveNames = emptySet(),
+            level = 1
+        )
+        assertTrue(result is WorkoutMidSessionPlanner.Result.Proposed)
+        val preview = (result as WorkoutMidSessionPlanner.Result.Proposed).preview
+        assertEquals(moves.first(), preview.after.first())
+        assertFalse(preview.after.any { it.name == "Đẩy vai với tạ đơn hoặc dây" })
+        assertTrue(preview.after.any { it.name == "Kéo tạ đơn hoặc dây kháng lực" })
+        assertTrue(preview.removedMoves.contains("Đẩy vai với tạ đơn hoặc dây"))
+        assertTrue(preview.after.all {
+            WorkoutConstraintFilter.isAllowed(it, WorkoutConstraintProfile(avoidOverheadReach = true))
+        })
+    }
+
+    @Test fun overheadRestrictionCannotRewriteAPressAfterASetWasConfirmed() {
+        val result = WorkoutMidSessionPlanner.preview(
+            currentMoves = listOf(
+                move("Đẩy vai với tạ đơn hoặc dây"),
+                move("Kéo tạ đơn hoặc dây kháng lực"),
+                move("Thả lỏng")
+            ),
+            currentIndex = 0,
+            completedCurrentSets = 1,
+            currentStepLocked = true,
+            constraints = WorkoutConstraintProfile(),
+            request = WorkoutMidSessionRequest.Request(avoidOverheadReach = true),
+            remainingCurrentSeconds = 30,
+            extensionMoveNames = emptySet(),
+            level = 1
+        )
+        assertTrue(result is WorkoutMidSessionPlanner.Result.Blocked)
+    }
+
+    @Test fun explicitOverheadPermissionRelaxesOnlyTheCurrentSessionPreference() {
+        val parsed = WorkoutMidSessionRequest.parse("có thể đưa tay qua đầu")
+        assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
+        val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+        assertTrue(request.allowOverheadReach)
+        assertFalse(request.avoidOverheadReach)
+
+        val current = WorkoutConstraintProfile(avoidOverheadReach = true)
+        assertEquals(
+            WorkoutConstraintProfile(),
+            WorkoutMidSessionPlanner.effectiveConstraints(current, request)
+        )
+    }
+
     @Test fun explicitRestIsBoundedAndDoesNotInventAnIntensityChange() {
         val result = WorkoutMidSessionRequest.parse("Nghỉ thêm 30 giây")
         assertTrue(result is WorkoutMidSessionRequest.Result.Proposed)

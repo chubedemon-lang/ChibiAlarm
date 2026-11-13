@@ -96,6 +96,30 @@ class WorkoutConstraintFilterTest {
 
 
 
+    @Test fun overheadReachPreferenceRemovesOnlyTheReviewedOverheadPress() {
+        val profile = WorkoutConstraintProfile(avoidOverheadReach = true)
+        val original = TrainingCatalog.byId("weighted")
+        val result = WorkoutConstraintFilter.apply(original, profile)
+
+        assertTrue(result.canStart)
+        assertEquals(listOf("Đẩy vai với tạ đơn hoặc dây"), result.removedMoves)
+        assertTrue(result.program.moves.none { it.requiresOverheadReach })
+        assertTrue(result.program.moves.any { it.name == "Kéo tạ đơn hoặc dây kháng lực" })
+        assertTrue(result.program.moves.any { it.name == "Gập hông với tạ đơn hoặc dây" })
+        assertTrue(result.notice.contains("không tương đương hoàn toàn"))
+        assertTrue(original.moves.any { it.requiresOverheadReach })
+    }
+
+    @Test fun overheadReachPreferenceChangesTheCheckpointFingerprint() {
+        val moves = TrainingCatalog.byId("weighted").moves
+        assertNotEquals(
+            WorkoutConstraintFilter.fingerprint(moves),
+            WorkoutConstraintFilter.fingerprint(
+                moves, WorkoutConstraintProfile(avoidOverheadReach = true)
+            )
+        )
+    }
+
     @Test fun floorPositionPreferenceRemovesReviewedFloorBasedMoves() {
         val profile = WorkoutConstraintProfile(avoidFloorPositions = true)
         val original = TrainingCatalog.byId("full")

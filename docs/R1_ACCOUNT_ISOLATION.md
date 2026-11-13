@@ -4,6 +4,10 @@ Status: **storage foundation only, NOT multi-user release readiness**.
 
 ## Implemented
 
+- Fitness journal now exposes explicit `historyForVerifiedAccount`, `appendSessionForVerifiedAccount`, `saveForVerifiedAccount` and `deleteVerifiedAccountHistory` APIs. Their preference namespace reuses the strict validated SHA-256 subject namespace from `RpgDatabase`; raw account subjects are never stored in preference names. Robolectric tests verify guest/A/B separation, per-scope session deduplication, malformed-journal preservation and account-only erasure.
+- The original guest Fitness journal remains `workouts_v12` with no automatic migration or copying. **The current Fitness screens still call the guest APIs because no trusted login/identity verifier is wired into the app.** The new methods are a storage boundary, not active multi-user UI.
+- Account-scoped Fitness preferences are app-private but **not encrypted at rest**. The existing privacy review and backup policy must include these new preference files before enabling account sign-in.
+
 - `RpgDatabase.get(context)` keeps the original `chibi_rpg.db` guest database and all its existing data. No destructive Room migration and no automatic ownership reassignment.
 - `RpgDatabase.forVerifiedAccount(context, verifiedSubject)` opens an independent Room database for each **trusted, authenticated subject**. Filenames contain SHA-256 of the exact subject, not the raw subject, display name or email. The subject MUST come from a backend-verified identity token, not from user input.
 - The Room schema is version 2 in each database, with a non-destructive v1-to-v2 migration. XP ledger, daily quests, character, streaks and achievements are scoped to the selected database instance.

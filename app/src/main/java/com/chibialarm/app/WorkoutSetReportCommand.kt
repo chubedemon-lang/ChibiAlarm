@@ -54,7 +54,7 @@ object WorkoutSetReportCommand {
             val hundreds = smallNumbers[words[0]] ?: return null
             total = hundreds * 100
             index = 2
-            if (words.getOrNull(index) in setOf("linh", "le")) index++
+            if (words.getOrNull(index) == "linh" || words.getOrNull(index) == "le") index++
         }
         if (index >= words.size) return total.takeIf { it > 0 }
 

@@ -14,7 +14,8 @@ data class FitnessCoachSessionSnapshot(
     val equipment: Int? = null,
     val impact: Int? = null,
     val avoidWristLoad: Boolean? = null,
-    val avoidFloorPositions: Boolean? = null
+    val avoidFloorPositions: Boolean? = null,
+    val avoidOverheadReach: Boolean? = null
 ) {
     fun restore(): FitnessNaturalRequest.Result? {
         if (goal != null && goal !in 0..5) return null
@@ -25,7 +26,7 @@ data class FitnessCoachSessionSnapshot(
         if (impact != null && impact !in 0..2) return null
         if (goal == null && level == null && energy == null && minutes == null &&
             equipment == null && impact == null && avoidWristLoad == null &&
-            avoidFloorPositions == null) return null
+            avoidFloorPositions == null && avoidOverheadReach == null) return null
         return FitnessNaturalRequest.Result(
             goal = goal,
             level = level,
@@ -35,7 +36,8 @@ data class FitnessCoachSessionSnapshot(
             impact = impact,
             reply = "Đã giữ các lựa chọn trong phiên hiện tại. Hãy kiểm tra lại trước khi xem giáo án.",
             avoidWristLoad = avoidWristLoad,
-            avoidFloorPositions = avoidFloorPositions
+            avoidFloorPositions = avoidFloorPositions,
+            avoidOverheadReach = avoidOverheadReach
         )
     }
 
@@ -54,7 +56,8 @@ data class FitnessCoachSessionSnapshot(
             result: FitnessNaturalRequest.Result?,
             selectedImpact: Int?,
             selectedAvoidWristLoad: Boolean? = null,
-            selectedAvoidFloorPositions: Boolean? = null
+            selectedAvoidFloorPositions: Boolean? = null,
+            selectedAvoidOverheadReach: Boolean? = null
         ): FitnessCoachSessionSnapshot? {
             if (selectedImpact != null && selectedImpact !in 0..2) return null
             val retainedImpact = when {
@@ -64,6 +67,7 @@ data class FitnessCoachSessionSnapshot(
             }
             val retainedAvoidWristLoad = selectedAvoidWristLoad ?: result?.avoidWristLoad
             val retainedAvoidFloorPositions = selectedAvoidFloorPositions ?: result?.avoidFloorPositions
+            val retainedAvoidOverheadReach = selectedAvoidOverheadReach ?: result?.avoidOverheadReach
             val snapshot = FitnessCoachSessionSnapshot(
                 goal = result?.goal,
                 level = result?.level,
@@ -72,12 +76,14 @@ data class FitnessCoachSessionSnapshot(
                 equipment = result?.equipment,
                 impact = retainedImpact,
                 avoidWristLoad = retainedAvoidWristLoad,
-                avoidFloorPositions = retainedAvoidFloorPositions
+                avoidFloorPositions = retainedAvoidFloorPositions,
+                avoidOverheadReach = retainedAvoidOverheadReach
             )
             return snapshot.takeUnless {
                 it.goal == null && it.level == null && it.energy == null &&
                     it.minutes == null && it.equipment == null && it.impact == null &&
-                    it.avoidWristLoad == null && it.avoidFloorPositions == null
+                    it.avoidWristLoad == null && it.avoidFloorPositions == null &&
+                    it.avoidOverheadReach == null
             }
         }
 

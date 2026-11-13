@@ -118,7 +118,7 @@ object TrainingCatalog {
         "Giảm thời gian và giữ hông thấp hơn.","Không ép vai chịu đau.",80)
     private val heelRaise=exercise("Nâng gối ngồi ghế","2 × 8 lần mỗi chân",
         "Ngồi thẳng trên ghế vững, nâng một gối vừa sức rồi hạ và đổi chân.",
-        "Nâng bàn chân thấp hơn.","Không rướn cổ.",70)
+        "Nâng bàn chân thấp hơn.","Không rướn cổ.",70,45,setOf(TrainingEquipment.STABLE_CHAIR))
     private val balance=exercise("Đứng thăng bằng có hỗ trợ","3 × 15 giây mỗi bên",
         "Đứng cạnh tường hoặc ghế vững, nhấc nhẹ một gót, giữ thăng bằng có hỗ trợ.",
         "Giữ cả hai chân trên sàn và chuyển trọng tâm.","Không thử nếu chóng mặt; luôn có điểm tựa.",75)
@@ -180,7 +180,7 @@ object TrainingCatalog {
         (programs.flatMap { it.moves } + substitutionOnlyMoves + extensionMoves).distinctBy { it.name }
     }
 
-    fun byId(id:String)=programs.firstOrNull { it.id==id } ?: programs.first()
+    fun byId(id:String)=programs.firstOrNull { it.id==id} ?: programs.first()
     /**
      * Legacy compatibility helper. Duration expansion belongs to WorkoutDurationPlanner's
      * goal/equipment-aware curated policy; never clone a prescription to fill more time.

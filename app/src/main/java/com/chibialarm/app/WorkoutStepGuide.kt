@@ -37,6 +37,20 @@ object WorkoutStepGuide {
         )
     }
 
+    /** Last selected spoken step, scoped to the current exercise index. */
+    data class SelectedCue(val moveIndex: Int, val speech: String)
+
+    /** Repeat the selected step only while it still belongs to the current exercise. */
+    fun repeatCue(
+        currentMoveIndex: Int,
+        selected: SelectedCue?,
+        moveName: String,
+        instructions: String
+    ): String = selected
+        ?.takeIf { it.moveIndex == currentMoveIndex && it.speech.isNotBlank() }
+        ?.speech
+        ?: spokenCue(moveName, instructions, 1)
+
     /**
      * A bounded, in-memory walkthrough for the current exercise. It never changes
      * workout timing or progress; users can move backward and forward at their pace.

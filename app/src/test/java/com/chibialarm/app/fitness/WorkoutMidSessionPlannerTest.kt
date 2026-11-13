@@ -25,7 +25,7 @@ class WorkoutMidSessionPlannerTest {
         assertEquals(60, request.restSeconds)
     }
 
-    @Test fun spokenOverheadRestrictionRemovesOnlyTheUnstartedOverheadMove() {
+    @Test fun spokenOverheadRestrictionUsesCuratedAlternativeOnlyForUnstartedMove() {
         val moves = listOf(
             move("Khởi động tại chỗ"),
             move("Đẩy vai với tạ đơn hoặc dây"),
@@ -54,7 +54,9 @@ class WorkoutMidSessionPlannerTest {
         assertEquals(moves.first(), preview.after.first())
         assertFalse(preview.after.any { it.name == "Đẩy vai với tạ đơn hoặc dây" })
         assertTrue(preview.after.any { it.name == "Kéo tạ đơn hoặc dây kháng lực" })
-        assertTrue(preview.removedMoves.contains("Đẩy vai với tạ đơn hoặc dây"))
+        assertTrue(preview.replacements.contains("Đẩy vai với tạ đơn hoặc dây → Mở vai và ngực"))
+        assertTrue(preview.after.any { it.name == "Mở vai và ngực" })
+        assertFalse(preview.removedMoves.contains("Đẩy vai với tạ đơn hoặc dây"))
         assertTrue(preview.after.all {
             WorkoutConstraintFilter.isAllowed(it, WorkoutConstraintProfile(avoidOverheadReach = true))
         })

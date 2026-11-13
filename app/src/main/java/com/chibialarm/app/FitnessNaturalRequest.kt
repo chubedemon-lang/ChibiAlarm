@@ -211,7 +211,7 @@ object FitnessNaturalRequest {
         val overheadRestrictions = listOf(
             "khong dua tay qua dau", "tranh dua tay qua dau", "dung dua tay qua dau",
             "khong nang tay qua dau", "tranh nang tay qua dau",
-            "khong day ta qua dau", "tranh dong tac qua dau",
+            "khong day ta qua dau", "dung day ta qua dau", "tranh dong tac qua dau",
             "khong voi tay qua dau", "han che dua tay qua dau",
             "han che dong tac qua dau"
         )

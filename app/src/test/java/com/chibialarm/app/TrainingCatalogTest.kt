@@ -94,6 +94,14 @@ class TrainingCatalogTest {
         assertTrue(scapular.dose.contains("hiệp"))
     }
 
+    @Test fun overheadPressDeclaresItsReachRequirementExplicitly() {
+        val weighted = TrainingCatalog.byId("weighted").moves
+        val press = weighted.single { it.name == "Đẩy vai với tạ đơn hoặc dây" }
+        assertTrue(press.requiresOverheadReach)
+        assertFalse(weighted.single { it.name == "Kéo tạ đơn hoặc dây kháng lực" }.requiresOverheadReach)
+        assertFalse(weighted.single { it.name == "Gập hông với tạ đơn hoặc dây" }.requiresOverheadReach)
+    }
+
     @Test fun chairDependentMovesDeclareStableChairRequirement() {
         val moves = TrainingCatalog.allMoves.associateBy { it.name }
         val sitToStand = moves.getValue("Đứng lên – ngồi xuống")

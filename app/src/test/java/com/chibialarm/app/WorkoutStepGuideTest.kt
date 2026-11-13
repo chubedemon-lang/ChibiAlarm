@@ -39,7 +39,7 @@ class WorkoutStepGuideTest {
     }
 
     @Test fun spokenCueRepeatsOnlyTheSelectedStepWithItsMatchingMovementPhase() {
-        val instructions = "Chân rộng bằng vai.\\nĐẩy hông nhẹ về sau.\\nHạ xuống theo khả năng.\\nĐứng lên.\\nGiữ gối cùng hướng bàn chân."
+        val instructions = "Chân rộng bằng vai.\nĐẩy hông nhẹ về sau.\nHạ xuống theo khả năng.\nĐứng lên.\nGiữ gối cùng hướng bàn chân."
         val cue = WorkoutStepGuide.spokenCue("Squat không tạ", instructions, 3)
         assertTrue(cue.contains("Hạ hông"))
         assertTrue(cue.contains("Bước 3 trên 5"))
@@ -48,11 +48,21 @@ class WorkoutStepGuideTest {
     }
 
     @Test fun spokenCueClampsInvalidPositionsAndKeepsSetupInstructionsNeutral() {
-        val instructions = "Chân rộng bằng vai.\\nHạ xuống theo khả năng.\\nĐứng lên."
+        val instructions = "Chân rộng bằng vai.\nHạ xuống theo khả năng.\nĐứng lên."
         val cue = WorkoutStepGuide.spokenCue("Squat không tạ", instructions, 0)
         assertTrue(cue.contains("Bước 1 trên 3"))
         assertTrue(cue.contains("Tư thế minh họa cho bước này"))
         assertFalse(cue.contains("Hạ hông."))
+    }
+
+    @Test fun repeatCueUsesTheLastSelectedStepOnlyForTheSameExercise() {
+        val instructions = "Chân rộng bằng vai.\nHạ xuống theo khả năng.\nĐứng lên."
+        val selectedSpeech = WorkoutStepGuide.spokenCue("Squat không tạ", instructions, 2)
+        val selected = WorkoutStepGuide.SelectedCue(moveIndex = 4, speech = selectedSpeech)
+
+        assertEquals(selectedSpeech, WorkoutStepGuide.repeatCue(4, selected, "Squat không tạ", instructions))
+        val nextExerciseCue = WorkoutStepGuide.repeatCue(5, selected, "Squat không tạ", instructions)
+        assertTrue(nextExerciseCue.contains("Bước 1 trên 3"))
     }
 
     @Test fun walkthroughMovesBackwardAndForwardWithoutLeavingBounds() {

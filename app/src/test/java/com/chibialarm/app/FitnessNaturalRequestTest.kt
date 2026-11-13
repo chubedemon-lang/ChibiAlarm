@@ -280,4 +280,18 @@ class FitnessNaturalRequestTest {
         )
     }
 
+
+    @Test fun overheadHeadWordIsNotMistakenForPainButKneePainStillStops() {
+        val restriction = FitnessNaturalRequest.parse("không đưa tay qua đầu")
+        assertEquals(true, restriction.avoidOverheadReach)
+        assertNull(restriction.impact)
+
+        val permission = FitnessNaturalRequest.parse("có thể đưa tay qua đầu")
+        assertEquals(false, permission.avoidOverheadReach)
+        assertNull(permission.impact)
+
+        assertNull(FitnessNaturalRequest.parse("đưa tay qua đầu").impact)
+        assertEquals(2, FitnessNaturalRequest.parse("đầu gối đau khi squat").impact)
+    }
+
 }

@@ -75,6 +75,7 @@ class FitnessActivity:Activity() {
     private var impactRestrictionSpinner: Spinner? = null
     private var wristLoadCheckBox: CheckBox? = null
     private var floorPositionCheckBox: CheckBox? = null
+    private var overheadReachCheckBox: CheckBox? = null
     private var programContainer: LinearLayout? = null
     private var historySummaryView: TextView? = null
     private var historySuggestionView: TextView? = null
@@ -92,7 +93,8 @@ class FitnessActivity:Activity() {
         val keys = listOf(
             "coach_goal", "coach_level", "coach_energy", "coach_minutes",
             "coach_equipment", "coach_impact",
-            "coach_avoid_wrist_load", "coach_avoid_floor_positions"
+            "coach_avoid_wrist_load", "coach_avoid_floor_positions",
+            "coach_avoid_overhead_reach"
         )
         if (keys.none(source::hasExtra)) return null
         fun intValue(key: String): Int? =
@@ -127,7 +129,9 @@ class FitnessActivity:Activity() {
             selectedAvoidWristLoad = if (wristLoadCheckBox?.isChecked == true || conversation?.avoidWristLoad != null)
                 wristLoadCheckBox?.isChecked else null,
             selectedAvoidFloorPositions = if (floorPositionCheckBox?.isChecked == true || conversation?.avoidFloorPositions != null)
-                floorPositionCheckBox?.isChecked else null
+                floorPositionCheckBox?.isChecked else null,
+            selectedAvoidOverheadReach = if (overheadReachCheckBox?.isChecked == true || conversation?.avoidOverheadReach != null)
+                overheadReachCheckBox?.isChecked else null
         )
 
     private fun effectiveImpactRestriction(): Int =
@@ -319,6 +323,25 @@ class FitnessActivity:Activity() {
         }
         floorPositionCheckBox = floorPositionRestriction
         root.addView(floorPositionRestriction)
+        val overheadReachRestriction = CheckBox(this).apply {
+            text = "Tránh động tác đưa tay hoặc tải lên quá đầu"
+            contentDescription = "Chỉ áp dụng cho buổi tập hiện tại; không lưu thành hồ sơ sức khỏe"
+            isChecked = conversation?.avoidOverheadReach == true
+            setOnCheckedChangeListener { _, checked ->
+                val previous = conversation
+                conversation = if (previous == null) {
+                    FitnessNaturalRequest.Result(
+                        reply = if (checked) "Đã chọn tránh động tác đưa tay quá đầu." else "Đã bỏ lựa chọn tránh đưa tay quá đầu.",
+                        avoidOverheadReach = checked
+                    )
+                } else previous.copy(avoidOverheadReach = checked)
+                if (::filter.isInitialized) {
+                    programContainer?.let { drawPrograms(it, categories[filter.selectedItemPosition]) }
+                }
+            }
+        }
+        overheadReachCheckBox = overheadReachRestriction
+        root.addView(overheadReachRestriction)
         root.addView(txt("Các hạn chế này chỉ áp dụng cho buổi tập hiện tại, không lưu thành hồ sơ sức khỏe. Nếu đang đau, tê, sưng hoặc có triệu chứng bất thường, hãy dừng tập và xin tư vấn phù hợp.",12f))
         val historySummary = txt("",14f).apply { visibility = android.view.View.GONE }
         historySummaryView = historySummary
@@ -359,6 +382,7 @@ class FitnessActivity:Activity() {
             restored.impact?.let { impactSpinner.setSelection(it) }
             restored.avoidWristLoad?.let { wristLoadCheckBox?.isChecked = it }
             restored.avoidFloorPositions?.let { floorPositionCheckBox?.isChecked = it }
+            restored.avoidOverheadReach?.let { overheadReachCheckBox?.isChecked = it }
             naturalRequest.hint = FitnessCoachFollowUp.nextQuestion(restored)
             root.addView(txt("🐰 Đã giữ lựa chọn trong phiên hiện tại sau khi xoay màn hình. Kiểm tra lại trước khi xem giáo án.",14f))
         }
@@ -410,6 +434,7 @@ class FitnessActivity:Activity() {
                     parsed.impact?.let { impactSpinner.setSelection(it) }
                     parsed.avoidWristLoad?.let { wristLoadCheckBox?.isChecked = it }
                     parsed.avoidFloorPositions?.let { floorPositionCheckBox?.isChecked = it }
+                    parsed.avoidOverheadReach?.let { overheadReachCheckBox?.isChecked = it }
                     sayFollowUp(coachMessage)
                     AlertDialog.Builder(this@FitnessActivity)
                         .setTitle("🐰 Chibi đã nghe")
@@ -731,7 +756,8 @@ class FitnessActivity:Activity() {
     private fun currentWorkoutConstraintProfile(): WorkoutConstraintProfile =
         WorkoutConstraintProfile(
             avoidWristLoad = wristLoadCheckBox?.isChecked == true,
-            avoidFloorPositions = floorPositionCheckBox?.isChecked == true
+            avoidFloorPositions = floorPositionCheckBox?.isChecked == true,
+            avoidOverheadReach = overheadReachCheckBox?.isChecked == true
         )
 
     private fun currentExtensionPreferences(

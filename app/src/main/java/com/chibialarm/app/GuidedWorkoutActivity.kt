@@ -1638,11 +1638,6 @@ class GuidedWorkoutActivity:Activity() {
         }
         val illustration = WorkoutPoseView(this).apply {
             tag = "workout-step-pose-preview"
-            onPhaseChanged = { lowered ->
-                val cue = "Pha: ${WorkoutPoseMotion.phaseCue(pose, lowered)} · Hình minh họa, không đánh giá tư thế."
-                phaseCaption.text = cue
-                phaseCaption.contentDescription = cue
-            }
             this.pose = pose
         }
         val stepProgress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
@@ -1683,6 +1678,13 @@ class GuidedWorkoutActivity:Activity() {
             label.contentDescription =
                 "Bước ${walkthrough.position} trên ${walkthrough.steps.size}. ${walkthrough.currentStep}"
             stepProgress.progress = walkthrough.position
+            val selectedPhase = WorkoutPoseMotion.guidePhaseForStep(pose, walkthrough.currentStep)
+            illustration.showGuideFrame(selectedPhase ?: false)
+            val phaseText = selectedPhase?.let {
+                "Pha minh họa: ${WorkoutPoseMotion.phaseCue(pose, it)}"
+            } ?: "Tư thế minh họa cho bước này"
+            phaseCaption.text = "$phaseText · Hình minh họa, không đánh giá tư thế."
+            phaseCaption.contentDescription = phaseCaption.text
             previousButton.isEnabled = walkthrough.canGoPrevious
             dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.apply {
                 isEnabled = walkthrough.canGoNext
@@ -1705,12 +1707,11 @@ class GuidedWorkoutActivity:Activity() {
             }
             dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
                 speak(
-                    WorkoutPoseMotion.spokenStepCue(
+                    WorkoutPoseMotion.spokenInstructionStepCue(
                         pose,
                         walkthrough.currentStep,
                         walkthrough.position,
-                        walkthrough.steps.size,
-                        illustration.isInAlternatePose
+                        walkthrough.steps.size
                     )
                 )
             }

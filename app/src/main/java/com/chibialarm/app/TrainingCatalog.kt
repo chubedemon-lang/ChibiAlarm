@@ -44,7 +44,7 @@ object TrainingCatalog {
         "Ngồi nghỉ và hít thở chậm nếu mệt.","Không ép cơ đến mức đau.",120)
     private val chairSquat=exercise("Đứng lên – ngồi xuống","2 hiệp × 6–10 lần",
         "Dùng ghế vững chắc không bánh xe. Ngồi gần mép ghế, bàn chân rộng bằng hông, đứng lên chậm rồi ngồi xuống có kiểm soát.",
-        "Dùng tay vịn hỗ trợ hoặc hạ ít lần.","Đảm bảo ghế không trượt.",90,60)
+        "Dùng tay vịn hỗ trợ hoặc hạ ít lần.","Đảm bảo ghế không trượt.",90,60,setOf(TrainingEquipment.STABLE_CHAIR))
     private val wallPush=exercise("Chống đẩy tường","2 hiệp × 5–12 lần",
         "Đặt hai tay ngang ngực lên tường, giữ thân thẳng, gập khuỷu đưa ngực gần tường rồi đẩy ra.",
         "Đứng gần tường hơn để dễ hơn.","Không võng lưng, không ép cổ tay.",90)
@@ -103,7 +103,7 @@ object TrainingCatalog {
     private val seatedHamstringStretch=exercise("Giãn gân kheo ngồi ghế","2 hiệp × 20 giây mỗi bên",
         "Ngồi gần mép ghế vững, duỗi một chân với gót chạm sàn. Giữ lưng dài, nghiêng nhẹ từ hông đến khi căng nhẹ phía sau đùi; đổi bên.",
         "Giữ gối hơi chùng và giảm biên độ.",
-        "Không nảy người hoặc kéo đến mức đau; dừng nếu tê lan.",90,30)
+        "Không nảy người hoặc kéo đến mức đau; dừng nếu tê lan.",90,30,setOf(TrainingEquipment.STABLE_CHAIR))
     private val stretch=exercise("Giãn cơ và thở chậm","4–6 phút",
         "Giãn vai, hông, bắp chân từng bên nhẹ nhàng, không nín thở.",
         "Ngồi ghế để giảm tải.","Không giật nảy, không chịu đau.",180)

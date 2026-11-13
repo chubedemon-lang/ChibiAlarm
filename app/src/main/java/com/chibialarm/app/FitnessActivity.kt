@@ -109,7 +109,8 @@ class FitnessActivity:Activity() {
             equipment = intValue("coach_equipment"),
             impact = intValue("coach_impact"),
             avoidWristLoad = booleanValue("coach_avoid_wrist_load"),
-            avoidFloorPositions = booleanValue("coach_avoid_floor_positions")
+            avoidFloorPositions = booleanValue("coach_avoid_floor_positions"),
+            avoidOverheadReach = booleanValue("coach_avoid_overhead_reach")
         ).restore()
     }
 

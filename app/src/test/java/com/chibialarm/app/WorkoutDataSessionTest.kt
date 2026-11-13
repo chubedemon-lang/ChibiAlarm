@@ -49,7 +49,8 @@ class WorkoutDataSessionTest {
             sessionId = "550e8400-e29b-41d4-a716-446655440010",
             completedMoves = 3,
             selfReportedSets = 4,
-            setLog = "Squat: hiệp 1: 9 lần, hiệp 2: 10 lần"
+            setLog = "Squat: hiệp 1: 9 lần, hiệp 2: 10 lần",
+            effortLog = "Squat: hiệp 1: Khó, cần nghỉ thêm"
         )
 
         assertTrue(WorkoutData.appendSession(context, guided))
@@ -60,7 +61,9 @@ class WorkoutDataSessionTest {
         assertEquals(legacy, history[0])
         assertEquals(guided, history[1])
         assertEquals("Squat: hiệp 1: 9 lần, hiệp 2: 10 lần", history[1].setLog)
+        assertEquals("Squat: hiệp 1: Khó, cần nghỉ thêm", history[1].effortLog)
         assertEquals("", history[0].setLog) // legacy entries decode without the additive field
+        assertEquals("", history[0].effortLog) // legacy entries decode without the additive field
     }
 
     @Test fun malformedLegacyJournalIsNeverSilentlyReplaced() {
@@ -95,6 +98,17 @@ class WorkoutDataSessionTest {
             setLog = "x".repeat(1_201)
         )
         assertFalse(WorkoutData.appendSession(context, oversized))
+        val oversizedEffort = Workout(
+            date = "2026-11-12",
+            name = "Toàn thân",
+            minutes = 8,
+            note = "guided",
+            sessionId = "550e8400-e29b-41d4-a716-446655440014",
+            completedMoves = 3,
+            selfReportedSets = 4,
+            effortLog = "x".repeat(1_201)
+        )
+        assertFalse(WorkoutData.appendSession(context, oversizedEffort))
         assertTrue(WorkoutData.history(context).isEmpty())
     }
 

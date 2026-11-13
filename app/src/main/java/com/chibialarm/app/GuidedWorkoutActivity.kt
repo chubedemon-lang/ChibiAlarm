@@ -1861,7 +1861,8 @@ class GuidedWorkoutActivity:Activity() {
         selectedIndex: Int,
         selectedSessionId: String,
         completedSets: Int,
-        plan: WorkoutSetTracker.Plan
+        plan: WorkoutSetTracker.Plan,
+        hasNextSet: Boolean
     ) {
         fun isSameSetContext(): Boolean =
             !pausedForSafety && !completed && !resting &&
@@ -1878,10 +1879,10 @@ class GuidedWorkoutActivity:Activity() {
             }
         }
 
-        val optionalNotice = if (completedSets >= plan.requiredSets) {
-            "Bạn đã đủ hiệp tối thiểu; hiệp tiếp theo chỉ là tùy chọn nếu còn sức. "
-        } else {
-            "Còn hiệp theo giáo án nếu bạn thấy sẵn sàng. "
+        val optionalNotice = when {
+            !hasNextSet -> "Đây là hiệp cuối của động tác. Cảm nhận sẽ được lưu để xem lại; không tự tăng khối lượng. "
+            completedSets >= plan.requiredSets -> "Bạn đã đủ hiệp tối thiểu; hiệp tiếp theo chỉ là tùy chọn nếu còn sức. "
+            else -> "Còn hiệp theo giáo án nếu bạn thấy sẵn sàng. "
         }
         val levels = WorkoutEffortFeedback.Level.values()
         val dialog = AlertDialog.Builder(this)
@@ -1901,6 +1902,10 @@ class GuidedWorkoutActivity:Activity() {
                 )
                 if (!saveCheckpoint()) {
                     Toast.makeText(this, "Chưa lưu được cảm nhận này vào checkpoint; buổi tập vẫn có thể tiếp tục.", Toast.LENGTH_LONG).show()
+                }
+                if (!hasNextSet && level != WorkoutEffortFeedback.Level.VERY_HARD) {
+                    speak("Đã lưu cảm nhận cho hiệp cuối. Không cần tập thêm để ghi nhận.")
+                    return@setItems
                 }
                 val recommendation = WorkoutEffortFeedback.recommend(level, plan.defaultRestSeconds)
                 when (level) {
@@ -2001,11 +2006,12 @@ class GuidedWorkoutActivity:Activity() {
                 else "Đã ghi hiệp $after/${plan.requiredSets}: $valueText. Hãy cho Chibi biết mức độ gắng sức."
             Toast.makeText(this,message,Toast.LENGTH_LONG).show()
             speak(message)
-            showSetEffortCheckIn(selectedIndex, selectedSessionId, after, plan)
+            showSetEffortCheckIn(selectedIndex, selectedSessionId, after, plan, hasNextSet = true)
         } else {
             val message="Đã ghi đủ $after hiệp cho ${moves[selectedIndex].name}; $valueText."
             Toast.makeText(this,message,Toast.LENGTH_LONG).show()
             speak(message)
+            showSetEffortCheckIn(selectedIndex, selectedSessionId, after, plan, hasNextSet = false)
         }
     }
 

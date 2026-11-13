@@ -8,7 +8,8 @@ import java.security.MessageDigest
  */
 data class WorkoutConstraintProfile(
     val avoidWristLoad: Boolean = false,
-    val avoidFloorPositions: Boolean = false
+    val avoidFloorPositions: Boolean = false,
+    val avoidOverheadReach: Boolean = false
 )
 
 object WorkoutConstraintFilter {
@@ -76,7 +77,8 @@ object WorkoutConstraintFilter {
             wristLoadHints.none { hint -> move.name.contains(hint, ignoreCase = true) })
         val floorAllowed = !profile.avoidFloorPositions ||
             floorPositionHints.none { hint -> move.name.contains(hint, ignoreCase = true) }
-        return wristAllowed && floorAllowed
+        val overheadAllowed = !profile.avoidOverheadReach || !move.requiresOverheadReach
+        return wristAllowed && floorAllowed && overheadAllowed
     }
 
     /** Stable identity for a planned sequence; active constraints invalidate old checkpoints. */
@@ -85,11 +87,12 @@ object WorkoutConstraintFilter {
         profile: WorkoutConstraintProfile = WorkoutConstraintProfile()
     ): String {
         val constraintPrefix = if (profile.avoidWristLoad || profile.avoidFloorPositions) {
-            "constraints:${profile.avoidWristLoad}:${profile.avoidFloorPositions}\u001d"
+            "constraints:${profile.avoidWristLoad}:${profile.avoidFloorPositions}:${profile.avoidOverheadReach}\u001d"
         } else ""
         val canonical = constraintPrefix + moves.joinToString("\u001f") {
             "${it.name}\u001e${it.dose}\u001e${it.seconds}\u001e${it.restSeconds}\u001e" +
-                it.equipmentOptions.map { equipment -> equipment.name }.sorted().joinToString(",")
+                it.equipmentOptions.map { equipment -> equipment.name }.sorted().joinToString(",") +
+                "\u001e${it.requiresOverheadReach}"
         }
         val digest = MessageDigest.getInstance("SHA-256")
             .digest(canonical.toByteArray(Charsets.UTF_8))
@@ -100,7 +103,7 @@ object WorkoutConstraintFilter {
         program: TrainingProgram,
         profile: WorkoutConstraintProfile
     ): Result {
-        if (!profile.avoidWristLoad && !profile.avoidFloorPositions) {
+        if (!profile.avoidWristLoad && !profile.avoidFloorPositions && !profile.avoidOverheadReach) {
             return Result(program, emptyList(), emptyList())
         }
 

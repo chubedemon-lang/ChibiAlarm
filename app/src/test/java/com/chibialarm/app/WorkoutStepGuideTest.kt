@@ -38,6 +38,23 @@ class WorkoutStepGuideTest {
         assertEquals(listOf("Nâng tay"), WorkoutStepGuide.split("•\n-\n3) Nâng tay"))
     }
 
+    @Test fun spokenCueRepeatsOnlyTheSelectedStepWithItsMatchingMovementPhase() {
+        val instructions = "Chân rộng bằng vai.\\nĐẩy hông nhẹ về sau.\\nHạ xuống theo khả năng.\\nĐứng lên.\\nGiữ gối cùng hướng bàn chân."
+        val cue = WorkoutStepGuide.spokenCue("Squat không tạ", instructions, 3)
+        assertTrue(cue.contains("Hạ hông"))
+        assertTrue(cue.contains("Bước 3 trên 5"))
+        assertTrue(cue.contains("Hạ xuống theo khả năng"))
+        assertFalse(cue.contains("Đứng lên."))
+    }
+
+    @Test fun spokenCueClampsInvalidPositionsAndKeepsSetupInstructionsNeutral() {
+        val instructions = "Chân rộng bằng vai.\\nHạ xuống theo khả năng.\\nĐứng lên."
+        val cue = WorkoutStepGuide.spokenCue("Squat không tạ", instructions, 0)
+        assertTrue(cue.contains("Bước 1 trên 3"))
+        assertTrue(cue.contains("Tư thế minh họa cho bước này"))
+        assertFalse(cue.contains("Hạ hông."))
+    }
+
     @Test fun walkthroughMovesBackwardAndForwardWithoutLeavingBounds() {
         val first = WorkoutStepGuide.Walkthrough.start(
             "Đứng thẳng.\nHạ người.\nĐứng lên."

@@ -122,6 +122,63 @@ class WorkoutEffortHistoryConversationTest {
         assertFalse(answer.contains("private"))
     }
 
+    @Test fun ranksHardestExercisesFromRecentSelfReportedSessions() {
+        val latest = guided(
+            today,
+            "Squat: hiệp 1: Khó, cần nghỉ thêm; Burpee: hiệp 1: Quá sức, tạm dừng",
+            "550e8400-e29b-41d4-a716-446655440051"
+        )
+        val previous = guided(
+            today.minusDays(1),
+            "Burpee: hiệp 1: Khó, cần nghỉ thêm; Plank: hiệp 1: Nhẹ, còn dư sức",
+            "550e8400-e29b-41d4-a716-446655440052"
+        )
+        val older = guided(
+            today.minusDays(2),
+            "Burpee: hiệp 1: Vừa sức; Squat: hiệp 1: Vừa sức",
+            "550e8400-e29b-41d4-a716-446655440053"
+        )
+
+        val answer = WorkoutHistoryConversation.answer(
+            "Bài nào làm tao đuối nhất?",
+            listOf(older, previous, latest),
+            today
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("các bài bạn tự đánh dấu khó nhất"))
+        assertTrue(answer.indexOf("Burpee") < answer.indexOf("Squat"))
+        assertTrue(answer.contains("1 hiệp khó"))
+        assertTrue(answer.contains("1 hiệp quá sức"))
+        assertTrue(answer.contains("cảm nhận tự khai báo"))
+        assertFalse(answer.contains("private health note"))
+    }
+
+    @Test fun hardestExerciseAnswerUsesOnlyFiveMostRecentSessions() {
+        val recent = (0..4).map { day ->
+            guided(
+                today.minusDays(day.toLong()),
+                "Squat: hiệp 1: Vừa sức",
+                "550e8400-e29b-41d4-a716-4466554400${60 + day}"
+            )
+        }
+        val oldHardSession = guided(
+            today.minusDays(6),
+            "Burpee: hiệp 1: Quá sức, tạm dừng",
+            "550e8400-e29b-41d4-a716-446655440066"
+        )
+
+        val answer = WorkoutHistoryConversation.answer(
+            "Bài nào khó nhất?",
+            listOf(oldHardSession) + recent,
+            today
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("chưa có hiệp nào"))
+        assertFalse(answer.contains("Burpee"))
+    }
+
     @Test fun ordinaryWorkoutPlanRequestIsNotConsumedAsHistory() {
         assertNull(
             WorkoutHistoryConversation.answer(

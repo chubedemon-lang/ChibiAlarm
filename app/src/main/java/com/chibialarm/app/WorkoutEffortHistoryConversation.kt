@@ -241,9 +241,9 @@ object WorkoutEffortHistoryConversation {
             }.joinToString(", ")
             "• ${move.name}: ${counts}; check-in gần nhất ${move.latestDate.format(dateFormat)}"
         }
-        return "Trong ${recent.size} buổi có check-in gần nhất, các bài bạn tự đánh dấu khó nhất là:\\n" +
-            lines.joinToString("\\n") +
-            "\\nĐây là cảm nhận tự khai báo, không phải phép đo kỹ thuật, thể lực hay chẩn đoán y tế. Nếu có đau hoặc triệu chứng bất thường, hãy dừng bài tập thay vì dựa vào bảng xếp hạng này."
+        return "Trong ${recent.size} buổi có check-in gần nhất, các bài bạn tự đánh dấu khó nhất là:\n" +
+            lines.joinToString("\n") +
+            "\nĐây là cảm nhận tự khai báo, không phải phép đo kỹ thuật, thể lực hay chẩn đoán y tế. Nếu có đau hoặc triệu chứng bất thường, hãy dừng bài tập thay vì dựa vào bảng xếp hạng này."
     }
 
     private fun isHardestQuestion(text: String): Boolean = listOf(

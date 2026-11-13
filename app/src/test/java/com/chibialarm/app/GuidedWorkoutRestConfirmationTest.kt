@@ -264,6 +264,15 @@ class GuidedWorkoutRestConfirmationTest {
         field("restRemainingMs").setLong(first, 45_000L)
         @Suppress("UNCHECKED_CAST")
         (field("completedMoveIndices").get(first) as MutableSet<Int>).add(0)
+        @Suppress("UNCHECKED_CAST")
+        val sessionMoves = field("moves").get(first) as List<TrainingMove>
+        val setMoveIndex = sessionMoves.indexOfFirst { WorkoutSetTracker.parse(it.dose) != null }
+        assertTrue("The starter program should contain a set-based move", setMoveIndex >= 0)
+        @Suppress("UNCHECKED_CAST")
+        (field("completedSetsByMove").get(first) as MutableMap<Int, Int>)[setMoveIndex] = 1
+        @Suppress("UNCHECKED_CAST")
+        (field("effortLevelsByMove").get(first) as MutableMap<Int, List<WorkoutEffortFeedback.Level?>>)[setMoveIndex] =
+            listOf(WorkoutEffortFeedback.Level.HARD)
 
         val save = GuidedWorkoutActivity::class.java.getDeclaredMethod("saveCheckpoint").apply {
             isAccessible = true
@@ -295,6 +304,9 @@ class GuidedWorkoutRestConfirmationTest {
             field("paused").getBoolean(restored))
         @Suppress("UNCHECKED_CAST")
         assertTrue((field("completedMoveIndices").get(restored) as Set<Int>).contains(0))
+        @Suppress("UNCHECKED_CAST")
+        val restoredEffort = field("effortLevelsByMove").get(restored) as Map<Int, List<WorkoutEffortFeedback.Level?>>
+        assertEquals(listOf(WorkoutEffortFeedback.Level.HARD), restoredEffort[setMoveIndex])
 
         restoredController.pause().stop().destroy()
     }

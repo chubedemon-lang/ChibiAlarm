@@ -64,4 +64,36 @@ class WorkoutStepGuideTest {
         assertEquals(1, walkthrough.steps.size)
         assertEquals("Đọc hướng dẫn trên màn hình và tập theo sức mình.", walkthrough.currentStep)
     }
+
+    @Test fun curatedCatalogInstructionsExposeActionableStepsForWalkthroughAndSpeech() {
+        val expected = mapOf(
+            "Squat không tạ" to listOf(
+                "Chân rộng bằng vai",
+                "đẩy hông nhẹ về sau",
+                "hạ xuống theo khả năng",
+                "đứng lên",
+                "giữ gối cùng hướng bàn chân."
+            ),
+            "Chống đẩy tường" to listOf(
+                "Đặt hai tay ngang ngực lên tường",
+                "giữ thân thẳng",
+                "gập khuỷu đưa ngực gần tường",
+                "đẩy ra có kiểm soát."
+            ),
+            "Plank khuỷu hoặc plank gối" to listOf(
+                "Giữ thân thành đường thẳng",
+                "siết bụng nhẹ",
+                "tiếp tục hít thở đều."
+            )
+        )
+        expected.forEach { (name, cues) ->
+            val move = TrainingCatalog.allMoves.single { it.name == name }
+            val walkthrough = WorkoutStepGuide.Walkthrough.start(move.steps)
+            assertEquals(name, cues, walkthrough.steps)
+            assertEquals(name, 1, walkthrough.position)
+            assertEquals(name, cues.first(), walkthrough.currentStep)
+            assertEquals(name, cues.size > 1, walkthrough.canGoNext)
+        }
+    }
+
 }

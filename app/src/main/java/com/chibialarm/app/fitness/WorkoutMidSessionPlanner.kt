@@ -87,13 +87,13 @@ object WorkoutMidSessionPlanner {
         currentMoves.drop(currentIndex).forEachIndexed { offset, move ->
             val isCurrent = offset == 0
             val mustAvoid = !WorkoutConstraintFilter.isAllowed(move, effectiveProfile)
-            val mustRemoveEquipment = request.avoidExternalLoad && requiresExternalLoad(move)
+            val mustRemoveEquipment = !equipmentAvailable(move, request)
             val mustChange = mustAvoid || mustRemoveEquipment
             val canReplace = !isCurrent || (!currentStepLocked && completedCurrentSets == 0)
 
             if (isCurrent && mustChange && !canReplace) {
                 val reason = if (mustRemoveEquipment && !mustAvoid) {
-                    "Động tác hiện tại cần tạ hoặc dây kháng lực nhưng đã có hiệp được ghi nhận. " +
+                    "Động tác hiện tại cần ${unavailableEquipmentLabel(move, request)} nhưng đã có hiệp được ghi nhận. " +
                         "Chibi không thể đổi hồi tố; hãy kết thúc bước an toàn trước khi đổi phần còn lại."
                 } else {
                     "Động tác hiện tại không phù hợp với hạn chế vận động mới và đã có hiệp được ghi nhận. " +
@@ -110,7 +110,7 @@ object WorkoutMidSessionPlanner {
             }
             val replacement = candidates.firstOrNull {
                 it.name !in usedNames && it.name !in reservedFutureNames && it.name != move.name &&
-                    (!request.avoidExternalLoad || !requiresExternalLoad(it))
+                    equipmentAvailable(it, request)
             }
 
             when {
@@ -199,6 +199,33 @@ object WorkoutMidSessionPlanner {
     }
 
     private fun requiresExternalLoad(move: TrainingMove): Boolean = move.requiresExternalLoad
+
+    private fun equipmentAvailable(
+        move: TrainingMove,
+        request: WorkoutMidSessionRequest.Request
+    ): Boolean {
+        if (request.avoidExternalLoad && requiresExternalLoad(move)) return false
+        return move.equipmentOptions.isEmpty() ||
+            move.equipmentOptions.any { it !in request.unavailableEquipment }
+    }
+
+    private fun unavailableEquipmentLabel(
+        move: TrainingMove,
+        request: WorkoutMidSessionRequest.Request
+    ): String {
+        val labels = move.equipmentOptions
+            .filter { it in request.unavailableEquipment }
+            .map { equipment ->
+                when (equipment) {
+                    com.chibialarm.app.TrainingEquipment.DUMBBELL -> "tạ đơn"
+                    com.chibialarm.app.TrainingEquipment.RESISTANCE_BAND -> "dây kháng lực"
+                    com.chibialarm.app.TrainingEquipment.STABLE_CHAIR -> "ghế vững"
+                    com.chibialarm.app.TrainingEquipment.MAT -> "thảm tập"
+                }
+            }
+        return labels.takeIf { it.isNotEmpty() }?.joinToString(" hoặc ")
+            ?: "dụng cụ cần thiết"
+    }
 
     private fun isMainExercise(move: TrainingMove): Boolean =
         move.name !in setOf("Khởi động tại chỗ", "Thả lỏng", "Giãn cơ và thở chậm")

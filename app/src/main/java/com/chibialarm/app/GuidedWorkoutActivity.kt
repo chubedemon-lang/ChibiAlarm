@@ -20,6 +20,7 @@ import com.chibialarm.app.fitness.WorkoutSessionTimeEstimate
 import com.chibialarm.app.fitness.WorkoutMidSessionPlanner
 import com.chibialarm.app.fitness.WorkoutMidSessionRequest
 import com.chibialarm.app.fitness.WorkoutMidSessionPreviewFormatter
+import com.chibialarm.app.TrainingEquipment
 import com.chibialarm.app.rpg.RpgDatabase
 import com.chibialarm.app.rpg.RpgEngine
 import com.chibialarm.app.rpg.WorkoutRewardEvidence
@@ -767,6 +768,16 @@ class GuidedWorkoutActivity:Activity() {
                     }
                     if (request.avoidExternalLoad) {
                         append("\nLoại bỏ tạ và dây kháng lực khỏi phần chưa hoàn thành; chỉ dùng biến thể đã có trong thư viện.")
+                    } else if (request.unavailableEquipment.isNotEmpty()) {
+                        val missingTools = request.unavailableEquipment.sortedBy { it.ordinal }.joinToString(", ") {
+                            when (it) {
+                                TrainingEquipment.DUMBBELL -> "tạ đơn"
+                                TrainingEquipment.RESISTANCE_BAND -> "dây kháng lực"
+                                TrainingEquipment.STABLE_CHAIR -> "ghế vững"
+                                TrainingEquipment.MAT -> "thảm tập"
+                            }
+                        }
+                        append("\nKhông có sẵn: $missingTools. Bài có lựa chọn dụng cụ thay thế còn phù hợp vẫn được giữ lại.")
                     }
                     if (request.lowEnergy) {
                         append("\nƯu tiên biến thể nhẹ hơn và nghỉ riêng.")

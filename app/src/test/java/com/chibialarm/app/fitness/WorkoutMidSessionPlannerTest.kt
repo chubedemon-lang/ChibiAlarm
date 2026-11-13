@@ -281,6 +281,10 @@ class WorkoutMidSessionPlannerTest {
         assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
         val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
         assertTrue(request.avoidExternalLoad)
+        assertEquals(
+            setOf(TrainingEquipment.DUMBBELL, TrainingEquipment.RESISTANCE_BAND),
+            request.unavailableEquipment
+        )
         assertFalse(request.lowEnergy)
         assertFalse(request.preferEasier)
         assertNull(request.restSeconds)
@@ -293,21 +297,98 @@ class WorkoutMidSessionPlannerTest {
         )
     }
 
-    @Test fun colloquialNoEquipmentRequestsDoNotAssumeFatigueOrAskForAnEasierPlan() {
-        val utterances = listOf(
-            "Hôm nay tao không mang tạ",
-            "Tao để tạ ở nhà rồi",
-            "Không có thiết bị tập hôm nay",
-            "Đổi bài tập tay không"
+    @Test fun colloquialEquipmentRequestsOnlyMarkTheMissingTool() {
+        val allTools = TrainingEquipment.values().toSet()
+        val cases = listOf(
+            "Hôm nay tao không mang tạ" to setOf(TrainingEquipment.DUMBBELL),
+            "Tao để tạ ở nhà rồi" to setOf(TrainingEquipment.DUMBBELL),
+            "Tao không có dây kháng lực" to setOf(TrainingEquipment.RESISTANCE_BAND),
+            "Không có thiết bị tập hôm nay" to allTools,
+            "Đổi bài tập tay không" to allTools
         )
-        utterances.forEach { utterance ->
+        cases.forEach { (utterance, expectedMissing) ->
             val parsed = WorkoutMidSessionRequest.parse(utterance)
             assertTrue(utterance, parsed is WorkoutMidSessionRequest.Result.Proposed)
             val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
-            assertTrue(utterance, request.avoidExternalLoad)
+            assertEquals(utterance, expectedMissing, request.unavailableEquipment)
+            assertEquals(
+                utterance,
+                expectedMissing.containsAll(
+                    setOf(TrainingEquipment.DUMBBELL, TrainingEquipment.RESISTANCE_BAND)
+                ),
+                request.avoidExternalLoad
+            )
             assertFalse(utterance, request.lowEnergy)
             assertFalse(utterance, request.preferEasier)
         }
+    }
+
+    @Test fun aMissingDumbbellDoesNotDiscardAnExerciseThatAlsoSupportsABand() {
+        val parsed = WorkoutMidSessionRequest.parse(
+            "Tao không có tạ nhưng vẫn có dây kháng lực"
+        )
+        assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
+        val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+        assertEquals(setOf(TrainingEquipment.DUMBBELL), request.unavailableEquipment)
+        assertFalse(request.avoidExternalLoad)
+
+        val moves = listOf(
+            move("Khởi động tại chỗ"),
+            move("Kéo tạ đơn hoặc dây kháng lực"),
+            move("Gập hông với tạ đơn hoặc dây"),
+            move("Thả lỏng")
+        )
+        val result = WorkoutMidSessionPlanner.preview(
+            currentMoves = moves,
+            currentIndex = 1,
+            completedCurrentSets = 0,
+            currentStepLocked = false,
+            constraints = WorkoutConstraintProfile(),
+            request = request,
+            remainingCurrentSeconds = 60,
+            extensionMoveNames = emptySet(),
+            level = 0
+        )
+        assertTrue(result is WorkoutMidSessionPlanner.Result.Proposed)
+        val preview = (result as WorkoutMidSessionPlanner.Result.Proposed).preview
+        assertEquals(moves, preview.after)
+        assertTrue(preview.replacements.isEmpty())
+        assertTrue(preview.removedMoves.isEmpty())
+    }
+
+    @Test fun aMoveWithOnlyUnavailableEquipmentIsRemovedOnlyWhenUnstarted() {
+        val dumbbellOnly = TrainingMove(
+            name = "Dumbbell row",
+            dose = "2 hiệp × 8 lần",
+            steps = "Kéo có kiểm soát",
+            easier = "Giảm tải",
+            avoid = "Dừng nếu đau",
+            equipmentOptions = setOf(TrainingEquipment.DUMBBELL)
+        )
+        val request = (WorkoutMidSessionRequest.parse("Tao không có tạ") as
+            WorkoutMidSessionRequest.Result.Proposed).request
+        val moves = listOf(
+            move("Khởi động tại chỗ"),
+            dumbbellOnly,
+            move("Squat không tạ"),
+            move("Thả lỏng")
+        )
+        val result = WorkoutMidSessionPlanner.preview(
+            currentMoves = moves,
+            currentIndex = 0,
+            completedCurrentSets = 0,
+            currentStepLocked = false,
+            constraints = WorkoutConstraintProfile(),
+            request = request,
+            remainingCurrentSeconds = 60,
+            extensionMoveNames = emptySet(),
+            level = 0
+        )
+        assertTrue(result is WorkoutMidSessionPlanner.Result.Proposed)
+        val preview = (result as WorkoutMidSessionPlanner.Result.Proposed).preview
+        assertTrue(preview.removedMoves.contains("Dumbbell row"))
+        assertFalse(preview.after.any { it.name == "Dumbbell row" })
+        assertTrue(preview.after.any { it.name == "Squat không tạ" })
     }
 
     @Test fun noEquipmentMidSessionReplacesOnlyRemainingWeightedCatalogMoves() {

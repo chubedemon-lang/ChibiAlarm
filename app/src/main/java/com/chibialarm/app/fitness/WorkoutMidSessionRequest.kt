@@ -2,6 +2,7 @@ package com.chibialarm.app.fitness
 
 import com.chibialarm.app.FitnessNaturalRequest
 import com.chibialarm.app.WorkoutRestRequest
+import com.chibialarm.app.TrainingEquipment
 import java.text.Normalizer
 import java.util.Locale
 
@@ -21,7 +22,10 @@ object WorkoutMidSessionRequest {
         // Explicit permissions are distinct from an absent preference. They let a user
         // relax a session-only constraint without treating an unrelated utterance as consent.
         val allowWristLoad: Boolean = false,
-        val allowFloorPositions: Boolean = false
+        val allowFloorPositions: Boolean = false,
+        // Missing tools are tracked individually. A catalog move with alternative tools
+        // remains valid while at least one of its declared options is available.
+        val unavailableEquipment: Set<TrainingEquipment> = emptySet()
     ) {
         init {
             require(remainingMinutes == null || remainingMinutes in 5..120)
@@ -40,7 +44,8 @@ object WorkoutMidSessionRequest {
                 !preferEasier &&
                 !avoidExternalLoad &&
                 !allowWristLoad &&
-                !allowFloorPositions
+                !allowFloorPositions &&
+                unavailableEquipment.isEmpty()
     }
 
     sealed class Result {
@@ -101,14 +106,41 @@ object WorkoutMidSessionRequest {
             "nhe hon", "de hon", "giam do kho", "doi bai nhe",
             "doi sang bai nhe", "thay bai nhe"
         )
-        // A user may lose access to equipment mid-session. Only explicit negative
-        // phrases request bodyweight alternatives; positive equipment mentions do not.
-        val avoidExternalLoad = has(
-            "khong dung cu", "khong co dung cu", "khong can dung cu", "tay khong",
-            "khong dung ta", "khong co ta", "bo ta", "khong mang ta", "de ta o nha",
-            "khong co do tap", "khong co thiet bi", "khong mang dung cu",
-            "khong dung day khang luc", "khong co day khang luc", "bo day khang luc"
+        // Equipment is parsed per tool. A dumbbell-only absence must not discard a
+        // catalog move that can also be performed with a resistance band.
+        val noBothExternalLoads = has(
+            "khong dung ta hoac day khang luc",
+            "khong co ta hoac day khang luc",
+            "khong co ca ta lan day khang luc",
+            "khong dung ta va day khang luc",
+            "khong co day khang luc hoac ta"
         )
+        val noEquipment = has(
+            "khong dung cu", "khong co dung cu", "khong can dung cu", "tay khong",
+            "khong co do tap", "khong co thiet bi", "khong mang dung cu"
+        )
+        val noDumbbell = noBothExternalLoads || has(
+            "khong dung ta", "khong co ta", "bo ta", "khong mang ta",
+            "de ta o nha", "khong co ta don"
+        )
+        val noResistanceBand = noBothExternalLoads || has(
+            "khong dung day khang luc", "khong co day khang luc",
+            "bo day khang luc", "khong mang day khang luc", "khong co day tap"
+        )
+        val noStableChair = has("khong co ghe", "khong mang ghe", "de ghe o nha")
+        val noMat = has("khong co tham tap", "khong co tham", "khong mang tham")
+        val unavailableEquipment = if (noEquipment) {
+            TrainingEquipment.values().toSet()
+        } else {
+            buildSet {
+                if (noDumbbell) add(TrainingEquipment.DUMBBELL)
+                if (noResistanceBand) add(TrainingEquipment.RESISTANCE_BAND)
+                if (noStableChair) add(TrainingEquipment.STABLE_CHAIR)
+                if (noMat) add(TrainingEquipment.MAT)
+            }
+        }
+        val avoidExternalLoad = noEquipment || noBothExternalLoads ||
+            (noDumbbell && noResistanceBand)
 
         val hasRestRequest = Regex("""\b(nghi|rest)\b""").containsMatchIn(text)
         val explicitRest = if (hasRestRequest) WorkoutRestRequest.seconds(input) else null
@@ -116,7 +148,8 @@ object WorkoutMidSessionRequest {
 
         if (remainingMinutes == null && !lowEnergy && !avoidWristLoad && !avoidFloorPositions &&
             !allowWristLoad && !allowFloorPositions &&
-            !preferEasier && restSeconds == null && !avoidExternalLoad
+            !preferEasier && restSeconds == null && !avoidExternalLoad &&
+            unavailableEquipment.isEmpty()
         ) return Result.Unsupported
 
         return Result.Proposed(
@@ -129,7 +162,8 @@ object WorkoutMidSessionRequest {
                 restSeconds = restSeconds,
                 avoidExternalLoad = avoidExternalLoad,
                 allowWristLoad = allowWristLoad,
-                allowFloorPositions = allowFloorPositions
+                allowFloorPositions = allowFloorPositions,
+                unavailableEquipment = unavailableEquipment
             )
         )
     }

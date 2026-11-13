@@ -91,6 +91,37 @@ class FitnessCoachSessionSnapshotTest {
 
 
 
+    @Test fun overheadReachPreferenceSurvivesRotationWithoutPersistingFreeText() {
+        val controller = Robolectric.buildActivity(FitnessActivity::class.java).setup()
+        val checkboxField = FitnessActivity::class.java.getDeclaredField("overheadReachCheckBox").apply {
+            isAccessible = true
+        }
+        val checkbox = checkboxField.get(controller.get()) as android.widget.CheckBox
+        checkbox.isChecked = true
+
+        controller.recreate()
+        val restored = controller.get()
+        val restoredCheckbox = checkboxField.get(restored) as android.widget.CheckBox
+        assertTrue(restoredCheckbox.isChecked)
+        assertFalse(restored.getSharedPreferences("chibi_fitness_offline", 0)
+            .contains("avoidOverheadReach"))
+        controller.pause().stop().destroy()
+
+        val source = FitnessNaturalRequest.Result(
+            reply = "private speech transcript",
+            avoidOverheadReach = true
+        )
+        val snapshot = FitnessCoachSessionSnapshot.capture(
+            source, 0, selectedAvoidOverheadReach = true
+        )!!
+        assertTrue(snapshot.restore()?.avoidOverheadReach == true)
+        assertFalse(snapshot.toString().contains("private speech transcript"))
+        val cleared = FitnessCoachSessionSnapshot.capture(
+            source.copy(avoidOverheadReach = null), 0, selectedAvoidOverheadReach = false
+        )!!
+        assertEquals(false, cleared.restore()?.avoidOverheadReach)
+    }
+
     @Test fun floorPositionPreferenceSurvivesRotationSnapshotWithoutFreeText() {
         val source = FitnessNaturalRequest.Result(
             reply = "private speech transcript",

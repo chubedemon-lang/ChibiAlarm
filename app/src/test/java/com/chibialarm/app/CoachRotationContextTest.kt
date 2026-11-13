@@ -22,7 +22,8 @@ class CoachRotationContextTest {
         val field = CoachActivity::class.java.getDeclaredField("fitnessContext").apply { isAccessible = true }
         field.set(activity, FitnessNaturalRequest.Result(
             goal = 2, level = 1, energy = 0, minutes = 20, equipment = 0, impact = 1,
-            reply = "temporary", avoidWristLoad = true, avoidFloorPositions = false
+            reply = "temporary", avoidWristLoad = true, avoidFloorPositions = false,
+            avoidOverheadReach = true
         ))
         val saved = Bundle()
         controller.saveInstanceState(saved)
@@ -37,6 +38,7 @@ class CoachRotationContextTest {
         assertEquals(1, result.level)
         assertEquals(true, result.avoidWristLoad)
         assertEquals(false, result.avoidFloorPositions)
+        assertEquals(true, result.avoidOverheadReach)
         controller.pause().stop().destroy()
         restored.finish()
     }
@@ -58,7 +60,8 @@ class CoachRotationContextTest {
         }
         contextField.set(coach, FitnessNaturalRequest.Result(
             goal = 0, level = 2, energy = 1, minutes = 30, equipment = 2, impact = 0,
-            reply = "transient", avoidWristLoad = true, avoidFloorPositions = false
+            reply = "transient", avoidWristLoad = true, avoidFloorPositions = false,
+            avoidOverheadReach = true
         ))
 
         val button = findButton(coach.window.decorView, "🏃 Xem bài tập")
@@ -69,6 +72,7 @@ class CoachRotationContextTest {
         assertEquals(2, handoff.getIntExtra("coach_level", -1))
         assertEquals(true, handoff.getBooleanExtra("coach_avoid_wrist_load", false))
         assertEquals(false, handoff.getBooleanExtra("coach_avoid_floor_positions", true))
+        assertEquals(true, handoff.getBooleanExtra("coach_avoid_overhead_reach", false))
 
         val fitnessController = Robolectric.buildActivity(FitnessActivity::class.java, handoff).setup()
         val fitness = fitnessController.get()
@@ -79,6 +83,7 @@ class CoachRotationContextTest {
         assertEquals(2, received.level)
         assertEquals(true, received.avoidWristLoad)
         assertEquals(false, received.avoidFloorPositions)
+        assertEquals(true, received.avoidOverheadReach)
 
         val wristField = FitnessActivity::class.java.getDeclaredField("wristLoadCheckBox").apply {
             isAccessible = true
@@ -86,8 +91,12 @@ class CoachRotationContextTest {
         val floorField = FitnessActivity::class.java.getDeclaredField("floorPositionCheckBox").apply {
             isAccessible = true
         }
+        val overheadField = FitnessActivity::class.java.getDeclaredField("overheadReachCheckBox").apply {
+            isAccessible = true
+        }
         assertEquals(true, (wristField.get(fitness) as android.widget.CheckBox).isChecked)
         assertEquals(false, (floorField.get(fitness) as android.widget.CheckBox).isChecked)
+        assertEquals(true, (overheadField.get(fitness) as android.widget.CheckBox).isChecked)
         coach.finish()
         fitnessController.pause().stop().destroy()
     }

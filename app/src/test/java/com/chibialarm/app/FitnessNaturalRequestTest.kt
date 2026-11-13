@@ -163,6 +163,47 @@ class FitnessNaturalRequestTest {
 
 
 
+    @Test fun overheadReachAvoidanceIsAPlanPreferenceNotAShoulderPainDiagnosis() {
+        for (phrase in listOf(
+            "không đưa tay qua đầu",
+            "tránh nâng tay quá đầu",
+            "đừng đẩy tạ qua đầu",
+            "hạn chế động tác quá đầu"
+        )) {
+            val result = FitnessNaturalRequest.parse(phrase)
+            assertEquals("Failed for $phrase", true, result.avoidOverheadReach)
+            assertNull("Preference is not a diagnosis: $phrase", result.impact)
+        }
+    }
+
+    @Test fun explicitOverheadPermissionCanRelaxOnlyThatPlanPreference() {
+        for (phrase in listOf(
+            "có thể đưa tay qua đầu",
+            "không cần tránh đưa tay qua đầu",
+            "bỏ hạn chế đưa tay qua đầu"
+        )) {
+            val result = FitnessNaturalRequest.parse(phrase)
+            assertEquals("Failed for $phrase", false, result.avoidOverheadReach)
+            assertNull(result.impact)
+        }
+    }
+
+    @Test fun explicitOverheadRestrictionWinsOverPermissionInTheSameUtterance() {
+        val result = FitnessNaturalRequest.parse(
+            "có thể đưa tay qua đầu nhưng vẫn không đưa tay qua đầu"
+        )
+        assertEquals(true, result.avoidOverheadReach)
+    }
+
+    @Test fun overheadPermissionNeverHidesActiveShoulderPain() {
+        val result = FitnessNaturalRequest.parse(
+            "có thể đưa tay qua đầu nhưng vai đang đau"
+        )
+        assertEquals(false, result.avoidOverheadReach)
+        assertEquals(2, result.impact)
+        assertTrue(result.reply.contains("Không bắt đầu tập"))
+    }
+
     @Test fun floorPositionAvoidanceIsAPlanPreferenceNotAnInjuryReport() {
         for (phrase in listOf("không nằm sàn", "đừng quỳ sàn", "tránh xuống sàn", "đừng nằm hoặc quỳ sàn")) {
             val result = FitnessNaturalRequest.parse(phrase)

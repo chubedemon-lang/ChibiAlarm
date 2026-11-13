@@ -30,6 +30,25 @@ class WorkoutVoiceCommandsTest {
         assertEquals(C.SHORTER_REMAINING, WorkoutVoiceCommands.parse("rut ngan ca buoi"))
     }
 
+    @Test fun noEquipmentVoiceRequestsShowTheCorrectPlanAdjustmentPreview() {
+        val phrases = listOf(
+            "Không có dụng cụ",
+            "Không có tạ đơn",
+            "Không có dây kháng lực",
+            "Tao để tạ ở nhà rồi",
+            "Đổi bài tập tay không"
+        )
+        for (phrase in phrases) {
+            assertEquals(phrase, C.NO_EQUIPMENT, WorkoutVoiceCommands.parse(phrase))
+            assertFalse(phrase, WorkoutVoiceCommands.mayEditReps(phrase))
+        }
+        assertEquals(
+            "Đề xuất thay động tác cần tạ/dây ở phần chưa tập bằng biến thể không cần tải ngoài",
+            WorkoutVoiceCommands.describe(C.NO_EQUIPMENT)
+        )
+        assertEquals(C.UNKNOWN, WorkoutVoiceCommands.parse("Tao có tạ và dây kháng lực"))
+    }
+
     @Test fun statusRequestsAreRecognizedWithoutChangingTheWorkout() {
         for (phrase in listOf(
             "Đọc tiến độ",

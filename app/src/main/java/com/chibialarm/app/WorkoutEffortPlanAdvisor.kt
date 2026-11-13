@@ -65,8 +65,8 @@ object WorkoutEffortPlanAdvisor {
     ): Suggestion? {
         require(lookbackDays in 1..90)
         val firstDay = today.minusDays(lookbackDays.toLong() - 1L)
-        val sessions = workouts.asSequence()
-            .takeLast(MAX_RECORDS)
+        val sessions = workouts.takeLast(MAX_RECORDS)
+            .asSequence()
             .mapIndexedNotNull { index, workout ->
                 val date = runCatching { LocalDate.parse(workout.date) }.getOrNull()
                     ?: return@mapIndexedNotNull null

@@ -16,7 +16,6 @@ object WorkoutMidSessionRequest {
         val lowEnergy: Boolean = false,
         val avoidWristLoad: Boolean = false,
         val avoidFloorPositions: Boolean = false,
-        val avoidOverheadReach: Boolean = false,
         val preferEasier: Boolean = false,
         val restSeconds: Int? = null,
         val avoidExternalLoad: Boolean = false,
@@ -24,10 +23,12 @@ object WorkoutMidSessionRequest {
         // relax a session-only constraint without treating an unrelated utterance as consent.
         val allowWristLoad: Boolean = false,
         val allowFloorPositions: Boolean = false,
-        val allowOverheadReach: Boolean = false,
         // Missing tools are tracked individually. A catalog move with alternative tools
         // remains valid while at least one of its declared options is available.
-        val unavailableEquipment: Set<TrainingEquipment> = emptySet()
+        val unavailableEquipment: Set<TrainingEquipment> = emptySet(),
+        // Appended to preserve the positional constructor order used by older call sites.
+        val avoidOverheadReach: Boolean = false,
+        val allowOverheadReach: Boolean = false
     ) {
         init {
             require(remainingMinutes == null || remainingMinutes in 5..120)

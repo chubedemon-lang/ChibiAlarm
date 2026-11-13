@@ -6,7 +6,7 @@ import java.util.Locale
 /** Small, offline command interpreter. Unrecognized speech never controls a workout. */
 object WorkoutVoiceCommands {
     enum class Command {
-        PAIN, PAUSE, STATUS, STEP_GUIDE, RESUME, NEXT, PREVIOUS, REPEAT, EASIER, SWAP_EASIER,
+        PAIN, PAUSE, STATUS, STEP_GUIDE, RESUME, NEXT, PREVIOUS, REPEAT, REPEAT_STEP, EASIER, SWAP_EASIER,
         EASIER_AND_REST, SHORTER, SHORTER_REMAINING, REST, COMPLETE_SET, NO_EQUIPMENT, UNKNOWN
     }
 
@@ -22,7 +22,8 @@ object WorkoutVoiceCommands {
             Command.RESUME -> "Tiếp tục buổi tập"
             Command.NEXT -> "Chuyển sang động tác tiếp theo"
             Command.PREVIOUS -> "Quay lại động tác trước"
-            Command.REPEAT -> "Đọc lại hướng dẫn"
+            Command.REPEAT -> "Đọc lại toàn bộ hướng dẫn"
+            Command.REPEAT_STEP -> "Đọc lại bước hướng dẫn đang xem"
             Command.EASIER -> "Hiển thị cách tập dễ hơn"
             Command.SWAP_EASIER -> "Thay động tác hiện tại bằng phương án nhẹ hơn"
             Command.EASIER_AND_REST -> "Hiển thị cách tập dễ hơn và thêm $restSeconds giây nghỉ"
@@ -105,6 +106,9 @@ object WorkoutVoiceCommands {
                 normalized.contains("bai khac") -> Command.SWAP_EASIER
             normalized.contains("de hon") || normalized.contains("giam do kho") ||
                 normalized.contains("nhe hon") -> Command.EASIER
+            normalized.contains("doc lai buoc") || normalized.contains("nhac lai buoc") ||
+                normalized.contains("buoc vua roi") || normalized.contains("buoc dang xem") ||
+                normalized.contains("buoc nay") -> Command.REPEAT_STEP
             normalized.contains("lap lai") || normalized.contains("nhac lai") || normalized.contains("noi lai") ||
                 "repeat" in words -> Command.REPEAT
             normalized.contains("bai truoc") || normalized.contains("quay lai") ||

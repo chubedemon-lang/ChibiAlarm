@@ -1,6 +1,9 @@
 package com.chibialarm.app
 
+import com.chibialarm.app.fitness.WorkoutMidSessionPlanner
+import com.chibialarm.app.fitness.WorkoutMidSessionRequest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -24,8 +27,15 @@ class TrainingCatalogTest {
         assertTrue(resistanceMoves.all {
             it.equipmentOptions == setOf(TrainingEquipment.DUMBBELL, TrainingEquipment.RESISTANCE_BAND)
         })
+        val chairMoves = setOf("Đứng lên – ngồi xuống", "Giãn gân kheo ngồi ghế")
         assertTrue(TrainingCatalog.allMoves.filterNot { it.name in resistanceMoves.map(TrainingMove::name) }
-            .all { it.equipmentOptions.isEmpty() })
+            .all { move ->
+                if (move.name in chairMoves) {
+                    move.equipmentOptions == setOf(TrainingEquipment.STABLE_CHAIR)
+                } else {
+                    move.equipmentOptions.isEmpty()
+                }
+            })
     }
 
     @Test fun exerciseRestRecommendationsAreBoundedAndMatchEffort() {
@@ -81,4 +91,77 @@ class TrainingCatalogTest {
     }
 
 
+
+    @Test fun chairDependentMovesDeclareStableChairRequirement() {
+        val moves = TrainingCatalog.allMoves.associateBy { it.name }
+        val sitToStand = moves.getValue("Đứng lên – ngồi xuống")
+        val seatedStretch = moves.getValue("Giãn gân kheo ngồi ghế")
+
+        assertEquals(setOf(TrainingEquipment.STABLE_CHAIR), sitToStand.equipmentOptions)
+        assertEquals(setOf(TrainingEquipment.STABLE_CHAIR), seatedStretch.equipmentOptions)
+        assertFalse(TrainingEquipmentAvailability.allows(sitToStand, emptySet()))
+        assertTrue(
+            TrainingEquipmentAvailability.allows(
+                sitToStand,
+                setOf(TrainingEquipment.STABLE_CHAIR)
+            )
+        )
+        assertTrue(
+            TrainingEquipmentAvailability.allows(
+                moves.getValue("Chống đẩy tường"),
+                emptySet()
+            )
+        )
+    }
+
+    @Test fun spokenNoChairRequestRemovesOnlyUnstartedChairDependentMoves() {
+        val parsed = WorkoutMidSessionRequest.parse("Hôm nay tao không có ghế")
+        assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
+        val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+        assertEquals(setOf(TrainingEquipment.STABLE_CHAIR), request.unavailableEquipment)
+
+        val catalog = TrainingCatalog.allMoves.associateBy { it.name }
+        val warm = catalog.getValue("Khởi động tại chỗ")
+        val chairMove = catalog.getValue("Đứng lên – ngồi xuống")
+        val wallPush = catalog.getValue("Chống đẩy tường")
+        val cool = catalog.getValue("Thả lỏng")
+        val result = WorkoutMidSessionPlanner.preview(
+            currentMoves = listOf(warm, chairMove, wallPush, cool),
+            currentIndex = 0,
+            completedCurrentSets = 0,
+            currentStepLocked = false,
+            constraints = WorkoutConstraintProfile(),
+            request = request,
+            remainingCurrentSeconds = 120,
+            extensionMoveNames = emptySet(),
+            level = 0
+        )
+        assertTrue(result is WorkoutMidSessionPlanner.Result.Proposed)
+        val preview = (result as WorkoutMidSessionPlanner.Result.Proposed).preview
+        assertEquals(listOf(warm, wallPush, cool), preview.after)
+        assertEquals(listOf(chairMove.name), preview.removedMoves)
+    }
+
+    @Test fun missingChairCannotRewriteAnAlreadyStartedChairDependentMove() {
+        val parsed = WorkoutMidSessionRequest.parse("Tao không có ghế")
+        assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
+        val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+        val catalog = TrainingCatalog.allMoves.associateBy { it.name }
+        val result = WorkoutMidSessionPlanner.preview(
+            currentMoves = listOf(
+                catalog.getValue("Đứng lên – ngồi xuống"),
+                catalog.getValue("Chống đẩy tường"),
+                catalog.getValue("Thả lỏng")
+            ),
+            currentIndex = 0,
+            completedCurrentSets = 1,
+            currentStepLocked = true,
+            constraints = WorkoutConstraintProfile(),
+            request = request,
+            remainingCurrentSeconds = 30,
+            extensionMoveNames = emptySet(),
+            level = 0
+        )
+        assertTrue(result is WorkoutMidSessionPlanner.Result.Blocked)
+    }
 }

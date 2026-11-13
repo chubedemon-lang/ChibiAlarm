@@ -86,13 +86,18 @@ object WorkoutConstraintFilter {
         moves: List<TrainingMove>,
         profile: WorkoutConstraintProfile = WorkoutConstraintProfile()
     ): String {
-        val constraintPrefix = if (profile.avoidWristLoad || profile.avoidFloorPositions) {
-            "constraints:${profile.avoidWristLoad}:${profile.avoidFloorPositions}:${profile.avoidOverheadReach}\u001d"
-        } else ""
+        // Preserve legacy checkpoint fingerprints for existing wrist/floor-only profiles.
+        // The new preference adds a distinct prefix only when it is actually enabled.
+        val constraintPrefix = when {
+            profile.avoidOverheadReach ->
+                "constraints:${profile.avoidWristLoad}:${profile.avoidFloorPositions}:overhead\u001d"
+            profile.avoidWristLoad || profile.avoidFloorPositions ->
+                "constraints:${profile.avoidWristLoad}:${profile.avoidFloorPositions}\u001d"
+            else -> ""
+        }
         val canonical = constraintPrefix + moves.joinToString("\u001f") {
             "${it.name}\u001e${it.dose}\u001e${it.seconds}\u001e${it.restSeconds}\u001e" +
-                it.equipmentOptions.map { equipment -> equipment.name }.sorted().joinToString(",") +
-                "\u001e${it.requiresOverheadReach}"
+                it.equipmentOptions.map { equipment -> equipment.name }.sorted().joinToString(",")
         }
         val digest = MessageDigest.getInstance("SHA-256")
             .digest(canonical.toByteArray(Charsets.UTF_8))

@@ -125,4 +125,3 @@ object WorkoutEffortLog {
         .joinToString("; ")
         .take(MAX_SUMMARY_CHARS)
 }
-}

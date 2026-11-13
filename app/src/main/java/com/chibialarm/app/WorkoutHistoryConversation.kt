@@ -9,7 +9,7 @@ import java.util.Locale
 /**
  * Answers simple workout-history questions from the on-device journal.
  *
- * Only structured date, activity name, duration and self-reported set values are read.
+ * Only structured date, activity name, duration, self-reported set values and effort labels are read.
  * Free-text notes, safety preferences and health details are never inspected or returned.
  * This is a local journal summary, not a recovery or medical assessment.
  */
@@ -34,6 +34,9 @@ object WorkoutHistoryConversation {
         workouts: List<Workout>,
         today: LocalDate = LocalDate.now()
     ): String? {
+        val effortHistoryAnswer = WorkoutEffortHistoryConversation.answer(input, workouts, today)
+        if (effortHistoryAnswer != null) return effortHistoryAnswer
+
         val setHistoryAnswer = WorkoutSetHistoryConversation.answer(input, workouts, today)
         if (setHistoryAnswer != null) return setHistoryAnswer
 

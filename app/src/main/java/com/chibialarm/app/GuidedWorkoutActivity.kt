@@ -1897,8 +1897,10 @@ class GuidedWorkoutActivity:Activity() {
                     return@setItems
                 }
                 val level = levels.getOrNull(choice) ?: return@setItems
-                effortLevelsByMove[selectedIndex] = WorkoutEffortLog.append(
-                    effortLevelsByMove, selectedIndex, completedSets - 1, level, moves, completedSetsByMove
+                effortLevelsByMove.putAll(
+                    WorkoutEffortLog.append(
+                        effortLevelsByMove, selectedIndex, completedSets - 1, level, moves, completedSetsByMove
+                    )
                 )
                 if (!saveCheckpoint()) {
                     Toast.makeText(this, "Chưa lưu được cảm nhận này vào checkpoint; buổi tập vẫn có thể tiếp tục.", Toast.LENGTH_LONG).show()

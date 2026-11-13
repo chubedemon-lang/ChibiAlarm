@@ -2,6 +2,7 @@ package com.chibialarm.app.fitness
 
 import org.junit.Assert.*
 import org.junit.Test
+import com.chibialarm.app.WorkoutVoiceCommands
 
 class WorkoutTargetCommandTest {
     @Test fun spokenRepsAcceptsVietnameseWordsAndRejectsPainOrInvalidNumbers() {
@@ -151,4 +152,18 @@ class WorkoutTargetCommandTest {
         assertEquals(90, after.sets[0].restSeconds)
     }
 
+
+    @Test fun noEquipmentCommandsCannotBeMisroutedIntoRepetitionEditor() {
+        val utterances = listOf(
+            "Hôm nay không có dụng cụ, đổi sang bài tay không",
+            "Không có tạ, đổi bài tập"
+        )
+        for (utterance in utterances) {
+            assertEquals(WorkoutVoiceCommands.Command.NO_EQUIPMENT,
+                WorkoutVoiceCommands.parse(utterance))
+            assertNull(utterance, WorkoutTargetCommand.spokenReps(utterance))
+            assertSame(WorkoutTargetCommand.Result.Unsupported,
+                WorkoutTargetCommand.propose(utterance, "squat", session, 0))
+        }
+    }
 }

@@ -58,11 +58,18 @@ class FitnessCoachFollowUpTest {
             noWristRestriction,
             FitnessCoachConversation.parseReply(noWristRestriction, "không")
         )
-        assertEquals(FitnessCoachFollowUp.Question.ENERGY, FitnessCoachFollowUp.nextQuestionType(noFloorRestriction))
+        assertEquals(FitnessCoachFollowUp.Question.OVERHEAD_REACH, FitnessCoachFollowUp.nextQuestionType(noFloorRestriction))
+
+        val noOverheadRestriction = FitnessCoachConversation.merge(
+            noFloorRestriction,
+            FitnessCoachConversation.parseReply(noFloorRestriction, "không")
+        )
+        assertEquals(false, noOverheadRestriction.avoidOverheadReach)
+        assertEquals(FitnessCoachFollowUp.Question.ENERGY, FitnessCoachFollowUp.nextQuestionType(noOverheadRestriction))
 
         val ready = FitnessCoachConversation.merge(
-            noFloorRestriction,
-            FitnessCoachConversation.parseReply(noFloorRestriction, "khỏe")
+            noOverheadRestriction,
+            FitnessCoachConversation.parseReply(noOverheadRestriction, "khỏe")
         )
         assertEquals(FitnessCoachFollowUp.Question.COMPLETE, FitnessCoachFollowUp.nextQuestionType(ready))
     }
@@ -96,7 +103,14 @@ class FitnessCoachFollowUpTest {
 
         val floor = FitnessCoachConversation.merge(wrist, FitnessCoachConversation.parseReply(wrist, "có"))
         assertTrue(floor.avoidFloorPositions == true)
-        assertEquals(FitnessCoachFollowUp.Question.ENERGY, FitnessCoachFollowUp.nextQuestionType(floor))
+        assertEquals(FitnessCoachFollowUp.Question.OVERHEAD_REACH, FitnessCoachFollowUp.nextQuestionType(floor))
+
+        val overhead = FitnessCoachConversation.merge(
+            floor,
+            FitnessCoachConversation.parseReply(floor, "có")
+        )
+        assertTrue(overhead.avoidOverheadReach == true)
+        assertEquals(FitnessCoachFollowUp.Question.ENERGY, FitnessCoachFollowUp.nextQuestionType(overhead))
     }
 
     @Test fun explicitNoRestrictionPhrasesAreNotTurnedIntoRestrictions() {
@@ -114,7 +128,14 @@ class FitnessCoachFollowUpTest {
             FitnessCoachConversation.parseReply(noWrist, "không cần tránh nằm sàn")
         )
         assertFalse(noFloor.avoidFloorPositions ?: true)
-        assertEquals(FitnessCoachFollowUp.Question.ENERGY, FitnessCoachFollowUp.nextQuestionType(noFloor))
+        assertEquals(FitnessCoachFollowUp.Question.OVERHEAD_REACH, FitnessCoachFollowUp.nextQuestionType(noFloor))
+
+        val noOverhead = FitnessCoachConversation.merge(
+            noFloor,
+            FitnessCoachConversation.parseReply(noFloor, "không cần tránh đưa tay qua đầu")
+        )
+        assertFalse(noOverhead.avoidOverheadReach ?: true)
+        assertEquals(FitnessCoachFollowUp.Question.ENERGY, FitnessCoachFollowUp.nextQuestionType(noOverhead))
     }
 
     @Test fun safetyPromptAlwaysWinsOverMissingProfileFields() {

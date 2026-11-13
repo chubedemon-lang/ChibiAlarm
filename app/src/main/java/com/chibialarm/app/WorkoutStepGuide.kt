@@ -22,6 +22,22 @@ object WorkoutStepGuide {
     }
     
     /**
+     * Build the exact spoken cue for one selected catalog step. Position is 1-based;
+     * the cue includes the exercise-specific phase only when the wording is unambiguous.
+     */
+    fun spokenCue(moveName: String, instructions: String, position: Int): String {
+        val steps = split(instructions).take(100)
+        val selected = position.coerceIn(1, steps.size)
+        val pose = WorkoutPoseGuide.classify(moveName)
+        return WorkoutPoseMotion.spokenInstructionStepCue(
+            pose = pose,
+            step = steps[selected - 1],
+            position = selected,
+            total = steps.size
+        )
+    }
+
+    /**
      * A bounded, in-memory walkthrough for the current exercise. It never changes
      * workout timing or progress; users can move backward and forward at their pace.
      */

@@ -604,14 +604,14 @@ class GuidedWorkoutActivity:Activity() {
                 val request=Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                     putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                     putExtra(RecognizerIntent.EXTRA_LANGUAGE,"vi-VN")
-                    putExtra(RecognizerIntent.EXTRA_PROMPT,"Ví dụ: tôi đã làm 10 lần, tôi giữ 20 giây, xong hiệp, hướng dẫn từng bước, nghỉ thêm, đổi bài, dừng lại")
+                    putExtra(RecognizerIntent.EXTRA_PROMPT,"Ví dụ: tôi đã làm 10 lần, tôi giữ 20 giây, xong hiệp, bài này khó quá, không theo kịp, nghỉ thêm, đổi bài, dừng lại")
                 }
                 try { startActivityForResult(request,voiceRequest) }
                 catch (_:Exception) { Toast.makeText(this,"Thiết bị chưa có dịch vụ nhận giọng nói. Hãy nhập yêu cầu bằng chữ.",Toast.LENGTH_LONG).show() }
             }.setNegativeButton("Hủy",null).show()
     }
     private fun requestTypedCommand() {
-        val field=EditText(this).apply { hint="Ví dụ: tôi đã làm 10 lần, xong hiệp, hướng dẫn từng bước, đọc tiến độ, đổi bài, nghỉ thêm";setSingleLine(false) }
+        val field=EditText(this).apply { hint="Ví dụ: tôi đã làm 10 lần, xong hiệp, bài này khó quá, không theo kịp, hướng dẫn từng bước, đọc tiến độ, đổi bài, nghỉ thêm";setSingleLine(false) }
         AlertDialog.Builder(this).setTitle("💬 Chibi Coach • lệnh offline")
             .setMessage("Điều khiển buổi tập bằng chữ, không gửi dữ liệu lên mạng.")
             .setView(field).setPositiveButton("Gửi"){_,_->handleCoachCommand(field.text.toString())}
@@ -1091,7 +1091,7 @@ class GuidedWorkoutActivity:Activity() {
             }
             WorkoutVoiceCommands.Command.UNKNOWN -> {
                 AlertDialog.Builder(this).setTitle("Chibi chưa hiểu yêu cầu")
-                    .setMessage("Bạn có thể nói: tôi đã làm 10 lần, xong hiệp, hướng dẫn từng bước, đọc tiến độ, tạm dừng, tiếp tục, đổi động tác, dễ hơn hoặc nghỉ thêm. Đây là bộ lệnh offline, chưa phải hội thoại AI tự do.")
+                    .setMessage("Bạn có thể nói: tôi đã làm 10 lần, xong hiệp, bài này khó quá, không theo kịp, hướng dẫn từng bước, đọc tiến độ, tạm dừng, tiếp tục, đổi động tác hoặc nghỉ thêm. Đây là bộ lệnh offline, chưa phải hội thoại AI tự do.")
                     .setPositiveButton("Đóng",null).show()
             }
         }

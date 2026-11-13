@@ -55,6 +55,11 @@ object WorkoutMidSessionPlanner {
             request.avoidFloorPositions -> true
             request.allowFloorPositions -> false
             else -> current.avoidFloorPositions
+        },
+        avoidOverheadReach = when {
+            request.avoidOverheadReach -> true
+            request.allowOverheadReach -> false
+            else -> current.avoidOverheadReach
         }
     )
 

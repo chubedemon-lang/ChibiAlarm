@@ -27,7 +27,11 @@ class TrainingCatalogTest {
         assertTrue(resistanceMoves.all {
             it.equipmentOptions == setOf(TrainingEquipment.DUMBBELL, TrainingEquipment.RESISTANCE_BAND)
         })
-        val chairMoves = setOf("Đứng lên – ngồi xuống", "Giãn gân kheo ngồi ghế")
+        val chairMoves = setOf(
+            "Đứng lên – ngồi xuống",
+            "Giãn gân kheo ngồi ghế",
+            "Nâng gối ngồi ghế"
+        )
         assertTrue(TrainingCatalog.allMoves.filterNot { it.name in resistanceMoves.map(TrainingMove::name) }
             .all { move ->
                 if (move.name in chairMoves) {
@@ -90,19 +94,20 @@ class TrainingCatalogTest {
         assertTrue(scapular.dose.contains("hiệp"))
     }
 
-
-
     @Test fun chairDependentMovesDeclareStableChairRequirement() {
         val moves = TrainingCatalog.allMoves.associateBy { it.name }
         val sitToStand = moves.getValue("Đứng lên – ngồi xuống")
         val seatedStretch = moves.getValue("Giãn gân kheo ngồi ghế")
+        val seatedKneeRaise = moves.getValue("Nâng gối ngồi ghế")
 
         assertEquals(setOf(TrainingEquipment.STABLE_CHAIR), sitToStand.equipmentOptions)
         assertEquals(setOf(TrainingEquipment.STABLE_CHAIR), seatedStretch.equipmentOptions)
+        assertEquals(setOf(TrainingEquipment.STABLE_CHAIR), seatedKneeRaise.equipmentOptions)
         assertFalse(TrainingEquipmentAvailability.allows(sitToStand, emptySet()))
+        assertFalse(TrainingEquipmentAvailability.allows(seatedKneeRaise, emptySet()))
         assertTrue(
             TrainingEquipmentAvailability.allows(
-                sitToStand,
+                seatedKneeRaise,
                 setOf(TrainingEquipment.STABLE_CHAIR)
             )
         )
@@ -142,6 +147,34 @@ class TrainingCatalogTest {
         assertEquals(listOf(chairMove.name), preview.removedMoves)
     }
 
+    @Test fun noChairRequestRemovesUnstartedSeatedKneeRaiseFromRemainingPlan() {
+        val parsed = WorkoutMidSessionRequest.parse("Tao không có ghế")
+        assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
+        val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+        val catalog = TrainingCatalog.allMoves.associateBy { it.name }
+        val warm = catalog.getValue("Khởi động tại chỗ")
+        val seatedKneeRaise = catalog.getValue("Nâng gối ngồi ghế")
+        val wallPush = catalog.getValue("Chống đẩy tường")
+        val cool = catalog.getValue("Thả lỏng")
+
+        val result = WorkoutMidSessionPlanner.preview(
+            currentMoves = listOf(warm, seatedKneeRaise, wallPush, cool),
+            currentIndex = 0,
+            completedCurrentSets = 0,
+            currentStepLocked = false,
+            constraints = WorkoutConstraintProfile(),
+            request = request,
+            remainingCurrentSeconds = 120,
+            extensionMoveNames = emptySet(),
+            level = 0
+        )
+
+        assertTrue(result is WorkoutMidSessionPlanner.Result.Proposed)
+        val preview = (result as WorkoutMidSessionPlanner.Result.Proposed).preview
+        assertEquals(listOf(warm, wallPush, cool), preview.after)
+        assertEquals(listOf(seatedKneeRaise.name), preview.removedMoves)
+    }
+
     @Test fun missingChairCannotRewriteAnAlreadyStartedChairDependentMove() {
         val parsed = WorkoutMidSessionRequest.parse("Tao không có ghế")
         assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
@@ -150,6 +183,29 @@ class TrainingCatalogTest {
         val result = WorkoutMidSessionPlanner.preview(
             currentMoves = listOf(
                 catalog.getValue("Đứng lên – ngồi xuống"),
+                catalog.getValue("Chống đẩy tường"),
+                catalog.getValue("Thả lỏng")
+            ),
+            currentIndex = 0,
+            completedCurrentSets = 1,
+            currentStepLocked = true,
+            constraints = WorkoutConstraintProfile(),
+            request = request,
+            remainingCurrentSeconds = 30,
+            extensionMoveNames = emptySet(),
+            level = 0
+        )
+        assertTrue(result is WorkoutMidSessionPlanner.Result.Blocked)
+    }
+
+    @Test fun noChairCannotRewriteAnAlreadyStartedSeatedKneeRaise() {
+        val parsed = WorkoutMidSessionRequest.parse("Tao không có ghế")
+        assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
+        val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+        val catalog = TrainingCatalog.allMoves.associateBy { it.name }
+        val result = WorkoutMidSessionPlanner.preview(
+            currentMoves = listOf(
+                catalog.getValue("Nâng gối ngồi ghế"),
                 catalog.getValue("Chống đẩy tường"),
                 catalog.getValue("Thả lỏng")
             ),

@@ -51,6 +51,8 @@ object WorkoutTargetCommand {
         WorkoutVoiceCommands.Command.NEXT,
         WorkoutVoiceCommands.Command.PREVIOUS,
         WorkoutVoiceCommands.Command.REPEAT,
+        // Repeating a selected walkthrough step is a coach action, never a rep edit.
+        WorkoutVoiceCommands.Command.REPEAT_STEP,
         WorkoutVoiceCommands.Command.EASIER,
         WorkoutVoiceCommands.Command.SWAP_EASIER,
         WorkoutVoiceCommands.Command.EASIER_AND_REST,

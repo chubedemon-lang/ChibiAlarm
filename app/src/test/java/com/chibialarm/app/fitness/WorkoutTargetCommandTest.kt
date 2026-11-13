@@ -136,11 +136,17 @@ class WorkoutTargetCommandTest {
         }
     }
 
-    @Test fun stepGuideRequestCannotBeMisroutedIntoRepetitionEditor() {
-        val utterance = "Hướng dẫn từng bước và giảm còn 6 lần"
-        assertNull(WorkoutTargetCommand.spokenReps(utterance))
-        assertSame(WorkoutTargetCommand.Result.Unsupported,
-            WorkoutTargetCommand.propose(utterance, "squat", session, 0))
+    @Test fun stepGuideAndRepeatStepRequestsCannotBeMisroutedIntoRepetitionEditor() {
+        val utterances = listOf(
+            "Hướng dẫn từng bước và giảm còn 6 lần",
+            "Đọc lại bước vừa rồi và giảm còn 6 lần",
+            "Nhắc lại bước này rồi đổi thành 8 lần"
+        )
+        for (utterance in utterances) {
+            assertNull(utterance, WorkoutTargetCommand.spokenReps(utterance))
+            assertSame(utterance, WorkoutTargetCommand.Result.Unsupported,
+                WorkoutTargetCommand.propose(utterance, "squat", session, 0))
+        }
     }
 
     @Test fun restAndRepetitionRemainValidTogether() {

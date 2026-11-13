@@ -11,6 +11,7 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.UUID
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
@@ -23,9 +24,19 @@ class WorkoutDataSessionTest {
             .edit().clear().commit()
     }
 
+    private val accountSubjects = mutableListOf<String>()
+
+    private fun newAccountSubject(label: String): String =
+        "test:${UUID.randomUUID()}:$label".also(accountSubjects::add)
+
     @After fun tearDown() {
         context.getSharedPreferences("workouts_v12", Context.MODE_PRIVATE)
             .edit().clear().commit()
+        accountSubjects.forEach { subject ->
+            context.getSharedPreferences(
+                WorkoutData.accountPreferencesName(subject), Context.MODE_PRIVATE
+            ).edit().clear().commit()
+        }
     }
 
     @Test fun appendsGuidedSessionOnceAndPreservesLegacyJournalEntries() {
@@ -122,4 +133,95 @@ class WorkoutDataSessionTest {
         assertFalse(WorkoutData.appendSession(context, insufficientMoves))
         assertTrue(WorkoutData.history(context).isEmpty())
     }
+
+    @Test fun verifiedAccountFitnessJournalsAreIsolatedFromEachOtherAndTheLegacyGuest() {
+        val aliceSubject = newAccountSubject("alice")
+        val bobSubject = newAccountSubject("bob")
+        val guest = Workout(
+            "2026-11-14", "Guest workout", 8, "guest-only",
+            UUID.randomUUID().toString(), 3, 4
+        )
+        val alice = Workout(
+            "2026-11-14", "Alice workout", 9, "account-a",
+            UUID.randomUUID().toString(), 3, 5
+        )
+        val bob = Workout(
+            "2026-11-14", "Bob workout", 10, "account-b",
+            UUID.randomUUID().toString(), 4, 6
+        )
+
+        assertTrue(WorkoutData.appendSession(context, guest))
+        assertTrue(WorkoutData.appendSessionForVerifiedAccount(context, aliceSubject, alice))
+        assertTrue(WorkoutData.appendSessionForVerifiedAccount(context, bobSubject, bob))
+        // Retry deduplication is local to Alice's journal, not device-global.
+        assertTrue(WorkoutData.appendSessionForVerifiedAccount(context, aliceSubject, alice))
+
+        assertEquals(listOf(guest), WorkoutData.history(context))
+        assertEquals(listOf(alice), WorkoutData.historyForVerifiedAccount(context, aliceSubject))
+        assertEquals(listOf(bob), WorkoutData.historyForVerifiedAccount(context, bobSubject))
+        assertNotEquals(
+            WorkoutData.accountPreferencesName(aliceSubject),
+            WorkoutData.accountPreferencesName(bobSubject)
+        )
+        assertFalse(WorkoutData.accountPreferencesName(aliceSubject).contains(aliceSubject))
+        assertFalse(WorkoutData.accountPreferencesName(bobSubject).contains(bobSubject))
+    }
+
+    @Test fun explicitAccountFitnessErasureDoesNotTouchGuestOrAnotherAccount() {
+        val aliceSubject = newAccountSubject("erase")
+        val bobSubject = newAccountSubject("keep")
+        val guest = Workout(
+            "2026-11-14", "Guest", 8, "",
+            UUID.randomUUID().toString(), 2, 2
+        )
+        val alice = Workout(
+            "2026-11-14", "Alice", 8, "",
+            UUID.randomUUID().toString(), 2, 2
+        )
+        val bob = Workout(
+            "2026-11-14", "Bob", 8, "",
+            UUID.randomUUID().toString(), 2, 2
+        )
+
+        assertTrue(WorkoutData.appendSession(context, guest))
+        assertTrue(WorkoutData.appendSessionForVerifiedAccount(context, aliceSubject, alice))
+        assertTrue(WorkoutData.appendSessionForVerifiedAccount(context, bobSubject, bob))
+
+        assertTrue(WorkoutData.deleteVerifiedAccountHistory(context, aliceSubject))
+        assertTrue(WorkoutData.historyForVerifiedAccount(context, aliceSubject).isEmpty())
+        assertEquals(listOf(bob), WorkoutData.historyForVerifiedAccount(context, bobSubject))
+        assertEquals(listOf(guest), WorkoutData.history(context))
+    }
+
+    @Test fun malformedVerifiedAccountJournalIsNeverSilentlyReplaced() {
+        val subject = newAccountSubject("corrupt")
+        val name = WorkoutData.accountPreferencesName(subject)
+        val prefs = context.getSharedPreferences(name, Context.MODE_PRIVATE)
+        val corrupt = "{account-journal-unreadable"
+        prefs.edit().putString("history", corrupt).commit()
+        val guided = Workout(
+            "2026-11-14", "Toàn thân", 8, "guided",
+            UUID.randomUUID().toString(), 3, 4
+        )
+
+        assertFalse(WorkoutData.appendSessionForVerifiedAccount(context, subject, guided))
+        WorkoutData.saveForVerifiedAccount(context, subject, emptyList())
+        assertEquals(corrupt, prefs.getString("history", null))
+    }
+
+    @Test fun verifiedAccountJournalRejectsUntrustedSubjectShapes() {
+        val invalidSubjects = listOf(
+            "", " ", " alice", "alice ", "bad\nsubject", "a".repeat(129),
+            "issuer:alice\u202E"
+        )
+        invalidSubjects.forEach { subject ->
+            try {
+                WorkoutData.historyForVerifiedAccount(context, subject)
+                fail("Untrusted subject was accepted")
+            } catch (_: IllegalArgumentException) {
+                // The same strict subject validation used by account-scoped Room storage applies.
+            }
+        }
+    }
+
 }

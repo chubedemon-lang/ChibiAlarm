@@ -194,6 +194,33 @@ object FitnessNaturalRequest {
             floorRelaxations.any(text::contains) -> false
             else -> null
         }
+
+        // Overhead reach is a session preference, not a shoulder-pain diagnosis.
+        // Strip explicit permission phrases before checking restrictions so
+        // "không cần tránh đưa tay qua đầu" cannot become a false restriction.
+        val overheadRelaxations = listOf(
+            "bo han che dua tay qua dau", "bo tranh dua tay qua dau",
+            "khong can tranh dua tay qua dau", "khong con can tranh dua tay qua dau",
+            "co the dua tay qua dau", "dua tay qua dau duoc",
+            "co the nang tay qua dau", "nang tay qua dau duoc",
+            "co the voi tay qua dau"
+        )
+        val overheadRestrictionText = overheadRelaxations.fold(text) { remaining, phrase ->
+            remaining.replace(phrase, " ")
+        }
+        val overheadRestrictions = listOf(
+            "khong dua tay qua dau", "tranh dua tay qua dau", "dung dua tay qua dau",
+            "khong nang tay qua dau", "tranh nang tay qua dau",
+            "khong day ta qua dau", "tranh dong tac qua dau",
+            "khong voi tay qua dau", "han che dua tay qua dau",
+            "han che dong tac qua dau"
+        )
+        val avoidOverheadReach = when {
+            overheadRestrictions.any(overheadRestrictionText::contains) -> true
+            overheadRelaxations.any(text::contains) -> false
+            else -> null
+        }
+
         val energy = when {
             has("met", "het suc", "it nang luong") -> 0
             has("khoe", "nhieu nang luong", "sung suc") -> 2
@@ -245,12 +272,14 @@ object FitnessNaturalRequest {
         val detected = listOf(goal, level, energy, equipment, duration).count { it != null } +
             (if (injury || lowImpact) 1 else 0) +
             (if (avoidWristLoad != null) 1 else 0) +
-            (if (avoidFloorPositions != null) 1 else 0)
+            (if (avoidFloorPositions != null) 1 else 0) +
+            (if (avoidOverheadReach != null) 1 else 0)
         val reply = when {
             injury -> "Mày báo đau hoặc có dấu hiệu cần thận trọng. Tao đã chọn mức hạn chế vận động cao nhất. Không bắt đầu tập khi đang có triệu chứng; hãy tham khảo chuyên gia y tế. Kiểm tra các lựa chọn trước khi tiếp tục."
             avoidWristLoad == true && avoidFloorPositions == true -> "Tao đã ghi nhận mày muốn tránh tải qua cổ tay và tránh nằm/quỳ sàn. Tao sẽ lọc các động tác đã được xác định trong thư viện, không tự bịa bài thay thế. Hãy xem lại giáo án trước khi bắt đầu."
             avoidWristLoad == true -> "Tao đã ghi nhận mày muốn tránh chống tay hoặc cầm tải qua cổ tay. Tao sẽ thay các động tác phù hợp trong thư viện và cho mày xem trước. Nếu đang đau, tê hoặc sưng, đừng bắt đầu tập; hãy xin tư vấn chuyên môn."
             avoidFloorPositions == true -> "Tao đã ghi nhận mày muốn tránh các động tác phải nằm hoặc quỳ sàn. Tao sẽ bỏ các động tác đã được xác định trong thư viện; có thể cần chọn chương trình khác nếu không còn đủ bài phù hợp."
+            avoidOverheadReach == true -> "Tao đã ghi nhận mày muốn tránh đưa tay hoặc tải lên quá đầu. Tao sẽ lọc những động tác đã được đánh dấu trong thư viện và cho mày xem trước; đây là lựa chọn vận động, không phải chẩn đoán vai."
             detected == 0 -> "Tao chưa hiểu rõ mục tiêu. Hãy thử: 'giãn cơ 15 phút không dụng cụ'. Mày vẫn có thể chọn thủ công."
             else -> "Tao đã điền những thông tin nhận ra vào biểu mẫu. Kiểm tra lại mục tiêu, thời gian, dụng cụ và hạn chế vận động rồi bấm 'Gợi ý chương trình phù hợp'. Đây là gợi ý offline, không phải tư vấn y khoa."
         }
@@ -263,7 +292,8 @@ object FitnessNaturalRequest {
             impact = if (injury) 2 else if (lowImpact) 1 else null,
             reply = reply,
             avoidWristLoad = avoidWristLoad,
-            avoidFloorPositions = avoidFloorPositions
+            avoidFloorPositions = avoidFloorPositions,
+            avoidOverheadReach = avoidOverheadReach
         )
     }
 }

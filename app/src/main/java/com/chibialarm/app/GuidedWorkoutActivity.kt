@@ -689,6 +689,76 @@ class GuidedWorkoutActivity:Activity() {
             .show()
     }
 
+    /**
+     * Records a spoken actual-set value only after the user reviews and confirms it.
+     * Speech recognition is a self-report; it is never treated as sensor verification.
+     */
+    private fun confirmSpokenSetValue(actualValue: Int) {
+        if (pausedForSafety || completed || resting || index !in moves.indices) {
+            Toast.makeText(this, "Buổi tập đang dừng; chưa thể ghi nhận hiệp.", Toast.LENGTH_LONG).show()
+            return
+        }
+        val plan = currentSetPlan()
+        if (plan == null) {
+            Toast.makeText(this, "Động tác này không dùng bộ đếm hiệp.", Toast.LENGTH_LONG).show()
+            return
+        }
+        val maximumValue = if (plan.unit == "giây") 600 else 200
+        if (actualValue !in 1..maximumValue) {
+            Toast.makeText(this, "Giá trị tự khai báo nằm ngoài giới hạn hợp lệ.", Toast.LENGTH_LONG).show()
+            return
+        }
+        if (activeElapsedMs() <= 0L) {
+            Toast.makeText(this, "Hãy bắt đầu buổi tập trước khi ghi nhận hiệp.", Toast.LENGTH_LONG).show()
+            return
+        }
+
+        val selectedIndex = index
+        val selectedSessionId = sessionId
+        val before = completedSetsByMove[selectedIndex] ?: 0
+        if (before >= plan.maximumSets) {
+            Toast.makeText(this, "Các hiệp của động tác này đã được ghi nhận đủ.", Toast.LENGTH_LONG).show()
+            return
+        }
+        val wasRunning = !paused
+        pause()
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("🐰 Chibi nghe được: ${actualValue} ${plan.unit}")
+            .setMessage(
+                "Ghi nhận hiệp ${before + 1}/${plan.maximumSets} của ${moves[selectedIndex].name} " +
+                    "với ${actualValue} ${plan.unit}?\n\n" +
+                    "Đây là số liệu bạn tự khai báo, không phải số lần được microphone hoặc camera xác minh."
+            )
+            .setPositiveButton("Đúng, ghi nhận", null)
+            .setNegativeButton("Chưa, giữ nguyên") { _, _ ->
+                if (wasRunning && !pausedForSafety && !completed && index == selectedIndex &&
+                    sessionId == selectedSessionId
+                ) resume()
+            }
+            .create()
+        dialog.setOnCancelListener {
+            if (wasRunning && !pausedForSafety && !completed && index == selectedIndex &&
+                sessionId == selectedSessionId
+            ) resume()
+        }
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val currentPlan = if (index in moves.indices) currentSetPlan() else null
+                if (pausedForSafety || completed || resting || index != selectedIndex ||
+                    sessionId != selectedSessionId || currentPlan != plan ||
+                    (completedSetsByMove[selectedIndex] ?: 0) != before
+                ) {
+                    dialog.dismiss()
+                    Toast.makeText(this, "Buổi tập đã thay đổi. Chibi chưa ghi nhận hiệp.", Toast.LENGTH_LONG).show()
+                    return@setOnClickListener
+                }
+                dialog.dismiss()
+                recordCurrentSet(actualValue, selectedIndex, before, plan)
+            }
+        }
+        dialog.show()
+    }
+
     private fun stopForSafety() {
         pause()
         pausedForSafety=true
@@ -872,6 +942,23 @@ class GuidedWorkoutActivity:Activity() {
             }
             WorkoutMidSessionRequest.Result.Unsupported -> Unit
         }
+        // An explicit report of completed work must be handled before target editing.
+        // Otherwise "I did 10 reps" could be mistaken for "change the target to 10 reps".
+        val spokenSetReport = WorkoutSetReportCommand.parse(utterance)
+        if (spokenSetReport != null) {
+            val plan = if (index in moves.indices) currentSetPlan() else null
+            when {
+                plan == null -> Toast.makeText(
+                    this, "Động tác hiện tại không dùng bộ đếm hiệp; Chibi chưa ghi nhận số lần.", Toast.LENGTH_LONG
+                ).show()
+                plan.unit != spokenSetReport.unit -> Toast.makeText(
+                    this, "Đơn vị bạn nói không khớp giáo án (${plan.unit}); Chibi chưa ghi nhận hiệp.", Toast.LENGTH_LONG
+                ).show()
+                else -> confirmSpokenSetValue(spokenSetReport.value)
+            }
+            return
+        }
+
         // Safety words always take precedence over any numeric exercise request.
         val spokenReps = com.chibialarm.app.fitness.WorkoutTargetCommand.spokenReps(utterance)
         if (spokenReps != null && WorkoutVoiceCommands.mayEditReps(utterance)) {

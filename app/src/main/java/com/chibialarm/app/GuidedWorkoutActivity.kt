@@ -81,6 +81,8 @@ class GuidedWorkoutActivity:Activity() {
     private val completedSetsByMove=mutableMapOf<Int,Int>()
     // Values are self-reported; never inferred from the timer, audio or camera.
     private val actualSetValuesByMove=mutableMapOf<Int,List<Int>>()
+    // Optional subjective effort answers, keyed to the exact confirmed set; guest-local only.
+    private val effortLevelsByMove=mutableMapOf<Int,List<WorkoutEffortFeedback.Level?>>()
     private lateinit var setProgress:TextView
     private lateinit var completeSetButton:Button
     private lateinit var restSetButton:Button
@@ -112,6 +114,7 @@ class GuidedWorkoutActivity:Activity() {
             .putString("completedMoves",WorkoutCompletionTracker.encode(completedMoveIndices,moves.size))
             .putString("completedSets",WorkoutSetTracker.encode(completedSetsByMove,moves))
             .putString("setValues",WorkoutSetRepetitionLog.encode(actualSetValuesByMove,moves))
+            .putString("effortLog",WorkoutEffortLog.encode(effortLevelsByMove,moves,completedSetsByMove))
             .putBoolean("resting",resting)
             .putLong("restRemaining",restRemainingMs.coerceIn(0L,600_000L))
             .putBoolean("setTimerExpired",setTimerExpired)
@@ -189,6 +192,10 @@ class GuidedWorkoutActivity:Activity() {
                 completedSetsByMove.putAll(WorkoutSetTracker.decode(checkpoint.getString("completedSets",null),moves))
                 actualSetValuesByMove.clear()
                 actualSetValuesByMove.putAll(WorkoutSetRepetitionLog.decode(checkpoint.getString("setValues",null),moves,completedSetsByMove))
+                effortLevelsByMove.clear()
+                effortLevelsByMove.putAll(WorkoutEffortLog.decode(
+                    checkpoint.getString("effortLog",null),moves,completedSetsByMove
+                ))
                 completedMoveIndices.removeAll { position ->
                     val plan=setPlan(position)
                     plan!=null && !WorkoutSetTracker.isComplete(completedSetsByMove[position] ?: 0,plan)
@@ -1889,6 +1896,12 @@ class GuidedWorkoutActivity:Activity() {
                     return@setItems
                 }
                 val level = levels.getOrNull(choice) ?: return@setItems
+                effortLevelsByMove[selectedIndex] = WorkoutEffortLog.append(
+                    effortLevelsByMove, selectedIndex, completedSets - 1, level, moves, completedSetsByMove
+                )
+                if (!saveCheckpoint()) {
+                    Toast.makeText(this, "Chưa lưu được cảm nhận này vào checkpoint; buổi tập vẫn có thể tiếp tục.", Toast.LENGTH_LONG).show()
+                }
                 val recommendation = WorkoutEffortFeedback.recommend(level, plan.defaultRestSeconds)
                 when (level) {
                     WorkoutEffortFeedback.Level.EASY,
@@ -2152,6 +2165,7 @@ class GuidedWorkoutActivity:Activity() {
             "${originalMoves.getOrNull(position)?.name ?: "Động tác"} → ${replacement.name}"
         }
         val setValueSummary=WorkoutSetRepetitionLog.summary(actualSetValuesByMove,moves)
+        val effortValueSummary=WorkoutEffortLog.summary(effortLevelsByMove,moves,completedSetsByMove)
         val workoutNote=buildString {
             append("Chibi Coach: $completedCount/${moves.size} động tác được ghi nhận; $setCompletedMoves động tác tự xác nhận hiệp ($selfReportedSets hiệp); $timerCompletedMoves động tác theo bộ đếm; $mins phút hoạt động. Số hiệp và giá trị từng hiệp là tự khai báo, không được cảm biến xác minh.")
             if(setValueSummary.isNotBlank()) append(" Giá trị từng hiệp: $setValueSummary.")
@@ -2159,7 +2173,8 @@ class GuidedWorkoutActivity:Activity() {
         }
         val saved=WorkoutData.appendSession(this,Workout(
             LifeData.today(),program.name,mins,workoutNote,sessionId,completedCount,selfReportedSets,
-            setLog = setValueSummary))
+            setLog = setValueSummary,
+            effortLog = effortValueSummary))
         if(!saved) {
             Toast.makeText(this,"Chưa lưu được buổi tập. Tiến độ vẫn được giữ để thử lại.",Toast.LENGTH_LONG).show()
             return

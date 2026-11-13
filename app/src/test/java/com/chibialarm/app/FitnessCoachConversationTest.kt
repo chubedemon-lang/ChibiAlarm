@@ -281,4 +281,42 @@ class FitnessCoachConversationTest {
         assertEquals(2, second.impact)
     }
 
+    @Test fun contextualOverheadAnswerUpdatesOnlyThatPreference() {
+        val start = FitnessNaturalRequest.parse(
+            "giãn cơ 15 phút, đang tập đều, không dụng cụ"
+        )
+        val noJump = FitnessCoachConversation.merge(
+            start,
+            FitnessCoachConversation.parseReply(start, "không")
+        )
+        val noWrist = FitnessCoachConversation.merge(
+            noJump,
+            FitnessCoachConversation.parseReply(noJump, "không")
+        )
+        val noFloor = FitnessCoachConversation.merge(
+            noWrist,
+            FitnessCoachConversation.parseReply(noWrist, "không")
+        )
+
+        assertEquals(FitnessCoachFollowUp.Question.OVERHEAD_REACH,
+            FitnessCoachFollowUp.nextQuestionType(noFloor))
+
+        val yes = FitnessCoachConversation.parseReply(noFloor, "có")
+        val restricted = FitnessCoachConversation.merge(noFloor, yes)
+        assertEquals(true, restricted.avoidOverheadReach)
+        assertEquals(2, restricted.goal)
+        assertEquals(15, restricted.minutes)
+        assertEquals(0, restricted.equipment)
+        assertEquals(FitnessCoachFollowUp.Question.ENERGY,
+            FitnessCoachFollowUp.nextQuestionType(restricted))
+
+        val explicitPermission = FitnessCoachConversation.merge(
+            restricted,
+            FitnessNaturalRequest.parse("có thể đưa tay qua đầu")
+        )
+        assertEquals(false, explicitPermission.avoidOverheadReach)
+        assertEquals(2, explicitPermission.goal)
+        assertEquals(15, explicitPermission.minutes)
+    }
+
 }

@@ -44,7 +44,7 @@ object WorkoutData {
         val databaseFile = com.chibialarm.app.rpg.RpgDatabase.accountDatabaseFile(verifiedSubject)
         val digest = databaseFile.removePrefix("chibi_rpg_account_").removeSuffix(".db")
         check(digest.matches(Regex("[0-9a-f]{64}"))) { "Unexpected verified-account namespace" }
-        return "workouts_account_\${digest}_v1"
+        return "workouts_account_" + digest + "_v1"
     }
 
     private fun accountPrefs(ctx: Context, verifiedSubject: String) =

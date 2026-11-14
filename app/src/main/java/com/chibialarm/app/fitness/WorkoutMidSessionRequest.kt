@@ -134,6 +134,8 @@ object WorkoutMidSessionRequest {
             "khong co ta hoac day khang luc",
             "khong co ca ta lan day khang luc",
             "khong dung ta va day khang luc",
+            "khong co ta va day khang luc",
+            "khong co ta lan day khang luc",
             "khong co day khang luc hoac ta"
         )
         val noEquipment = has(
@@ -176,7 +178,11 @@ object WorkoutMidSessionRequest {
                 add(TrainingEquipment.DUMBBELL)
             }
             if (!noResistanceBand && has(
-                    "co day khang luc", "co day tap", "dung day khang luc"
+                    "co day khang luc", "co day tap", "dung day khang luc",
+                    // Natural compound lists: "có tạ và dây" / "có cả tạ lẫn dây".
+                    "ta va day khang luc", "ta lan day khang luc",
+                    "ca ta va day khang luc", "ca ta lan day khang luc",
+                    "ta don va day khang luc", "ta don lan day khang luc"
                 )
             ) add(TrainingEquipment.RESISTANCE_BAND)
         }

@@ -362,14 +362,34 @@ class WorkoutMidSessionPlannerTest {
     }
 
     @Test fun positiveEquipmentMentionUpdatesSessionToolsWithoutAddingTrainingVolume() {
-        val parsed = WorkoutMidSessionRequest.parse("Tao có tạ và dây kháng lực")
+        listOf(
+            "Tao có tạ và dây kháng lực",
+            "Tao có cả tạ lẫn dây kháng lực",
+            "Hôm nay có tạ đơn và dây kháng lực"
+        ).forEach { utterance ->
+            val parsed = WorkoutMidSessionRequest.parse(utterance)
+            assertTrue(utterance, parsed is WorkoutMidSessionRequest.Result.Proposed)
+            val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+            assertEquals(
+                utterance,
+                setOf(TrainingEquipment.DUMBBELL, TrainingEquipment.RESISTANCE_BAND),
+                request.availableEquipment
+            )
+            assertTrue(utterance, request.unavailableEquipment.isEmpty())
+            assertFalse(utterance, request.addOptionalExercise)
+        }
+    }
+
+    @Test fun negatedCompoundEquipmentListDoesNotGrantEitherTool() {
+        val parsed = WorkoutMidSessionRequest.parse("Tao không có tạ và dây kháng lực")
         assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
         val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
         assertEquals(
             setOf(TrainingEquipment.DUMBBELL, TrainingEquipment.RESISTANCE_BAND),
-            request.availableEquipment
+            request.unavailableEquipment
         )
-        assertTrue(request.unavailableEquipment.isEmpty())
+        assertTrue(request.availableEquipment.isEmpty())
+        assertTrue(request.avoidExternalLoad)
         assertFalse(request.addOptionalExercise)
     }
 

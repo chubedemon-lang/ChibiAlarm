@@ -38,7 +38,7 @@ class WorkoutSteadyProgressAdvisorTest {
 
         assertNotNull(suggestion)
         assertEquals("Squat không tạ", suggestion!!.exerciseName)
-        assertEquals(3, suggestion.consistentSessions)
+        assertEquals(3, suggestion.consistentDays)
         assertEquals(3, suggestion.easySets)
         assertEquals(2, suggestion.moderateSets)
         assertTrue(suggestion.message.contains("tự chọn mức nhẹ"))
@@ -77,6 +77,40 @@ class WorkoutSteadyProgressAdvisorTest {
             workout(today, "Squat: hiệp 1: Nhẹ, còn dư sức", sessionId = id)
         )
         assertNull(WorkoutSteadyProgressAdvisor.suggest(workouts, today))
+    }
+
+    @Test fun multipleSessionsOnOneDayCannotManufactureThreeProgressionDays() {
+        val workouts = listOf(
+            workout(today, "Squat: hiệp 1: Nhẹ, còn dư sức"),
+            workout(today, "Squat: hiệp 1: Vừa sức"),
+            workout(today, "Squat: hiệp 1: Nhẹ, còn dư sức")
+        )
+        assertNull(WorkoutSteadyProgressAdvisor.suggest(workouts, today))
+    }
+
+    @Test fun aHardSetInAnySessionOnTheSameDayBlocksProgression() {
+        val workouts = listOf(
+            workout(today.minusDays(4), "Squat: hiệp 1: Nhẹ, còn dư sức"),
+            workout(today.minusDays(2), "Squat: hiệp 1: Vừa sức"),
+            workout(today, "Squat: hiệp 1: Nhẹ, còn dư sức"),
+            workout(today, "Squat: hiệp 1: Khó, cần nghỉ thêm")
+        )
+        assertNull(WorkoutSteadyProgressAdvisor.suggest(workouts, today))
+    }
+
+    @Test fun manageableSessionsOnTheSameDayCountOnceButTheirSetsAreAggregated() {
+        val workouts = listOf(
+            workout(today.minusDays(4), "Squat: hiệp 1: Nhẹ, còn dư sức"),
+            workout(today.minusDays(2), "Squat: hiệp 1: Vừa sức"),
+            workout(today, "Squat: hiệp 1: Nhẹ, còn dư sức"),
+            workout(today, "Squat: hiệp 1: Vừa sức")
+        )
+        val suggestion = WorkoutSteadyProgressAdvisor.suggest(workouts, today)
+        assertNotNull(suggestion)
+        assertEquals(3, suggestion!!.consistentDays)
+        assertEquals(2, suggestion.easySets)
+        assertEquals(2, suggestion.moderateSets)
+        assertTrue(suggestion.message.contains("3 ngày tập riêng biệt"))
     }
 
     @Test fun malformedFutureOldAndOversizedRecordsAreIgnored() {

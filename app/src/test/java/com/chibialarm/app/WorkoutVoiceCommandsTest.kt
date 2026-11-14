@@ -34,6 +34,36 @@ class WorkoutVoiceCommandsTest {
         assertEquals(C.SHORTER_REMAINING, WorkoutVoiceCommands.parse("rut ngan ca buoi"))
     }
 
+    @Test fun naturalDifficultyFeedbackOpensTheEasierCueInsteadOfUnknown() {
+        for (phrase in listOf(
+            "Bài này khó quá",
+            "Khó quá",
+            "Tôi không theo kịp",
+            "Không theo nổi",
+            "Động tác này quá khó"
+        )) {
+            assertEquals(phrase, C.EASIER, WorkoutVoiceCommands.parse(phrase))
+            assertFalse("$phrase must not be treated as a repetition edit", WorkoutVoiceCommands.mayEditReps(phrase))
+        }
+    }
+
+    @Test fun difficultyFeedbackCanCombineWithAnExplicitRestRequest() {
+        assertEquals(
+            C.EASIER_AND_REST,
+            WorkoutVoiceCommands.parse("Bài này khó quá, nghỉ thêm 30 giây")
+        )
+        assertEquals(
+            C.EASIER_AND_REST,
+            WorkoutVoiceCommands.parse("Tôi không theo kịp, nghỉ thêm một phút")
+        )
+    }
+
+    @Test fun breathingDifficultyStillTriggersSafetyBeforeAnEasierCue() {
+        assertEquals(C.PAIN, WorkoutVoiceCommands.parse("Khó thở, bài này khó quá"))
+        assertEquals(C.PAIN, WorkoutVoiceCommands.parse("Tôi khó thở, không theo kịp"))
+        assertEquals(C.UNKNOWN, WorkoutVoiceCommands.parse("Bài này không khó"))
+    }
+
     @Test fun noEquipmentVoiceRequestsShowTheCorrectPlanAdjustmentPreview() {
         val phrases = listOf(
             "Không có dụng cụ",

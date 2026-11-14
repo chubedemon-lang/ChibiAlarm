@@ -41,11 +41,15 @@ class TrainingEquipmentAvailabilityTest {
             setOf(TrainingEquipment.DUMBBELL, TrainingEquipment.RESISTANCE_BAND),
             TrainingEquipmentAvailability.fromPreference(2)
         )
+        assertEquals(
+            setOf(TrainingEquipment.STABLE_CHAIR),
+            TrainingEquipmentAvailability.fromPreference(3)
+        )
     }
 
     @Test fun invalidScreenChoiceIsRejected() {
         try {
-            TrainingEquipmentAvailability.fromPreference(3)
+            TrainingEquipmentAvailability.fromPreference(4)
             fail("Expected invalid equipment selection to be rejected")
         } catch (_: IllegalArgumentException) {
             // Expected.

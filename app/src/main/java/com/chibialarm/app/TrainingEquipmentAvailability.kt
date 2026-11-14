@@ -9,6 +9,7 @@ object TrainingEquipmentAvailability {
         0 -> emptySet()
         1 -> setOf(TrainingEquipment.MAT)
         2 -> setOf(TrainingEquipment.DUMBBELL, TrainingEquipment.RESISTANCE_BAND)
+        3 -> setOf(TrainingEquipment.STABLE_CHAIR)
         else -> throw IllegalArgumentException("Unknown equipment selection: $selection")
     }
 

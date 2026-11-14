@@ -1,6 +1,7 @@
 package com.chibialarm.app
 
 import android.app.AlertDialog
+import android.content.Intent
 import android.widget.Button
 import android.widget.ScrollView
 import android.widget.TextView
@@ -16,6 +17,7 @@ import org.robolectric.shadows.ShadowAlertDialog
 import org.robolectric.Shadows.shadowOf
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
+import org.robolectric.RuntimeEnvironment
 import org.robolectric.RobolectricTestRunner
 
 @RunWith(RobolectricTestRunner::class)
@@ -49,10 +51,14 @@ class GuidedWorkoutScrollingTest {
     }
 
     @Test fun stepByStepDialogShowsTheCurrentMoveAnimationAndPausesBackgroundMotion() {
-        val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup().get()
-        activity.getSharedPreferences("chibi_workout_checkpoint_guest", 0).edit().clear().commit()
+        val application = RuntimeEnvironment.getApplication()
+        application.getSharedPreferences("chibi_workout_checkpoint_guest", 0).edit().clear().commit()
+        val intent = Intent(application, GuidedWorkoutActivity::class.java)
+            .putExtra("program", "starter")
+            .putExtra("extension_equipment", 3)
+        val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java, intent).setup().get()
 
-        // The starter program begins with a warm-up; move to its chair-squat exercise.
+        // The starter program begins with a warm-up; the explicit chair choice keeps its chair-squat.
         GuidedWorkoutActivity::class.java.getDeclaredField("index").apply {
             isAccessible = true
             setInt(activity, 1)

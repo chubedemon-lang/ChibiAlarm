@@ -139,4 +139,15 @@ class FitnessCoachSessionSnapshotTest {
         assertEquals(false, cleared.restore()?.avoidFloorPositions)
     }
 
+
+    @Test fun stableChairEquipmentSelectionSurvivesTheInMemoryCoachSnapshot() {
+        val source = FitnessNaturalRequest.Result(
+            reply = "coarse chair preference",
+            equipment = 3
+        )
+        val snapshot = FitnessCoachSessionSnapshot.capture(source, 0)!!
+        assertEquals(3, snapshot.restore()?.equipment)
+        assertNull(FitnessCoachSessionSnapshot(equipment = 4).restore())
+    }
+
 }

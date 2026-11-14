@@ -303,4 +303,17 @@ class FitnessNaturalRequestTest {
         assertEquals(2, FitnessNaturalRequest.parse("đầu gối đau khi squat").impact)
     }
 
+
+    @Test fun parsesStableChairAvailabilityWithoutAssumingOtherTools() {
+        assertEquals(3, FitnessNaturalRequest.parse("có ghế vững chắc").equipment)
+        assertEquals(3, FitnessNaturalRequest.parse("dùng ghế không bánh xe").equipment)
+        assertEquals(3, FitnessNaturalRequest.parse("tao có ghế chắc chắn, tập 20 phút").equipment)
+    }
+
+    @Test fun negatedChairDoesNotBecomeAnAvailableChair() {
+        assertEquals(1, FitnessNaturalRequest.parse("không có ghế, có thảm tập").equipment)
+        assertEquals(2, FitnessNaturalRequest.parse("không có ghế, có tạ đơn").equipment)
+        assertEquals(0, FitnessNaturalRequest.parse("không có ghế, không dụng cụ").equipment)
+    }
+
 }

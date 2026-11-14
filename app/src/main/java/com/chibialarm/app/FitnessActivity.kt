@@ -288,10 +288,10 @@ class FitnessActivity:Activity() {
         root.addView(energySpinner)
         recommendationEnergySpinner = energySpinner
         root.addView(txt("🏋️ Dụng cụ hiện có",19f))
-        val equipmentOptions=arrayOf("Không có dụng cụ","Có thảm tập","Có tạ hoặc dây kháng lực")
+        val equipmentOptions=arrayOf("Không có dụng cụ","Có thảm tập","Có tạ hoặc dây kháng lực","Có ghế vững chắc (không bánh xe)")
         val equipmentSpinner=Spinner(this).apply {
             adapter=ArrayAdapter(this@FitnessActivity,android.R.layout.simple_spinner_dropdown_item,equipmentOptions)
-            setSelection(prefs.getInt("recommendEquipment",0).coerceIn(0,2))
+            setSelection(prefs.getInt("recommendEquipment",0).coerceIn(0,3))
         }
         root.addView(equipmentSpinner)
         recommendationEquipmentSpinner = equipmentSpinner

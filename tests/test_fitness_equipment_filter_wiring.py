@@ -29,3 +29,10 @@ def test_missing_equipment_is_not_assumed_for_guest_profiles():
     assert "TrainingEquipmentAvailability.fromPreference(equipmentSelection)" in (
         ROOT / "app/src/main/java/com/chibialarm/app/WorkoutEquipmentFilter.kt"
     ).read_text(encoding="utf-8")
+
+
+
+def test_stable_chair_choice_is_supported_by_parser_filter_and_guided_session():
+    assert "Có ghế vững chắc (không bánh xe)" in FITNESS
+    assert "3 -> setOf(TrainingEquipment.STABLE_CHAIR)" in AVAILABILITY
+    assert 'coerceIn(0, 3)' in GUIDED

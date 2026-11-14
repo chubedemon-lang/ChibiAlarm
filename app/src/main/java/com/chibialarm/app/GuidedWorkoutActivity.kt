@@ -312,7 +312,7 @@ class GuidedWorkoutActivity:Activity() {
                 savedInstanceState?.getBoolean("workout_avoid_overhead_reach", false) == true
         )
         val constraintResult = WorkoutConstraintFilter.apply(baseProgram, workoutConstraints)
-        val equipmentSelection = intent.getIntExtra("extension_equipment", 0).coerceIn(0, 2)
+        val equipmentSelection = intent.getIntExtra("extension_equipment", 0).coerceIn(0, 3)
         val equipmentResult = WorkoutEquipmentFilter.apply(constraintResult.program, equipmentSelection)
         if (!equipmentResult.canStart) {
             Toast.makeText(this, "Chưa có động tác chính phù hợp với bộ lọc và dụng cụ đã chọn.", Toast.LENGTH_LONG).show()
@@ -326,7 +326,7 @@ class GuidedWorkoutActivity:Activity() {
         val extensionPreferences = WorkoutExtensionPreferences(
             goal = intent.getIntExtra("extension_goal", 0).coerceIn(0, 5),
             energy = intent.getIntExtra("extension_energy", 1).coerceIn(0, 2),
-            equipment = intent.getIntExtra("extension_equipment", 0).coerceIn(0, 2),
+            equipment = intent.getIntExtra("extension_equipment", 0).coerceIn(0, 3),
             impact = intent.getIntExtra("extension_impact", 0).coerceIn(0, 2),
             constraints = workoutConstraints
         )

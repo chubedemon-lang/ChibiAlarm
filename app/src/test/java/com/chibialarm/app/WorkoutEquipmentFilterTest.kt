@@ -47,4 +47,21 @@ class WorkoutEquipmentFilterTest {
         WorkoutEquipmentFilter.apply(original, 0)
         assertEquals(before, original.moves)
     }
+
+    @Test fun stableChairSelectionKeepsChairMovesAndBodyweightMoves() {
+        val starter = TrainingCatalog.byId("starter")
+        val result = WorkoutEquipmentFilter.apply(starter, 3)
+
+        assertTrue(result.canStart)
+        assertFalse(result.removedMoves.contains("Đứng lên – ngồi xuống"))
+        assertTrue(result.program.moves.any { it.name == "Đứng lên – ngồi xuống" })
+        assertTrue(result.program.moves.any { it.name == "Chống đẩy tường" })
+        assertTrue(result.program.moves.all {
+            TrainingEquipmentAvailability.allows(
+                it, setOf(TrainingEquipment.STABLE_CHAIR)
+            )
+        })
+        assertTrue(starter.moves.any { it.name == "Đứng lên – ngồi xuống" })
+    }
+
 }

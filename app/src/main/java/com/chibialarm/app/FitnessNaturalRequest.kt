@@ -260,15 +260,23 @@ object FitnessNaturalRequest {
         ) && !noBand
         val hasMat = hasWholePhrase("tham tap", "co tham") &&
             !hasWholePhrase("khong co tham", "khong con tham", "khong dung tham", "bo tham")
+        val noChair = hasWholePhrase(
+            "khong co ghe", "khong con ghe", "khong dung ghe", "bo ghe", "het ghe"
+        )
+        val hasChair = hasWholePhrase(
+            "ghe vung chac", "ghe chac chan", "ghe khong banh xe", "ghe on dinh",
+            "co ghe", "dung ghe"
+        ) && !noChair
         val explicitlyNoEquipment = hasWholePhrase(
             "khong dung cu", "khong co dung cu", "tay khong",
             "khong con dung cu", "het dung cu"
         )
         val equipment = when {
-            // A reported available alternative wins: no dumbbell but a band is still usable.
+            // A reported available alternative wins: no dumbbell but a band or stable chair is usable.
             hasDumbbell || hasBand -> 2
             hasMat -> 1
-            explicitlyNoEquipment || noDumbbell || noBand -> 0
+            hasChair -> 3
+            explicitlyNoEquipment || noDumbbell || noBand || noChair -> 0
             else -> null
         }
         val duration = parseDuration(text)

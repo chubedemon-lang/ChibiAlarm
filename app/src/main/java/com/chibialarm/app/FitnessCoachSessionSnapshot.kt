@@ -22,7 +22,7 @@ data class FitnessCoachSessionSnapshot(
         if (level != null && level !in 0..2) return null
         if (energy != null && energy !in 0..2) return null
         if (minutes != null && minutes !in 5..120) return null
-        if (equipment != null && equipment !in 0..2) return null
+        if (equipment != null && equipment !in 0..3) return null
         if (impact != null && impact !in 0..2) return null
         if (goal == null && level == null && energy == null && minutes == null &&
             equipment == null && impact == null && avoidWristLoad == null &&

@@ -77,4 +77,21 @@ class WorkoutExtensionSelectorTest {
             assertEquals(plan.moves.size, plan.moves.map { it.name }.distinct().size)
         }
     }
+
+    @Test fun stableChairSelectionCanUseOnlyCuratedChairExtensions() {
+        val plan = WorkoutDurationPlanner.build(
+            TrainingCatalog.byId("full"), 1, 30,
+            preferences(goal = 1, equipment = 3)
+        )
+        val available = setOf(TrainingEquipment.STABLE_CHAIR)
+
+        assertTrue(plan.extensionMoves.any {
+            TrainingEquipment.STABLE_CHAIR in it.equipmentOptions
+        })
+        assertTrue(plan.extensionMoves.all {
+            TrainingEquipmentAvailability.allows(it, available)
+        })
+        assertFalse(plan.extensionMoves.any { it.requiresExternalLoad })
+    }
+
 }

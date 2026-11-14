@@ -47,7 +47,11 @@ object FitnessCoachConversation {
     fun parseReply(previous: FitnessNaturalRequest.Result?, input: String): FitnessNaturalRequest.Result {
         val parsed = FitnessNaturalRequest.parse(input)
         if (previous == null) return parsed
+        // Android speech recognizers commonly append sentence punctuation.
+        // Normalize only the outer punctuation so contextual answers still match exact phrases.
         val answer = input.trim().lowercase(Locale.ROOT)
+            .replace(Regex("^[\\s.,!?;:…]+|[\\s.,!?;:…]+$"), "")
+            .replace(Regex("\\s+"), " ")
         val question = FitnessCoachFollowUp.nextQuestionType(previous)
         // Speech-to-text replies often omit the unit ("mười lăm" instead of
         // "mười lăm phút"). Add the unit only while Chibi is explicitly asking

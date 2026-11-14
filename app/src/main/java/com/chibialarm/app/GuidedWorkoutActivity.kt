@@ -581,6 +581,20 @@ class GuidedWorkoutActivity:Activity() {
             completedMoveIndices.addAll(WorkoutCompletionTracker.decode(savedInstanceState.getString("workout_completed_moves"),moves.size))
             completedSetsByMove.clear()
             completedSetsByMove.putAll(WorkoutSetTracker.decode(savedInstanceState.getString("workout_completed_sets"),moves))
+            // Rotation uses the Android Bundle path, not the guest checkpoint dialog.
+            // Preserve self-reported values and effort labels with the exact confirmed-set count.
+            actualSetValuesByMove.clear()
+            actualSetValuesByMove.putAll(
+                WorkoutSetRepetitionLog.decode(
+                    savedInstanceState.getString("workout_set_values"), moves, completedSetsByMove
+                )
+            )
+            effortLevelsByMove.clear()
+            effortLevelsByMove.putAll(
+                WorkoutEffortLog.decode(
+                    savedInstanceState.getString("workout_effort_log"), moves, completedSetsByMove
+                )
+            )
             completedMoveIndices.removeAll { position ->
                 val plan=setPlan(position)
                 plan!=null && !WorkoutSetTracker.isComplete(completedSetsByMove[position] ?: 0,plan)
@@ -632,6 +646,8 @@ class GuidedWorkoutActivity:Activity() {
         outState.putString("workout_substitutions",WorkoutMoveSubstitution.encode(substitutions,originalMoves,workoutConstraints))
         outState.putString("workout_completed_moves",WorkoutCompletionTracker.encode(completedMoveIndices,moves.size))
         outState.putString("workout_completed_sets",WorkoutSetTracker.encode(completedSetsByMove,moves))
+        outState.putString("workout_set_values",WorkoutSetRepetitionLog.encode(actualSetValuesByMove,moves))
+        outState.putString("workout_effort_log",WorkoutEffortLog.encode(effortLevelsByMove,moves,completedSetsByMove))
         outState.putBoolean("workout_resting",resting)
         outState.putLong("workout_rest_remaining",restRemainingMs.coerceIn(0L,600_000L))
         outState.putBoolean("workout_set_timer_expired",setTimerExpired)

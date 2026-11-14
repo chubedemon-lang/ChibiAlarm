@@ -98,7 +98,9 @@ class FitnessCoachConversationTest {
             "không có hạn chế",
             "không bị hạn chế",
             "không có hạn chế vận động",
-            "vận động bình thường"
+            "vận động bình thường",
+            "Không có hạn chế vận động.",
+            "Vận động bình thường!"
         )) {
             val reply = FitnessCoachConversation.parseReply(start, answer)
             val merged = FitnessCoachConversation.merge(start, reply)

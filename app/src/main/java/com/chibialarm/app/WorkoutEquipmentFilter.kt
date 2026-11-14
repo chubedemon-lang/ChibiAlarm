@@ -29,8 +29,12 @@ object WorkoutEquipmentFilter {
             }
     }
 
-    fun apply(program: TrainingProgram, equipmentSelection: Int): Result {
-        val available = TrainingEquipmentAvailability.fromPreference(equipmentSelection)
+    fun apply(
+        program: TrainingProgram,
+        equipmentSelection: Int,
+        additionalEquipment: Set<TrainingEquipment> = emptySet()
+    ): Result {
+        val available = TrainingEquipmentAvailability.fromPreference(equipmentSelection) + additionalEquipment
         val removed = mutableListOf<String>()
         val filtered = program.moves.filter { move ->
             if (TrainingEquipmentAvailability.allows(move, available)) true

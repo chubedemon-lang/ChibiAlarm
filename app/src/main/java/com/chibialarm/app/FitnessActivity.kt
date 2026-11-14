@@ -30,6 +30,7 @@ class FitnessActivity:Activity() {
     private var recommendationGoalSpinner: Spinner? = null
     private var recommendationEnergySpinner: Spinner? = null
     private var recommendationEquipmentSpinner: Spinner? = null
+    private val additionalEquipmentCheckBoxes = linkedMapOf<TrainingEquipment, CheckBox>()
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
@@ -116,7 +117,7 @@ class FitnessActivity:Activity() {
             "coach_goal", "coach_level", "coach_energy", "coach_minutes",
             "coach_equipment", "coach_impact",
             "coach_avoid_wrist_load", "coach_avoid_floor_positions",
-            "coach_avoid_overhead_reach"
+            "coach_avoid_overhead_reach", "coach_additional_equipment"
         )
         if (keys.none(source::hasExtra)) return null
         fun intValue(key: String): Int? =
@@ -132,7 +133,10 @@ class FitnessActivity:Activity() {
             impact = intValue("coach_impact"),
             avoidWristLoad = booleanValue("coach_avoid_wrist_load"),
             avoidFloorPositions = booleanValue("coach_avoid_floor_positions"),
-            avoidOverheadReach = booleanValue("coach_avoid_overhead_reach")
+            avoidOverheadReach = booleanValue("coach_avoid_overhead_reach"),
+            additionalEquipment = source.getStringArrayListExtra("coach_additional_equipment")
+                ?.mapNotNull { raw -> TrainingEquipment.values().firstOrNull { it.name == raw } }
+                ?.toSet()
         ).restore()
     }
 
@@ -154,7 +158,8 @@ class FitnessActivity:Activity() {
             selectedAvoidFloorPositions = if (floorPositionCheckBox?.isChecked == true || conversation?.avoidFloorPositions != null)
                 floorPositionCheckBox?.isChecked else null,
             selectedAvoidOverheadReach = if (overheadReachCheckBox?.isChecked == true || conversation?.avoidOverheadReach != null)
-                overheadReachCheckBox?.isChecked else null
+                overheadReachCheckBox?.isChecked else null,
+            selectedAdditionalEquipment = currentAdditionalEquipment()
         )
 
     private fun effectiveImpactRestriction(): Int =
@@ -359,6 +364,42 @@ class FitnessActivity:Activity() {
                 }
             }
         }
+        root.addView(txt("➕ Dụng cụ bổ sung (có thể chọn nhiều)",16f))
+        val savedAdditionalEquipment = prefs.getString("recommendAdditionalEquipment", "").orEmpty()
+            .split(',')
+            .mapNotNull { raw -> TrainingEquipment.values().firstOrNull { it.name == raw } }
+            .toSet()
+        val initialAdditionalEquipment = conversation?.additionalEquipment ?: savedAdditionalEquipment
+        val additionalEquipmentContainer = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        additionalEquipmentCheckBoxes.clear()
+        listOf(
+            TrainingEquipment.MAT to "Có thêm thảm tập",
+            TrainingEquipment.DUMBBELL to "Có thêm tạ đơn",
+            TrainingEquipment.RESISTANCE_BAND to "Có thêm dây kháng lực",
+            TrainingEquipment.STABLE_CHAIR to "Có thêm ghế vững chắc, không bánh xe"
+        ).forEach { (equipment, label) ->
+            val checkBox = CheckBox(this).apply {
+                text = label
+                isChecked = equipment in initialAdditionalEquipment
+                setOnCheckedChangeListener { _, _ ->
+                    val selected = currentAdditionalEquipment()
+                    val previous = conversation
+                    conversation = if (previous == null) {
+                        FitnessNaturalRequest.Result(reply = "Đã chọn dụng cụ bổ sung.", additionalEquipment = selected)
+                    } else previous.copy(additionalEquipment = selected)
+                    prefs.edit().putString(
+                        "recommendAdditionalEquipment",
+                        selected.sortedBy { it.ordinal }.joinToString(",") { it.name }
+                    ).apply()
+                    if (::filter.isInitialized) {
+                        programContainer?.let { drawPrograms(it, categories[filter.selectedItemPosition]) }
+                    }
+                }
+            }
+            additionalEquipmentCheckBoxes[equipment] = checkBox
+            additionalEquipmentContainer.addView(checkBox)
+        }
+        root.addView(additionalEquipmentContainer)
         root.addView(txt("🦵 Mức độ vận động phù hợp",19f))
         val impactOptions=arrayOf("Không có hạn chế được báo","Ưu tiên bài ít tác động, không nhảy","Đang đau hoặc có chấn thương")
         val impactSpinner=Spinner(this).apply {
@@ -536,6 +577,7 @@ class FitnessActivity:Activity() {
                     parsed.avoidWristLoad?.let { wristLoadCheckBox?.isChecked = it }
                     parsed.avoidFloorPositions?.let { floorPositionCheckBox?.isChecked = it }
                     parsed.avoidOverheadReach?.let { overheadReachCheckBox?.isChecked = it }
+                    parsed.additionalEquipment?.let { setAdditionalEquipmentSelection(it) }
                     sayFollowUp(coachMessage)
                     AlertDialog.Builder(this@FitnessActivity)
                         .setTitle("🐰 Chibi đã nghe")
@@ -598,10 +640,11 @@ class FitnessActivity:Activity() {
                 val constraintProfile = currentWorkoutConstraintProfile()
                 // Filter every candidate before history-based variety selection; a past
                 // workout must never reintroduce a move requiring unavailable equipment.
+                val additionalEquipment = currentAdditionalEquipment()
                 val filteredPrograms = TrainingCatalog.programs.associate { candidate ->
                     val constrained = WorkoutConstraintFilter.apply(candidate, constraintProfile)
                     candidate.id to (constrained to WorkoutEquipmentFilter.apply(
-                        constrained.program, equipment
+                        constrained.program, equipment, additionalEquipment
                     ))
                 }
                 val baseProgram = TrainingCatalog.byId(recommendation.programId)
@@ -618,7 +661,9 @@ class FitnessActivity:Activity() {
                     candidate.id != baseProgram.id &&
                         (candidate.id != "advanced" || level.selectedItemPosition >= 2) &&
                         (candidate.id != "weighted" ||
-                            (equipment == 2 && level.selectedItemPosition >= 1)) &&
+                            ((equipment == 2 || additionalEquipment.any {
+                                it == TrainingEquipment.DUMBBELL || it == TrainingEquipment.RESISTANCE_BAND
+                            }) && level.selectedItemPosition >= 1)) &&
                         filteredPrograms[candidate.id]?.second?.canStart == true
                 }.map { candidate -> filteredPrograms.getValue(candidate.id).second.program }
                 val historySuggestion = WorkoutHistoryAdvisor.suggestVariety(
@@ -853,7 +898,8 @@ class FitnessActivity:Activity() {
             val constrained = WorkoutConstraintFilter.apply(program, constraints)
             val equipped = WorkoutEquipmentFilter.apply(
                 constrained.program,
-                recommendationEquipmentSpinner?.selectedItemPosition ?: 0
+                recommendationEquipmentSpinner?.selectedItemPosition ?: 0,
+                currentAdditionalEquipment()
             )
             val planned = WorkoutDurationPlanner.build(
                 equipped.program,
@@ -879,6 +925,15 @@ class FitnessActivity:Activity() {
             container.addView(card,LinearLayout.LayoutParams(-1,-2).apply { bottomMargin=15 })
         }
     }
+    private fun currentAdditionalEquipment(): Set<TrainingEquipment> =
+        additionalEquipmentCheckBoxes.filterValues { it.isChecked }.keys.toSet()
+
+    private fun setAdditionalEquipmentSelection(selected: Set<TrainingEquipment>) {
+        additionalEquipmentCheckBoxes.forEach { (equipment, checkBox) ->
+            checkBox.isChecked = equipment in selected
+        }
+    }
+
     private fun currentWorkoutConstraintProfile(): WorkoutConstraintProfile =
         WorkoutConstraintProfile(
             avoidWristLoad = wristLoadCheckBox?.isChecked == true,
@@ -893,7 +948,8 @@ class FitnessActivity:Activity() {
         energy = recommendationEnergySpinner?.selectedItemPosition ?: 1,
         equipment = recommendationEquipmentSpinner?.selectedItemPosition ?: 0,
         impact = effectiveImpactRestriction(),
-        constraints = constraints
+        constraints = constraints,
+        additionalEquipment = currentAdditionalEquipment()
     )
 
     private fun startProgram(
@@ -911,7 +967,8 @@ class FitnessActivity:Activity() {
         }
         val equipmentSelection = recommendationEquipmentSpinner?.selectedItemPosition ?: 0
         val constrained = WorkoutConstraintFilter.apply(p, constraints)
-        val equipped = WorkoutEquipmentFilter.apply(constrained.program, equipmentSelection)
+        val additionalEquipment = currentAdditionalEquipment()
+        val equipped = WorkoutEquipmentFilter.apply(constrained.program, equipmentSelection, additionalEquipment)
         if (!equipped.canStart) {
             AlertDialog.Builder(this)
                 .setTitle("Chưa có động tác phù hợp")
@@ -936,10 +993,15 @@ class FitnessActivity:Activity() {
             .putExtra("extension_goal", recommendationGoalSpinner?.selectedItemPosition ?: 0)
             .putExtra("extension_energy", recommendationEnergySpinner?.selectedItemPosition ?: 1)
             .putExtra("extension_equipment", equipmentSelection)
+            .putStringArrayListExtra("extension_additional_equipment", ArrayList(additionalEquipment.map { it.name }))
             .putExtra("extension_impact", effectiveImpactRestriction()))
     }
     private fun addRoutine(p:TrainingProgram) {
-        if (!WorkoutEquipmentFilter.apply(p, recommendationEquipmentSpinner?.selectedItemPosition ?: 0).canStart) {
+        if (!WorkoutEquipmentFilter.apply(
+                p,
+                recommendationEquipmentSpinner?.selectedItemPosition ?: 0,
+                currentAdditionalEquipment()
+            ).canStart) {
             Toast.makeText(this, "Chưa có động tác phù hợp với dụng cụ đã chọn; chưa tạo lịch tuần.", Toast.LENGTH_LONG).show()
             return
         }

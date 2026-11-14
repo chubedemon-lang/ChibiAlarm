@@ -319,4 +319,26 @@ class FitnessCoachConversationTest {
         assertEquals(15, explicitPermission.minutes)
     }
 
+    @Test fun multipleToolsSurviveUnrelatedTurnsAndExplicitNoEquipmentClearsThem() {
+        val first = FitnessCoachConversation.merge(
+            null,
+            FitnessNaturalRequest.parse("giãn cơ 20 phút, có thảm tập và ghế vững chắc")
+        )
+        assertEquals(1, first.equipment)
+        assertEquals(setOf(TrainingEquipment.STABLE_CHAIR), first.additionalEquipment)
+
+        val second = FitnessCoachConversation.merge(
+            first,
+            FitnessNaturalRequest.parse("hôm nay hơi mệt")
+        )
+        assertEquals(setOf(TrainingEquipment.STABLE_CHAIR), second.additionalEquipment)
+
+        val cleared = FitnessCoachConversation.merge(
+            second,
+            FitnessNaturalRequest.parse("không dụng cụ")
+        )
+        assertEquals(0, cleared.equipment)
+        assertEquals(emptySet<TrainingEquipment>(), cleared.additionalEquipment)
+    }
+
 }

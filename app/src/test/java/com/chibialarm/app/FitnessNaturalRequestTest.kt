@@ -316,4 +316,21 @@ class FitnessNaturalRequestTest {
         assertEquals(0, FitnessNaturalRequest.parse("không có ghế, không dụng cụ").equipment)
     }
 
+    @Test fun parsesSeveralAvailableToolsIntoPrimaryAndAdditionalSelections() {
+        val result = FitnessNaturalRequest.parse(
+            "Tao có tạ đơn, dây kháng lực, ghế vững chắc và có thảm tập"
+        )
+        assertEquals(2, result.equipment)
+        assertEquals(
+            setOf(TrainingEquipment.MAT, TrainingEquipment.STABLE_CHAIR),
+            result.additionalEquipment
+        )
+    }
+
+    @Test fun explicitlyMissingEquipmentDoesNotRemainInAdditionalTools() {
+        val result = FitnessNaturalRequest.parse("Không có ghế nhưng có thảm tập")
+        assertEquals(1, result.equipment)
+        assertEquals(emptySet<TrainingEquipment>(), result.additionalEquipment)
+    }
+
 }

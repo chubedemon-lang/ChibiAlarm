@@ -65,13 +65,13 @@ object FitnessCoachConversation {
                 parsed.copy(minutes = contextualMinutes, reply = "Tao đã ghi nhận $contextualMinutes phút cho buổi tập. Mày có thể trả lời câu hỏi tiếp theo.")
             question == FitnessCoachFollowUp.Question.EQUIPMENT &&
                 answer in setOf("không", "khong", "không có", "khong co", "tay không", "tay khong") ->
-                parsed.copy(equipment = 0, reply = "Đã ghi nhận tập không dụng cụ. Tao sẽ ưu tiên bài phù hợp.")
+                parsed.copy(equipment = 0, additionalEquipment = emptySet(), reply = "Đã ghi nhận tập không dụng cụ. Tao sẽ ưu tiên bài phù hợp.")
             question == FitnessCoachFollowUp.Question.EQUIPMENT &&
                 answer in setOf("thảm", "tham", "thảm tập", "tham tap") ->
-                parsed.copy(equipment = 1, reply = "Đã ghi nhận có thảm tập.")
+                parsed.copy(equipment = 1, additionalEquipment = emptySet(), reply = "Đã ghi nhận có thảm tập.")
             question == FitnessCoachFollowUp.Question.EQUIPMENT &&
                 answer in setOf("tạ", "ta", "tạ đơn", "ta don", "dây", "day", "dây kháng lực", "day khang luc") ->
-                parsed.copy(equipment = 2, reply = "Đã ghi nhận có tạ hoặc dây kháng lực. Hãy kiểm tra dụng cụ được chọn.")
+                parsed.copy(equipment = 2, additionalEquipment = emptySet(), reply = "Đã ghi nhận có tạ hoặc dây kháng lực. Hãy kiểm tra dụng cụ được chọn.")
             question == FitnessCoachFollowUp.Question.MOVEMENT_LIMITS && parsed.impact != null ->
                 parsed
             question == FitnessCoachFollowUp.Question.MOVEMENT_LIMITS && answer in negativeReplies ->
@@ -140,7 +140,8 @@ object FitnessCoachConversation {
             reply = next.reply,
             avoidWristLoad = next.avoidWristLoad ?: previous.avoidWristLoad,
             avoidFloorPositions = next.avoidFloorPositions ?: previous.avoidFloorPositions,
-            avoidOverheadReach = next.avoidOverheadReach ?: previous.avoidOverheadReach
+            avoidOverheadReach = next.avoidOverheadReach ?: previous.avoidOverheadReach,
+            additionalEquipment = next.additionalEquipment ?: previous.additionalEquipment
         )
     }
 }

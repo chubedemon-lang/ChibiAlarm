@@ -150,4 +150,35 @@ class FitnessCoachSessionSnapshotTest {
         assertNull(FitnessCoachSessionSnapshot(equipment = 4).restore())
     }
 
+    @Test fun additionalEquipmentCheckboxesSurviveRotationAndStayOutOfHealthPreferences() {
+        val controller = Robolectric.buildActivity(FitnessActivity::class.java).setup()
+        val field = FitnessActivity::class.java.getDeclaredField("additionalEquipmentCheckBoxes").apply {
+            isAccessible = true
+        }
+        @Suppress("UNCHECKED_CAST")
+        val boxes = field.get(controller.get()) as Map<TrainingEquipment, android.widget.CheckBox>
+        boxes.getValue(TrainingEquipment.STABLE_CHAIR).isChecked = true
+        boxes.getValue(TrainingEquipment.MAT).isChecked = true
+
+        controller.recreate()
+        @Suppress("UNCHECKED_CAST")
+        val restored = field.get(controller.get()) as Map<TrainingEquipment, android.widget.CheckBox>
+        assertTrue(restored.getValue(TrainingEquipment.STABLE_CHAIR).isChecked)
+        assertTrue(restored.getValue(TrainingEquipment.MAT).isChecked)
+        val preferences = controller.get().getSharedPreferences("chibi_fitness_offline", 0)
+        assertTrue(preferences.getString("recommendAdditionalEquipment", "").orEmpty().contains("STABLE_CHAIR"))
+        assertFalse(preferences.contains("avoidOverheadReach"))
+        controller.pause().stop().destroy()
+    }
+
+    @Test fun additionalEquipmentIsPartOfTheCoarseInMemorySnapshot() {
+        val selected = setOf(TrainingEquipment.MAT, TrainingEquipment.STABLE_CHAIR)
+        val source = FitnessNaturalRequest.Result(reply = "transient", equipment = 1)
+        val snapshot = FitnessCoachSessionSnapshot.capture(
+            source, 0, selectedAdditionalEquipment = selected
+        )!!
+        assertEquals(selected, snapshot.restore()?.additionalEquipment)
+        assertFalse(snapshot.toString().contains("transient"))
+    }
+
 }

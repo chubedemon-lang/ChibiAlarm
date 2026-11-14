@@ -18,7 +18,9 @@ object FitnessNaturalRequest {
         val reply: String,
         val avoidWristLoad: Boolean? = null,
         val avoidFloorPositions: Boolean? = null,
-        val avoidOverheadReach: Boolean? = null
+        val avoidOverheadReach: Boolean? = null,
+        // Additional tools are explicit session choices; null means this utterance said nothing about them.
+        val additionalEquipment: Set<TrainingEquipment>? = null
     )
 
     private fun normalize(input: String): String {
@@ -279,6 +281,16 @@ object FitnessNaturalRequest {
             explicitlyNoEquipment || noDumbbell || noBand || noChair -> 0
             else -> null
         }
+        val primaryEquipment = equipment?.let(TrainingEquipmentAvailability::fromPreference).orEmpty()
+        val additionalEquipment = equipment?.let {
+            val reported = buildSet {
+                if (hasMat) add(TrainingEquipment.MAT)
+                if (hasDumbbell) add(TrainingEquipment.DUMBBELL)
+                if (hasBand) add(TrainingEquipment.RESISTANCE_BAND)
+                if (hasChair) add(TrainingEquipment.STABLE_CHAIR)
+            }
+            reported - primaryEquipment
+        }
         val duration = parseDuration(text)
         val detected = listOf(goal, level, energy, equipment, duration).count { it != null } +
             (if (injury || lowImpact) 1 else 0) +
@@ -304,7 +316,8 @@ object FitnessNaturalRequest {
             reply = reply,
             avoidWristLoad = avoidWristLoad,
             avoidFloorPositions = avoidFloorPositions,
-            avoidOverheadReach = avoidOverheadReach
+            avoidOverheadReach = avoidOverheadReach,
+            additionalEquipment = additionalEquipment
         )
     }
 }

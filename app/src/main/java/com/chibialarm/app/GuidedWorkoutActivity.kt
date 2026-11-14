@@ -328,7 +328,12 @@ class GuidedWorkoutActivity:Activity() {
         )
         val constraintResult = WorkoutConstraintFilter.apply(baseProgram, workoutConstraints)
         val equipmentSelection = intent.getIntExtra("extension_equipment", 0).coerceIn(0, 3)
-        val equipmentResult = WorkoutEquipmentFilter.apply(constraintResult.program, equipmentSelection)
+        val additionalEquipment = intent.getStringArrayListExtra("extension_additional_equipment")
+            ?.mapNotNull { raw -> TrainingEquipment.values().firstOrNull { it.name == raw } }
+            ?.toSet().orEmpty()
+        val equipmentResult = WorkoutEquipmentFilter.apply(
+            constraintResult.program, equipmentSelection, additionalEquipment
+        )
         if (!equipmentResult.canStart) {
             Toast.makeText(this, "Chưa có động tác chính phù hợp với bộ lọc và dụng cụ đã chọn.", Toast.LENGTH_LONG).show()
             finish()
@@ -343,7 +348,8 @@ class GuidedWorkoutActivity:Activity() {
             energy = intent.getIntExtra("extension_energy", 1).coerceIn(0, 2),
             equipment = intent.getIntExtra("extension_equipment", 0).coerceIn(0, 3),
             impact = intent.getIntExtra("extension_impact", 0).coerceIn(0, 2),
-            constraints = workoutConstraints
+            constraints = workoutConstraints,
+            additionalEquipment = additionalEquipment
         )
         savedInstanceState?.let { state ->
             val additional = state.getStringArrayList("workout_additional_equipment")

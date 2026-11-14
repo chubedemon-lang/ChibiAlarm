@@ -64,4 +64,20 @@ class WorkoutEquipmentFilterTest {
         assertTrue(starter.moves.any { it.name == "Đứng lên – ngồi xuống" })
     }
 
+    @Test fun primaryAndAdditionalEquipmentAreCombinedForBasePlanFiltering() {
+        val starter = TrainingCatalog.byId("starter")
+        val result = WorkoutEquipmentFilter.apply(
+            starter,
+            0,
+            setOf(TrainingEquipment.STABLE_CHAIR, TrainingEquipment.MAT)
+        )
+        assertTrue(result.canStart)
+        assertTrue(result.program.moves.any { it.name == "Đứng lên – ngồi xuống" })
+        assertTrue(result.program.moves.any { it.name == "Chống đẩy tường" })
+        assertFalse(result.program.moves.any {
+            it.equipmentOptions.contains(TrainingEquipment.DUMBBELL) ||
+                it.equipmentOptions.contains(TrainingEquipment.RESISTANCE_BAND)
+        })
+    }
+
 }

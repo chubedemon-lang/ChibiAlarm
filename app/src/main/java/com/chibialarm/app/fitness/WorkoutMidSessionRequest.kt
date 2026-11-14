@@ -182,6 +182,7 @@ object WorkoutMidSessionRequest {
         }
         val explicitlyNoAdd = has(
             "khong them bai", "khong them bai tap", "khong can them bai",
+            "khong them dong tac", "khong can them dong tac",
             "dung them bai", "dung them dong tac"
         )
         val addOptionalExercise = !explicitlyNoAdd && has(

@@ -793,5 +793,13 @@ class WorkoutMidSessionPlannerTest {
             WorkoutMidSessionRequest.Result.Unsupported,
             WorkoutMidSessionRequest.parse("Đừng thêm bài")
         )
+        assertSame(
+            WorkoutMidSessionRequest.Result.Unsupported,
+            WorkoutMidSessionRequest.parse("Không thêm động tác")
+        )
+        assertSame(
+            WorkoutMidSessionRequest.Result.Unsupported,
+            WorkoutMidSessionRequest.parse("Không cần thêm động tác")
+        )
     }
 }

@@ -123,4 +123,14 @@ class WorkoutStepGuideTest {
         }
     }
 
+    @Test fun autoSpeechOnlyRunsAfterOptInAndRealNavigation() {
+        assertFalse(WorkoutStepGuide.shouldSpeakOnNavigation(false, null, 1))
+        assertFalse(WorkoutStepGuide.shouldSpeakOnNavigation(true, null, 1))
+        assertFalse(WorkoutStepGuide.shouldSpeakOnNavigation(true, 1, 1))
+        assertFalse(WorkoutStepGuide.shouldSpeakOnNavigation(true, 0, 2))
+        assertFalse(WorkoutStepGuide.shouldSpeakOnNavigation(true, 1, 0))
+        assertTrue(WorkoutStepGuide.shouldSpeakOnNavigation(true, 1, 2))
+        assertTrue(WorkoutStepGuide.shouldSpeakOnNavigation(true, 3, 2))
+    }
+
 }

@@ -92,6 +92,52 @@ class FitnessCoachConversationTest {
         assertEquals(1, FitnessCoachConversation.merge(previous, reply).impact)
     }
 
+    @Test fun naturalNoMovementLimitPhrasesAdvanceOnlyTheAskedFollowUp() {
+        val start = FitnessNaturalRequest.parse("giãn cơ 15 phút không dụng cụ, đang tập đều")
+        for (answer in listOf(
+            "không có hạn chế",
+            "không bị hạn chế",
+            "không có hạn chế vận động",
+            "vận động bình thường"
+        )) {
+            val reply = FitnessCoachConversation.parseReply(start, answer)
+            val merged = FitnessCoachConversation.merge(start, reply)
+            assertEquals("Failed for: $answer", 0, merged.impact)
+            assertEquals(
+                "Failed for: $answer",
+                FitnessCoachFollowUp.Question.WRIST_LOAD,
+                FitnessCoachFollowUp.nextQuestionType(merged)
+            )
+        }
+    }
+
+    @Test fun noMovementLimitAnswerPreservesAnEarlierSpecificWristRestriction() {
+        val start = FitnessNaturalRequest.parse(
+            "giãn cơ 15 phút không dụng cụ, đang tập đều, không chống tay"
+        )
+        assertEquals(true, start.avoidWristLoad)
+        assertEquals(FitnessCoachFollowUp.Question.MOVEMENT_LIMITS,
+            FitnessCoachFollowUp.nextQuestionType(start))
+
+        val reply = FitnessCoachConversation.parseReply(start, "không bị hạn chế vận động")
+        val merged = FitnessCoachConversation.merge(start, reply)
+
+        assertEquals(0, merged.impact)
+        assertEquals(true, merged.avoidWristLoad)
+        assertEquals(FitnessCoachFollowUp.Question.FLOOR_POSITIONS,
+            FitnessCoachFollowUp.nextQuestionType(merged))
+    }
+
+    @Test fun affirmativeMovementLimitPhraseIsScopedToTheMovementQuestion() {
+        val start = FitnessNaturalRequest.parse("giãn cơ 15 phút không dụng cụ, đang tập đều")
+        val reply = FitnessCoachConversation.parseReply(start, "có hạn chế vận động")
+        val merged = FitnessCoachConversation.merge(start, reply)
+
+        assertEquals(1, merged.impact)
+        assertEquals(FitnessCoachFollowUp.Question.WRIST_LOAD,
+            FitnessCoachFollowUp.nextQuestionType(merged))
+    }
+
     @Test fun energyAnswerWorksAfterSafetyPreference() {
         val previous = FitnessCoachConversation.merge(
             FitnessNaturalRequest.parse("giãn cơ 15 phút không dụng cụ, đang tập đều"),

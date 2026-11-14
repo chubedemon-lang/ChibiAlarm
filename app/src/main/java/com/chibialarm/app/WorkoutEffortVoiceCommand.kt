@@ -34,7 +34,12 @@ object WorkoutEffortVoiceCommand {
 
     fun parse(utterance: String): Result? {
         if (utterance.length !in 1..160) return null
-        if (WorkoutVoiceCommands.parse(utterance) == WorkoutVoiceCommands.Command.PAIN) {
+        // The word "đầu" in "đầu gối" names a body part; do not mistake it for "đau".
+        val safetyProbe = utterance.replace(
+            Regex("(?<![\\p{L}\\p{N}])đầu gối(?![\\p{L}\\p{N}])", RegexOption.IGNORE_CASE),
+            "khớp gối"
+        )
+        if (WorkoutVoiceCommands.parse(safetyProbe) == WorkoutVoiceCommands.Command.PAIN) {
             return Result.SafetyStop
         }
 

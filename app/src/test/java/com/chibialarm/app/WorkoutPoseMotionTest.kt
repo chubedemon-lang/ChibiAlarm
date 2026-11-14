@@ -132,6 +132,13 @@ class WorkoutPoseMotionTest {
         assertEquals(false, WorkoutPoseMotion.guidePhaseForStep(
             WorkoutPoseGuide.Pose.MOUNTAIN_CLIMBER, "Đưa từng gối về phía ngực"
         ))
+        assertEquals(false, WorkoutPoseMotion.guidePhaseForStep(
+            WorkoutPoseGuide.Pose.MOUNTAIN_CLIMBER,
+            "Luân phiên đưa từng gối về phía ngực theo nhịp chậm"
+        ))
+        assertEquals(false, WorkoutPoseMotion.guidePhaseForStep(
+            WorkoutPoseGuide.Pose.MOUNTAIN_CLIMBER, "Kéo từng gối về phía ngực"
+        ))
         assertEquals(true, WorkoutPoseMotion.guidePhaseForStep(
             WorkoutPoseGuide.Pose.MOUNTAIN_CLIMBER, "Duỗi chân ra sau có kiểm soát"
         ))

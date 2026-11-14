@@ -1080,7 +1080,7 @@ class FitnessActivity:Activity() {
             append(candidate.program.name)
             append("\n\n")
             append(proposal.exerciseName)
-            append("\nBuổi gần nhất: tối thiểu ${proposal.previousMinimumReps} lần ở mỗi hiệp đã ghi.")
+            append("\nBuổi gần nhất: ${proposal.previousMinimumReps} lần/hiệp ở tất cả hiệp đã ghi.")
             append("\nBuổi kế tiếp: ${proposal.targetReps} lần/hiệp (+1), trong dải ${proposal.prescribedMinReps}–${proposal.prescribedMaxReps}.")
             append("\nGiữ ${proposal.requiredSets} hiệp tối thiểu (tối đa ${proposal.maximumSets}), nghỉ ${proposal.restSeconds} giây.")
             append("\nKhông tăng tải, không thêm hiệp và không đổi dụng cụ.")

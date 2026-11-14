@@ -11,7 +11,7 @@ class WorkoutProgressionPreviewTest {
     private fun workout(
         date: LocalDate,
         exercise: String = "Squat không tạ",
-        reps: List<Int> = listOf(8, 10),
+        reps: List<Int> = listOf(8, 8),
         unit: String = "lần",
         levels: List<WorkoutEffortFeedback.Level> = listOf(
             WorkoutEffortFeedback.Level.EASY,
@@ -48,7 +48,7 @@ class WorkoutProgressionPreviewTest {
     private fun suggestion(workouts: List<Workout>) =
         WorkoutSteadyProgressAdvisor.suggest(workouts, today)
 
-    @Test fun proposesOneRepAboveTheLowestLatestSetWithinTheCatalogRange() {
+    @Test fun proposesOneRepAboveConsistentLatestSetsWithinTheCatalogRange() {
         val workouts = history()
         val suggestion = suggestion(workouts)
         assertNotNull(suggestion)
@@ -99,6 +99,17 @@ class WorkoutProgressionPreviewTest {
             effortLog = "Squat không tạ: hiệp 1: Khó, cần nghỉ thêm, hiệp 2: Vừa sức"
         )
         assertNull(suggestion(workouts))
+    }
+
+    @Test fun differentRepCountsAcrossSetsDoNotReceiveOneExactTarget() {
+        val workouts = history(reps = listOf(8, 10))
+        val suggestion = suggestion(workouts)
+        assertNotNull(suggestion)
+        assertNull(
+            WorkoutProgressionPreview.propose(
+                suggestion!!, workouts, TrainingCatalog.byId("full").moves, today
+            )
+        )
     }
 
     @Test fun targetAtTheCatalogMaximumDoesNotIncreasePastThePrescription() {

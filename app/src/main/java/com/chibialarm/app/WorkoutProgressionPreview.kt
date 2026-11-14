@@ -97,7 +97,11 @@ object WorkoutProgressionPreview {
             }
         ) return null
 
-        val previousMinimum = values.minOf { it.value }
+        // The guided screen applies one exact rep target to every set. Only offer it
+        // when the latest self-reported sets used the same count; never lower a stronger set.
+        val distinctRepCounts = values.map { it.value }.distinct()
+        if (distinctRepCounts.size != 1) return null
+        val previousMinimum = distinctRepCounts.single()
         val target = previousMinimum + 1
         if (target <= previousMinimum || target > plan.targetMax) return null
 

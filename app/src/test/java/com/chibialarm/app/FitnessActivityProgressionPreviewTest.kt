@@ -36,7 +36,7 @@ class FitnessActivityProgressionPreviewTest {
         sessionId = UUID.randomUUID().toString(),
         completedMoves = 2,
         selfReportedSets = 2,
-        setLog = "Kéo tạ đơn hoặc dây kháng lực: hiệp 1: 8 lần, hiệp 2: 9 lần",
+        setLog = "Kéo tạ đơn hoặc dây kháng lực: hiệp 1: 8 lần, hiệp 2: 8 lần",
         effortLog = "Kéo tạ đơn hoặc dây kháng lực: hiệp 1: Nhẹ, còn dư sức, hiệp 2: Vừa sức"
     )
 

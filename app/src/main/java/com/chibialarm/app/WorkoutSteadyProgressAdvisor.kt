@@ -32,6 +32,7 @@ object WorkoutSteadyProgressAdvisor {
         val id: String,
         val date: LocalDate,
         val originalIndex: Int,
+        val selfReportedSets: Int,
         val moves: List<MoveEffort>
     )
 
@@ -56,8 +57,8 @@ object WorkoutSteadyProgressAdvisor {
 
     /**
      * Suggests a conversation only when the same exercise has at least three distinct,
-     * recent Guided Workout sessions and every recorded set in those sessions was rated
-     * EASY or MODERATE. Missing check-ins do not count as positive evidence.
+     * recent Guided Workout sessions and every self-reported set in each session has a
+     * structured effort rating, all EASY or MODERATE. Partial check-ins are not positive evidence.
      */
     fun suggest(
         workouts: List<Workout>,
@@ -80,8 +81,11 @@ object WorkoutSteadyProgressAdvisor {
                 ) return@mapIndexedNotNull null
 
                 val moves = parseLog(workout.effortLog).distinctBy { normalize(it.name) }
-                if (moves.isEmpty()) return@mapIndexedNotNull null
-                Session(workout.sessionId, date, index, moves)
+                val recordedSetCount = moves.sumOf { it.levels.size }
+                if (moves.isEmpty() || workout.selfReportedSets !in 1..(MAX_MOVES * MAX_SETS) ||
+                    recordedSetCount != workout.selfReportedSets
+                ) return@mapIndexedNotNull null
+                Session(workout.sessionId, date, index, workout.selfReportedSets, moves)
             }
             .toList()
             .sortedWith(compareByDescending<Session> { it.date }.thenByDescending { it.originalIndex })

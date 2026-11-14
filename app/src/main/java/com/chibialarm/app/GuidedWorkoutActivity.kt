@@ -22,6 +22,7 @@ import com.chibialarm.app.fitness.WorkoutSessionTimeEstimate
 import com.chibialarm.app.fitness.WorkoutMidSessionPlanner
 import com.chibialarm.app.fitness.WorkoutMidSessionRequest
 import com.chibialarm.app.fitness.WorkoutMidSessionPreviewFormatter
+import com.chibialarm.app.fitness.WorkoutEffortPlanChange
 import com.chibialarm.app.TrainingEquipment
 import com.chibialarm.app.WorkoutExtensionPreferences
 import com.chibialarm.app.rpg.RpgDatabase
@@ -2222,19 +2223,20 @@ class GuidedWorkoutActivity:Activity() {
         dialog.setOnCancelListener { startPrescribedRest() }
         dialog.setOnShowListener {
             speak("Hiệp vừa rồi thế nào? Chọn nhẹ, vừa sức, khó hoặc quá sức.")
-            dialog.getButton(AlertDialog.BUTTON_NEUTRAL).apply {
-                contentDescription = "Trả lời cảm nhận hiệp bằng giọng nói sau khi xác nhận quyền micro"
-                setOnClickListener {
-                    requestEffortVoiceCommand { phrase ->
-                        handleEffortVoiceCheckIn(
-                            selectedIndex, selectedSessionId, completedSets, plan,
-                            hasNextSet, dialog, phrase
-                        )
-                    }
+        }
+        dialog.show()
+        // Install the custom neutral-button action after show(), when AlertDialog has created it.
+        dialog.getButton(AlertDialog.BUTTON_NEUTRAL).apply {
+            contentDescription = "Trả lời cảm nhận hiệp bằng giọng nói sau khi xác nhận quyền micro"
+            setOnClickListener {
+                requestEffortVoiceCommand { phrase ->
+                    handleEffortVoiceCheckIn(
+                        selectedIndex, selectedSessionId, completedSets, plan,
+                        hasNextSet, dialog, phrase
+                    )
                 }
             }
         }
-        dialog.show()
     }
 
     private fun isSameEffortContext(
@@ -2279,6 +2281,9 @@ class GuidedWorkoutActivity:Activity() {
                         if (!isSameEffortContext(selectedIndex, selectedSessionId, completedSets, plan)) {
                             Toast.makeText(this, "Buổi tập đã thay đổi; Chibi chưa lưu cảm nhận.", Toast.LENGTH_LONG).show()
                         } else {
+                            // Dismiss is not a cancellation: do not let a dialog callback start
+                            // prescribed rest before the confirmed effort has been recorded.
+                            checkInDialog.setOnCancelListener(null)
                             checkInDialog.dismiss()
                             applyEffortCheckIn(
                                 selectedIndex, selectedSessionId, completedSets, plan, hasNextSet, level
@@ -2361,6 +2366,11 @@ class GuidedWorkoutActivity:Activity() {
                     .setNegativeButton("Nghỉ theo giáo án") { _, _ ->
                         if (isSameEffortContext(selectedIndex, selectedSessionId, completedSets, plan)) {
                             startSetRest(plan.defaultRestSeconds)
+                        }
+                    }
+                    .setNeutralButton("Xem giáo án nhẹ hơn") { _, _ ->
+                        if (isSameEffortContext(selectedIndex, selectedSessionId, completedSets, plan)) {
+                            WorkoutEffortPlanChange.requestFor(level)?.let(::applyMidSessionRequest)
                         }
                     }
                     .create()

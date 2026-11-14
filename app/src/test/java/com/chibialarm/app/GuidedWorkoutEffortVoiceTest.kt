@@ -133,6 +133,15 @@ class GuidedWorkoutEffortVoiceTest {
             )
             assertTrue("A rest suggestion still requires its own choice",
                 (ShadowAlertDialog.getLatestAlertDialog() as AlertDialog).isShowing)
+            val restChoice = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
+            assertTrue(restChoice.getButton(AlertDialog.BUTTON_NEUTRAL).text.toString().contains("nhẹ hơn"))
+            restChoice.getButton(AlertDialog.BUTTON_NEUTRAL).performClick()
+            val planPreview = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
+            assertTrue(planPreview.isShowing)
+            assertTrue(
+                planPreview.findViewById<android.widget.TextView>(android.R.id.message)
+                    ?.text?.toString().orEmpty().contains("Các hiệp đã xác nhận không bị sửa")
+            )
         } finally {
             checkIn.activity.finish()
         }

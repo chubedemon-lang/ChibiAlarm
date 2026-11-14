@@ -8,25 +8,25 @@ object WorkoutStepVoiceCommand {
     enum class Command { NEXT, PREVIOUS, REPEAT, CLOSE, SAFETY, UNKNOWN }
 
     private fun containsPhrase(text: String, phrase: String): Boolean =
-        Regex("(^|\\\\s)${Regex.escape(phrase)}(\\\\s|$)").containsMatchIn(text)
+        Regex("(^|\\s)\${Regex.escape(phrase)}(\\s|$)").containsMatchIn(text)
 
     fun parse(utterance: String?): Command {
         if (utterance.isNullOrBlank()) return Command.UNKNOWN
         val raw = utterance.lowercase(Locale.ROOT)
-            .replace(Regex("[^\\\\p{L}\\\\p{N}]+"), " ")
+            .replace(Regex("[^\\p{L}\\p{N}]+"), " ")
             .trim()
-            .replace(Regex("\\\\s+"), " ")
+            .replace(Regex("\\s+"), " ")
 
         // Check the accented and plain-ASCII forms before removing diacritics so
         // "đầu gối" is not mistaken for "đau" (pain).
         if (containsPhrase(raw, "đau") || containsPhrase(raw, "dau")) return Command.SAFETY
 
         val normalized = Normalizer.normalize(raw, Normalizer.Form.NFD)
-            .replace(Regex("\\\\p{Mn}+"), "")
+            .replace(Regex("\\p{Mn}+"), "")
             .replace('đ', 'd')
             .replace(Regex("[^a-z0-9]+"), " ")
             .trim()
-            .replace(Regex("\\\\s+"), " ")
+            .replace(Regex("\\s+"), " ")
 
         if (listOf("kho tho", "choang", "chong mat", "tuc nguc", "kho chiu")
                 .any { containsPhrase(normalized, it) }) return Command.SAFETY

@@ -173,7 +173,7 @@ class FitnessCoachSessionSnapshotTest {
 
     @Test fun additionalEquipmentIsPartOfTheCoarseInMemorySnapshot() {
         val selected = setOf(TrainingEquipment.MAT, TrainingEquipment.STABLE_CHAIR)
-        val source = FitnessNaturalRequest.Result(reply = "transient", equipment = 1)
+        val source = FitnessNaturalRequest.Result(reply = "transient")
         val snapshot = FitnessCoachSessionSnapshot.capture(
             source, 0, selectedAdditionalEquipment = selected
         )!!

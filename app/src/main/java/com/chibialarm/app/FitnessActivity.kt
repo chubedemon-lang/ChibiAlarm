@@ -159,7 +159,9 @@ class FitnessActivity:Activity() {
                 floorPositionCheckBox?.isChecked else null,
             selectedAvoidOverheadReach = if (overheadReachCheckBox?.isChecked == true || conversation?.avoidOverheadReach != null)
                 overheadReachCheckBox?.isChecked else null,
-            selectedAdditionalEquipment = currentAdditionalEquipment()
+            selectedAdditionalEquipment = currentAdditionalEquipment().takeIf {
+                it.isNotEmpty() || conversation?.additionalEquipment != null
+            }
         )
 
     private fun effectiveImpactRestriction(): Int =

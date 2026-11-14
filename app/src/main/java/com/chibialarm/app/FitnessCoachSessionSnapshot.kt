@@ -27,7 +27,8 @@ data class FitnessCoachSessionSnapshot(
         if (impact != null && impact !in 0..2) return null
         if (goal == null && level == null && energy == null && minutes == null &&
             equipment == null && impact == null && avoidWristLoad == null &&
-            avoidFloorPositions == null && avoidOverheadReach == null) return null
+            avoidFloorPositions == null && avoidOverheadReach == null &&
+            additionalEquipment == null) return null
         return FitnessNaturalRequest.Result(
             goal = goal,
             level = level,

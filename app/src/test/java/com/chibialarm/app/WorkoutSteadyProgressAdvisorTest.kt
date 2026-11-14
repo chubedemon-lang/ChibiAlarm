@@ -14,7 +14,7 @@ class WorkoutSteadyProgressAdvisorTest {
         sessionId: String = UUID.randomUUID().toString(),
         minutes: Int = 20,
         note: String = "private health note",
-        selfReportedSets: Int = Regex("""hiệp\\s+\\d+\\s*:""").findAll(effortLog).count()
+        selfReportedSets: Int = Regex("""hiệp\s+\d+\s*:""").findAll(effortLog).count()
     ) = Workout(
         date = date.toString(),
         name = "Guided Workout",

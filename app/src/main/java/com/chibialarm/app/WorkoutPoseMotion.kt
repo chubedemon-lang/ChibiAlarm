@@ -99,7 +99,7 @@ object WorkoutPoseMotion {
             WorkoutPoseGuide.Pose.SUPPORTED_MARCH -> listOf("hạ chân", "hạ gối", "đưa chân xuống") to listOf("nâng gối", "nhấc gối")
             WorkoutPoseGuide.Pose.MOUNTAIN_CLIMBER ->
                 listOf("duỗi chân ra sau", "đưa chân ra sau", "trở về tư thế chống tay") to
-                    listOf("đưa gối về phía ngực", "kéo gối về trước", "nâng gối")
+                    listOf("đưa từng gối về phía ngực", "luân phiên đưa từng gối về phía ngực", "đưa gối về phía ngực", "kéo từng gối về phía ngực", "kéo gối về trước", "nâng gối")
             WorkoutPoseGuide.Pose.HIP_ABDUCTION -> listOf("hạ chân") to listOf("đưa chân sang bên", "nhấc chân")
             WorkoutPoseGuide.Pose.SCAPULAR_SQUEEZE -> listOf("thả lỏng bả vai", "thả bả vai") to listOf("kéo nhẹ hai bả vai", "siết bả vai")
             WorkoutPoseGuide.Pose.FOREARM_WALL_PRESS -> listOf("thả cẳng tay") to listOf("ấn nhẹ cẳng tay", "ấn cẳng tay")

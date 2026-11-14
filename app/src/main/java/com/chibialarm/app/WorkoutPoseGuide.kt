@@ -8,7 +8,7 @@ object WorkoutPoseGuide {
     enum class Pose {
         SQUAT, HIP_HINGE, RESISTANCE_ROW, RESISTANCE_HINGE, RESISTANCE_PRESS, PLANK, PUSH_UP, KNEE_PUSH_UP, WALL_PUSH_UP, INCLINE_PUSH_UP, LUNGE,
         BRIDGE, BIRD_DOG, DEAD_BUG, CAT_COW,
-        MARCH, SUPPORTED_MARCH, HIP_ABDUCTION, SEATED_HAMSTRING_STRETCH,
+        MARCH, MOUNTAIN_CLIMBER, SUPPORTED_MARCH, HIP_ABDUCTION, SEATED_HAMSTRING_STRETCH,
         SCAPULAR_SQUEEZE, FOREARM_WALL_PRESS, SIDE_STEP, SEATED_KNEE_RAISE,
         STRETCH, SIDE_PLANK, CALF_RAISE, BALANCE, STANDING, REST
     }
@@ -33,6 +33,7 @@ object WorkoutPoseGuide {
             listOf("ép ngực tường bằng cẳng tay", "forearm wall press").any { it in text } -> Pose.FOREARM_WALL_PRESS
             listOf("bước ngang nhẹ", "side step", "lateral step").any { it in text } -> Pose.SIDE_STEP
             listOf("nâng gối ngồi ghế", "seated knee raise").any { it in text } -> Pose.SEATED_KNEE_RAISE
+            listOf("mountain climber", "leo núi").any { it in text } -> Pose.MOUNTAIN_CLIMBER
             listOf("đi bộ nhanh tại chỗ", "bước tại chỗ", "march").any { it in text } -> Pose.MARCH
             listOf("mở vai", "giãn cơ", "stretch").any { it in text } -> Pose.STRETCH
             listOf("nhón gót", "calf raise").any { it in text } -> Pose.CALF_RAISE
@@ -67,6 +68,7 @@ object WorkoutPoseGuide {
         Pose.DEAD_BUG -> "Minh họa: nằm ngửa, co và duỗi tay chân đối diện"
         Pose.CAT_COW -> "Minh họa: chuyển động cột sống nhẹ nhàng"
         Pose.MARCH -> "Minh họa: bước tại chỗ và nâng gối luân phiên"
+        Pose.MOUNTAIN_CLIMBER -> "Minh họa: chống tay vững và luân phiên đưa gối về phía ngực"
         Pose.SUPPORTED_MARCH -> "Minh họa: đứng cạnh ghế vững và nâng gối thấp luân phiên"
         Pose.HIP_ABDUCTION -> "Minh họa: đứng cạnh điểm tựa và đưa chân sang bên"
         Pose.SEATED_HAMSTRING_STRETCH -> "Minh họa: ngồi ghế, duỗi một chân và giãn nhẹ phía sau đùi"

@@ -53,7 +53,8 @@ class WorkoutPoseGuideTest {
             "Siết bả vai đứng" to WorkoutPoseGuide.Pose.SCAPULAR_SQUEEZE,
             "Ép ngực tường bằng cẳng tay" to WorkoutPoseGuide.Pose.FOREARM_WALL_PRESS,
             "Bước ngang nhẹ" to WorkoutPoseGuide.Pose.SIDE_STEP,
-            "Nâng gối ngồi ghế" to WorkoutPoseGuide.Pose.SEATED_KNEE_RAISE
+            "Nâng gối ngồi ghế" to WorkoutPoseGuide.Pose.SEATED_KNEE_RAISE,
+            "Mountain climber chậm" to WorkoutPoseGuide.Pose.MOUNTAIN_CLIMBER
         )
         for ((name, expected) in cases) {
             assertEquals(name, expected, WorkoutPoseGuide.classify(name))

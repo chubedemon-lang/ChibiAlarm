@@ -23,6 +23,7 @@ class WorkoutPoseMotionTest {
             WorkoutPoseGuide.Pose.DEAD_BUG,
             WorkoutPoseGuide.Pose.CAT_COW,
             WorkoutPoseGuide.Pose.MARCH,
+            WorkoutPoseGuide.Pose.MOUNTAIN_CLIMBER,
             WorkoutPoseGuide.Pose.SCAPULAR_SQUEEZE,
             WorkoutPoseGuide.Pose.FOREARM_WALL_PRESS,
             WorkoutPoseGuide.Pose.SIDE_STEP,
@@ -54,6 +55,8 @@ class WorkoutPoseMotionTest {
         assertEquals("Ấn nhẹ cẳng tay", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.FOREARM_WALL_PRESS, false))
         assertEquals("Bước ngang", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.SIDE_STEP, false))
         assertEquals("Nâng gối", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.SEATED_KNEE_RAISE, false))
+        assertEquals("Đưa gối về phía ngực", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.MOUNTAIN_CLIMBER, false))
+        assertEquals("Đổi chân, duỗi chân còn lại ra sau", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.MOUNTAIN_CLIMBER, true))
         assertEquals("Nhón gót", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.CALF_RAISE, false))
     }
 
@@ -125,6 +128,15 @@ class WorkoutPoseMotionTest {
         ))
         assertEquals(null, WorkoutPoseMotion.guidePhaseForStep(
             WorkoutPoseGuide.Pose.LUNGE, "Bước lùi, hạ thân rồi trở về"
+        ))
+        assertEquals(false, WorkoutPoseMotion.guidePhaseForStep(
+            WorkoutPoseGuide.Pose.MOUNTAIN_CLIMBER, "Đưa từng gối về phía ngực"
+        ))
+        assertEquals(true, WorkoutPoseMotion.guidePhaseForStep(
+            WorkoutPoseGuide.Pose.MOUNTAIN_CLIMBER, "Duỗi chân ra sau có kiểm soát"
+        ))
+        assertEquals(null, WorkoutPoseMotion.guidePhaseForStep(
+            WorkoutPoseGuide.Pose.MOUNTAIN_CLIMBER, "Giữ hông ổn định"
         ))
         assertEquals(null, WorkoutPoseMotion.guidePhaseForStep(
             WorkoutPoseGuide.Pose.PLANK, "Giữ thân ổn định"

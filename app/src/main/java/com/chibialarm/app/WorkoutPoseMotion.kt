@@ -18,6 +18,7 @@ object WorkoutPoseMotion {
         WorkoutPoseGuide.Pose.DEAD_BUG,
         WorkoutPoseGuide.Pose.CAT_COW,
         WorkoutPoseGuide.Pose.MARCH,
+        WorkoutPoseGuide.Pose.MOUNTAIN_CLIMBER,
         WorkoutPoseGuide.Pose.SUPPORTED_MARCH,
         WorkoutPoseGuide.Pose.HIP_ABDUCTION,
         WorkoutPoseGuide.Pose.SCAPULAR_SQUEEZE,
@@ -56,6 +57,7 @@ object WorkoutPoseMotion {
         WorkoutPoseGuide.Pose.DEAD_BUG -> "Minh họa dead bug. Nằm ngửa, giữ thân ổn định, hạ tay và chân đối diện chậm rồi thu về."
         WorkoutPoseGuide.Pose.CAT_COW -> "Minh họa cat-cow. Chống tay và gối, chuyển lưng nhẹ nhàng theo nhịp thở, không ép biên độ."
         WorkoutPoseGuide.Pose.MARCH -> "Minh họa bước tại chỗ. Nâng từng gối luân phiên, bước nhẹ và giữ nhịp thở đều."
+        WorkoutPoseGuide.Pose.MOUNTAIN_CLIMBER -> "Bắt đầu ở tư thế chống tay cao, hai tay dưới vai và thân ổn định. Luân phiên đưa từng gối về phía ngực theo nhịp chậm; duỗi chân trở lại có kiểm soát. Dừng nếu đau cổ tay, vai hoặc lưng."
         WorkoutPoseGuide.Pose.SUPPORTED_MARCH -> "Đứng cạnh ghế vững và vịn nhẹ. Nâng từng gối thấp vừa sức, đổi bên và giữ thân thẳng."
         WorkoutPoseGuide.Pose.HIP_ABDUCTION -> "Đứng cạnh ghế vững, giữ nhẹ để thăng bằng. Đưa một chân sang bên trong biên độ nhỏ, hạ chậm rồi đổi bên."
         WorkoutPoseGuide.Pose.SCAPULAR_SQUEEZE -> "Ngồi hoặc đứng thẳng, thả tay. Kéo nhẹ hai bả vai về sau và xuống, giữ ngắn rồi thả lỏng; không nhún vai hoặc ưỡn lưng."
@@ -95,6 +97,9 @@ object WorkoutPoseMotion {
             WorkoutPoseGuide.Pose.CAT_COW -> listOf("cuộn lưng") to listOf("thả lưng")
             WorkoutPoseGuide.Pose.MARCH,
             WorkoutPoseGuide.Pose.SUPPORTED_MARCH -> listOf("hạ chân", "hạ gối", "đưa chân xuống") to listOf("nâng gối", "nhấc gối")
+            WorkoutPoseGuide.Pose.MOUNTAIN_CLIMBER ->
+                listOf("duỗi chân ra sau", "đưa chân ra sau", "trở về tư thế chống tay") to
+                    listOf("đưa gối về phía ngực", "kéo gối về trước", "nâng gối")
             WorkoutPoseGuide.Pose.HIP_ABDUCTION -> listOf("hạ chân") to listOf("đưa chân sang bên", "nhấc chân")
             WorkoutPoseGuide.Pose.SCAPULAR_SQUEEZE -> listOf("thả lỏng bả vai", "thả bả vai") to listOf("kéo nhẹ hai bả vai", "siết bả vai")
             WorkoutPoseGuide.Pose.FOREARM_WALL_PRESS -> listOf("thả cẳng tay") to listOf("ấn nhẹ cẳng tay", "ấn cẳng tay")
@@ -186,6 +191,8 @@ object WorkoutPoseMotion {
         WorkoutPoseGuide.Pose.DEAD_BUG -> if (lowered) "Co về" else "Duỗi tay chân"
         WorkoutPoseGuide.Pose.CAT_COW -> if (lowered) "Cuộn lưng nhẹ" else "Thả lưng nhẹ"
         WorkoutPoseGuide.Pose.MARCH -> if (lowered) "Đổi chân" else "Nâng gối"
+        WorkoutPoseGuide.Pose.MOUNTAIN_CLIMBER ->
+            if (lowered) "Đổi chân, duỗi chân còn lại ra sau" else "Đưa gối về phía ngực"
         WorkoutPoseGuide.Pose.SUPPORTED_MARCH -> if (lowered) "Đổi chân có điểm tựa" else "Nâng gối thấp"
         WorkoutPoseGuide.Pose.HIP_ABDUCTION -> if (lowered) "Hạ chân" else "Đưa chân sang bên"
         WorkoutPoseGuide.Pose.SCAPULAR_SQUEEZE -> if (lowered) "Thả lỏng bả vai" else "Kéo nhẹ bả vai"

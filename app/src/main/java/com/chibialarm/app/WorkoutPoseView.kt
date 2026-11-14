@@ -268,6 +268,21 @@ class WorkoutPoseView(context: Context) : View(context) {
                 line(120f, 71f, if (movementPhase) 154f else 88f, 86f)
                 line(if (movementPhase) 154f else 88f, 86f, if (movementPhase) 166f else 76f, 108f)
             }
+            WorkoutPoseGuide.Pose.MOUNTAIN_CLIMBER -> {
+                // High-plank side view with one knee driving forward; phases alternate the lead leg.
+                head(43f, 37f)
+                line(54f, 44f, 70f, 53f)
+                line(70f, 53f, 142f, 70f)
+                line(70f, 53f, 56f, 78f); line(56f, 78f, 58f, 106f)
+                line(82f, 56f, 84f, 80f); line(84f, 80f, 86f, 106f)
+                if (movementPhase) {
+                    line(142f, 70f, 122f, 91f); line(122f, 91f, 140f, 106f)
+                    line(142f, 70f, 190f, 83f); line(190f, 83f, 222f, 106f)
+                } else {
+                    line(142f, 70f, 100f, 80f); line(100f, 80f, 116f, 106f)
+                    line(142f, 70f, 190f, 83f); line(190f, 83f, 222f, 106f)
+                }
+            }
             WorkoutPoseGuide.Pose.SUPPORTED_MARCH -> {
                 // A visible chair/rail communicates that light support is part of this move.
                 line(184f, 48f, 224f, 48f); line(188f, 48f, 188f, 108f); line(220f, 48f, 220f, 108f)

@@ -294,10 +294,12 @@ class GuidedWorkoutActivity:Activity() {
     private val pickVideoRequest=889
     private val voiceRequest=890
     private val guideVoiceRequest=891
+    private val effortVoiceRequest=893
     private val microphonePermissionRequest=892
     private var pendingRecognitionRequestCode:Int?=null
-    // Callback exists only while the step-guide dialog is open; raw transcripts are never persisted.
+    // Callbacks exist only for the active dialog; raw transcripts are never persisted.
     private var guideVoiceResultHandler:((String)->Unit)?=null
+    private var effortVoiceResultHandler:((String)->Unit)?=null
     private val tick=object:Runnable {
         override fun run() {
             if(paused)return
@@ -712,20 +714,23 @@ class GuidedWorkoutActivity:Activity() {
 
     private fun launchSpeechRecognition(requestCode:Int) {
         val guideRequest = requestCode == guideVoiceRequest
+        val effortRequest = requestCode == effortVoiceRequest
+        val prompt = when {
+            guideRequest -> "Nói: bước tiếp, bước trước, đọc lại hoặc đóng hướng dẫn. Nếu đau hay khó thở, hãy nói rõ."
+            effortRequest -> "Nói cảm nhận hiệp vừa rồi: nhẹ, vừa sức, khó cần nghỉ thêm hoặc quá sức. Nếu đau hay khó thở, hãy nói rõ."
+            else -> "Ví dụ: tôi đã làm 10 lần, tôi giữ 20 giây, xong hiệp, bài này khó quá, nghỉ thêm, đổi bài, dừng lại"
+        }
         val request=Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE,"vi-VN")
-            putExtra(
-                RecognizerIntent.EXTRA_PROMPT,
-                if (guideRequest) "Nói: bước tiếp, bước trước, đọc lại hoặc đóng hướng dẫn. Nếu đau hay khó thở, hãy nói rõ."
-                else "Ví dụ: tôi đã làm 10 lần, tôi giữ 20 giây, xong hiệp, bài này khó quá, nghỉ thêm, đổi bài, dừng lại"
-            )
+            putExtra(RecognizerIntent.EXTRA_PROMPT,prompt)
         }
         try {
             startActivityForResult(request,requestCode)
         } catch (_:Exception) {
             if (guideRequest) guideVoiceResultHandler = null
-            Toast.makeText(this,"Thiết bị chưa có dịch vụ nhận giọng nói. Hãy nhập yêu cầu bằng chữ.",Toast.LENGTH_LONG).show()
+            if (effortRequest) effortVoiceResultHandler = null
+            Toast.makeText(this,"Thiết bị chưa có dịch vụ nhận giọng nói. Hãy dùng các lựa chọn trên màn hình.",Toast.LENGTH_LONG).show()
         }
     }
 
@@ -743,6 +748,7 @@ class GuidedWorkoutActivity:Activity() {
             launchSpeechRecognition(target)
         } else {
             if (target == guideVoiceRequest) guideVoiceResultHandler = null
+            if (target == effortVoiceRequest) effortVoiceResultHandler = null
             Toast.makeText(
                 this,
                 "Micro chưa được cấp quyền. Bạn vẫn có thể điều khiển buổi tập bằng chữ; có thể bật quyền trong Cài đặt ứng dụng.",
@@ -776,6 +782,30 @@ class GuidedWorkoutActivity:Activity() {
         disclosure.setOnCancelListener { guideVoiceResultHandler=null }
         disclosure.show()
     }
+    private fun requestEffortVoiceCommand(onResult:(String)->Unit) {
+        effortVoiceResultHandler = onResult
+        val disclosure = AlertDialog.Builder(this)
+            .setTitle("🎤 Báo cảm nhận hiệp bằng giọng nói")
+            .setMessage(
+                "Chỉ mở micro sau khi bạn nhấn Bắt đầu nghe và cấp quyền Android nếu được hỏi. " +
+                    "Dịch vụ nhận dạng của máy có thể xử lý âm thanh trực tuyến tùy nhà cung cấp. " +
+                    "Chibi chỉ dùng câu nhận dạng để chọn mức cảm nhận sau khi bạn xác nhận; " +
+                    "ứng dụng không ghi âm nền và không lưu bản ghi hay bản chép lời. " +
+                    "Bạn vẫn có thể chọn bằng nút."
+            )
+            .setPositiveButton("Bắt đầu nghe") { _, _ ->
+                pause()
+                spoken?.stop()
+                requestRecognitionPermissionOrStart(effortVoiceRequest)
+            }
+            .setNegativeButton("Chọn bằng nút") { _, _ ->
+                effortVoiceResultHandler = null
+            }
+            .create()
+        disclosure.setOnCancelListener { effortVoiceResultHandler = null }
+        disclosure.show()
+    }
+
     private fun requestTypedCommand() {
         val field=EditText(this).apply { hint="Ví dụ: tôi đã làm 10 lần, xong hiệp, bài này khó quá, không theo kịp, hướng dẫn từng bước, đọc tiến độ, đổi bài, nghỉ thêm";setSingleLine(false) }
         AlertDialog.Builder(this).setTitle("💬 Chibi Coach • lệnh offline")
@@ -1735,6 +1765,17 @@ class GuidedWorkoutActivity:Activity() {
             }
             return
         }
+        if (requestCode == effortVoiceRequest) {
+            val callback = effortVoiceResultHandler
+            effortVoiceResultHandler = null
+            val phrase = data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
+            if (resultCode == RESULT_OK && !phrase.isNullOrBlank()) {
+                callback?.invoke(phrase)
+            } else {
+                Toast.makeText(this,"Chưa nhận được câu trả lời; bạn vẫn có thể chọn cảm nhận bằng nút.",Toast.LENGTH_SHORT).show()
+            }
+            return
+        }
         if(requestCode==voiceRequest && resultCode==RESULT_OK) {
             val phrase=data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
             if (!phrase.isNullOrBlank()) {
@@ -2148,14 +2189,8 @@ class GuidedWorkoutActivity:Activity() {
         plan: WorkoutSetTracker.Plan,
         hasNextSet: Boolean
     ) {
-        fun isSameSetContext(): Boolean =
-            !pausedForSafety && !completed && !resting &&
-                index == selectedIndex && sessionId == selectedSessionId &&
-                currentSetPlan() == plan &&
-                (completedSetsByMove[selectedIndex] ?: 0) == completedSets
-
         fun startPrescribedRest() {
-            if (isSameSetContext()) {
+            if (isSameEffortContext(selectedIndex, selectedSessionId, completedSets, plan)) {
                 startSetRest(
                     plan.defaultRestSeconds,
                     "Nghỉ theo thời gian của giáo án. Không cần cố tập nhanh."
@@ -2176,95 +2211,196 @@ class GuidedWorkoutActivity:Activity() {
                     "Chọn cảm nhận của bạn. Đây là tự đánh giá để điều chỉnh nghỉ, không phải phép đo thể lực."
             )
             .setItems(levels.map { it.label }.toTypedArray()) { _, choice ->
-                if (!isSameSetContext()) {
-                    Toast.makeText(this, "Buổi tập đã thay đổi; không áp dụng gợi ý cũ.", Toast.LENGTH_LONG).show()
-                    return@setItems
-                }
                 val level = levels.getOrNull(choice) ?: return@setItems
-                effortLevelsByMove.putAll(
-                    WorkoutEffortLog.append(
-                        effortLevelsByMove, selectedIndex, completedSets - 1, level, moves, completedSetsByMove
-                    )
+                applyEffortCheckIn(
+                    selectedIndex, selectedSessionId, completedSets, plan, hasNextSet, level
                 )
-                if (!saveCheckpoint()) {
-                    Toast.makeText(this, "Chưa lưu được cảm nhận này vào checkpoint; buổi tập vẫn có thể tiếp tục.", Toast.LENGTH_LONG).show()
-                }
-                if (!hasNextSet && level != WorkoutEffortFeedback.Level.VERY_HARD) {
-                    speak("Đã lưu cảm nhận cho hiệp cuối. Không cần tập thêm để ghi nhận.")
-                    return@setItems
-                }
-                val recommendation = WorkoutEffortFeedback.recommend(level, plan.defaultRestSeconds)
-                when (level) {
-                    WorkoutEffortFeedback.Level.EASY,
-                    WorkoutEffortFeedback.Level.MODERATE -> {
-                        startSetRest(recommendation.restSeconds, recommendation.message)
-                    }
-                    WorkoutEffortFeedback.Level.HARD -> {
-                        val confirm = AlertDialog.Builder(this)
-                            .setTitle("🌿 Nghỉ thêm một chút?")
-                            .setMessage(
-                                recommendation.message + "\n\n" +
-                                    "Nghỉ theo giáo án: ${plan.defaultRestSeconds} giây. " +
-                                    "Phương án đề xuất: ${recommendation.restSeconds} giây. " +
-                                    "Số lần và tải tập không tự tăng."
-                            )
-                            .setPositiveButton("Nghỉ ${recommendation.restSeconds} giây") { _, _ ->
-                                if (isSameSetContext()) {
-                                    startSetRest(recommendation.restSeconds, recommendation.message)
-                                }
-                            }
-                            .setNegativeButton("Nghỉ theo giáo án") { _, _ ->
-                                startPrescribedRest()
-                            }
-                            .create()
-                        confirm.setOnCancelListener { startPrescribedRest() }
-                        confirm.show()
-                    }
-                    WorkoutEffortFeedback.Level.VERY_HARD -> {
-                        val confirm = AlertDialog.Builder(this)
-                            .setTitle("⚠️ Tạm dừng trước hiệp tiếp theo")
-                            .setMessage(
-                                recommendation.message +
-                                    "\n\nChibi sẽ không tự bắt đầu hiệp tiếp theo. " +
-                                    "Nếu bạn thấy đau, khó thở, chóng mặt hoặc buồn nôn, hãy kết thúc buổi tập."
-                            )
-                            .setPositiveButton("Nghỉ 2 phút") { _, _ ->
-                                if (isSameSetContext()) {
-                                    startSetRest(recommendation.restSeconds, recommendation.message)
-                                }
-                            }
-                            .setNegativeButton("Giữ tạm dừng") { _, _ ->
-                                if (isSameSetContext()) {
-                                    paused = true
-                                    control.text = "▶ Tiếp tục khi sẵn sàng"
-                                    counter.text = clockText(remainingMs)
-                                    saveCheckpoint()
-                                    speak("Đã giữ buổi tập ở trạng thái tạm dừng. Chỉ tiếp tục khi bạn thấy an toàn.")
-                                }
-                            }
-                            .setNeutralButton("Kết thúc buổi tập") { _, _ ->
-                                if (isSameSetContext()) finishWorkout()
-                            }
-                            .create()
-                        confirm.setOnCancelListener {
-                            if (isSameSetContext()) {
-                                paused = true
-                                control.text = "▶ Tiếp tục khi sẵn sàng"
-                                counter.text = clockText(remainingMs)
-                                saveCheckpoint()
-                            }
-                        }
-                        confirm.show()
-                    }
-                }
             }
+            .setNeutralButton("🎤 Trả lời bằng giọng nói", null)
             .setNegativeButton("Bỏ qua • nghỉ theo giáo án") { _, _ -> startPrescribedRest() }
             .create()
         dialog.setOnCancelListener { startPrescribedRest() }
         dialog.setOnShowListener {
             speak("Hiệp vừa rồi thế nào? Chọn nhẹ, vừa sức, khó hoặc quá sức.")
+            dialog.getButton(AlertDialog.BUTTON_NEUTRAL).apply {
+                contentDescription = "Trả lời cảm nhận hiệp bằng giọng nói sau khi xác nhận quyền micro"
+                setOnClickListener {
+                    requestEffortVoiceCommand { phrase ->
+                        handleEffortVoiceCheckIn(
+                            selectedIndex, selectedSessionId, completedSets, plan,
+                            hasNextSet, dialog, phrase
+                        )
+                    }
+                }
+            }
         }
         dialog.show()
+    }
+
+    private fun isSameEffortContext(
+        selectedIndex: Int,
+        selectedSessionId: String,
+        completedSets: Int,
+        plan: WorkoutSetTracker.Plan
+    ): Boolean =
+        !pausedForSafety && !completed && !resting &&
+            index == selectedIndex && sessionId == selectedSessionId &&
+            currentSetPlan() == plan &&
+            (completedSetsByMove[selectedIndex] ?: 0) == completedSets
+
+    private fun handleEffortVoiceCheckIn(
+        selectedIndex: Int,
+        selectedSessionId: String,
+        completedSets: Int,
+        plan: WorkoutSetTracker.Plan,
+        hasNextSet: Boolean,
+        checkInDialog: AlertDialog,
+        utterance: String
+    ) {
+        when (val parsed = WorkoutEffortVoiceCommand.parse(utterance)) {
+            WorkoutEffortVoiceCommand.Result.SafetyStop -> {
+                checkInDialog.dismiss()
+                stopForSafety()
+            }
+            is WorkoutEffortVoiceCommand.Result.Report -> {
+                if (!isSameEffortContext(selectedIndex, selectedSessionId, completedSets, plan)) {
+                    Toast.makeText(this, "Buổi tập đã thay đổi; không áp dụng cảm nhận cũ.", Toast.LENGTH_LONG).show()
+                    return
+                }
+                val level = parsed.level
+                AlertDialog.Builder(this)
+                    .setTitle("🐰 Chibi nghe được")
+                    .setMessage(
+                        "Cảm nhận cho hiệp $completedSets của ${moves[selectedIndex].name}: " +
+                            "${level.label}.\n\nĐây là tự đánh giá của bạn, không phải phép đo thể lực. " +
+                            "Chibi chỉ lưu sau khi bạn xác nhận."
+                    )
+                    .setPositiveButton("Đúng, ghi cảm nhận") { _, _ ->
+                        if (!isSameEffortContext(selectedIndex, selectedSessionId, completedSets, plan)) {
+                            Toast.makeText(this, "Buổi tập đã thay đổi; Chibi chưa lưu cảm nhận.", Toast.LENGTH_LONG).show()
+                        } else {
+                            checkInDialog.dismiss()
+                            applyEffortCheckIn(
+                                selectedIndex, selectedSessionId, completedSets, plan, hasNextSet, level
+                            )
+                        }
+                    }
+                    .setNegativeButton("Không đúng", null)
+                    .show()
+            }
+            null -> AlertDialog.Builder(this)
+                .setTitle("Chibi chưa hiểu cảm nhận")
+                .setMessage(
+                    "Hãy nói ngắn gọn một lựa chọn: “nhẹ”, “vừa sức”, “khó quá” hoặc “quá sức”. " +
+                        "Nếu đau, khó thở hoặc chóng mặt, hãy nói rõ để Chibi dừng buổi tập. " +
+                        "Câu chưa rõ sẽ không được ghi nhận."
+                )
+                .setPositiveButton("Thử lại", null)
+                .setNegativeButton("Chọn bằng nút", null)
+                .show()
+        }
+    }
+
+    private fun applyEffortCheckIn(
+        selectedIndex: Int,
+        selectedSessionId: String,
+        completedSets: Int,
+        plan: WorkoutSetTracker.Plan,
+        hasNextSet: Boolean,
+        level: WorkoutEffortFeedback.Level
+    ) {
+        if (!isSameEffortContext(selectedIndex, selectedSessionId, completedSets, plan)) {
+            Toast.makeText(this, "Buổi tập đã thay đổi; không áp dụng gợi ý cũ.", Toast.LENGTH_LONG).show()
+            return
+        }
+        val updated = runCatching {
+            WorkoutEffortLog.append(
+                effortLevelsByMove, selectedIndex, completedSets - 1, level, moves, completedSetsByMove
+            )
+        }.getOrElse {
+            Toast.makeText(this, "Không thể lưu cảm nhận hiệp; tiến độ cũ được giữ nguyên.", Toast.LENGTH_LONG).show()
+            return
+        }
+        effortLevelsByMove.clear()
+        effortLevelsByMove.putAll(updated)
+        if (!saveCheckpoint()) {
+            Toast.makeText(this, "Chưa lưu được cảm nhận này vào checkpoint; buổi tập vẫn có thể tiếp tục.", Toast.LENGTH_LONG).show()
+        }
+        if (!hasNextSet && level != WorkoutEffortFeedback.Level.VERY_HARD) {
+            speak("Đã lưu cảm nhận cho hiệp cuối. Không cần tập thêm để ghi nhận.")
+            return
+        }
+
+        val recommendation = WorkoutEffortFeedback.recommend(level, plan.defaultRestSeconds)
+        when (level) {
+            WorkoutEffortFeedback.Level.EASY,
+            WorkoutEffortFeedback.Level.MODERATE -> {
+                startSetRest(recommendation.restSeconds, recommendation.message)
+            }
+            WorkoutEffortFeedback.Level.HARD -> {
+                val confirm = AlertDialog.Builder(this)
+                    .setTitle("🌿 Nghỉ thêm một chút?")
+                    .setMessage(
+                        recommendation.message + "\n\n" +
+                            "Nghỉ theo giáo án: ${plan.defaultRestSeconds} giây. " +
+                            "Phương án đề xuất: ${recommendation.restSeconds} giây. " +
+                            "Số lần và tải tập không tự tăng."
+                    )
+                    .setPositiveButton("Nghỉ ${recommendation.restSeconds} giây") { _, _ ->
+                        if (isSameEffortContext(selectedIndex, selectedSessionId, completedSets, plan)) {
+                            startSetRest(recommendation.restSeconds, recommendation.message)
+                        }
+                    }
+                    .setNegativeButton("Nghỉ theo giáo án") { _, _ ->
+                        if (isSameEffortContext(selectedIndex, selectedSessionId, completedSets, plan)) {
+                            startSetRest(plan.defaultRestSeconds)
+                        }
+                    }
+                    .create()
+                confirm.setOnCancelListener {
+                    if (isSameEffortContext(selectedIndex, selectedSessionId, completedSets, plan)) {
+                        startSetRest(plan.defaultRestSeconds)
+                    }
+                }
+                confirm.show()
+            }
+            WorkoutEffortFeedback.Level.VERY_HARD -> {
+                val confirm = AlertDialog.Builder(this)
+                    .setTitle("⚠️ Tạm dừng trước hiệp tiếp theo")
+                    .setMessage(
+                        recommendation.message +
+                            "\n\nChibi sẽ không tự bắt đầu hiệp tiếp theo. " +
+                            "Nếu bạn thấy đau, khó thở, chóng mặt hoặc buồn nôn, hãy kết thúc buổi tập."
+                    )
+                    .setPositiveButton("Nghỉ 2 phút") { _, _ ->
+                        if (isSameEffortContext(selectedIndex, selectedSessionId, completedSets, plan)) {
+                            startSetRest(recommendation.restSeconds, recommendation.message)
+                        }
+                    }
+                    .setNegativeButton("Giữ tạm dừng") { _, _ ->
+                        if (isSameEffortContext(selectedIndex, selectedSessionId, completedSets, plan)) {
+                            paused = true
+                            control.text = "▶ Tiếp tục khi sẵn sàng"
+                            counter.text = clockText(remainingMs)
+                            saveCheckpoint()
+                            speak("Đã giữ buổi tập ở trạng thái tạm dừng. Chỉ tiếp tục khi bạn thấy an toàn.")
+                        }
+                    }
+                    .setNeutralButton("Kết thúc buổi tập") { _, _ ->
+                        if (isSameEffortContext(selectedIndex, selectedSessionId, completedSets, plan)) finishWorkout()
+                    }
+                    .create()
+                confirm.setOnCancelListener {
+                    if (isSameEffortContext(selectedIndex, selectedSessionId, completedSets, plan)) {
+                        paused = true
+                        control.text = "▶ Tiếp tục khi sẵn sàng"
+                        counter.text = clockText(remainingMs)
+                        saveCheckpoint()
+                    }
+                }
+                confirm.show()
+            }
+        }
     }
 
     private fun recordCurrentSet(actualValue:Int,selectedIndex:Int,before:Int,plan:WorkoutSetTracker.Plan) {

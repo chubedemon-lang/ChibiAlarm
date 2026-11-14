@@ -15,13 +15,16 @@ import java.util.UUID
 object WorkoutSteadyProgressAdvisor {
     data class Suggestion(
         val exerciseName: String,
-        val consistentSessions: Int,
+        val consistentDays: Int,
         val easySets: Int,
         val moderateSets: Int,
         val latestDate: LocalDate,
         val message: String,
         val prompt: String
-    )
+    ) {
+        /** Backward-compatible alias; evidence is counted by distinct calendar days. */
+        val consistentSessions: Int get() = consistentDays
+    }
 
     private data class MoveEffort(
         val name: String,
@@ -56,9 +59,10 @@ object WorkoutSteadyProgressAdvisor {
     )
 
     /**
-     * Suggests a conversation only when the same exercise has at least three distinct,
-     * recent Guided Workout sessions and every self-reported set in each session has a
-     * structured effort rating, all EASY or MODERATE. Partial check-ins are not positive evidence.
+     * Suggests a conversation only when the same exercise has check-ins on at least
+     * three distinct recent calendar days. If multiple sessions occur on one day, every
+     * session's recorded sets for that exercise must be EASY or MODERATE. Partial check-ins
+     * are not positive evidence.
      */
     fun suggest(
         workouts: List<Workout>,
@@ -90,40 +94,43 @@ object WorkoutSteadyProgressAdvisor {
             .toList()
             .sortedWith(compareByDescending<Session> { it.date }.thenByDescending { it.originalIndex })
             .distinctBy { it.id }
-            .take(MAX_SESSIONS)
 
-        if (sessions.size < REQUIRED_SESSIONS) return null
+        // Bound history by distinct days, not raw sessions. Multiple workouts on one
+        // calendar day must never manufacture three separate progression observations.
+        val recentDates = sessions.map { it.date }.distinct().take(MAX_SESSIONS).toSet()
+        if (recentDates.size < REQUIRED_SESSIONS) return null
+        val boundedSessions = sessions.filter { it.date in recentDates }
 
-        val candidates = sessions
+        val candidates = boundedSessions
             .flatMap { session -> session.moves.map { session to it } }
             .groupBy { normalize(it.second.name) }
             .values
             .mapNotNull { observations ->
-                val latestThree = observations
-                    .groupBy { it.first.id }
-                    .values
-                    .mapNotNull { it.firstOrNull() }
-                    .sortedWith(
-                        compareByDescending<Pair<Session, MoveEffort>> { it.first.date }
-                            .thenByDescending { it.first.originalIndex }
-                    )
+                // A day is one observation even if the user completed several sessions.
+                // Any hard/very-hard set in any same-day session blocks progression.
+                val latestThreeDays = observations
+                    .groupBy { it.first.date }
+                    .map { (date, sameDay) -> date to sameDay.map { it.second } }
+                    .sortedByDescending { it.first }
                     .take(REQUIRED_SESSIONS)
 
-                if (latestThree.size != REQUIRED_SESSIONS) return@mapNotNull null
-                val allManageable = latestThree.all { (_, move) ->
-                    move.levels.isNotEmpty() && move.levels.all {
-                        it == WorkoutEffortFeedback.Level.EASY ||
-                            it == WorkoutEffortFeedback.Level.MODERATE
+                if (latestThreeDays.size != REQUIRED_SESSIONS) return@mapNotNull null
+                val allManageable = latestThreeDays.all { (_, dayMoves) ->
+                    dayMoves.isNotEmpty() && dayMoves.all { move ->
+                        move.levels.isNotEmpty() && move.levels.all {
+                            it == WorkoutEffortFeedback.Level.EASY ||
+                                it == WorkoutEffortFeedback.Level.MODERATE
+                        }
                     }
                 }
                 if (!allManageable) return@mapNotNull null
 
-                val levels = latestThree.flatMap { it.second.levels }
+                val levels = latestThreeDays.flatMap { it.second }.flatMap { it.levels }
                 Candidate(
-                    name = latestThree.first().second.name,
+                    name = latestThreeDays.first().second.first().name,
                     easySets = levels.count { it == WorkoutEffortFeedback.Level.EASY },
                     moderateSets = levels.count { it == WorkoutEffortFeedback.Level.MODERATE },
-                    latestDate = latestThree.maxOf { it.first.date }
+                    latestDate = latestThreeDays.maxOf { it.first }
                 )
             }
             .sortedWith(
@@ -134,7 +141,7 @@ object WorkoutSteadyProgressAdvisor {
             )
 
         val best = candidates.firstOrNull() ?: return null
-        val message = "Trong ${REQUIRED_SESSIONS} buổi Guided Workout gần nhất có check-in cho " +
+        val message = "Trong ${REQUIRED_SESSIONS} ngày tập riêng biệt gần nhất có check-in Guided Workout cho " +
             "${best.name}, bạn tự chọn mức nhẹ ở ${best.easySets} hiệp và vừa sức ở " +
             "${best.moderateSets} hiệp. Đây là cảm nhận tự khai báo, không đo kỹ thuật, thể lực " +
             "hay khả năng hồi phục. Chibi không tự tăng số lần, số hiệp hoặc tải; nếu muốn, " +
@@ -142,7 +149,7 @@ object WorkoutSteadyProgressAdvisor {
 
         return Suggestion(
             exerciseName = best.name,
-            consistentSessions = REQUIRED_SESSIONS,
+            consistentDays = REQUIRED_SESSIONS,
             easySets = best.easySets,
             moderateSets = best.moderateSets,
             latestDate = best.latestDate,

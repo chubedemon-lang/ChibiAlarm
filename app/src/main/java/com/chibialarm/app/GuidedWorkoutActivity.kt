@@ -103,7 +103,7 @@ class GuidedWorkoutActivity:Activity() {
     private fun applyInitialProgression(savedInstanceState: Bundle?) {
         if (savedInstanceState != null) return
         val checkpointAge = System.currentTimeMillis() - checkpoint.getLong("savedAt", 0L)
-        if (checkpoint.getString("program", null) == program.id &&
+        if (!checkpoint.getString("program", null).isNullOrBlank() &&
             checkpointAge in 0L..604_800_000L
         ) return
         val exerciseName = intent.getStringExtra("progression_exercise")?.trim()?.take(90).orEmpty()

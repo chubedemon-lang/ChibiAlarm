@@ -1140,7 +1140,9 @@ class FitnessActivity:Activity() {
             }
             val checkpoint = getSharedPreferences("chibi_workout_checkpoint_guest", MODE_PRIVATE)
             val checkpointAge = System.currentTimeMillis() - checkpoint.getLong("savedAt", 0L)
-            if (checkpoint.getString("program", null) == p.id && checkpointAge in 0L..604_800_000L) {
+            if (!checkpoint.getString("program", null).isNullOrBlank() &&
+                checkpointAge in 0L..604_800_000L
+            ) {
                 AlertDialog.Builder(this)
                     .setTitle("Có buổi tập đang chờ")
                     .setMessage("Hãy khôi phục hoặc kết thúc buổi tập đã lưu trước khi bắt đầu buổi mới với mục tiêu tiến triển.")

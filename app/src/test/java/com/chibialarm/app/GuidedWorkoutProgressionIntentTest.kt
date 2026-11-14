@@ -67,6 +67,29 @@ class GuidedWorkoutProgressionIntentTest {
         controller.pause().stop().destroy()
     }
 
+    @Test fun activeCheckpointForAnotherProgramIsNotOverwrittenByProgression() {
+        val app = RuntimeEnvironment.getApplication()
+        val checkpoint = app.getSharedPreferences("chibi_workout_checkpoint_guest", Context.MODE_PRIVATE)
+        checkpoint.edit()
+            .putString("program", "starter")
+            .putLong("savedAt", System.currentTimeMillis())
+            .putString("sessionId", "pending-session")
+            .commit()
+        val intent = Intent(app, GuidedWorkoutActivity::class.java)
+            .putExtra("program", "full")
+            .putExtra("minutes", 30)
+            .putExtra("progression_exercise", "Squat không tạ")
+            .putExtra("progression_reps", 9)
+        val controller = Robolectric.buildActivity(GuidedWorkoutActivity::class.java, intent).setup()
+        val texts = views(controller.get().findViewById<ViewGroup>(android.R.id.content))
+            .filterIsInstance<TextView>()
+            .map { it.text.toString() }
+
+        assertFalse(texts.any { it.contains("Mục tiêu tiến triển đã xác nhận") })
+        assertEquals("starter", checkpoint.getString("program", null))
+        controller.pause().stop().destroy()
+    }
+
     @Test fun outOfRangeTargetIsIgnored() {
         val app = RuntimeEnvironment.getApplication()
         val intent = Intent(app, GuidedWorkoutActivity::class.java)

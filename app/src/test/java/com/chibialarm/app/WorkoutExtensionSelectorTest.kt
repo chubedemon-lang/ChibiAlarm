@@ -9,8 +9,9 @@ class WorkoutExtensionSelectorTest {
         energy: Int = 1,
         equipment: Int = 0,
         impact: Int = 0,
-        constraints: WorkoutConstraintProfile = WorkoutConstraintProfile()
-    ) = WorkoutExtensionPreferences(goal, energy, equipment, impact, constraints)
+        constraints: WorkoutConstraintProfile = WorkoutConstraintProfile(),
+        additionalEquipment: Set<TrainingEquipment> = emptySet()
+    ) = WorkoutExtensionPreferences(goal, energy, equipment, impact, constraints, additionalEquipment)
 
     @Test fun strengthGoalAddsDistinctHipAndAccessoryFamilies() {
         val program = TrainingCatalog.byId("full")
@@ -92,6 +93,27 @@ class WorkoutExtensionSelectorTest {
             TrainingEquipmentAvailability.allows(it, available)
         })
         assertFalse(plan.extensionMoves.any { it.requiresExternalLoad })
+    }
+
+    @Test fun additionalToolsCanDriveEquipmentAwareExtensionsWithoutChangingTheLegacyChoice() {
+        val program = TrainingCatalog.byId("full")
+        val preferences = preferences(
+            goal = 0,
+            equipment = 0,
+            additionalEquipment = setOf(
+                TrainingEquipment.DUMBBELL,
+                TrainingEquipment.STABLE_CHAIR
+            )
+        )
+        val plan = WorkoutDurationPlanner.build(program, 1, 30, preferences)
+        val available = setOf(TrainingEquipment.DUMBBELL, TrainingEquipment.STABLE_CHAIR)
+
+        assertTrue(plan.extensionMoves.any { it.name == "Kéo tạ đơn hoặc dây kháng lực" })
+        assertTrue(plan.extensionMoves.all {
+            TrainingEquipmentAvailability.allows(it, available)
+        })
+        assertFalse(plan.extensionMoves.any { it.name == "Đẩy vai với tạ đơn hoặc dây" } &&
+            TrainingEquipment.STABLE_CHAIR !in available)
     }
 
 }

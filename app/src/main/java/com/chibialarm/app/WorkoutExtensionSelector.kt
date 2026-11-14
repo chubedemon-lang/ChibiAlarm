@@ -67,7 +67,9 @@ object WorkoutExtensionSelector {
         }
 
         return when (p.goal) {
-            0 -> if (p.equipment == 2 && level >= 1) {
+            0 -> if (availableEquipment(p).any {
+                it == TrainingEquipment.DUMBBELL || it == TrainingEquipment.RESISTANCE_BAND
+            } && level >= 1) {
                 listOf("Kéo tạ đơn hoặc dây kháng lực", "Gập hông với tạ đơn hoặc dây",
                     "Đẩy vai với tạ đơn hoặc dây", "Dang chân sang bên có điểm tựa",
                     "Nhón gót", "Siết bả vai đứng")

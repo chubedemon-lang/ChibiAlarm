@@ -862,6 +862,18 @@ class WorkoutMidSessionPlannerTest {
         assertEquals(setOf(TrainingEquipment.MAT), preview.availableEquipment)
     }
 
+    @Test fun notOnlyEquipmentPhraseDoesNotExcludeOtherNamedTools() {
+        val parsed = WorkoutMidSessionRequest.parse("Tao không chỉ có tạ mà còn có thảm")
+        assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
+        val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+
+        assertEquals(
+            setOf(TrainingEquipment.DUMBBELL, TrainingEquipment.MAT),
+            request.availableEquipment
+        )
+        assertTrue(request.unavailableEquipment.isEmpty())
+    }
+
     @Test fun addRequestAndNewEquipmentAreNotTreatedAsRestOnly() {
         assertTrue(WorkoutMidSessionRequest.Request(restSeconds = 30).isRestOnly)
         assertFalse(

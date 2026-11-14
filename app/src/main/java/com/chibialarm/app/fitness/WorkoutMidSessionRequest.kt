@@ -182,8 +182,11 @@ object WorkoutMidSessionRequest {
         // "Chỉ có/dùng X" is an exclusive inventory statement, unlike merely mentioning X.
         // This matters mid-session: retaining a dumbbell move after the user says they only
         // have a mat would silently violate the newly stated equipment boundary.
-        val exclusiveEquipmentMention = has("chi co", "chi dung", "chi mang") &&
-            availableEquipment.isNotEmpty()
+        val negatedExclusiveEquipmentMention = has(
+            "khong chi co", "khong chi dung", "khong chi mang"
+        )
+        val exclusiveEquipmentMention = !negatedExclusiveEquipmentMention &&
+            has("chi co", "chi dung", "chi mang") && availableEquipment.isNotEmpty()
         val unavailableEquipment = when {
             noEquipment -> TrainingEquipment.values().toSet()
             exclusiveEquipmentMention -> TrainingEquipment.values().toSet() - availableEquipment

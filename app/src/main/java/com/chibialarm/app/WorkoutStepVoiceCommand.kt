@@ -8,7 +8,7 @@ object WorkoutStepVoiceCommand {
     enum class Command { NEXT, PREVIOUS, REPEAT, CLOSE, SAFETY, UNKNOWN }
 
     private fun containsPhrase(text: String, phrase: String): Boolean =
-        Regex("(^|\\s)\${Regex.escape(phrase)}(\\s|$)").containsMatchIn(text)
+        Regex("(^|\\s)" + Regex.escape(phrase) + "(\\s|$)").containsMatchIn(text)
 
     fun parse(utterance: String?): Command {
         if (utterance.isNullOrBlank()) return Command.UNKNOWN

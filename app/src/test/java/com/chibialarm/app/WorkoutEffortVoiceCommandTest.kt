@@ -56,6 +56,7 @@ class WorkoutEffortVoiceCommandTest {
     @Test fun safetySymptomsOverrideAnEffortLabel() {
         for (phrase in listOf(
             "Đau gối",
+            "Đau đầu gối",
             "Khó thở nhưng vẫn vừa sức",
             "Chóng mặt, hơi khó",
             "Đau ngực"
@@ -73,6 +74,7 @@ class WorkoutEffortVoiceCommandTest {
             "",
             "không khó",
             "không mệt",
+            "đầu gối",
             "vừa sức nhưng quá sức",
             "khó quá, nghỉ thêm 30 giây",
             "nghỉ thêm 30 giây",

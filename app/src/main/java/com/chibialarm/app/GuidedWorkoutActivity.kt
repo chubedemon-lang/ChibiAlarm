@@ -1760,7 +1760,27 @@ class GuidedWorkoutActivity:Activity() {
             progress = walkthrough.position
             contentDescription = "Tiến độ hướng dẫn động tác"
         }
+        var autoSpeakOnStepChange = false
+        var lastRenderedPosition: Int? = null
+        val autoSpeakToggle = CheckBox(this).apply {
+            tag = "workout-step-auto-speak"
+            text = "🔊 Tự đọc bước khi chuyển"
+            contentDescription = "Bật hoặc tắt đọc tự động mỗi khi chuyển bước hướng dẫn"
+            isChecked = false
+            setOnCheckedChangeListener { _, checked ->
+                autoSpeakOnStepChange = checked
+                if (checked) {
+                    lastGuideStepCue
+                        ?.takeIf { it.moveIndex == index }
+                        ?.speech
+                        ?.let(::speak)
+                } else {
+                    spoken?.stop()
+                }
+            }
+        }
         val label = TextView(this).apply {
+            tag = "workout-step-label"
             textSize = 18f
             setPadding(8, 24, 8, 24)
             setTextColor(Color.rgb(70, 61, 85))
@@ -1776,6 +1796,7 @@ class GuidedWorkoutActivity:Activity() {
         ))
         container.addView(phaseCaption)
         container.addView(stepProgress)
+        container.addView(autoSpeakToggle)
         container.addView(previousButton)
         container.addView(ScrollView(this).apply {
             addView(label)
@@ -1788,6 +1809,7 @@ class GuidedWorkoutActivity:Activity() {
             .setPositiveButton("Bước tiếp →", null)
             .create()
         fun renderStep() {
+            val previousPosition = lastRenderedPosition
             lastGuideStepCue = WorkoutStepGuide.SelectedCue(
                 moveIndex = index,
                 speech = WorkoutStepGuide.spokenCue(move.name, move.steps, walkthrough.position)
@@ -1808,6 +1830,13 @@ class GuidedWorkoutActivity:Activity() {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.apply {
                 isEnabled = walkthrough.canGoNext
                 text = if (walkthrough.canGoNext) "Bước tiếp →" else "Đã xem hết"
+            }
+            val shouldSpeak = WorkoutStepGuide.shouldSpeakOnNavigation(
+                autoSpeakOnStepChange, previousPosition, walkthrough.position
+            )
+            lastRenderedPosition = walkthrough.position
+            if (shouldSpeak) {
+                lastGuideStepCue?.speech?.let(::speak)
             }
         }
         dialog.setOnShowListener {

@@ -20,7 +20,6 @@ class WorkoutRestRequestTest {
         assertEquals(30, WorkoutRestRequest.seconds("bài một phút rưỡi"))
     }
 
-
     @Test fun parsesCompoundMinuteAndSecondDurationsWithoutTruncating() {
         assertEquals(90, WorkoutRestRequest.seconds("nghỉ 1 phút 30 giây"))
         assertEquals(75, WorkoutRestRequest.seconds("nghỉ 1 phút 15 giây"))
@@ -29,9 +28,27 @@ class WorkoutRestRequestTest {
         assertEquals(30, WorkoutRestRequest.seconds("nghỉ 2 phút 30 giây"))
     }
 
+    @Test fun understandsNaturalVietnameseNumberWordsForRestDurations() {
+        assertEquals(25, WorkoutRestRequest.seconds("nghỉ thêm hai mươi lăm giây"))
+        assertEquals(35, WorkoutRestRequest.seconds("nghỉ thêm ba mươi lăm giây"))
+        assertEquals(45, WorkoutRestRequest.seconds("nghỉ thêm bốn mươi lăm giây"))
+        assertEquals(55, WorkoutRestRequest.seconds("nghỉ thêm năm mươi lăm giây"))
+        assertEquals(85, WorkoutRestRequest.seconds("nghỉ thêm một phút hai mươi lăm giây"))
+        assertEquals(85, WorkoutRestRequest.seconds("nghỉ thêm 1 phút hai mươi lăm giây"))
+        assertEquals(95, WorkoutRestRequest.seconds("nghỉ thêm một phút ba mươi lăm giây"))
+    }
+
+    @Test fun rejectsSpokenDurationsOutsideTheSafeRange() {
+        assertEquals(30, WorkoutRestRequest.seconds("nghỉ thêm một phút chín mươi giây"))
+        assertEquals(30, WorkoutRestRequest.seconds("nghỉ thêm ba phút"))
+        assertEquals(30, WorkoutRestRequest.seconds("nghỉ thêm hai phút ba mươi giây"))
+    }
+
     @Test fun voicePreviewUsesTheRecognizedRestDuration() {
         assertEquals("Bắt đầu nghỉ riêng 90 giây",
             WorkoutVoiceCommands.describe(WorkoutVoiceCommands.Command.REST, "nghỉ 1 phút 30 giây"))
+        assertEquals("Bắt đầu nghỉ riêng 85 giây",
+            WorkoutVoiceCommands.describe(WorkoutVoiceCommands.Command.REST, "nghỉ một phút hai mươi lăm giây"))
         assertEquals("Bắt đầu nghỉ riêng 30 giây",
             WorkoutVoiceCommands.describe(WorkoutVoiceCommands.Command.REST))
         assertEquals("Hiển thị cách tập dễ hơn và thêm 60 giây nghỉ",
@@ -59,6 +76,8 @@ class WorkoutRestRequestTest {
             WorkoutVoiceCommands.parse("cho tôi nghỉ 2 phút"))
         assertEquals(WorkoutVoiceCommands.Command.REST,
             WorkoutVoiceCommands.parse("nghỉ thêm 45 s"))
+        assertEquals(WorkoutVoiceCommands.Command.REST,
+            WorkoutVoiceCommands.parse("nghỉ thêm hai mươi lăm giây"))
         assertEquals(WorkoutVoiceCommands.Command.PAIN,
             WorkoutVoiceCommands.parse("đau gối, nghỉ 60 giây"))
         assertEquals(WorkoutVoiceCommands.Command.UNKNOWN,

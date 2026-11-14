@@ -149,6 +149,18 @@ object TrainingCatalog {
         "Dùng tải rất nhẹ, tập từng tay hoặc giảm biên độ.",
         "Không ưỡn lưng hay nín thở; dừng nếu đau vai hoặc tê.",90,75,
         setOf(TrainingEquipment.DUMBBELL, TrainingEquipment.RESISTANCE_BAND), requiresOverheadReach = true)
+    // Short-session variants use explicit reduced doses; normal program prescriptions stay unchanged.
+    // Canonical movement names preserve the existing step guide and pose illustrations.
+    private val quickWarm = warm.copy(dose = "45 giây", seconds = 45)
+    private val quickCool = cool.copy(dose = "45 giây", seconds = 45)
+    private val quickMarch = march.copy(dose = "45 giây", seconds = 45)
+    private val quickSquat = squat.copy(dose = "1 hiệp × 6–8 lần", seconds = 45, restSeconds = 30)
+    private val quickSideStep = sideStep.copy(dose = "45 giây", seconds = 45)
+    private val quickCalf = calf.copy(dose = "1 hiệp × 8–10 lần", seconds = 30, restSeconds = 30)
+    private val quickShoulder = shoulder.copy(dose = "1 hiệp × 6–8 nhịp", seconds = 30, restSeconds = 30)
+    private val quickStretch = stretch.copy(dose = "45 giây", seconds = 45)
+    private val quickSupportedMarch = supportedMarch.copy(dose = "45 giây", seconds = 45)
+
     val programs=listOf(
         TrainingProgram("starter","🌱 Bắt đầu nhẹ nhàng","Mới tập hoặc quay lại sau thời gian nghỉ","Toàn thân",listOf(warm,chairSquat,wallPush,bridge,stretch)),
         TrainingProgram("chair","🪑 Toàn thân với ghế vững chắc","Bài cơ bản có điểm tựa • dùng ghế chắc chắn, không bánh xe","Sức mạnh",listOf(warm,chairSquat,wallPush,heelRaise,seatedHamstringStretch,cool)),
@@ -160,7 +172,10 @@ object TrainingCatalog {
         TrainingProgram("mobility","🧘 Linh hoạt & giãn cơ","Chuyển động nhẹ sau ngày dài","Linh hoạt",listOf(warm,catCow,shoulder,stretch,cool)),
         TrainingProgram("desk","💻 Nghỉ vận động tại bàn","Buổi vận động ngắn giữa giờ học/làm","Vận động nhẹ",listOf(shoulder,march,calf,stretch)),
         TrainingProgram("balance","🌿 Thăng bằng cơ bản","Tập nhẹ có điểm tựa, không phải phục hồi chức năng","Vận động nhẹ",listOf(warm,heelRaise,balance,chairSquat,cool)),
-        TrainingProgram("quick","⚡ 10 phút bận rộn","Buổi ngắn để bắt đầu thói quen","Vận động nhẹ",listOf(warm,march,wallPush,stretch)),
+        TrainingProgram("quick","⚡ Toàn thân 5–10 phút","Buổi ngắn, một hiệp mỗi động tác; không tự nhân đôi khối lượng","Vận động nhẹ",listOf(quickWarm,quickSquat,quickMarch,quickCool)),
+        TrainingProgram("quicklowcardio","🚶 Cardio nhẹ 5–10 phút","Bước tại chỗ và bước ngang, không cần nhảy","Cardio nhẹ",listOf(quickWarm,quickMarch,quickSideStep,quickCalf,quickCool)),
+        TrainingProgram("quickmobility","🧘 Linh hoạt 5–10 phút","Chuyển động nhẹ, không cần xuống sàn","Linh hoạt",listOf(quickWarm,quickShoulder,quickStretch,quickCool)),
+        TrainingProgram("quickrecovery","🌙 Phục hồi nhẹ","Chuỗi ngắn cho ngày ít năng lượng; không tự thêm bài","Phục hồi nhẹ",listOf(quickWarm,quickShoulder,quickSupportedMarch,quickCool)),
         TrainingProgram("advanced","🚀 Thử thách nâng cao","Chỉ chọn khi đã quen kỹ thuật và hồi phục tốt","Thử thách",listOf(warm,tempoSquat,push,reverseLunge,mountain,sidePlank,cool)),
         TrainingProgram("weighted","🏋️ Sức mạnh với tạ hoặc dây","Cần tạ đơn nhẹ hoặc dây kháng lực • cho người đã quen động tác cơ bản","Sức mạnh",listOf(warm,resistanceRow,resistanceHinge,resistancePress,cool)),
         TrainingProgram("recovery","🌙 Ngày phục hồi tích cực","Nhẹ nhàng, không thay thế điều trị chấn thương","Phục hồi nhẹ",listOf(march,shoulder,catCow,stretch))

@@ -43,9 +43,19 @@ class FitnessPlanAdvisorTest {
             prefs(goal = 0, energy = 0, level = 2, equipment = 2)).programId)
     }
 
-    @Test fun shortSessionGetsStarterProgram() {
-        assertEquals("starter", FitnessPlanAdvisor.recommend(
+    @Test fun shortSessionSelectsGoalEnergyAndImpactAwarePlans() {
+        assertEquals("quick", FitnessPlanAdvisor.recommend(
             prefs(goal = 0, minutes = 10)).programId)
+        assertEquals("quicklowcardio", FitnessPlanAdvisor.recommend(
+            prefs(goal = 1, minutes = 10)).programId)
+        assertEquals("quickmobility", FitnessPlanAdvisor.recommend(
+            prefs(goal = 2, minutes = 10)).programId)
+        assertEquals("quickrecovery", FitnessPlanAdvisor.recommend(
+            prefs(goal = 0, energy = 0, minutes = 10)).programId)
+        assertEquals("quicklowcardio", FitnessPlanAdvisor.recommend(
+            prefs(goal = 1, impact = 1, minutes = 10)).programId)
+        assertEquals("quickmobility", FitnessPlanAdvisor.recommend(
+            prefs(goal = 0, impact = 1, minutes = 10)).programId)
     }
 
     @Test fun resistanceEquipmentSelectsItsOwnStrengthProgram() {

@@ -228,4 +228,49 @@ class TrainingCatalogTest {
         )
         assertTrue(result is WorkoutMidSessionPlanner.Result.Blocked)
     }
+
+    @Test fun curatedShortPlansFitFiveAndTenMinuteTargetsAtEveryLevelAndConstraint() {
+        data class ShortCase(val id: String, val preferences: WorkoutExtensionPreferences)
+        val cases = listOf(
+            ShortCase("quick", WorkoutExtensionPreferences(goal = 0)),
+            ShortCase("quicklowcardio", WorkoutExtensionPreferences(goal = 1)),
+            ShortCase("quickmobility", WorkoutExtensionPreferences(goal = 2)),
+            ShortCase("quickrecovery", WorkoutExtensionPreferences(goal = 0, energy = 0))
+        )
+        val profiles = listOf(
+            WorkoutConstraintProfile(),
+            WorkoutConstraintProfile(avoidWristLoad = true),
+            WorkoutConstraintProfile(avoidFloorPositions = true),
+            WorkoutConstraintProfile(avoidOverheadReach = true)
+        )
+
+        for (item in cases) {
+            val original = TrainingCatalog.byId(item.id)
+            assertEquals("Khởi động tại chỗ", original.moves.first().name)
+            assertEquals("Thả lỏng", original.moves.last().name)
+            assertTrue(original.moves.none { it.requiresExternalLoad })
+
+            for (profile in profiles) {
+                val filtered = WorkoutConstraintFilter.apply(original, profile)
+                assertTrue("Short plan ${item.id} must remain startable", filtered.canStart)
+                for (level in 0..2) {
+                    for (target in listOf(5, 10)) {
+                        val plan = WorkoutDurationPlanner.build(
+                            filtered.program,
+                            level,
+                            target,
+                            item.preferences.copy(constraints = profile)
+                        )
+                        assertFalse(
+                            "${item.id} level=$level target=$target profile=$profile exceeds target",
+                            plan.exceedsTarget
+                        )
+                        assertEquals("Thả lỏng", plan.moves.last().name)
+                        assertEquals(1, plan.rounds)
+                    }
+                }
+            }
+        }
+    }
+
 }

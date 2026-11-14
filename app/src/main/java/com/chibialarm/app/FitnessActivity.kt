@@ -669,11 +669,14 @@ class FitnessActivity:Activity() {
                             }) && level.selectedItemPosition >= 1)) &&
                         filteredPrograms[candidate.id]?.second?.canStart == true
                 }.map { candidate -> filteredPrograms.getValue(candidate.id).second.program }
-                val historySuggestion = WorkoutHistoryAdvisor.suggestVariety(
-                    basePair.second.program,
-                    WorkoutData.history(this@FitnessActivity),
-                    eligibleAlternatives
-                )
+                val targetMinutes = mins[length.selectedItemPosition]
+                val historySuggestion = if (targetMinutes <= 10) null else {
+                    WorkoutHistoryAdvisor.suggestVariety(
+                        basePair.second.program,
+                        WorkoutData.history(this@FitnessActivity),
+                        eligibleAlternatives
+                    )
+                }
                 val selectedProgram = historySuggestion?.program ?: basePair.second.program
                 val selectedPair = filteredPrograms[selectedProgram.id] ?: basePair
                 val p = selectedPair.second.program
@@ -689,7 +692,7 @@ class FitnessActivity:Activity() {
                 val planned=WorkoutDurationPlanner.build(
                     equipmentResult.program,
                     level.selectedItemPosition,
-                    mins[length.selectedItemPosition],
+                    targetMinutes,
                     currentExtensionPreferences(constraintProfile)
                 )
                 val durationSummary = buildString {

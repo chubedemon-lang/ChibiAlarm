@@ -528,16 +528,8 @@ class FitnessActivity:Activity() {
             text = "🌱 Xem bước tiến triển có kiểm soát"
             isAllCaps = false
             visibility = android.view.View.GONE
-            contentDescription = "Đưa gợi ý tiến triển vào cuộc trò chuyện để xem trước; không tự thay đổi giáo án"
-            setOnClickListener {
-                val suggestion = steadyProgressSuggestion ?: return@setOnClickListener
-                val input = coachRequestInput ?: return@setOnClickListener
-                input.setText(suggestion.prompt)
-                input.setSelection(input.text.length)
-                input.requestFocus()
-                (getSystemService(INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager)
-                    ?.showSoftInput(input, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
-            }
+            contentDescription = "Mở bản xem trước số lần cho buổi kế tiếp; không tự thay đổi giáo án"
+            setOnClickListener { showSteadyProgressionPreview() }
         }
         historySteadyProgressAction = steadyProgressAction
         root.addView(steadyProgressAction)
@@ -997,9 +989,120 @@ class FitnessActivity:Activity() {
         additionalEquipment = currentAdditionalEquipment()
     )
 
+    private data class ProgressionCandidate(
+        val program: TrainingProgram,
+        val constraints: WorkoutConstraintProfile,
+        val proposal: WorkoutProgressionPreview.Proposal
+    )
+
+    private fun prefillSteadyProgressPrompt(suggestion: WorkoutSteadyProgressAdvisor.Suggestion) {
+        val input = coachRequestInput ?: return
+        input.setText(suggestion.prompt)
+        input.setSelection(input.text.length)
+        input.requestFocus()
+        (getSystemService(INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager)
+            ?.showSoftInput(input, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+    }
+
+    private fun showSteadyProgressionPreview() {
+        val suggestion = steadyProgressSuggestion ?: return
+        if (effectiveImpactRestriction() == 2) {
+            AlertDialog.Builder(this)
+                .setTitle("🐰 Tạm dừng bước tiến triển")
+                .setMessage("Bạn đã báo đang đau hoặc có chấn thương. Chibi không đề xuất tăng mục tiêu tập trong tình trạng này.")
+                .setPositiveButton("Đã hiểu", null)
+                .show()
+            return
+        }
+
+        val candidates = buildSteadyProgressionCandidates(suggestion)
+        if (candidates.isEmpty()) {
+            AlertDialog.Builder(this)
+                .setTitle("Chưa đủ dữ liệu cho bản xem trước")
+                .setMessage(
+                    "Chibi đã thấy ba ngày check-in nhẹ hoặc vừa sức, nhưng chưa có đủ số lần tự khai báo " +
+                        "cho một bài trong giáo án hiện tại. Hãy hoàn thành Guided Workout và ghi số lần từng hiệp. " +
+                        "Chibi sẽ không tự đoán số lần hoặc tăng mục tiêu khi thiếu dữ liệu."
+                )
+                .setPositiveButton("Hỏi Chibi") { _, _ -> prefillSteadyProgressPrompt(suggestion) }
+                .setNegativeButton("Đóng", null)
+                .show()
+            return
+        }
+
+        if (candidates.size == 1) {
+            showProgressionCandidate(candidates.single())
+            return
+        }
+
+        val labels = candidates.map { candidate ->
+            "${candidate.program.name} • ${candidate.proposal.targetReps} lần/hiệp"
+        }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle("Chọn chương trình cho buổi kế tiếp")
+            .setItems(labels) { _, which ->
+                candidates.getOrNull(which)?.let { showProgressionCandidate(it) }
+            }
+            .setNegativeButton("Hủy", null)
+            .show()
+    }
+
+    private fun buildSteadyProgressionCandidates(
+        suggestion: WorkoutSteadyProgressAdvisor.Suggestion
+    ): List<ProgressionCandidate> {
+        val history = WorkoutData.history(this)
+        val constraints = currentWorkoutConstraintProfile()
+        val equipment = recommendationEquipmentSpinner?.selectedItemPosition ?: 0
+        val additionalEquipment = currentAdditionalEquipment()
+        val selectedLevel = level.selectedItemPosition
+        val selectedMinutes = mins[length.selectedItemPosition]
+        val extension = currentExtensionPreferences(constraints)
+
+        return TrainingCatalog.programs.mapNotNull { original ->
+            val constrained = WorkoutConstraintFilter.apply(original, constraints)
+            val equipped = WorkoutEquipmentFilter.apply(
+                constrained.program, equipment, additionalEquipment
+            )
+            if (!equipped.canStart) return@mapNotNull null
+            val planned = WorkoutDurationPlanner.build(
+                equipped.program, selectedLevel, selectedMinutes, extension
+            )
+            val proposal = WorkoutProgressionPreview.propose(
+                suggestion, history, planned.moves
+            ) ?: return@mapNotNull null
+            ProgressionCandidate(original, constraints, proposal)
+        }
+    }
+
+    private fun showProgressionCandidate(candidate: ProgressionCandidate) {
+        val proposal = candidate.proposal
+        val message = buildString {
+            append(candidate.program.name)
+            append("\n\n")
+            append(proposal.exerciseName)
+            append("\nBuổi gần nhất: tối thiểu ${proposal.previousMinimumReps} lần ở mỗi hiệp đã ghi.")
+            append("\nBuổi kế tiếp: ${proposal.targetReps} lần/hiệp (+1), trong dải ${proposal.prescribedMinReps}–${proposal.prescribedMaxReps}.")
+            append("\nGiữ ${proposal.requiredSets} hiệp tối thiểu (tối đa ${proposal.maximumSets}), nghỉ ${proposal.restSeconds} giây.")
+            append("\nKhông tăng tải, không thêm hiệp và không đổi dụng cụ.")
+            append("\n\nĐây là mục tiêu thử từ số lần và cảm nhận tự khai báo, không đo kỹ thuật hoặc khả năng hồi phục. Nếu thấy khó chịu, hãy giảm hoặc dừng.")
+        }
+        AlertDialog.Builder(this)
+            .setTitle("🌱 Xem trước bước tiến triển")
+            .setMessage(message)
+            .setPositiveButton("Dùng cho buổi tới") { _, _ ->
+                startProgram(candidate.program, candidate.constraints, proposal)
+            }
+            .setNeutralButton("Hỏi Chibi") { _, _ ->
+                steadyProgressSuggestion?.let(::prefillSteadyProgressPrompt)
+            }
+            .setNegativeButton("Giữ nguyên", null)
+            .show()
+    }
+
     private fun startProgram(
         p: TrainingProgram,
-        constraints: WorkoutConstraintProfile = currentWorkoutConstraintProfile()
+        constraints: WorkoutConstraintProfile = currentWorkoutConstraintProfile(),
+        progression: WorkoutProgressionPreview.Proposal? = null
     ) {
         if (effectiveImpactRestriction() == 2) {
             AlertDialog.Builder(this)
@@ -1024,13 +1127,35 @@ class FitnessActivity:Activity() {
         }
         val l=level.selectedItemPosition
         val m=mins[length.selectedItemPosition]
+        if (progression != null) {
+            val planned = WorkoutDurationPlanner.build(
+                equipped.program, l, m, currentExtensionPreferences(constraints)
+            )
+            val refreshed = steadyProgressSuggestion?.let {
+                WorkoutProgressionPreview.propose(it, WorkoutData.history(this), planned.moves)
+            }
+            if (refreshed != progression) {
+                Toast.makeText(this, "Nhật ký hoặc giáo án đã thay đổi. Hãy mở lại bản xem trước.", Toast.LENGTH_LONG).show()
+                return
+            }
+            val checkpoint = getSharedPreferences("chibi_workout_checkpoint_guest", MODE_PRIVATE)
+            val checkpointAge = System.currentTimeMillis() - checkpoint.getLong("savedAt", 0L)
+            if (checkpoint.getString("program", null) == p.id && checkpointAge in 0L..604_800_000L) {
+                AlertDialog.Builder(this)
+                    .setTitle("Có buổi tập đang chờ")
+                    .setMessage("Hãy khôi phục hoặc kết thúc buổi tập đã lưu trước khi bắt đầu buổi mới với mục tiêu tiến triển.")
+                    .setPositiveButton("Đã hiểu", null)
+                    .show()
+                return
+            }
+        }
         prefs.edit()
             .putInt("fitLevel", l)
             // Keep the old index key readable while preserving the exact custom duration.
             .putInt("fitTime", WorkoutDurationChoices.legacyIndexForMinutes(m))
             .putInt("fitTimeMinutes", m)
             .apply()
-        startActivity(Intent(this,GuidedWorkoutActivity::class.java)
+        val launchIntent = Intent(this,GuidedWorkoutActivity::class.java)
             .putExtra("program",p.id).putExtra("level",l).putExtra("minutes",m)
             .putExtra("avoid_wrist_load", constraints.avoidWristLoad)
             .putExtra("avoid_floor_positions", constraints.avoidFloorPositions)
@@ -1039,7 +1164,12 @@ class FitnessActivity:Activity() {
             .putExtra("extension_energy", recommendationEnergySpinner?.selectedItemPosition ?: 1)
             .putExtra("extension_equipment", equipmentSelection)
             .putStringArrayListExtra("extension_additional_equipment", ArrayList(additionalEquipment.map { it.name }))
-            .putExtra("extension_impact", effectiveImpactRestriction()))
+            .putExtra("extension_impact", effectiveImpactRestriction())
+        if (progression != null) {
+            launchIntent.putExtra("progression_exercise", progression.exerciseName)
+                .putExtra("progression_reps", progression.targetReps)
+        }
+        startActivity(launchIntent)
     }
     private fun addRoutine(p:TrainingProgram) {
         if (!WorkoutEquipmentFilter.apply(

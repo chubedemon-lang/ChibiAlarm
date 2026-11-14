@@ -81,6 +81,7 @@ class GuidedWorkoutActivity:Activity() {
     private val checkpoint by lazy { getSharedPreferences("chibi_workout_checkpoint_guest", MODE_PRIVATE) }
     // Index-scoped rep guidance: completed steps are never retroactively edited.
     private val repTargets=mutableMapOf<Int,Int>()
+    private var confirmedProgression: Pair<String,Int>? = null
     // Timed moves use the timer; set-based moves require explicit user confirmation.
     private val completedMoveIndices=sortedSetOf<Int>()
     private val completedSetsByMove=mutableMapOf<Int,Int>()
@@ -97,6 +98,21 @@ class GuidedWorkoutActivity:Activity() {
     private var restRemainingMs=0L
     private var setTimerExpired=false
     private fun targetDose(position:Int):String = repTargets[position]?.let { "$it lần (mục tiêu đã chỉnh)" } ?: moves[position].dose
+
+    /** Apply only a validated, user-confirmed next-session target; never infer or add sets. */
+    private fun applyInitialProgression(savedInstanceState: Bundle?) {
+        if (savedInstanceState != null || checkpoint.getString("program", null) == program.id) return
+        val exerciseName = intent.getStringExtra("progression_exercise")?.trim()?.take(90).orEmpty()
+        val reps = intent.getIntExtra("progression_reps", -1)
+        if (exerciseName.isBlank() || reps !in 1..100) return
+        val matches = moves.indices.filter { moves[it].name == exerciseName }
+        if (matches.size != 1) return
+        val position = matches.single()
+        val plan = WorkoutSetTracker.parse(moves[position].dose, moves[position].restSeconds) ?: return
+        if (plan.unit != "lần" || reps !in (plan.targetMin + 1)..plan.targetMax) return
+        repTargets[position] = reps
+        confirmedProgression = exerciseName to reps
+    }
     private var completed=false
     // Do not overwrite a saved session before the user chooses Restore or Start over.
     private var checkpointDecisionPending=false
@@ -377,6 +393,7 @@ class GuidedWorkoutActivity:Activity() {
             optionalExtensionNames.clear()
             optionalExtensionNames.addAll(names.filter { name -> moves.any { it.name == name } }.take(20))
         }
+        applyInitialProgression(savedInstanceState)
         val root=LinearLayout(this).apply {
             orientation=1;setPadding(24,27,24,24);setBackgroundColor(Color.rgb(247,240,252))
         }
@@ -385,6 +402,13 @@ class GuidedWorkoutActivity:Activity() {
             setTextColor(Color.rgb(95,55,113))
         })
         root.addView(TextView(this).apply { text=program.name;textSize=16f })
+        confirmedProgression?.let { (exerciseName, reps) ->
+            root.addView(TextView(this).apply {
+                text = "🌱 Mục tiêu tiến triển đã xác nhận: $exerciseName — $reps lần mỗi hiệp. Đây là mục tiêu thử; giảm hoặc dừng nếu thấy khó chịu."
+                textSize = 13f
+                setPadding(4, 6, 4, 10)
+            })
+        }
         root.addView(TextView(this).apply {
             text = "Mục tiêu tối đa: ${planned.targetMinutes} phút • ước tính theo bộ đếm: ${planned.estimatedMinutes} phút.\n" +
                 "Ước tính đã cộng thời gian nghỉ giữa hiệp theo giáo án; thời gian thực tế còn tùy tốc độ thực hiện và thời gian nghỉ thêm."

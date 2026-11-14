@@ -22,6 +22,10 @@ class FitnessActivity:Activity() {
     private var speechInput: EditText? = null
     private var speechOutput: TextToSpeech? = null
     private var speechReady = false
+    // The most recent coach reply stays in Activity memory only; it is never persisted.
+    private val coachSpeechMemory = FitnessCoachSpeechMemory()
+    private var speechReplayButton: Button? = null
+    private var speechStopButton: Button? = null
     private val speechRequestCode = 4107
     private var recommendationGoalSpinner: Spinner? = null
     private var recommendationEnergySpinner: Spinner? = null
@@ -42,6 +46,9 @@ class FitnessActivity:Activity() {
     override fun onDestroy() {
         // Drop transient raw text on finish and configuration recreation.
         coachTranscript.clear()
+        coachSpeechMemory.clear()
+        speechReplayButton = null
+        speechStopButton = null
         coachTranscriptView = null
         coachTranscriptClearButton = null
         coachRequestInput = null
@@ -60,7 +67,14 @@ class FitnessActivity:Activity() {
     }
 
     private fun sayFollowUp(message: String) {
-        if (speechReady) speechOutput?.speak(message, TextToSpeech.QUEUE_FLUSH, null, "fitness-follow-up")
+        coachSpeechMemory.remember(message)
+        speechReplayButton?.isEnabled = coachSpeechMemory.hasReply()
+        speechStopButton?.isEnabled = speechReady
+        val speechText = coachSpeechMemory.replayText(
+            voiceEnabled = speechOutput != null,
+            engineReady = speechReady
+        ) ?: return
+        speechOutput?.speak(speechText, TextToSpeech.QUEUE_FLUSH, null, "fitness-follow-up")
     }
 
     private fun renderCoachTranscript() {
@@ -224,6 +238,9 @@ class FitnessActivity:Activity() {
             contentDescription = "Xóa văn bản hội thoại khỏi bộ nhớ màn hình; giữ nguyên lựa chọn và cảnh báo an toàn"
             setOnClickListener {
                 coachTranscript.clear()
+                coachSpeechMemory.clear()
+                speechOutput?.stop()
+                speechReplayButton?.isEnabled = false
                 renderCoachTranscript()
             }
         }
@@ -260,6 +277,7 @@ class FitnessActivity:Activity() {
                         speechReady = status == TextToSpeech.SUCCESS &&
                             speechOutput?.setLanguage(Locale("vi", "VN")) != TextToSpeech.LANG_MISSING_DATA &&
                             speechOutput?.language != null
+                        speechStopButton?.isEnabled = speechReady
                         if (!speechReady) runOnUiThread {
                             Toast.makeText(this@FitnessActivity, "Chưa có giọng tiếng Việt TTS trên thiết bị", Toast.LENGTH_LONG).show()
                         }
@@ -268,10 +286,48 @@ class FitnessActivity:Activity() {
                 } else {
                     speechOutput?.stop(); speechOutput?.shutdown(); speechOutput = null
                     speechReady = false
+                    speechStopButton?.isEnabled = false
                     text = "🔊 Bật giọng Chibi đọc câu hỏi"
                 }
             }
         })
+        val speechActions = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+        }
+        val replayButton = Button(this).apply {
+            text = "🔁 Đọc lại lời Chibi"
+            contentDescription = "Đọc lại câu trả lời gần nhất của Chibi; không bật microphone"
+            isAllCaps = false
+            isEnabled = false
+            setOnClickListener {
+                val reply = coachSpeechMemory.replayText(
+                    voiceEnabled = speechOutput != null,
+                    engineReady = speechReady
+                )
+                if (reply == null) {
+                    val message = if (!coachSpeechMemory.hasReply()) {
+                        "Chibi chưa có câu trả lời để đọc lại."
+                    } else {
+                        "Hãy bật giọng Chibi và chờ engine tiếng Việt sẵn sàng."
+                    }
+                    Toast.makeText(this@FitnessActivity, message, Toast.LENGTH_LONG).show()
+                } else {
+                    speechOutput?.speak(reply, TextToSpeech.QUEUE_FLUSH, null, "fitness-coach-replay")
+                }
+            }
+        }
+        speechReplayButton = replayButton
+        val stopButton = Button(this).apply {
+            text = "■ Dừng đọc"
+            contentDescription = "Dừng giọng đọc hiện tại; không thay đổi buổi tập"
+            isAllCaps = false
+            isEnabled = false
+            setOnClickListener { speechOutput?.stop() }
+        }
+        speechStopButton = stopButton
+        speechActions.addView(replayButton, LinearLayout.LayoutParams(0, -2, 1f))
+        speechActions.addView(stopButton, LinearLayout.LayoutParams(0, -2, 1f))
+        root.addView(speechActions)
         root.addView(txt("🤖 Chibi gợi ý buổi tập hôm nay",20f))
         val goals= arrayOf("Tăng sức mạnh","Tăng vận động tim mạch","Giãn cơ & linh hoạt","Giảm mỏi do ngồi nhiều","Mới bắt đầu","Thử thách mới")
         val energyLevels=arrayOf("Hôm nay hơi mệt","Cảm thấy bình thường","Rất nhiều năng lượng")

@@ -52,6 +52,17 @@ object WorkoutStepGuide {
         ?: spokenCue(moveName, instructions, 1)
 
     /**
+     * Auto-read is opt-in. The initial render and unchanged position never trigger
+     * speech; only a real, valid step navigation does.
+     */
+    fun shouldSpeakOnNavigation(
+        enabled: Boolean,
+        previousPosition: Int?,
+        nextPosition: Int
+    ): Boolean = enabled && previousPosition != null &&
+        previousPosition > 0 && nextPosition > 0 && previousPosition != nextPosition
+
+    /**
      * A bounded, in-memory walkthrough for the current exercise. It never changes
      * workout timing or progress; users can move backward and forward at their pace.
      */

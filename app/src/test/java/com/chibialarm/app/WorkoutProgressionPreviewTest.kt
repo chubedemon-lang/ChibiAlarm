@@ -37,7 +37,7 @@ class WorkoutProgressionPreviewTest {
 
     private fun history(
         exercise: String = "Squat không tạ",
-        reps: List<Int> = listOf(8, 10),
+        reps: List<Int> = listOf(8, 8),
         unit: String = "lần"
     ) = listOf(
         workout(today.minusDays(4), exercise, reps, unit),

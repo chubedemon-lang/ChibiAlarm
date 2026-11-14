@@ -51,9 +51,7 @@ class GuidedWorkoutWalkthroughTest(unittest.TestCase):
         self.assertIn('outState.putString("workout_set_values"', save_section)
         self.assertIn('outState.putString("workout_effort_log"', save_section)
 
-        restore_start = source.index(
-            'if(savedInstanceState!=null &&\\n            savedInstanceState.getString("workout_program")==program.id'
-        )
+        restore_start = source.index('savedInstanceState.getString("workout_program")==program.id')
         restore_end = source.index("} else if (savedInstanceState != null", restore_start)
         restore_section = source[restore_start:restore_end]
         self.assertIn("WorkoutSetRepetitionLog.decode(", restore_section)

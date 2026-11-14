@@ -51,6 +51,12 @@ object WorkoutVoiceCommands {
         // Remove only this phrase for safety-token detection, preserving any actual 'đau' later.
         val safetyWords = normalized.replace(Regex("\\bbat dau\\b"), " ").split(' ').toSet()
         val words = normalized.split(' ').toSet()
+        // Match common live-workout feedback shown in the microphone prompt.
+        // These phrases request a pause + easier cue; they never auto-replace a move.
+        val asksForEasier = listOf(
+            "kho qua", "qua kho", "khong theo kip", "theo khong kip",
+            "khong theo noi", "khong theo duoc", "khong kip"
+        ).any(normalized::contains)
         return when {
             normalized.contains("bi dau") || normalized.contains("dang dau") ||
                 normalized.contains("chan thuong") || normalized.contains("kho tho") ||
@@ -87,7 +93,7 @@ object WorkoutVoiceCommands {
                 normalized.contains("chua xac nhan hiep") -> Command.UNKNOWN
             normalized.contains("xong hiep") || normalized.contains("hoan thanh hiep") ||
                 normalized.contains("xac nhan hiep") -> Command.COMPLETE_SET
-            (normalized.contains("de hon") || normalized.contains("giam do kho") || normalized.contains("nhe hon")) &&
+            (asksForEasier || normalized.contains("de hon") || normalized.contains("giam do kho") || normalized.contains("nhe hon")) &&
                 (normalized.contains("nghi") || normalized.contains("can nghi")) -> Command.EASIER_AND_REST
             normalized.contains("nghi them") || normalized.contains("nghi mot chut") || normalized.contains("met roi") ||
                 normalized.contains("hoi met") || normalized.contains("met qua") ||
@@ -104,7 +110,7 @@ object WorkoutVoiceCommands {
                 normalized.contains("doi bai") || normalized.contains("doi sang bai") ||
                 normalized.contains("thay bai") || normalized.contains("thay bang bai") ||
                 normalized.contains("bai khac") -> Command.SWAP_EASIER
-            normalized.contains("de hon") || normalized.contains("giam do kho") ||
+            asksForEasier || normalized.contains("de hon") || normalized.contains("giam do kho") ||
                 normalized.contains("nhe hon") -> Command.EASIER
             normalized.contains("doc lai buoc") || normalized.contains("nhac lai buoc") ||
                 normalized.contains("buoc vua roi") || normalized.contains("buoc dang xem") ||

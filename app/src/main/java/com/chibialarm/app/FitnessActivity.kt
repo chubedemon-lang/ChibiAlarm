@@ -56,6 +56,9 @@ class FitnessActivity:Activity() {
         historyEffortInsightView = null
         historyEffortAction = null
         effortPlanSuggestion = null
+        historySteadyProgressView = null
+        historySteadyProgressAction = null
+        steadyProgressSuggestion = null
         speechOutput?.stop()
         speechOutput?.shutdown()
         speechOutput = null
@@ -103,6 +106,9 @@ class FitnessActivity:Activity() {
     private var historyEffortAction: Button? = null
     private var coachRequestInput: EditText? = null
     private var effortPlanSuggestion: WorkoutEffortPlanAdvisor.Suggestion? = null
+    private var historySteadyProgressView: TextView? = null
+    private var historySteadyProgressAction: Button? = null
+    private var steadyProgressSuggestion: WorkoutSteadyProgressAdvisor.Suggestion? = null
     private val levels=arrayOf("🌱 Mới bắt đầu","🌿 Đang tập đều","🔥 Có kinh nghiệm")
     private val lengths=WorkoutDurationChoices.labels
     private val mins=WorkoutDurationChoices.minutes
@@ -175,6 +181,14 @@ class FitnessActivity:Activity() {
         val summary = WorkoutHistoryAdvisor.summarize(workouts)
         val effortSuggestion = WorkoutEffortPlanAdvisor.suggest(workouts)
         effortPlanSuggestion = effortSuggestion
+        val steadySuggestion = WorkoutSteadyProgressAdvisor.suggest(workouts)
+        steadyProgressSuggestion = steadySuggestion
+        historySteadyProgressView?.apply {
+            visibility = if (steadySuggestion != null) android.view.View.VISIBLE else android.view.View.GONE
+            text = steadySuggestion?.message.orEmpty()
+        }
+        historySteadyProgressAction?.visibility =
+            if (steadySuggestion != null) android.view.View.VISIBLE else android.view.View.GONE
         historyEffortInsightView?.apply {
             visibility = if (effortSuggestion != null) android.view.View.VISIBLE else android.view.View.GONE
             text = effortSuggestion?.message.orEmpty()
@@ -502,6 +516,31 @@ class FitnessActivity:Activity() {
         }
         historyEffortAction = effortAction
         root.addView(effortAction)
+        val steadyProgressInsight = txt("", 14f).apply {
+            visibility = android.view.View.GONE
+            background = panel(Color.WHITE)
+            setPadding(14, 12, 14, 12)
+            contentDescription = "Gợi ý tiến triển dựa trên ba buổi tự đánh giá nhẹ hoặc vừa sức"
+        }
+        historySteadyProgressView = steadyProgressInsight
+        root.addView(steadyProgressInsight)
+        val steadyProgressAction = Button(this).apply {
+            text = "🌱 Xem bước tiến triển có kiểm soát"
+            isAllCaps = false
+            visibility = android.view.View.GONE
+            contentDescription = "Đưa gợi ý tiến triển vào cuộc trò chuyện để xem trước; không tự thay đổi giáo án"
+            setOnClickListener {
+                val suggestion = steadyProgressSuggestion ?: return@setOnClickListener
+                val input = coachRequestInput ?: return@setOnClickListener
+                input.setText(suggestion.prompt)
+                input.setSelection(input.text.length)
+                input.requestFocus()
+                (getSystemService(INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager)
+                    ?.showSoftInput(input, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+            }
+        }
+        historySteadyProgressAction = steadyProgressAction
+        root.addView(steadyProgressAction)
         // Session-only handoff: no health preferences are written to SharedPreferences.
         // Review all selections before asking for a recommendation.
         if (intent.hasExtra("coach_goal")) goalSpinner.setSelection(intent.getIntExtra("coach_goal",0).coerceIn(0,goals.lastIndex))

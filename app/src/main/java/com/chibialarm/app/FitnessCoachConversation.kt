@@ -14,6 +14,20 @@ object FitnessCoachConversation {
         "không", "khong", "không có", "khong co", "không cần", "khong can",
         "không hạn chế", "khong han che", "không nhé", "khong nhe"
     )
+    // Full natural replies are accepted only while the coach is asking about movement limits.
+    // Keeping these contextual prevents a phrase like "không có hạn chế" from clearing
+    // an unrelated field or being mistaken for a global medical clearance.
+    private val noMovementRestrictionReplies = negativeReplies + setOf(
+        "không có hạn chế", "khong co han che",
+        "không bị hạn chế", "khong bi han che",
+        "không có hạn chế vận động", "khong co han che van dong",
+        "không bị hạn chế vận động", "khong bi han che van dong",
+        "vận động bình thường", "van dong binh thuong"
+    )
+    private val yesMovementRestrictionReplies = affirmativeReplies + setOf(
+        "có hạn chế", "co han che",
+        "có hạn chế vận động", "co han che van dong"
+    )
     private val noWristRestrictionReplies = negativeReplies + setOf(
         "không có hạn chế cổ tay", "khong co han che co tay",
         "không cần tránh cổ tay", "khong can tranh co tay",
@@ -74,9 +88,9 @@ object FitnessCoachConversation {
                 parsed.copy(equipment = 2, additionalEquipment = emptySet(), reply = "Đã ghi nhận có tạ hoặc dây kháng lực. Hãy kiểm tra dụng cụ được chọn.")
             question == FitnessCoachFollowUp.Question.MOVEMENT_LIMITS && parsed.impact != null ->
                 parsed
-            question == FitnessCoachFollowUp.Question.MOVEMENT_LIMITS && answer in negativeReplies ->
+            question == FitnessCoachFollowUp.Question.MOVEMENT_LIMITS && answer in noMovementRestrictionReplies ->
                 parsed.copy(impact = 0, reply = "Đã ghi nhận không có hạn chế về nhảy. Tao vẫn sẽ kiểm tra riêng cổ tay và tư thế sàn.")
-            question == FitnessCoachFollowUp.Question.MOVEMENT_LIMITS && answer in affirmativeReplies ->
+            question == FitnessCoachFollowUp.Question.MOVEMENT_LIMITS && answer in yesMovementRestrictionReplies ->
                 parsed.copy(impact = 1, reply = "Đã ghi nhận ưu tiên bài ít tác động, không nhảy.")
             question == FitnessCoachFollowUp.Question.WRIST_LOAD && answer in noWristRestrictionReplies ->
                 parsed.copy(avoidWristLoad = false, reply = "Đã ghi nhận không cần tránh tải qua cổ tay.")

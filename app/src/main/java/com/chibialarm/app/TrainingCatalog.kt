@@ -151,6 +151,7 @@ object TrainingCatalog {
         setOf(TrainingEquipment.DUMBBELL, TrainingEquipment.RESISTANCE_BAND), requiresOverheadReach = true)
     val programs=listOf(
         TrainingProgram("starter","🌱 Bắt đầu nhẹ nhàng","Mới tập hoặc quay lại sau thời gian nghỉ","Toàn thân",listOf(warm,chairSquat,wallPush,bridge,stretch)),
+        TrainingProgram("chair","🪑 Toàn thân với ghế vững chắc","Bài cơ bản có điểm tựa • dùng ghế chắc chắn, không bánh xe","Sức mạnh",listOf(warm,chairSquat,wallPush,heelRaise,seatedHamstringStretch,cool)),
         TrainingProgram("full","💪 Toàn thân không dụng cụ","Chân, thân trên và cơ trung tâm","Sức mạnh",listOf(warm,squat,wallPush,bridge,bird,plank,cool)),
         TrainingProgram("lowcardio","🚶 Cardio không bật nhảy","Tăng vận động, hạn chế tác động khớp","Cardio",listOf(warm,march,sideStep,supportedMarch,calf,cool)),
         TrainingProgram("legs","🦵 Chân và mông","Hông, đùi, bắp chân","Sức mạnh",listOf(warm,squat,reverseLunge,bridge,calf,cool)),

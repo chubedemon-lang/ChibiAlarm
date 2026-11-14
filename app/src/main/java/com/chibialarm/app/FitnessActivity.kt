@@ -629,7 +629,8 @@ class FitnessActivity:Activity() {
                 prefs.edit().putInt("recommendGoal",goal).putInt("recommendEnergy",energy)
                     .putInt("recommendEquipment",equipment).apply()
                 val recommendation=FitnessPlanAdvisor.recommend(FitnessPlanAdvisor.Preferences(
-                    goal,energy,level.selectedItemPosition,mins[length.selectedItemPosition],equipment,impact))
+                    goal,energy,level.selectedItemPosition,mins[length.selectedItemPosition],equipment,impact,
+                    currentAdditionalEquipment()))
                 if (recommendation.requiresProfessionalReview) {
                     AlertDialog.Builder(this@FitnessActivity)
                         .setTitle("🐰 Tạm dừng kế hoạch tập")

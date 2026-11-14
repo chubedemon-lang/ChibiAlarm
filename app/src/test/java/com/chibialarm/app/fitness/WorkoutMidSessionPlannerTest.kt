@@ -361,11 +361,16 @@ class WorkoutMidSessionPlannerTest {
         assertNull(request.restSeconds)
     }
 
-    @Test fun positiveEquipmentMentionDoesNotCreateABodyweightOnlyRequest() {
-        assertSame(
-            WorkoutMidSessionRequest.Result.Unsupported,
-            WorkoutMidSessionRequest.parse("Tao có tạ và dây kháng lực")
+    @Test fun positiveEquipmentMentionUpdatesSessionToolsWithoutAddingTrainingVolume() {
+        val parsed = WorkoutMidSessionRequest.parse("Tao có tạ và dây kháng lực")
+        assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
+        val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+        assertEquals(
+            setOf(TrainingEquipment.DUMBBELL, TrainingEquipment.RESISTANCE_BAND),
+            request.availableEquipment
         )
+        assertTrue(request.unavailableEquipment.isEmpty())
+        assertFalse(request.addOptionalExercise)
     }
 
     @Test fun colloquialEquipmentRequestsOnlyMarkTheMissingTool() {

@@ -39,7 +39,7 @@ class WorkoutSteadyProgressAdvisorTest {
         assertEquals("Squat không tạ", suggestion!!.exerciseName)
         assertEquals(3, suggestion.consistentSessions)
         assertEquals(3, suggestion.easySets)
-        assertEquals(3, suggestion.moderateSets)
+        assertEquals(2, suggestion.moderateSets)
         assertTrue(suggestion.message.contains("tự chọn mức nhẹ"))
         assertTrue(suggestion.prompt.contains("xem trước"))
         assertTrue(suggestion.prompt.contains("không tự áp dụng"))

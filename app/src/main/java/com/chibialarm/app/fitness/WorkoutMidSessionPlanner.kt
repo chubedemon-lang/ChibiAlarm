@@ -1,7 +1,11 @@
 package com.chibialarm.app.fitness
 
 import com.chibialarm.app.TrainingCatalog
+import com.chibialarm.app.TrainingEquipment
+import com.chibialarm.app.TrainingEquipmentAvailability
 import com.chibialarm.app.TrainingMove
+import com.chibialarm.app.WorkoutExtensionPreferences
+import com.chibialarm.app.WorkoutExtensionSelector
 import com.chibialarm.app.WorkoutConstraintFilter
 import com.chibialarm.app.WorkoutConstraintProfile
 import com.chibialarm.app.WorkoutDurationPlanner
@@ -32,7 +36,9 @@ object WorkoutMidSessionPlanner {
         val requestedMinutes: Int?,
         val targetExceeded: Boolean,
         val restSeconds: Int,
-        val extensionMoveNames: Set<String>
+        val extensionMoveNames: Set<String>,
+        val addedMoves: List<String> = emptyList(),
+        val availableEquipment: Set<TrainingEquipment> = emptySet()
     ) {
         val changed: Boolean get() = before != after
     }
@@ -72,7 +78,8 @@ object WorkoutMidSessionPlanner {
         request: WorkoutMidSessionRequest.Request,
         remainingCurrentSeconds: Int,
         extensionMoveNames: Set<String>,
-        level: Int
+        level: Int,
+        extensionPreferences: WorkoutExtensionPreferences = WorkoutExtensionPreferences()
     ): Result {
         if (currentMoves.isEmpty() || currentMoves.size > 500 ||
             currentIndex !in currentMoves.indices || completedCurrentSets !in 0..20 ||
@@ -80,6 +87,20 @@ object WorkoutMidSessionPlanner {
         ) return Result.Unsupported
 
         val effectiveProfile = effectiveConstraints(constraints, request)
+        val unavailableTools = request.unavailableEquipment +
+            if (request.avoidExternalLoad) {
+                setOf(TrainingEquipment.DUMBBELL, TrainingEquipment.RESISTANCE_BAND)
+            } else emptySet()
+        val effectiveAvailableEquipment = (
+            TrainingEquipmentAvailability.fromPreference(extensionPreferences.equipment) +
+                extensionPreferences.additionalEquipment + request.availableEquipment
+            ) - unavailableTools
+        val effectiveExtensionPreferences = extensionPreferences.copy(
+            equipment = 0,
+            constraints = effectiveProfile,
+            energy = if (request.lowEnergy || request.preferEasier) 0 else extensionPreferences.energy,
+            additionalEquipment = effectiveAvailableEquipment
+        )
         val prefix = currentMoves.take(currentIndex)
         val usedNames = prefix.mapTo(mutableSetOf()) { it.name }
         val reservedFutureNames = currentMoves.drop(currentIndex + 1).map { it.name }.toSet()
@@ -178,6 +199,40 @@ object WorkoutMidSessionPlanner {
             }
         }
 
+        val addedMoves = mutableListOf<String>()
+        if (request.addOptionalExercise) {
+            // A bounded three-minute allowance is used only when the user explicitly asks
+            // to add volume. If they state a remaining-time target, only unused time is available.
+            val additionBudget = targetSeconds?.let {
+                (it - estimate()).coerceAtLeast(0)
+            } ?: 180
+            val additions = WorkoutExtensionSelector.selectAdditional(
+                baseMoves = prefix + remaining,
+                level = level,
+                availableSeconds = additionBudget,
+                preferences = effectiveExtensionPreferences,
+                preferredEquipment = request.availableEquipment,
+                maxMoves = 1
+            )
+            if (additions.isEmpty()) {
+                val reason = if (request.lowEnergy || request.preferEasier) {
+                    "Bạn vừa yêu cầu giảm tải. Chibi không tăng khối lượng tập trong cùng yêu cầu; hãy giữ phần hiện tại hoặc nghỉ thêm."
+                } else {
+                    "Chưa có bài bổ sung đã tuyển chọn phù hợp với dụng cụ, hạn chế và thời gian còn lại. Giáo án hiện tại được giữ nguyên."
+                }
+                return Result.Blocked(reason)
+            }
+            val cooldownIndex = remaining.indexOfLast {
+                it.name == "Thả lỏng" || it.name == "Giãn cơ và thở chậm"
+            }
+            val insertAt = if (cooldownIndex >= 0) cooldownIndex else remaining.size
+            remaining.addAll(insertAt, additions)
+            additions.forEach {
+                addedMoves += it.name
+                extensions += it.name
+            }
+        }
+
         if (remaining.none(::isMainExercise)) {
             return Result.Blocked("Không thể rút ngắn mà vẫn giữ lại động tác chính chưa hoàn thành.")
         }
@@ -198,7 +253,9 @@ object WorkoutMidSessionPlanner {
                 requestedMinutes = request.remainingMinutes,
                 targetExceeded = targetExceeded,
                 restSeconds = extraRest,
-                extensionMoveNames = extensions
+                extensionMoveNames = extensions,
+                addedMoves = addedMoves,
+                availableEquipment = effectiveAvailableEquipment
             )
         )
     }

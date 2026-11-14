@@ -3,6 +3,7 @@ package com.chibialarm.app.fitness
 import com.chibialarm.app.TrainingCatalog
 import com.chibialarm.app.TrainingMove
 import com.chibialarm.app.WorkoutConstraintProfile
+import com.chibialarm.app.WorkoutExtensionPreferences
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -111,5 +112,34 @@ class WorkoutMidSessionPreviewFormatterTest {
         assertTrue(text.contains("Đẩy vai với tạ đơn hoặc dây → Mở vai và ngực"))
         assertTrue(text.contains("bài thay thế có thể khác nhóm cơ hoặc cường độ"))
         assertTrue(text.contains("xác nhận trước khi áp dụng"))
+    }
+    @Test fun previewNamesAnAddedOptionalMoveBeforeTheCooldown() {
+        val moves = listOf(
+            move("Khởi động tại chỗ"),
+            move("Squat không tạ"),
+            move("Chống đẩy tường"),
+            move("Thả lỏng")
+        )
+        val parsed = WorkoutMidSessionRequest.parse("Có ghế vững chắc, thêm một bài")
+        assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
+        val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+        val result = WorkoutMidSessionPlanner.preview(
+            currentMoves = moves,
+            currentIndex = 1,
+            completedCurrentSets = 0,
+            currentStepLocked = false,
+            constraints = WorkoutConstraintProfile(),
+            request = request,
+            remainingCurrentSeconds = 90,
+            extensionMoveNames = emptySet(),
+            level = 1,
+            extensionPreferences = WorkoutExtensionPreferences(goal = 1)
+        )
+        check(result is WorkoutMidSessionPlanner.Result.Proposed)
+        val text = WorkoutMidSessionPreviewFormatter.format(result.preview)
+        assertTrue(text.contains("Bổ sung động tác tùy chọn theo yêu cầu"))
+        assertTrue(text.contains("Thêm: Nâng gối ngồi ghế"))
+        assertTrue(text.contains("Động tác bổ sung không thay thế hiệp bắt buộc"))
+        assertTrue(text.contains("Thời gian còn lại ước tính"))
     }
 }

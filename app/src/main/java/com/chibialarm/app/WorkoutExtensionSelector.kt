@@ -6,13 +6,16 @@ data class WorkoutExtensionPreferences(
     val energy: Int = 1,
     val equipment: Int = 0,
     val impact: Int = 0,
-    val constraints: WorkoutConstraintProfile = WorkoutConstraintProfile()
+    val constraints: WorkoutConstraintProfile = WorkoutConstraintProfile(),
+    // Additional explicitly reported tools allow a session to combine more than one tool type.
+    val additionalEquipment: Set<TrainingEquipment> = emptySet()
 ) {
     init {
         require(goal in 0..5)
         require(energy in 0..2)
         require(equipment in 0..3)
         require(impact in 0..2)
+        require(additionalEquipment.size <= TrainingEquipment.values().size)
     }
 }
 
@@ -87,7 +90,7 @@ object WorkoutExtensionSelector {
     }
 
     private fun availableEquipment(preferences: WorkoutExtensionPreferences): Set<TrainingEquipment> =
-        TrainingEquipmentAvailability.fromPreference(preferences.equipment)
+        TrainingEquipmentAvailability.fromPreference(preferences.equipment) + preferences.additionalEquipment
 
     fun select(
         baseMoves: List<TrainingMove>,
@@ -125,6 +128,61 @@ object WorkoutExtensionSelector {
             if (!usedFamilies.add(family)) continue
             val cost = WorkoutDurationPlanner.activeSeconds(move).toLong() +
                 WorkoutDurationPlanner.prescribedRestSeconds(move).toLong() + transition
+            if (cost > budget) {
+                usedFamilies.remove(family)
+                continue
+            }
+            selected += move
+            budget -= cost
+        }
+        return selected
+    }
+    /**
+     * Select a single optional move for an explicit mid-session request.
+     * The current plan is used to prevent duplicate exercises and duplicate movement families.
+     */
+    fun selectAdditional(
+        baseMoves: List<TrainingMove>,
+        level: Int,
+        availableSeconds: Int,
+        preferences: WorkoutExtensionPreferences,
+        preferredEquipment: Set<TrainingEquipment> = emptySet(),
+        maxMoves: Int = 1
+    ): List<TrainingMove> {
+        require(level in 0..2)
+        require(availableSeconds >= 0)
+        require(maxMoves in 1..3)
+        if (availableSeconds == 0 || preferences.energy == 0 || preferences.impact == 2) {
+            return emptyList()
+        }
+
+        val hasWarmUp = baseMoves.firstOrNull()?.name == "Khởi động tại chỗ"
+        val hasCoolDown = baseMoves.lastOrNull()?.name in setOf("Thả lỏng", "Giãn cơ và thở chậm")
+        if (baseMoves.size < 4 || !hasWarmUp || !hasCoolDown) return emptyList()
+
+        val catalog = TrainingCatalog.allMoves.associateBy { it.name }
+        val existingNames = baseMoves.map { it.name }.toSet()
+        val usedFamilies = baseMoves.mapNotNull { familyByName[it.name] }.toMutableSet()
+        val available = availableEquipment(preferences)
+        val orderedCandidates = candidates(preferences, level).distinct().sortedByDescending { name ->
+            catalog[name]?.equipmentOptions.orEmpty().any(preferredEquipment::contains)
+        }
+        val transition = WorkoutDurationPlanner.transitionAllowance(level)
+        var budget = availableSeconds.toLong()
+        val selected = mutableListOf<TrainingMove>()
+
+        for (name in orderedCandidates) {
+            if (selected.size >= maxMoves) break
+            if (name in existingNames) continue
+            val move = catalog[name] ?: continue
+            if (!WorkoutConstraintFilter.isAllowed(move, preferences.constraints)) continue
+            if (!TrainingEquipmentAvailability.allows(move, available)) continue
+            if (move.requiresExternalLoad && (level == 0 || preferences.constraints.avoidWristLoad)) continue
+
+            val family = familyByName[name] ?: continue
+            if (!usedFamilies.add(family)) continue
+            val cost = WorkoutDurationPlanner.activeSeconds(move).toLong() +
+                WorkoutDurationPlanner.prescribedRestSeconds(move) + transition
             if (cost > budget) {
                 usedFamilies.remove(family)
                 continue

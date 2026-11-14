@@ -5,6 +5,7 @@ import com.chibialarm.app.TrainingEquipment
 import com.chibialarm.app.TrainingMove
 import com.chibialarm.app.WorkoutConstraintFilter
 import com.chibialarm.app.WorkoutConstraintProfile
+import com.chibialarm.app.WorkoutExtensionPreferences
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -650,4 +651,142 @@ class WorkoutMidSessionPlannerTest {
         assertTrue(request.avoidWristLoad)
     }
 
+    @Test fun explicitChairRequestAddsOneCuratedOptionalMoveBeforeCooldown() {
+        val parsed = WorkoutMidSessionRequest.parse("Tao có ghế vững chắc, thêm một bài")
+        assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
+        val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+        assertTrue(request.addOptionalExercise)
+        assertEquals(setOf(TrainingEquipment.STABLE_CHAIR), request.availableEquipment)
+        assertTrue(request.unavailableEquipment.isEmpty())
+
+        val moves = listOf(
+            move("Khởi động tại chỗ"),
+            move("Squat không tạ"),
+            move("Chống đẩy tường"),
+            move("Thả lỏng")
+        )
+        val result = WorkoutMidSessionPlanner.preview(
+            currentMoves = moves,
+            currentIndex = 1,
+            completedCurrentSets = 0,
+            currentStepLocked = false,
+            constraints = WorkoutConstraintProfile(),
+            request = request,
+            remainingCurrentSeconds = 90,
+            extensionMoveNames = emptySet(),
+            level = 1,
+            extensionPreferences = WorkoutExtensionPreferences(goal = 1)
+        )
+
+        assertTrue(result is WorkoutMidSessionPlanner.Result.Proposed)
+        val preview = (result as WorkoutMidSessionPlanner.Result.Proposed).preview
+        assertEquals(listOf("Nâng gối ngồi ghế"), preview.addedMoves)
+        assertEquals("Thả lỏng", preview.after.last().name)
+        assertTrue(preview.after.any { it.name == "Nâng gối ngồi ghế" })
+        assertEquals(moves.first(), preview.after.first())
+        assertEquals(setOf(TrainingEquipment.STABLE_CHAIR), preview.availableEquipment)
+        assertTrue(preview.extensionMoveNames.contains("Nâng gối ngồi ghế"))
+        assertEquals(preview.after.size, preview.after.map { it.name }.distinct().size)
+    }
+
+    @Test fun unavailableChairIsNeverUsedForAnAddedMove() {
+        val parsed = WorkoutMidSessionRequest.parse("Không có ghế, thêm một bài")
+        assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
+        val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+        assertTrue(request.unavailableEquipment.contains(TrainingEquipment.STABLE_CHAIR))
+        assertFalse(request.availableEquipment.contains(TrainingEquipment.STABLE_CHAIR))
+
+        val result = WorkoutMidSessionPlanner.preview(
+            currentMoves = listOf(
+                move("Khởi động tại chỗ"),
+                move("Squat không tạ"),
+                move("Chống đẩy tường"),
+                move("Thả lỏng")
+            ),
+            currentIndex = 1,
+            completedCurrentSets = 0,
+            currentStepLocked = false,
+            constraints = WorkoutConstraintProfile(),
+            request = request,
+            remainingCurrentSeconds = 90,
+            extensionMoveNames = emptySet(),
+            level = 1,
+            extensionPreferences = WorkoutExtensionPreferences(goal = 1, equipment = 3)
+        )
+        assertTrue(result is WorkoutMidSessionPlanner.Result.Proposed)
+        val preview = (result as WorkoutMidSessionPlanner.Result.Proposed).preview
+        assertEquals(1, preview.addedMoves.size)
+        assertFalse(preview.after.any {
+            TrainingEquipment.STABLE_CHAIR in it.equipmentOptions
+        })
+        assertFalse(preview.availableEquipment.contains(TrainingEquipment.STABLE_CHAIR))
+    }
+
+    @Test fun lowEnergyRequestCannotIncreaseTrainingVolume() {
+        val parsed = WorkoutMidSessionRequest.parse("Tao mệt rồi, thêm một bài với ghế")
+        assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
+        val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+        assertTrue(request.lowEnergy)
+        assertTrue(request.addOptionalExercise)
+        val result = WorkoutMidSessionPlanner.preview(
+            currentMoves = listOf(
+                move("Khởi động tại chỗ"),
+                move("Squat không tạ"),
+                move("Chống đẩy tường"),
+                move("Thả lỏng")
+            ),
+            currentIndex = 1,
+            completedCurrentSets = 0,
+            currentStepLocked = false,
+            constraints = WorkoutConstraintProfile(),
+            request = request,
+            remainingCurrentSeconds = 90,
+            extensionMoveNames = emptySet(),
+            level = 1,
+            extensionPreferences = WorkoutExtensionPreferences(goal = 1)
+        )
+        assertTrue(result is WorkoutMidSessionPlanner.Result.Blocked)
+    }
+
+    @Test fun addedMoveMustFitExplicitRemainingTimeBudget() {
+        val result = WorkoutMidSessionPlanner.preview(
+            currentMoves = listOf(
+                move("Khởi động tại chỗ"),
+                move("Squat không tạ"),
+                move("Chống đẩy tường"),
+                move("Thả lỏng")
+            ),
+            currentIndex = 1,
+            completedCurrentSets = 0,
+            currentStepLocked = false,
+            constraints = WorkoutConstraintProfile(),
+            request = WorkoutMidSessionRequest.Request(
+                remainingMinutes = 5,
+                addOptionalExercise = true,
+                availableEquipment = setOf(TrainingEquipment.STABLE_CHAIR)
+            ),
+            remainingCurrentSeconds = 90,
+            extensionMoveNames = emptySet(),
+            level = 1,
+            extensionPreferences = WorkoutExtensionPreferences(goal = 1)
+        )
+        assertTrue(result is WorkoutMidSessionPlanner.Result.Blocked)
+    }
+
+    @Test fun addRequestAndNewEquipmentAreNotTreatedAsRestOnly() {
+        assertTrue(WorkoutMidSessionRequest.Request(restSeconds = 30).isRestOnly)
+        assertFalse(
+            WorkoutMidSessionRequest.Request(restSeconds = 30, addOptionalExercise = true).isRestOnly
+        )
+        assertFalse(
+            WorkoutMidSessionRequest.Request(
+                restSeconds = 30,
+                availableEquipment = setOf(TrainingEquipment.STABLE_CHAIR)
+            ).isRestOnly
+        )
+        assertSame(
+            WorkoutMidSessionRequest.Result.Unsupported,
+            WorkoutMidSessionRequest.parse("Đừng thêm bài")
+        )
+    }
 }

@@ -9,6 +9,13 @@ object WorkoutMidSessionPreviewFormatter {
 
     fun format(preview: WorkoutMidSessionPlanner.Preview): String = buildString {
         append("Giáo án sau điều chỉnh:\n")
+        if (preview.addedMoves.isNotEmpty()) {
+            append("Bổ sung động tác tùy chọn theo yêu cầu:\n")
+            preview.addedMoves.forEach { added ->
+                append("• Thêm: ").append(added).append('\n')
+            }
+            append("Động tác bổ sung không thay thế hiệp bắt buộc; hãy kiểm tra hướng dẫn trước khi tập.\n\n")
+        }
         if (preview.replacements.isNotEmpty() || preview.removedMoves.isNotEmpty()) {
             append("Thay đổi đề xuất:\n")
             preview.replacements.forEach { replacement ->

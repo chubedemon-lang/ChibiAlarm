@@ -21,6 +21,7 @@ import com.chibialarm.app.fitness.WorkoutMidSessionPlanner
 import com.chibialarm.app.fitness.WorkoutMidSessionRequest
 import com.chibialarm.app.fitness.WorkoutMidSessionPreviewFormatter
 import com.chibialarm.app.TrainingEquipment
+import com.chibialarm.app.WorkoutExtensionPreferences
 import com.chibialarm.app.rpg.RpgDatabase
 import com.chibialarm.app.rpg.RpgEngine
 import com.chibialarm.app.rpg.WorkoutRewardEvidence
@@ -60,6 +61,8 @@ class GuidedWorkoutActivity:Activity() {
     private var pausedForSafety=false
     private var workoutConstraints = WorkoutConstraintProfile()
     private var workoutLevel = 0
+    // Guest-local equipment context; only enum names are checkpointed, never raw speech.
+    private var extensionPreferences = WorkoutExtensionPreferences()
     // Names only: these are optional catalog extensions, not user transcripts.
     private val optionalExtensionNames = mutableSetOf<String>()
     // One spoken cue per exercise; never speak while paused or during microphone input.
@@ -106,6 +109,8 @@ class GuidedWorkoutActivity:Activity() {
             .putBoolean("avoidFloorPositions",workoutConstraints.avoidFloorPositions)
             .putBoolean("avoidOverheadReach",workoutConstraints.avoidOverheadReach)
             .putString("extensionMoves",optionalExtensionNames.sorted().joinToString("\n"))
+            .putInt("extensionEquipment",extensionPreferences.equipment)
+            .putString("additionalEquipment",extensionPreferences.additionalEquipment.sortedBy { it.ordinal }.joinToString(",") { it.name })
             .putString("sessionId",sessionId)
             .putInt("index",index).putLong("remaining",remainingMs.coerceIn(0L,600_000L))
             .putBoolean("safety",pausedForSafety)
@@ -152,6 +157,16 @@ class GuidedWorkoutActivity:Activity() {
             checkpoint.getString("extensionMoves", "").orEmpty().split("\n")
                 .filter { name -> name.isNotBlank() && moves.any { it.name == name } }
                 .take(20)
+        )
+        val restoredEquipment = checkpoint.getInt("extensionEquipment", extensionPreferences.equipment).coerceIn(0, 3)
+        val restoredAdditionalEquipment = checkpoint.getString("additionalEquipment", "").orEmpty()
+            .split(',')
+            .mapNotNull { raw -> TrainingEquipment.values().firstOrNull { it.name == raw } }
+            .toSet()
+        extensionPreferences = extensionPreferences.copy(
+            equipment = restoredEquipment,
+            additionalEquipment = restoredAdditionalEquipment,
+            constraints = workoutConstraints
         )
         val savedFingerprint = checkpoint.getString("planFingerprint", null)
         if ((savedFingerprint != null && savedFingerprint != currentPlanFingerprint()) ||
@@ -323,13 +338,22 @@ class GuidedWorkoutActivity:Activity() {
         val level=intent.getIntExtra("level",0).coerceIn(0,2)
         workoutLevel = level
         val minutes=WorkoutDurationChoices.guidedMinutes(intent.getIntExtra("minutes",15))
-        val extensionPreferences = WorkoutExtensionPreferences(
+        extensionPreferences = WorkoutExtensionPreferences(
             goal = intent.getIntExtra("extension_goal", 0).coerceIn(0, 5),
             energy = intent.getIntExtra("extension_energy", 1).coerceIn(0, 2),
             equipment = intent.getIntExtra("extension_equipment", 0).coerceIn(0, 3),
             impact = intent.getIntExtra("extension_impact", 0).coerceIn(0, 2),
             constraints = workoutConstraints
         )
+        savedInstanceState?.let { state ->
+            val additional = state.getStringArrayList("workout_additional_equipment")
+                ?.mapNotNull { raw -> TrainingEquipment.values().firstOrNull { it.name == raw } }
+                ?.toSet() ?: extensionPreferences.additionalEquipment
+            extensionPreferences = extensionPreferences.copy(
+                equipment = state.getInt("workout_extension_equipment", extensionPreferences.equipment).coerceIn(0, 3),
+                additionalEquipment = additional
+            )
+        }
         val planned=WorkoutDurationPlanner.build(program,level,minutes,extensionPreferences)
         moves=planned.moves
         originalMoves=moves.toList()
@@ -591,6 +615,11 @@ class GuidedWorkoutActivity:Activity() {
         outState.putBoolean("workout_avoid_floor_positions",workoutConstraints.avoidFloorPositions)
         outState.putBoolean("workout_avoid_overhead_reach",workoutConstraints.avoidOverheadReach)
         outState.putStringArrayList("workout_extension_names",ArrayList(optionalExtensionNames))
+        outState.putInt("workout_extension_equipment",extensionPreferences.equipment)
+        outState.putStringArrayList(
+            "workout_additional_equipment",
+            ArrayList(extensionPreferences.additionalEquipment.map { it.name })
+        )
         outState.putString("workout_plan_fingerprint",currentPlanFingerprint())
         outState.putString("workout_session_id",sessionId)
         outState.putString("workout_rep_targets",repTargets.entries.joinToString(",") { "${it.key}:${it.value}" })
@@ -824,7 +853,8 @@ class GuidedWorkoutActivity:Activity() {
             request = request,
             remainingCurrentSeconds = ((beforeRemaining + 999L) / 1000L).coerceIn(0L, 3_600L).toInt(),
             extensionMoveNames = optionalExtensionNames,
-            level = workoutLevel
+            level = workoutLevel,
+            extensionPreferences = extensionPreferences
         )
 
         when (result) {
@@ -842,6 +872,21 @@ class GuidedWorkoutActivity:Activity() {
                     if (preview.replacements.isNotEmpty()) {
                         append("Thay động tác:\n")
                         preview.replacements.forEach { append("• ").append(it).append("\n") }
+                    }
+                    if (preview.addedMoves.isNotEmpty()) {
+                        append("Thêm bài tùy chọn:\n")
+                        preview.addedMoves.forEach { append("• ").append(it).append("\n") }
+                    }
+                    if (request.availableEquipment.isNotEmpty()) {
+                        val newTools = request.availableEquipment.sortedBy { it.ordinal }.joinToString(", ") {
+                            when (it) {
+                                TrainingEquipment.DUMBBELL -> "tạ đơn"
+                                TrainingEquipment.RESISTANCE_BAND -> "dây kháng lực"
+                                TrainingEquipment.STABLE_CHAIR -> "ghế vững"
+                                TrainingEquipment.MAT -> "thảm tập"
+                            }
+                        }
+                        append("\nGhi nhận dụng cụ có sẵn: $newTools.")
                     }
                     if (preview.removedMoves.isNotEmpty()) {
                         append("\nBỏ các bước chưa bắt đầu:\n")
@@ -915,6 +960,11 @@ class GuidedWorkoutActivity:Activity() {
                         workoutConstraints = WorkoutMidSessionPlanner.effectiveConstraints(
                             workoutConstraints,
                             request
+                        )
+                        extensionPreferences = extensionPreferences.copy(
+                            equipment = 0,
+                            additionalEquipment = preview.availableEquipment,
+                            constraints = workoutConstraints
                         )
                         if (preview.currentMoveChanged) {
                             remainingMs = minOf(

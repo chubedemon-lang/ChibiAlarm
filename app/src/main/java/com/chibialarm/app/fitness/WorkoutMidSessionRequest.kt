@@ -28,7 +28,9 @@ object WorkoutMidSessionRequest {
         val unavailableEquipment: Set<TrainingEquipment> = emptySet(),
         // Appended to preserve the positional constructor order used by older call sites.
         val avoidOverheadReach: Boolean = false,
-        val allowOverheadReach: Boolean = false
+        val allowOverheadReach: Boolean = false,
+        val addOptionalExercise: Boolean = false,
+        val availableEquipment: Set<TrainingEquipment> = emptySet()
     ) {
         init {
             require(remainingMinutes == null || remainingMinutes in 5..120)
@@ -51,6 +53,8 @@ object WorkoutMidSessionRequest {
                 !allowFloorPositions &&
                 !avoidOverheadReach &&
                 !allowOverheadReach &&
+                !addOptionalExercise &&
+                availableEquipment.isEmpty() &&
                 unavailableEquipment.isEmpty()
     }
 
@@ -158,6 +162,32 @@ object WorkoutMidSessionRequest {
         }
         val avoidExternalLoad = noEquipment || noBothExternalLoads ||
             (noDumbbell && noResistanceBand)
+        // Only positively stated tools are added. A negated mention always wins.
+        val availableEquipment = if (noEquipment) emptySet() else buildSet {
+            if (!noStableChair && has(
+                    "co ghe", "ghe vung chac", "ghe chac chan", "ghe khong banh xe",
+                    "co ghe vung chac", "dung ghe vung"
+                )
+            ) add(TrainingEquipment.STABLE_CHAIR)
+            if (!noMat && has("co tham tap", "co tham", "dung tham tap")) {
+                add(TrainingEquipment.MAT)
+            }
+            if (!noDumbbell && has("co ta don", "co ta nhe", "co ta", "dung ta")) {
+                add(TrainingEquipment.DUMBBELL)
+            }
+            if (!noResistanceBand && has(
+                    "co day khang luc", "co day tap", "dung day khang luc"
+                )
+            ) add(TrainingEquipment.RESISTANCE_BAND)
+        }
+        val explicitlyNoAdd = has(
+            "khong them bai", "khong them bai tap", "khong can them bai",
+            "dung them bai", "dung them dong tac"
+        )
+        val addOptionalExercise = !explicitlyNoAdd && has(
+            "them mot bai", "them 1 bai", "them bai", "them bai tap",
+            "them mot dong tac", "them 1 dong tac", "them dong tac"
+        )
 
         val hasRestRequest = Regex("""\b(nghi|rest)\b""").containsMatchIn(text)
         val explicitRest = if (hasRestRequest) WorkoutRestRequest.seconds(input) else null
@@ -167,6 +197,7 @@ object WorkoutMidSessionRequest {
             !allowWristLoad && !allowFloorPositions &&
             !avoidOverheadReach && !allowOverheadReach &&
             !preferEasier && restSeconds == null && !avoidExternalLoad &&
+            !addOptionalExercise && availableEquipment.isEmpty() &&
             unavailableEquipment.isEmpty()
         ) return Result.Unsupported
 
@@ -183,7 +214,9 @@ object WorkoutMidSessionRequest {
                 allowFloorPositions = allowFloorPositions,
                 avoidOverheadReach = avoidOverheadReach,
                 allowOverheadReach = allowOverheadReach,
-                unavailableEquipment = unavailableEquipment
+                unavailableEquipment = unavailableEquipment,
+                addOptionalExercise = addOptionalExercise,
+                availableEquipment = availableEquipment
             )
         )
     }

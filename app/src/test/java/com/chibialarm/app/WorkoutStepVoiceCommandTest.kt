@@ -22,6 +22,20 @@ class WorkoutStepVoiceCommandTest {
         assertEquals(WorkoutStepVoiceCommand.Command.UNKNOWN, WorkoutStepVoiceCommand.parse("đầu gối hướng về phía trước"))
     }
 
+    @Test fun recognizesExplicitRestExtensionWithoutTreatingNegationAsACommand() {
+        assertEquals(WorkoutStepVoiceCommand.Command.REST, WorkoutStepVoiceCommand.parse("Nghỉ thêm 30 giây"))
+        assertEquals(WorkoutStepVoiceCommand.Command.REST, WorkoutStepVoiceCommand.parse("nghi them 1 phut"))
+        assertEquals(WorkoutStepVoiceCommand.Command.REST, WorkoutStepVoiceCommand.parse("extend rest 45 seconds"))
+        assertEquals(WorkoutStepVoiceCommand.Command.UNKNOWN, WorkoutStepVoiceCommand.parse("không nghỉ thêm"))
+    }
+
+    @Test fun safetyOverridesRestExtension() {
+        assertEquals(
+            WorkoutStepVoiceCommand.Command.SAFETY,
+            WorkoutStepVoiceCommand.parse("nghỉ thêm 30 giây nhưng tôi khó thở")
+        )
+    }
+
     @Test fun incompleteOrUnrelatedPhrasesDoNotMoveTheGuide() {
         assertEquals(WorkoutStepVoiceCommand.Command.UNKNOWN, WorkoutStepVoiceCommand.parse("tiếp tục tập"))
         assertEquals(WorkoutStepVoiceCommand.Command.UNKNOWN, WorkoutStepVoiceCommand.parse("nói to hơn"))

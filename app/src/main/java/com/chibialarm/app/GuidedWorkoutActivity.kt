@@ -765,7 +765,7 @@ class GuidedWorkoutActivity:Activity() {
     private fun requestGuideVoiceCommand(onResult:(String)->Unit) {
         guideVoiceResultHandler = onResult
         val disclosure = AlertDialog.Builder(this).setTitle("🎤 Điều khiển hướng dẫn bằng giọng nói")
-            .setMessage("Chỉ mở micro sau khi bạn nhấn Bắt đầu nghe. Android sẽ hỏi quyền micro nếu cần. Dịch vụ nhận dạng của máy có thể xử lý âm thanh trực tuyến tùy nhà cung cấp. Chibi chỉ dùng câu nhận dạng để chuyển bước, đọc lại hoặc đóng hướng dẫn; không ghi âm nền và không lưu bản ghi hay bản chép lời. Bạn có thể hủy và tiếp tục dùng nút trên màn hình.")
+            .setMessage("Chỉ mở micro sau khi bạn nhấn Bắt đầu nghe. Android sẽ hỏi quyền micro nếu cần. Dịch vụ nhận dạng của máy có thể xử lý âm thanh trực tuyến tùy nhà cung cấp. Chibi chỉ dùng câu nhận dạng để chuyển bước, đọc lại, yêu cầu nghỉ hoặc đóng hướng dẫn; không ghi âm nền và không lưu bản ghi hay bản chép lời. Bạn có thể hủy và tiếp tục dùng nút trên màn hình.")
             .setPositiveButton("Bắt đầu nghe"){_,_->
                 pause()
                 spoken?.stop()
@@ -1874,8 +1874,8 @@ class GuidedWorkoutActivity:Activity() {
         }
         val voiceButton = Button(this).apply {
             tag = "workout-step-voice-control"
-            text = "🎤 Nói: bước tiếp, bước trước, đọc lại"
-            contentDescription = "Mở nhận dạng giọng nói sau khi xác nhận quyền micro để điều khiển các bước hướng dẫn"
+            text = "🎤 Nói: bước tiếp, bước trước, đọc lại, nghỉ thêm"
+            contentDescription = "Mở nhận dạng giọng nói sau khi xác nhận quyền micro để chuyển bước, đọc lại, yêu cầu nghỉ hoặc đóng hướng dẫn"
         }
         container.addView(illustration, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
@@ -1954,6 +1954,10 @@ class GuidedWorkoutActivity:Activity() {
                             ?: WorkoutStepGuide.spokenCue(move.name,move.steps,walkthrough.position)
                         speak(cue)
                     }
+                    WorkoutStepVoiceCommand.Command.REST -> {
+                        val seconds = WorkoutRestRequest.seconds(phrase)
+                        if (resting) confirmRestExtension(seconds) else confirmExtraRest(seconds)
+                    }
                     WorkoutStepVoiceCommand.Command.CLOSE -> {
                         spoken?.stop()
                         dialog.dismiss()
@@ -1964,33 +1968,10 @@ class GuidedWorkoutActivity:Activity() {
                     }
                     WorkoutStepVoiceCommand.Command.UNKNOWN -> {
                         AlertDialog.Builder(this).setTitle("Chibi chưa hiểu lệnh")
-                            .setMessage("Bạn có thể nói: bước tiếp, bước trước, đọc lại hoặc đóng hướng dẫn. Nếu đau, khó thở hay khó chịu, hãy nói rõ để Chibi dừng buổi tập.")
+                            .setMessage("Bạn có thể nói: bước tiếp, bước trước, đọc lại, nghỉ thêm 30 giây hoặc đóng hướng dẫn. Nếu đau, khó thở hay khó chịu, Chibi sẽ dừng buổi tập.")
                             .setPositiveButton("Đã hiểu",null).show()
                     }
                 }
-            }
-        }
-        dialog.setOnShowListener {
-            renderStep()
-            previousButton.setOnClickListener {
-                walkthrough = walkthrough.previous()
-                spoken?.stop()
-                renderStep()
-            }
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                if (walkthrough.canGoNext) {
-                    walkthrough = walkthrough.next()
-                    spoken?.stop()
-                    renderStep()
-                }
-            }
-            dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
-                val cue = lastGuideStepCue
-                    ?.takeIf { it.moveIndex == index }
-                    ?.speech
-                    ?: WorkoutStepGuide.spokenCue(move.name, move.steps, walkthrough.position)
-                lastGuideStepCue = WorkoutStepGuide.SelectedCue(index, cue)
-                speak(cue)
             }
         }
         // Register before show so every dismissal path restores the background animator.
@@ -2001,6 +1982,29 @@ class GuidedWorkoutActivity:Activity() {
             poseView.motionEnabled = true
         }
         dialog.show()
+        // AlertDialog creates its buttons during show. Install listeners synchronously
+        // afterwards so the guide behaves identically on Android and Robolectric.
+        renderStep()
+        previousButton.setOnClickListener {
+            walkthrough = walkthrough.previous()
+            spoken?.stop()
+            renderStep()
+        }
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            if (walkthrough.canGoNext) {
+                walkthrough = walkthrough.next()
+                spoken?.stop()
+                renderStep()
+            }
+        }
+        dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
+            val cue = lastGuideStepCue
+                ?.takeIf { it.moveIndex == index }
+                ?.speech
+                ?: WorkoutStepGuide.spokenCue(move.name, move.steps, walkthrough.position)
+            lastGuideStepCue = WorkoutStepGuide.SelectedCue(index, cue)
+            speak(cue)
+        }
     }
 
     private fun renderDose() {

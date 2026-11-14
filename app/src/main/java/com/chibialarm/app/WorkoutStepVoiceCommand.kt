@@ -5,7 +5,7 @@ import java.util.Locale
 
 /** Small offline command grammar for the step-by-step guide; no transcript is retained. */
 object WorkoutStepVoiceCommand {
-    enum class Command { NEXT, PREVIOUS, REPEAT, CLOSE, SAFETY, UNKNOWN }
+    enum class Command { NEXT, PREVIOUS, REPEAT, REST, CLOSE, SAFETY, UNKNOWN }
 
     private fun containsPhrase(text: String, phrase: String): Boolean =
         Regex("(^|\\s)" + Regex.escape(phrase) + "(\\s|$)").containsMatchIn(text)
@@ -31,6 +31,10 @@ object WorkoutStepVoiceCommand {
         if (listOf("kho tho", "choang", "chong mat", "tuc nguc", "kho chiu")
                 .any { containsPhrase(normalized, it) }) return Command.SAFETY
 
+        if (listOf("khong nghi them", "dung nghi them", "khong them thoi gian nghi")
+                .any { normalized.contains(it) }) return Command.UNKNOWN
+        if (listOf("nghi them", "them thoi gian nghi", "keo dai thoi gian nghi", "rest more", "extend rest")
+                .any { normalized.contains(it) }) return Command.REST
         if (listOf("buoc tiep", "tiep theo", "buoc sau", "sang buoc", "next step")
                 .any { normalized.contains(it) }) return Command.NEXT
         if (listOf("buoc truoc", "quay lai", "lui lai", "previous step")

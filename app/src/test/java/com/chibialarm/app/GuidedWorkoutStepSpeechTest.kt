@@ -2,6 +2,7 @@ package com.chibialarm.app
 
 import android.app.AlertDialog
 import android.content.Context
+import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
@@ -13,6 +14,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.shadows.ShadowAlertDialog
@@ -41,6 +43,7 @@ class GuidedWorkoutStepSpeechTest {
             GuidedWorkoutActivity::class.java.getDeclaredMethod("showStepByStepGuide")
                 .apply { isAccessible = true }
                 .invoke(activity)
+            shadowOf(Looper.getMainLooper()).idle()
 
             val dialog = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
             val root = dialog.window!!.decorView
@@ -50,6 +53,7 @@ class GuidedWorkoutStepSpeechTest {
 
             assertFalse("Auto narration must be off until the user opts in", toggle.isChecked)
             assertTrue(label.text.toString().startsWith("Bước 1/"))
+            assertTrue("The first exercise must expose a next step", dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled)
 
             voiceButton.performClick()
             val consent = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
@@ -58,17 +62,20 @@ class GuidedWorkoutStepSpeechTest {
             assertTrue(disclosure.text.toString().contains("Android sẽ hỏi quyền micro"))
             assertTrue(disclosure.text.toString().contains("không lưu bản ghi"))
             consent.getButton(AlertDialog.BUTTON_NEGATIVE).performClick()
+            shadowOf(Looper.getMainLooper()).idle()
             assertTrue("Cancelling voice consent must leave the guide open", dialog.isShowing)
 
             toggle.performClick()
             assertTrue(toggle.isChecked)
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+            shadowOf(Looper.getMainLooper()).idle()
             assertTrue(label.text.toString().startsWith("Bước 2/"))
             assertTrue("Opt-in remains active while navigating", toggle.isChecked)
 
             toggle.performClick()
             assertFalse(toggle.isChecked)
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+            shadowOf(Looper.getMainLooper()).idle()
             assertTrue(label.text.toString().startsWith("Bước 3/"))
             assertFalse(toggle.isChecked)
             dialog.dismiss()

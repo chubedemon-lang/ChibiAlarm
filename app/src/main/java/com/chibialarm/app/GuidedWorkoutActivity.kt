@@ -2295,7 +2295,14 @@ class GuidedWorkoutActivity:Activity() {
                         "Nếu đau, khó thở hoặc chóng mặt, hãy nói rõ để Chibi dừng buổi tập. " +
                         "Câu chưa rõ sẽ không được ghi nhận."
                 )
-                .setPositiveButton("Thử lại", null)
+                .setPositiveButton("Thử lại") { _, _ ->
+                    requestEffortVoiceCommand { phrase ->
+                        handleEffortVoiceCheckIn(
+                            selectedIndex, selectedSessionId, completedSets, plan,
+                            hasNextSet, checkInDialog, phrase
+                        )
+                    }
+                }
                 .setNegativeButton("Chọn bằng nút", null)
                 .show()
         }

@@ -6,6 +6,8 @@ import android.content.*
 import android.net.Uri
 import android.provider.Settings
 import android.speech.RecognizerIntent
+import android.Manifest
+import android.content.pm.PackageManager
 import android.view.WindowInsets
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
@@ -291,6 +293,11 @@ class GuidedWorkoutActivity:Activity() {
     private val videoPrefs by lazy { getSharedPreferences("workout_videos",0) }
     private val pickVideoRequest=889
     private val voiceRequest=890
+    private val guideVoiceRequest=891
+    private val microphonePermissionRequest=892
+    private var pendingRecognitionRequestCode:Int?=null
+    // Callback exists only while the step-guide dialog is open; raw transcripts are never persisted.
+    private var guideVoiceResultHandler:((String)->Unit)?=null
     private val tick=object:Runnable {
         override fun run() {
             if(paused)return
@@ -688,22 +695,86 @@ class GuidedWorkoutActivity:Activity() {
         outState.putLong("workout_elapsed",activeElapsedMs())
         super.onSaveInstanceState(outState)
     }
+    /**
+     * Request RECORD_AUDIO only after the user has read the in-app disclosure and tapped
+     * the explicit listen button. Recognition is delegated to Android's speech service.
+     */
+    private fun requestRecognitionPermissionOrStart(requestCode:Int) {
+        val granted = Build.VERSION.SDK_INT < Build.VERSION_CODES.M ||
+            checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+        if (granted) {
+            launchSpeechRecognition(requestCode)
+        } else {
+            pendingRecognitionRequestCode = requestCode
+            requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), microphonePermissionRequest)
+        }
+    }
+
+    private fun launchSpeechRecognition(requestCode:Int) {
+        val guideRequest = requestCode == guideVoiceRequest
+        val request=Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE,"vi-VN")
+            putExtra(
+                RecognizerIntent.EXTRA_PROMPT,
+                if (guideRequest) "Nói: bước tiếp, bước trước, đọc lại hoặc đóng hướng dẫn. Nếu đau hay khó thở, hãy nói rõ."
+                else "Ví dụ: tôi đã làm 10 lần, tôi giữ 20 giây, xong hiệp, bài này khó quá, nghỉ thêm, đổi bài, dừng lại"
+            )
+        }
+        try {
+            startActivityForResult(request,requestCode)
+        } catch (_:Exception) {
+            if (guideRequest) guideVoiceResultHandler = null
+            Toast.makeText(this,"Thiết bị chưa có dịch vụ nhận giọng nói. Hãy nhập yêu cầu bằng chữ.",Toast.LENGTH_LONG).show()
+        }
+    }
+
+    @Deprecated("Android permission callback compatibility")
+    override fun onRequestPermissionsResult(
+        requestCode:Int,
+        permissions:Array<out String>,
+        grantResults:IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode,permissions,grantResults)
+        if (requestCode != microphonePermissionRequest) return
+        val target = pendingRecognitionRequestCode
+        pendingRecognitionRequestCode = null
+        if (target != null && grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) {
+            launchSpeechRecognition(target)
+        } else {
+            if (target == guideVoiceRequest) guideVoiceResultHandler = null
+            Toast.makeText(
+                this,
+                "Micro chưa được cấp quyền. Bạn vẫn có thể điều khiển buổi tập bằng chữ; có thể bật quyền trong Cài đặt ứng dụng.",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
     private fun requestVoiceCommand() {
         AlertDialog.Builder(this).setTitle("🎤 Điều khiển bằng giọng nói")
-            .setMessage("Chỉ bắt đầu nghe sau khi bạn nhấn Tiếp tục. Android sẽ mở dịch vụ nhận dạng giọng nói của máy; tùy nhà cung cấp, âm thanh có thể được xử lý trực tuyến. Chibi không tự bật micro và không lưu bản ghi âm. Bạn cũng có thể nhập chữ thay thế.")
+            .setMessage("Chỉ bắt đầu nghe sau khi bạn nhấn Tiếp tục. Android sẽ hỏi quyền micro nếu đây là lần đầu. Dịch vụ nhận dạng của máy có thể xử lý âm thanh trực tuyến tùy nhà cung cấp. Chibi không ghi âm nền và không lưu bản ghi hoặc câu nhận dạng. Bạn cũng có thể nhập yêu cầu bằng chữ.")
             .setPositiveButton("Tiếp tục"){_,_->
                 // A voice command must never compete with spoken instructions or a running timer.
-                // Keep the workout paused even if recognition is cancelled or unavailable.
                 pause()
                 spoken?.stop()
-                val request=Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                    putExtra(RecognizerIntent.EXTRA_LANGUAGE,"vi-VN")
-                    putExtra(RecognizerIntent.EXTRA_PROMPT,"Ví dụ: tôi đã làm 10 lần, tôi giữ 20 giây, xong hiệp, bài này khó quá, không theo kịp, nghỉ thêm, đổi bài, dừng lại")
-                }
-                try { startActivityForResult(request,voiceRequest) }
-                catch (_:Exception) { Toast.makeText(this,"Thiết bị chưa có dịch vụ nhận giọng nói. Hãy nhập yêu cầu bằng chữ.",Toast.LENGTH_LONG).show() }
+                requestRecognitionPermissionOrStart(voiceRequest)
             }.setNegativeButton("Hủy",null).show()
+    }
+
+    private fun requestGuideVoiceCommand(onResult:(String)->Unit) {
+        guideVoiceResultHandler = onResult
+        val disclosure = AlertDialog.Builder(this).setTitle("🎤 Điều khiển hướng dẫn bằng giọng nói")
+            .setMessage("Chỉ mở micro sau khi bạn nhấn Bắt đầu nghe. Android sẽ hỏi quyền micro nếu cần. Dịch vụ nhận dạng của máy có thể xử lý âm thanh trực tuyến tùy nhà cung cấp. Chibi chỉ dùng câu nhận dạng để chuyển bước, đọc lại hoặc đóng hướng dẫn; không ghi âm nền và không lưu bản ghi hay bản chép lời. Bạn có thể hủy và tiếp tục dùng nút trên màn hình.")
+            .setPositiveButton("Bắt đầu nghe"){_,_->
+                pause()
+                spoken?.stop()
+                requestRecognitionPermissionOrStart(guideVoiceRequest)
+            }
+            .setNegativeButton("Hủy"){_,_->guideVoiceResultHandler=null}
+            .create()
+        disclosure.setOnCancelListener { guideVoiceResultHandler=null }
+        disclosure.show()
     }
     private fun requestTypedCommand() {
         val field=EditText(this).apply { hint="Ví dụ: tôi đã làm 10 lần, xong hiệp, bài này khó quá, không theo kịp, hướng dẫn từng bước, đọc tiến độ, đổi bài, nghỉ thêm";setSingleLine(false) }
@@ -1653,6 +1724,17 @@ class GuidedWorkoutActivity:Activity() {
     @Deprecated("Android activity result compatibility")
     override fun onActivityResult(requestCode:Int,resultCode:Int,data:Intent?) {
         super.onActivityResult(requestCode,resultCode,data)
+        if (requestCode == guideVoiceRequest) {
+            val callback = guideVoiceResultHandler
+            guideVoiceResultHandler = null
+            val phrase = data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
+            if (resultCode == RESULT_OK && !phrase.isNullOrBlank()) {
+                callback?.invoke(phrase)
+            } else if (resultCode != RESULT_OK) {
+                Toast.makeText(this,"Đã hủy nhận giọng nói; buổi tập vẫn tạm dừng.",Toast.LENGTH_SHORT).show()
+            }
+            return
+        }
         if(requestCode==voiceRequest && resultCode==RESULT_OK) {
             val phrase=data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
             if (!phrase.isNullOrBlank()) {
@@ -1790,6 +1872,11 @@ class GuidedWorkoutActivity:Activity() {
             contentDescription = "Quay lại bước hướng dẫn trước"
             isEnabled = false
         }
+        val voiceButton = Button(this).apply {
+            tag = "workout-step-voice-control"
+            text = "🎤 Nói: bước tiếp, bước trước, đọc lại"
+            contentDescription = "Mở nhận dạng giọng nói sau khi xác nhận quyền micro để điều khiển các bước hướng dẫn"
+        }
         container.addView(illustration, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
             (140 * resources.displayMetrics.density).toInt()
@@ -1797,6 +1884,7 @@ class GuidedWorkoutActivity:Activity() {
         container.addView(phaseCaption)
         container.addView(stepProgress)
         container.addView(autoSpeakToggle)
+        container.addView(voiceButton)
         container.addView(previousButton)
         container.addView(ScrollView(this).apply {
             addView(label)
@@ -1839,6 +1927,49 @@ class GuidedWorkoutActivity:Activity() {
                 lastGuideStepCue?.speech?.let(::speak)
             }
         }
+        // Populate the first step before the dialog is attached. This also keeps
+        // accessibility text available to Robolectric and screen readers immediately.
+        renderStep()
+        voiceButton.setOnClickListener {
+            requestGuideVoiceCommand { phrase ->
+                when (WorkoutStepVoiceCommand.parse(phrase)) {
+                    WorkoutStepVoiceCommand.Command.NEXT -> {
+                        if (walkthrough.canGoNext) {
+                            spoken?.stop()
+                            walkthrough = walkthrough.next()
+                            renderStep()
+                        } else Toast.makeText(this,"Đã ở bước cuối của hướng dẫn.",Toast.LENGTH_SHORT).show()
+                    }
+                    WorkoutStepVoiceCommand.Command.PREVIOUS -> {
+                        if (walkthrough.canGoPrevious) {
+                            spoken?.stop()
+                            walkthrough = walkthrough.previous()
+                            renderStep()
+                        } else Toast.makeText(this,"Đã ở bước đầu của hướng dẫn.",Toast.LENGTH_SHORT).show()
+                    }
+                    WorkoutStepVoiceCommand.Command.REPEAT -> {
+                        val cue = lastGuideStepCue
+                            ?.takeIf { it.moveIndex == index }
+                            ?.speech
+                            ?: WorkoutStepGuide.spokenCue(move.name,move.steps,walkthrough.position)
+                        speak(cue)
+                    }
+                    WorkoutStepVoiceCommand.Command.CLOSE -> {
+                        spoken?.stop()
+                        dialog.dismiss()
+                    }
+                    WorkoutStepVoiceCommand.Command.SAFETY -> {
+                        dialog.dismiss()
+                        stopForSafety()
+                    }
+                    WorkoutStepVoiceCommand.Command.UNKNOWN -> {
+                        AlertDialog.Builder(this).setTitle("Chibi chưa hiểu lệnh")
+                            .setMessage("Bạn có thể nói: bước tiếp, bước trước, đọc lại hoặc đóng hướng dẫn. Nếu đau, khó thở hay khó chịu, hãy nói rõ để Chibi dừng buổi tập.")
+                            .setPositiveButton("Đã hiểu",null).show()
+                    }
+                }
+            }
+        }
         dialog.setOnShowListener {
             renderStep()
             previousButton.setOnClickListener {
@@ -1865,6 +1996,7 @@ class GuidedWorkoutActivity:Activity() {
         // Register before show so every dismissal path restores the background animator.
         dialog.setOnDismissListener {
             spoken?.stop()
+            guideVoiceResultHandler = null
             illustration.onPhaseChanged = null
             poseView.motionEnabled = true
         }

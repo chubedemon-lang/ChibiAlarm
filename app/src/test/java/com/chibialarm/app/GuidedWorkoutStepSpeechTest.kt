@@ -4,6 +4,7 @@ import android.app.AlertDialog
 import android.content.Context
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
 import android.widget.CheckBox
 import android.widget.TextView
 import org.junit.Assert.assertFalse
@@ -45,9 +46,19 @@ class GuidedWorkoutStepSpeechTest {
             val root = dialog.window!!.decorView
             val toggle = findTagged(root, "workout-step-auto-speak") as CheckBox
             val label = findTagged(root, "workout-step-label") as TextView
+            val voiceButton = findTagged(root, "workout-step-voice-control") as Button
 
             assertFalse("Auto narration must be off until the user opts in", toggle.isChecked)
             assertTrue(label.text.toString().startsWith("Bước 1/"))
+
+            voiceButton.performClick()
+            val consent = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
+            assertTrue(consent.getButton(AlertDialog.BUTTON_POSITIVE).text.toString().contains("nghe"))
+            val disclosure = consent.findViewById<TextView>(android.R.id.message)
+            assertTrue(disclosure.text.toString().contains("Android sẽ hỏi quyền micro"))
+            assertTrue(disclosure.text.toString().contains("không lưu bản ghi"))
+            consent.getButton(AlertDialog.BUTTON_NEGATIVE).performClick()
+            assertTrue("Cancelling voice consent must leave the guide open", dialog.isShowing)
 
             toggle.performClick()
             assertTrue(toggle.isChecked)

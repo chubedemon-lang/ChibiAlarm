@@ -12,6 +12,8 @@ object GeminiService {
         val conn=(URL(ROOT+path).openConnection() as HttpsURLConnection).apply {
             requestMethod=if(body==null) "GET" else "POST"
             connectTimeout=15000;readTimeout=45000
+            // Do not forward a user-entered BYOK credential to a redirected host.
+            instanceFollowRedirects = false
             setRequestProperty("x-goog-api-key",key)
             setRequestProperty("Accept","application/json")
             if(body!=null) { doOutput=true;setRequestProperty("Content-Type","application/json; charset=utf-8") }
@@ -19,8 +21,22 @@ object GeminiService {
         try {
             if(body!=null) conn.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
             val status=conn.responseCode
+            // Bound the complete upstream response before JSON parsing. A remote
+            // server must not be able to exhaust app memory with an oversized body.
             val text=(if(status in 200..299) conn.inputStream else conn.errorStream)
-                ?.bufferedReader()?.use { it.readText() } ?: ""
+                ?.bufferedReader()?.use { reader ->
+                    val output = StringBuilder()
+                    val chunk = CharArray(4096)
+                    while (true) {
+                        val read = reader.read(chunk)
+                        if (read < 0) break
+                        if (output.length + read > 65536) {
+                            throw IllegalStateException("Gemini response too large")
+                        }
+                        output.append(chunk, 0, read)
+                    }
+                    output.toString()
+                } ?: ""
             if(status !in 200..299) {
                 val detail=try { JSONObject(text).optJSONObject("error")?.optString("message") } catch(_:Exception) { null }
                 val hint=when(status) {

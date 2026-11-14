@@ -12,26 +12,146 @@ import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.*
 
-data class Workout(val date:String,val name:String,val minutes:Int,val note:String)
+data class Workout(
+    val date:String,
+    val name:String,
+    val minutes:Int,
+    val note:String,
+    val sessionId:String = "",
+    val completedMoves:Int = 0,
+    val selfReportedSets:Int = 0,
+    /** Bounded, self-reported per-set values; empty for legacy/manual entries. */
+    val setLog:String = "",
+    /** Optional per-set subjective effort labels; empty for legacy/manual entries. */
+    val effortLog:String = ""
+)
+
 object WorkoutData {
-    private fun prefs(ctx:Context)=ctx.getSharedPreferences("workouts_v12",Context.MODE_PRIVATE)
-    fun history(ctx:Context):List<Workout> {
+    private val lock = Any()
+    private const val GUEST_PREFERENCES = "workouts_v12"
+
+    private fun prefs(ctx: Context, name: String = GUEST_PREFERENCES) =
+        ctx.getSharedPreferences(name, Context.MODE_PRIVATE)
+
+    /**
+     * Names an app-private Fitness journal for one VERIFIED identity subject.
+     *
+     * Obtain verifiedSubject only from a trusted backend identity verifier. Never pass a
+     * display name, email, editable field, Intent extra or unverified token claim.
+     * This partitions local storage; it does not authenticate the caller or encrypt data.
+     */
+    internal fun accountPreferencesName(verifiedSubject: String): String {
+        val databaseFile = com.chibialarm.app.rpg.RpgDatabase.accountDatabaseFile(verifiedSubject)
+        val digest = databaseFile.removePrefix("chibi_rpg_account_").removeSuffix(".db")
+        check(digest.matches(Regex("[0-9a-f]{64}"))) { "Unexpected verified-account namespace" }
+        return "workouts_account_" + digest + "_v1"
+    }
+
+    private fun accountPrefs(ctx: Context, verifiedSubject: String) =
+        prefs(ctx, accountPreferencesName(verifiedSubject))
+
+    /** Null means the stored journal is malformed; callers must not replace it silently. */
+    private fun readHistory(source: android.content.SharedPreferences): List<Workout>? {
         return try {
-            val arr=JSONArray(prefs(ctx).getString("history","[]"))
-            (0 until arr.length()).map { i->
-                val o=arr.getJSONObject(i)
-                Workout(o.optString("date"),o.optString("name"),o.optInt("minutes"),o.optString("note"))
+            val arr = JSONArray(source.getString("history", "[]"))
+            (0 until arr.length()).map { i ->
+                val o = arr.getJSONObject(i)
+                Workout(
+                    o.optString("date"),
+                    o.optString("name"),
+                    o.optInt("minutes"),
+                    o.optString("note"),
+                    o.optString("sessionId"),
+                    o.optInt("completedMoves", 0),
+                    o.optInt("selfReportedSets", 0),
+                    o.optString("setLog", ""),
+                    o.optString("effortLog", "")
+                )
             }
-        }catch(_:Exception){ emptyList() }
+        } catch (_: Exception) { null }
     }
-    fun save(ctx:Context,items:List<Workout>) {
-        val arr=JSONArray()
-        items.forEach {
-            arr.put(JSONObject().put("date",it.date).put("name",it.name)
-                .put("minutes",it.minutes).put("note",it.note))
+
+    /** Legacy guest journal. The v1.3 preference name and bytes are intentionally unchanged. */
+    fun history(ctx: Context): List<Workout> = readHistory(prefs(ctx)) ?: emptyList()
+
+    /** Read only the journal belonging to a backend-verified account subject. */
+    internal fun historyForVerifiedAccount(ctx: Context, verifiedSubject: String): List<Workout> =
+        readHistory(accountPrefs(ctx, verifiedSubject)) ?: emptyList()
+
+    private fun encode(items: List<Workout>): String {
+        val arr = JSONArray()
+        items.forEach { workout ->
+            val item = JSONObject()
+                .put("date", workout.date)
+                .put("name", workout.name)
+                .put("minutes", workout.minutes)
+                .put("note", workout.note)
+            // Legacy/manual entries keep their original shape; only guided sessions
+            // carry the structured evidence needed for an idempotent RPG reward.
+            if (workout.sessionId.isNotBlank()) {
+                item.put("sessionId", workout.sessionId)
+                    .put("completedMoves", workout.completedMoves)
+                    .put("selfReportedSets", workout.selfReportedSets)
+                if (workout.setLog.isNotBlank()) item.put("setLog", workout.setLog.take(1_200))
+                if (workout.effortLog.isNotBlank()) item.put("effortLog", workout.effortLog.take(1_200))
+            }
+            arr.put(item)
         }
-        prefs(ctx).edit().putString("history",arr.toString()).apply()
+        return arr.toString()
     }
+
+    private fun saveTo(source: android.content.SharedPreferences, items: List<Workout>) {
+        synchronized(lock) {
+            // Do not turn a parse failure into an empty journal and overwrite legacy bytes.
+            if (readHistory(source) == null) return
+            source.edit().putString("history", encode(items)).apply()
+        }
+    }
+
+    /** Legacy guest save path; existing callers retain their v1.3 storage behavior. */
+    fun save(ctx: Context, items: List<Workout>) = saveTo(prefs(ctx), items)
+
+    /** Save only to one verified account's journal; never copies guest history. */
+    internal fun saveForVerifiedAccount(
+        ctx: Context,
+        verifiedSubject: String,
+        items: List<Workout>
+    ) = saveTo(accountPrefs(ctx, verifiedSubject), items)
+
+    private fun appendSessionTo(
+        source: android.content.SharedPreferences,
+        workout: Workout
+    ): Boolean {
+        val id = workout.sessionId
+        val validId = runCatching { java.util.UUID.fromString(id).toString() == id }.getOrDefault(false)
+        if (!validId || workout.minutes !in 1..600 ||
+            workout.completedMoves !in 2..500 || workout.selfReportedSets !in 0..2_000 ||
+            workout.setLog.length > 1_200 || workout.effortLog.length > 1_200
+        ) return false
+
+        synchronized(lock) {
+            // A malformed journal is not an empty journal. Preserve it rather than replacing
+            // unknown bytes with a new account's or guest's workout.
+            val existing = readHistory(source) ?: return false
+            if (existing.any { it.sessionId == id }) return true
+            return source.edit().putString("history", encode(existing + workout)).commit()
+        }
+    }
+
+    /** Append a guided session exactly once to the legacy guest journal. */
+    fun appendSession(ctx: Context, workout: Workout): Boolean =
+        appendSessionTo(prefs(ctx), workout)
+
+    /** Append/dedupe inside one verified account only; identical IDs in other scopes are independent. */
+    internal fun appendSessionForVerifiedAccount(
+        ctx: Context,
+        verifiedSubject: String,
+        workout: Workout
+    ): Boolean = appendSessionTo(accountPrefs(ctx, verifiedSubject), workout)
+
+    /** Explicitly clear one account's Fitness journal; guest and other account files are untouched. */
+    internal fun deleteVerifiedAccountHistory(ctx: Context, verifiedSubject: String): Boolean =
+        synchronized(lock) { accountPrefs(ctx, verifiedSubject).edit().clear().commit() }
 }
 class WorkoutActivity:Activity() {
     private val workouts=arrayOf("🚶 Đi bộ","🏃 Chạy bộ","🧘 Yoga","💪 Tập sức mạnh","🚴 Đạp xe","🏋️ Tập tạ","🌼 Giãn cơ","🌙 Thiền")
@@ -66,8 +186,11 @@ class WorkoutActivity:Activity() {
             root.addView(line)
         }
         root.addView(Button(this).apply { text="📤 Chia sẻ báo cáo CSV";setOnClickListener {
-            val csv="date,exercise,minutes,note\n"+all.joinToString("\n") {
-                listOf(it.date,it.name,it.minutes.toString(),it.note).joinToString(",") { value->
+            val csv="date,exercise,minutes,note,completed_moves,self_reported_sets,set_log,effort_log\n"+all.joinToString("\n") {
+                listOf(
+                    it.date, it.name, it.minutes.toString(), it.note,
+                    it.completedMoves.toString(), it.selfReportedSets.toString(), it.setLog, it.effortLog
+                ).joinToString(",") { value ->
                     "\""+value.replace("\"","\"\"").replace("\r"," ").replace("\n"," ")+"\""
                 }
             }
@@ -86,6 +209,24 @@ class WorkoutActivity:Activity() {
             }
             row.addView(text("${w.date}\n${w.name} • ${w.minutes} phút"+(if(w.note.isBlank())"" else "\n"+w.note),15f),
                 LinearLayout.LayoutParams(0,-2,1f))
+            if (w.setLog.isNotBlank() || w.effortLog.isNotBlank()) row.addView(Button(this).apply {
+                text = "Chi tiết"
+                contentDescription = "Xem số hiệp và cảm nhận gắng sức tự khai báo của ${w.name}"
+                setOnClickListener {
+                    val details = buildString {
+                        if (w.setLog.isNotBlank()) append(w.setLog)
+                        if (w.effortLog.isNotBlank()) {
+                            if (isNotEmpty()) append("\n\n")
+                            append("Cảm nhận từng hiệp: ").append(w.effortLog)
+                        }
+                    }
+                    AlertDialog.Builder(this@WorkoutActivity)
+                        .setTitle("Chi tiết buổi tập • ${w.name}")
+                        .setMessage(details + "\n\nSố liệu và cảm nhận do bạn tự khai báo; không phải kết quả đo từ camera hoặc thiết bị y tế.")
+                        .setPositiveButton("Đóng", null)
+                        .show()
+                }
+            })
             row.addView(Button(this).apply { text="🗑";setOnClickListener {
                 AlertDialog.Builder(this@WorkoutActivity).setTitle("Xóa buổi tập?")
                     .setPositiveButton("Xóa"){_,_->

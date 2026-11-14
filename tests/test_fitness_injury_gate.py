@@ -1,0 +1,52 @@
+"""Regression guard: a reported injury must block workout creation and launch."""
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+SOURCE = ROOT / "app/src/main/java/com/chibialarm/app/FitnessActivity.kt"
+
+
+def test_professional_review_gate_precedes_catalog_lookup():
+    source = SOURCE.read_text(encoding="utf-8")
+    start = source.index("val recommendation=FitnessPlanAdvisor.recommend(")
+    gate = source.index("if (recommendation.requiresProfessionalReview)", start)
+    catalog = source.index("val p=TrainingCatalog.byId(recommendation.programId)", start)
+    gate_block = source[gate:catalog]
+    assert gate < catalog
+    assert "return@setOnClickListener" in gate_block
+    assert 'setPositiveButton("Đã hiểu", null)' in gate_block
+    assert "startProgram(" not in gate_block
+
+
+def test_injury_path_has_no_override_confirmation_to_start():
+    source = SOURCE.read_text(encoding="utf-8")
+    start = source.index("if (recommendation.requiresProfessionalReview)")
+    catalog = source.index("val p=TrainingCatalog.byId(recommendation.programId)", start)
+    gate_block = source[start:catalog]
+    assert "Tạm dừng kế hoạch tập" in gate_block
+    assert "không khởi chạy bài tập" in gate_block
+
+
+
+def test_direct_catalog_launch_uses_the_same_injury_gate():
+    source = SOURCE.read_text(encoding="utf-8")
+    start = source.index("private fun startProgram(p:TrainingProgram)")
+    end = source.index("private fun addRoutine", start)
+    launch_method = source[start:end]
+    gate = launch_method.index("impactRestrictionSpinner?.selectedItemPosition == 2")
+    launch = launch_method.index("startActivity(")
+    assert gate < launch
+    assert "return" in launch_method[gate:launch]
+    assert "không khởi chạy bài tập" in launch_method[gate:launch]
+
+
+
+def test_injury_gate_blocks_recurring_routine_creation():
+    source = SOURCE.read_text(encoding="utf-8")
+    start = source.index("private fun addRoutine(p:TrainingProgram)")
+    end = source.index("\n    }", start) + len("\n    }")
+    routine_method = source[start:end]
+    gate = routine_method.index("impactRestrictionSpinner?.selectedItemPosition == 2")
+    schedule = routine_method.index("LifeData.save(this,current+r)")
+    assert gate < schedule
+    assert "return" in routine_method[gate:schedule]
+    assert "không tạo lịch tập định kỳ" in routine_method[gate:schedule]

@@ -38,6 +38,11 @@ class FitnessCoachFollowUpTest {
         assertTrue(FitnessCoachFollowUp.nextQuestion(parsed).contains("thảm"))
     }
 
+    @Test fun equipmentPromptIncludesStableChairAsAnExplicitOption() {
+        val parsed = FitnessNaturalRequest.parse("giãn cơ 15 phút, đang tập đều")
+        assertTrue(FitnessCoachFollowUp.nextQuestion(parsed).contains("ghế vững chắc"))
+    }
+
     @Test fun questionTypesFollowTheWholePersonalizationSequence() {
         val start = FitnessNaturalRequest.parse("giãn cơ 15 phút, đang tập đều, không dụng cụ")
         assertEquals(FitnessCoachFollowUp.Question.MOVEMENT_LIMITS, FitnessCoachFollowUp.nextQuestionType(start))

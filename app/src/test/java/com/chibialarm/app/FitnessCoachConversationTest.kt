@@ -79,6 +79,37 @@ class FitnessCoachConversationTest {
         assertTrue(reply.reply.contains("thảm"))
     }
 
+    @Test fun shortStableChairAnswerUsesEquipmentQuestion() {
+        val previous = FitnessCoachConversation.merge(
+            null,
+            FitnessNaturalRequest.parse("giãn cơ 15 phút, đang tập đều")
+        )
+        val reply = FitnessCoachConversation.parseReply(previous, "ghế.")
+        val merged = FitnessCoachConversation.merge(previous, reply)
+
+        assertEquals(3, merged.equipment)
+        assertEquals(emptySet<TrainingEquipment>(), merged.additionalEquipment)
+        assertTrue(reply.reply.contains("ghế vững chắc"))
+    }
+
+    @Test fun stableChairAnswerCannotOverrideSafetyWarning() {
+        val previous = FitnessNaturalRequest.parse("đang đau khớp")
+        val reply = FitnessCoachConversation.parseReply(previous, "ghế")
+
+        assertNull(reply.equipment)
+        assertEquals(2, FitnessCoachConversation.merge(previous, reply).impact)
+    }
+
+    @Test fun stableChairAnswerOutsideEquipmentQuestionIsNotGuessed() {
+        val previous = FitnessNaturalRequest.parse(
+            "giãn cơ 15 phút không dụng cụ, đang tập đều"
+        )
+        val reply = FitnessCoachConversation.parseReply(previous, "ghế")
+
+        assertNull(reply.equipment)
+        assertEquals(0, FitnessCoachConversation.merge(previous, reply).equipment)
+    }
+
     @Test fun shortNoRestrictionsAnswerOnlyAfterSafetyQuestion() {
         val previous = FitnessNaturalRequest.parse("giãn cơ 15 phút không dụng cụ, đang tập đều")
         val reply = FitnessCoachConversation.parseReply(previous, "không")

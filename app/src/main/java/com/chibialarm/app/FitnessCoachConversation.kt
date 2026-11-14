@@ -90,6 +90,17 @@ object FitnessCoachConversation {
             question == FitnessCoachFollowUp.Question.EQUIPMENT &&
                 answer in setOf("tạ", "ta", "tạ đơn", "ta don", "dây", "day", "dây kháng lực", "day khang luc") ->
                 parsed.copy(equipment = 2, additionalEquipment = emptySet(), reply = "Đã ghi nhận có tạ hoặc dây kháng lực. Hãy kiểm tra dụng cụ được chọn.")
+            question == FitnessCoachFollowUp.Question.EQUIPMENT &&
+                answer in setOf(
+                    "ghế", "ghe", "ghế vững", "ghe vung", "ghế vững chắc", "ghe vung chac",
+                    "ghế chắc chắn", "ghe chac chan", "ghế không bánh xe", "ghe khong banh xe",
+                    "ghế ổn định", "ghe on dinh"
+                ) ->
+                parsed.copy(
+                    equipment = 3,
+                    additionalEquipment = emptySet(),
+                    reply = "Đã ghi nhận có ghế vững chắc. Tao sẽ ưu tiên bài có điểm tựa và cho mày xem trước."
+                )
             question == FitnessCoachFollowUp.Question.MOVEMENT_LIMITS && parsed.impact != null ->
                 parsed
             question == FitnessCoachFollowUp.Question.MOVEMENT_LIMITS && answer in noMovementRestrictionReplies ->

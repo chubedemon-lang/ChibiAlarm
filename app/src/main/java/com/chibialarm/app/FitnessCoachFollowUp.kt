@@ -47,7 +47,7 @@ object FitnessCoachFollowUp {
             Question.DURATION ->
                 "Mày có bao nhiêu phút? Ví dụ: 15 phút."
             Question.EQUIPMENT ->
-                "Mày có thảm, tạ, dây kháng lực hay muốn tập tay không?"
+                "Mày có thảm, tạ đơn, dây kháng lực, ghế vững chắc hay muốn tập tay không?"
             Question.MOVEMENT_LIMITS -> {
                 val noted = buildList {
                     if (parsed.avoidWristLoad == true) add("cổ tay")

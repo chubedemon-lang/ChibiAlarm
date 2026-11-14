@@ -43,6 +43,25 @@ class GuidedWorkoutWalkthroughTest(unittest.TestCase):
         self.assertIn("if (canGoPrevious) Walkthrough(steps, index - 1) else this", state)
         self.assertIn("if (canGoNext) Walkthrough(steps, index + 1) else this", state)
 
+    def test_rotation_restores_self_reported_set_values_and_effort(self):
+        source = SOURCE.read_text(encoding="utf-8")
+        save_section = source.split("override fun onSaveInstanceState(outState:Bundle)", 1)[1].split(
+            "private fun requestVoiceCommand()", 1
+        )[0]
+        self.assertIn('outState.putString("workout_set_values"', save_section)
+        self.assertIn('outState.putString("workout_effort_log"', save_section)
+
+        restore_start = source.index(
+            'if(savedInstanceState!=null &&\\n            savedInstanceState.getString("workout_program")==program.id'
+        )
+        restore_end = source.index("} else if (savedInstanceState != null", restore_start)
+        restore_section = source[restore_start:restore_end]
+        self.assertIn("WorkoutSetRepetitionLog.decode(", restore_section)
+        self.assertIn('savedInstanceState.getString("workout_set_values")', restore_section)
+        self.assertIn("WorkoutEffortLog.decode(", restore_section)
+        self.assertIn('savedInstanceState.getString("workout_effort_log")', restore_section)
+        self.assertIn("completedSetsByMove", restore_section)
+
 
 if __name__ == "__main__":
     unittest.main()

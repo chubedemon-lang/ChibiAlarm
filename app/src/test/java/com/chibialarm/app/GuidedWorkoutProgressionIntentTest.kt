@@ -47,6 +47,26 @@ class GuidedWorkoutProgressionIntentTest {
         controller.pause().stop().destroy()
     }
 
+    @Test fun expiredCheckpointDoesNotSuppressAConfirmedProgressionTarget() {
+        val app = RuntimeEnvironment.getApplication()
+        app.getSharedPreferences("chibi_workout_checkpoint_guest", Context.MODE_PRIVATE).edit()
+            .putString("program", "full")
+            .putLong("savedAt", System.currentTimeMillis() - 604_800_001L)
+            .commit()
+        val intent = Intent(app, GuidedWorkoutActivity::class.java)
+            .putExtra("program", "full")
+            .putExtra("minutes", 30)
+            .putExtra("progression_exercise", "Squat không tạ")
+            .putExtra("progression_reps", 9)
+        val controller = Robolectric.buildActivity(GuidedWorkoutActivity::class.java, intent).setup()
+        val texts = views(controller.get().findViewById<ViewGroup>(android.R.id.content))
+            .filterIsInstance<TextView>()
+            .map { it.text.toString() }
+
+        assertTrue(texts.any { it.contains("Mục tiêu tiến triển đã xác nhận") })
+        controller.pause().stop().destroy()
+    }
+
     @Test fun outOfRangeTargetIsIgnored() {
         val app = RuntimeEnvironment.getApplication()
         val intent = Intent(app, GuidedWorkoutActivity::class.java)

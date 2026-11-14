@@ -81,8 +81,10 @@ class WorkoutProgressionPreviewTest {
         )
     }
 
-    @Test fun incompleteSelfReportedRepLogIsRejected() {
-        val workouts = history().map { it.copy(selfReportedSets = 3) }
+    @Test fun incompleteActualRepValuesAreRejectedEvenWhenEffortCheckInsAreComplete() {
+        val workouts = history().map {
+            it.copy(setLog = "Squat không tạ: hiệp 1: 8 lần")
+        }
         val suggestion = suggestion(workouts)
         assertNotNull(suggestion)
         assertNull(

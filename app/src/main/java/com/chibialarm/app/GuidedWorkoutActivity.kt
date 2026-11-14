@@ -101,7 +101,11 @@ class GuidedWorkoutActivity:Activity() {
 
     /** Apply only a validated, user-confirmed next-session target; never infer or add sets. */
     private fun applyInitialProgression(savedInstanceState: Bundle?) {
-        if (savedInstanceState != null || checkpoint.getString("program", null) == program.id) return
+        if (savedInstanceState != null) return
+        val checkpointAge = System.currentTimeMillis() - checkpoint.getLong("savedAt", 0L)
+        if (checkpoint.getString("program", null) == program.id &&
+            checkpointAge in 0L..604_800_000L
+        ) return
         val exerciseName = intent.getStringExtra("progression_exercise")?.trim()?.take(90).orEmpty()
         val reps = intent.getIntExtra("progression_reps", -1)
         if (exerciseName.isBlank() || reps !in 1..100) return

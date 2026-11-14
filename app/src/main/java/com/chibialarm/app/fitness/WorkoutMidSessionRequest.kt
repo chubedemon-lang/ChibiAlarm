@@ -152,18 +152,6 @@ object WorkoutMidSessionRequest {
         )
         val noStableChair = has("khong co ghe", "khong mang ghe", "de ghe o nha")
         val noMat = has("khong co tham tap", "khong co tham", "khong mang tham")
-        val unavailableEquipment = if (noEquipment) {
-            TrainingEquipment.values().toSet()
-        } else {
-            buildSet {
-                if (noDumbbell) add(TrainingEquipment.DUMBBELL)
-                if (noResistanceBand) add(TrainingEquipment.RESISTANCE_BAND)
-                if (noStableChair) add(TrainingEquipment.STABLE_CHAIR)
-                if (noMat) add(TrainingEquipment.MAT)
-            }
-        }
-        val avoidExternalLoad = noEquipment || noBothExternalLoads ||
-            (noDumbbell && noResistanceBand)
         // Only positively stated tools are added. A negated mention always wins.
         val availableEquipment = if (noEquipment) emptySet() else buildSet {
             if (!noStableChair && has(
@@ -191,6 +179,23 @@ object WorkoutMidSessionRequest {
                 )
             ) add(TrainingEquipment.RESISTANCE_BAND)
         }
+        // "Chỉ có/dùng X" is an exclusive inventory statement, unlike merely mentioning X.
+        // This matters mid-session: retaining a dumbbell move after the user says they only
+        // have a mat would silently violate the newly stated equipment boundary.
+        val exclusiveEquipmentMention = has("chi co", "chi dung", "chi mang") &&
+            availableEquipment.isNotEmpty()
+        val unavailableEquipment = when {
+            noEquipment -> TrainingEquipment.values().toSet()
+            exclusiveEquipmentMention -> TrainingEquipment.values().toSet() - availableEquipment
+            else -> buildSet {
+                if (noDumbbell) add(TrainingEquipment.DUMBBELL)
+                if (noResistanceBand) add(TrainingEquipment.RESISTANCE_BAND)
+                if (noStableChair) add(TrainingEquipment.STABLE_CHAIR)
+                if (noMat) add(TrainingEquipment.MAT)
+            }
+        }
+        val avoidExternalLoad = noEquipment || noBothExternalLoads ||
+            (noDumbbell && noResistanceBand)
         val explicitlyNoAdd = has(
             "khong them bai", "khong them bai tap", "khong can them bai",
             "khong them dong tac", "khong can them dong tac",

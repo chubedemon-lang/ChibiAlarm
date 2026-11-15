@@ -2816,10 +2816,10 @@ class GuidedWorkoutActivity:Activity() {
                 append("Chibi RPG sẽ thử lại từ cùng mã buổi tập khi bạn mở màn hình RPG. ")
                 append("Không cần tập lại và không mất nhật ký.")
                 if (effortSummary.isNotBlank()) {
-                    append("\\n\\nCảm nhận các hiệp bạn đã tự ghi:\\n")
+                    append("\n\nCảm nhận các hiệp bạn đã tự ghi:\n")
                     append(effortSummary.take(500))
                     if (effortSummary.length > 500) append("…")
-                    append("\\nĐây là tự đánh giá, không phải phép đo thể lực.")
+                    append("\nĐây là tự đánh giá, không phải phép đo thể lực.")
                 }
             })
             .setPositiveButton("Mở Chibi RPG") { _, _ ->

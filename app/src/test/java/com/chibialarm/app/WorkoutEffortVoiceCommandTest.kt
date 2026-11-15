@@ -53,13 +53,47 @@ class WorkoutEffortVoiceCommandTest {
         )
     }
 
-    @Test fun safetySymptomsOverrideAnEffortLabel() {
+    @Test fun understandsNaturalVietnameseAnswersWithShortPoliteIntroductions() {
+        report(
+            WorkoutEffortFeedback.Level.MODERATE,
+            "Tôi thấy hơi mệt nhưng vẫn ổn",
+            "Mình cảm thấy mệt nhưng vẫn ổn",
+            "Hiệp này hơi đuối nhưng vẫn ổn"
+        )
+        report(
+            WorkoutEffortFeedback.Level.HARD,
+            "Tôi thấy hơi khó nhưng vẫn làm được",
+            "Cảm giác khá khó nhưng vẫn làm được",
+            "Hiệp vừa rồi khá mệt, cần nghỉ thêm",
+            "Mình thấy khá nặng nhưng vẫn kiểm soát được"
+        )
+        report(
+            WorkoutEffortFeedback.Level.VERY_HARD,
+            "Tôi thấy quá sức rồi, không thể tiếp tục",
+            "Mình cảm thấy mệt đến mức không thể tiếp tục"
+        )
+    }
+
+    @Test fun conversationalVariantsAlsoWorkWithoutVietnameseDiacritics() {
+        assertEquals(
+            WorkoutEffortVoiceCommand.Result.Report(WorkoutEffortFeedback.Level.MODERATE),
+            WorkoutEffortVoiceCommand.parse("toi thay hoi met nhung van on")
+        )
+        assertEquals(
+            WorkoutEffortVoiceCommand.Result.Report(WorkoutEffortFeedback.Level.HARD),
+            WorkoutEffortVoiceCommand.parse("minh cam thay hoi kho nhung van lam duoc")
+        )
+    }
+
+    @Test fun safetySymptomsOverrideNaturalEffortPhrases() {
         for (phrase in listOf(
             "Đau gối",
             "Đau đầu gối",
             "Khó thở nhưng vẫn vừa sức",
             "Chóng mặt, hơi khó",
-            "Đau ngực"
+            "Đau ngực",
+            "Tôi thấy hơi khó nhưng đau gối",
+            "Mình mệt nhưng khó thở"
         )) {
             assertEquals(
                 phrase,
@@ -76,6 +110,7 @@ class WorkoutEffortVoiceCommandTest {
             "không mệt",
             "đầu gối",
             "vừa sức nhưng quá sức",
+            "Tôi thấy vừa sức nhưng quá sức",
             "khó quá, nghỉ thêm 30 giây",
             "nghỉ thêm 30 giây",
             "tăng lên 10 lần",

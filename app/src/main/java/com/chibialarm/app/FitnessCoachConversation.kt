@@ -44,9 +44,9 @@ object FitnessCoachConversation {
             input.lowercase(Locale.ROOT).replace('đ', 'd'),
             java.text.Normalizer.Form.NFD
         )
-            .replace(Regex("\\\\p{M}+"), "")
+            .replace(Regex("\\p{M}+"), "")
             .replace(Regex("[^a-z0-9 ]"), " ")
-            .replace(Regex("\\\\s+"), " ")
+            .replace(Regex("\\s+"), " ")
             .trim()
 
     private fun additiveEquipmentReply(

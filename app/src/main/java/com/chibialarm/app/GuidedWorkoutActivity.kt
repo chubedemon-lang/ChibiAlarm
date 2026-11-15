@@ -2401,16 +2401,24 @@ class GuidedWorkoutActivity:Activity() {
                             startSetRest(plan.defaultRestSeconds)
                         }
                     }
-                    .setNeutralButton("Xem giáo án nhẹ hơn") { _, _ ->
-                        if (isSameEffortContext(selectedIndex, selectedSessionId, completedSets, plan)) {
-                            WorkoutEffortPlanChange.requestFor(level)?.let(::applyMidSessionRequest)
-                        }
-                    }
+                    .setNeutralButton("Xem giáo án nhẹ hơn", null)
                     .create()
                 // Back/outside dismissal is not consent to start a timer. The two
-                // explicit buttons above are the only ways to choose a rest duration.
+                // explicit rest buttons are the only ways to choose a rest duration.
+                // Dismiss this dialog before opening the planner preview: showing a second
+                // AlertDialog from a button callback can leave the parent window active on
+                // some Android versions and makes the preview interaction non-deterministic.
                 confirm.setOnCancelListener(null)
                 confirm.show()
+                confirm.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
+                    val contextStillMatches = isSameEffortContext(
+                        selectedIndex, selectedSessionId, completedSets, plan
+                    )
+                    confirm.dismiss()
+                    if (contextStillMatches) {
+                        WorkoutEffortPlanChange.requestFor(level)?.let(::applyMidSessionRequest)
+                    }
+                }
             }
             WorkoutEffortFeedback.Level.VERY_HARD -> {
                 val confirm = AlertDialog.Builder(this)

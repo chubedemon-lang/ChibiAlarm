@@ -32,7 +32,9 @@ object WorkoutHistoryAdvisor {
 
     fun summarize(workouts: List<Workout>, today: LocalDate = LocalDate.now()): Summary {
         val firstDay = today.minusDays(6)
-        val recent = workouts.asSequence().take(MAX_RECORDS).mapNotNull { workout ->
+        // Journals are append-ordered. Bound work to the newest records so an old,
+        // long-running history cannot hide the current week's sessions behind the cap.
+        val recent = workouts.takeLast(MAX_RECORDS).asSequence().mapNotNull { workout ->
             val date = runCatching { LocalDate.parse(workout.date) }.getOrNull() ?: return@mapNotNull null
             if (date.isBefore(firstDay) || date.isAfter(today) || workout.minutes !in 1..600) {
                 return@mapNotNull null
@@ -86,7 +88,9 @@ object WorkoutHistoryAdvisor {
         today: LocalDate = LocalDate.now()
     ): VarietySuggestion? {
         val yesterday = today.minusDays(1)
-        val lastGuided = workouts.asSequence().take(MAX_RECORDS).mapNotNull { workout ->
+        // Use the same newest-record window as summarize(); old journal entries must not
+        // mask a qualifying session from yesterday after the retention bound is reached.
+        val lastGuided = workouts.takeLast(MAX_RECORDS).asSequence().mapNotNull { workout ->
             val date = runCatching { LocalDate.parse(workout.date) }.getOrNull()
                 ?: return@mapNotNull null
             if (date != yesterday || workout.minutes !in 1..600) return@mapNotNull null

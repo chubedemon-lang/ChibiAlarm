@@ -143,6 +143,7 @@ class GuidedWorkoutEffortVoiceTest {
             assertTrue(restChoice.isShowing)
             assertTrue(restChoice.getButton(AlertDialog.BUTTON_NEUTRAL).text.toString().contains("nhẹ hơn"))
             restChoice.getButton(AlertDialog.BUTTON_NEUTRAL).performClick()
+            assertFalse("The rest-choice dialog must close before the planner preview opens", restChoice.isShowing)
             val planPreview = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
             assertTrue(planPreview.isShowing)
             assertTrue(

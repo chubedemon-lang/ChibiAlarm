@@ -5,6 +5,7 @@ import android.content.Intent
 import android.speech.RecognizerIntent
 import android.speech.tts.TextToSpeech
 import android.os.Bundle
+import android.os.Build
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.view.*
@@ -19,6 +20,7 @@ class CoachActivity:Activity() {
     private lateinit var messages:LinearLayout
     private lateinit var prompt:EditText
     private lateinit var send:Button
+    private lateinit var speechStatus:TextView
     private var history=JSONArray()
     private var speaker:TextToSpeech?=null
     private var speakerReady=false
@@ -56,17 +58,45 @@ class CoachActivity:Activity() {
         val voiceTools=LinearLayout(this).apply { orientation=0 }
         voiceTools.addView(Button(this).apply { text="🎤 Nói";setOnClickListener { explainMicrophoneThenListen() } },LinearLayout.LayoutParams(0,-2,1f))
         voiceTools.addView(Button(this).apply { text="🔊 Bật đọc";setOnClickListener {
-            autoSpeak=!autoSpeak;text=if(autoSpeak)"🔇 Tắt đọc" else "🔊 Bật đọc"
+            if (!speakerReady && !autoSpeak) {
+                Toast.makeText(this@CoachActivity,"Chưa có giọng tiếng Việt sẵn sàng. Chat chữ và nhập giọng nói vẫn dùng được.",Toast.LENGTH_LONG).show()
+                return@setOnClickListener
+            }
+            autoSpeak=!autoSpeak
+            text=if(autoSpeak)"🔇 Tắt đọc" else "🔊 Bật đọc"
             if(!autoSpeak)speaker?.stop()
         } },LinearLayout.LayoutParams(0,-2,1f))
         voiceTools.addView(Button(this).apply { text="■ Dừng";setOnClickListener { speaker?.stop() } },LinearLayout.LayoutParams(0,-2,1f))
         root.addView(voiceTools)
+        speechStatus=text("Đang kiểm tra dữ liệu giọng đọc tiếng Việt…",12f)
+        root.addView(speechStatus)
         speaker=TextToSpeech(this) { result ->
-            speakerReady=result==TextToSpeech.SUCCESS
-            if(speakerReady) { speaker?.setLanguage(Locale("vi","VN"))
-                val pref=getSharedPreferences("settings",0)
-                speaker?.setSpeechRate(pref.getFloat("rate",1f));speaker?.setPitch(pref.getFloat("pitch",1f))
-                speaker?.voices?.firstOrNull { it.name==pref.getString("voice","") }?.let { speaker?.voice=it }
+            val engine=speaker
+            if (result!=TextToSpeech.SUCCESS || engine==null) {
+                speakerReady=false
+                speechStatus.text="⚠️ Chưa khởi tạo được bộ đọc. Bạn vẫn có thể trò chuyện bằng chữ và nhập giọng nói."
+                return@TextToSpeech
+            }
+            // Some engines expose only the language-level Vietnamese locale, not vi-VN.
+            var languageStatus=engine.setLanguage(Locale("vi","VN"))
+            if (languageStatus<0) languageStatus=engine.setLanguage(Locale("vi"))
+            speakerReady=CoachSpeechVoicePolicy.isSupportedLanguageStatus(languageStatus)
+            val pref=getSharedPreferences("settings",0)
+            engine.setSpeechRate(pref.getFloat("rate",1f))
+            engine.setPitch(pref.getFloat("pitch",1f))
+            if (speakerReady && Build.VERSION.SDK_INT>=Build.VERSION_CODES.LOLLIPOP) {
+                val available=runCatching { engine.voices.orEmpty() }.getOrDefault(emptyList())
+                val selected=CoachSpeechVoicePolicy.selectVietnameseVoice(
+                    pref.getString("voice",null),
+                    available.map { voice -> CoachSpeechVoicePolicy.VoiceOption(voice.name,voice.locale.language) }
+                )
+                available.firstOrNull { it.name==selected }?.let { engine.voice=it }
+            }
+            speechStatus.text=if(speakerReady) {
+                "🔊 Giọng Việt đã sẵn sàng. Khả năng ngoại tuyến tùy bộ TTS và giọng đã cài trên máy."
+            } else {
+                autoSpeak=false
+                "⚠️ Chưa có dữ liệu giọng Việt. Hãy cài giọng Tiếng Việt trong cài đặt TTS; chat chữ và nhập giọng nói vẫn hoạt động."
             }
         }
         messages=LinearLayout(this).apply { orientation=1 }
@@ -177,6 +207,7 @@ class CoachActivity:Activity() {
             }
         }
     }
+    override fun onPause() { speaker?.stop();super.onPause() }
     override fun onDestroy() { speaker?.stop();speaker?.shutdown();super.onDestroy() }
     private fun askPlan() {
         val field=EditText(this).apply { hint="Ví dụ: Mình làm việc 8h–17h, muốn học tiếng Anh và chạy bộ";minLines=3;maxLines=6 }

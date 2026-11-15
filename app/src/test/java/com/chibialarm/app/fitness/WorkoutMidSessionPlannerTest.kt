@@ -898,4 +898,51 @@ class WorkoutMidSessionPlannerTest {
             WorkoutMidSessionRequest.parse("Không cần thêm động tác")
         )
     }
+
+    @Test fun exclusiveMatOnlyInventoryAlsoConstrainsOptionalMidSessionAdditions() {
+        val parsed = WorkoutMidSessionRequest.parse("Tao chỉ có thảm tập, thêm một bài")
+        assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
+        val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+
+        assertTrue(request.addOptionalExercise)
+        assertEquals(setOf(TrainingEquipment.MAT), request.availableEquipment)
+        assertEquals(
+            TrainingEquipment.values().toSet() - setOf(TrainingEquipment.MAT),
+            request.unavailableEquipment
+        )
+
+        // The saved profile still says dumbbells/bands. The explicit "only a mat"
+        // statement must override that older profile when choosing a new optional move.
+        val result = WorkoutMidSessionPlanner.preview(
+            currentMoves = listOf(
+                move("Khởi động tại chỗ"),
+                move("Squat không tạ"),
+                move("Chống đẩy tường"),
+                move("Thả lỏng")
+            ),
+            currentIndex = 1,
+            completedCurrentSets = 0,
+            currentStepLocked = false,
+            constraints = WorkoutConstraintProfile(),
+            request = request,
+            remainingCurrentSeconds = 90,
+            extensionMoveNames = emptySet(),
+            level = 1,
+            extensionPreferences = WorkoutExtensionPreferences(goal = 0, equipment = 2)
+        )
+
+        assertTrue(result is WorkoutMidSessionPlanner.Result.Proposed)
+        val preview = (result as WorkoutMidSessionPlanner.Result.Proposed).preview
+        assertEquals(setOf(TrainingEquipment.MAT), preview.availableEquipment)
+        assertEquals(1, preview.addedMoves.size)
+        assertFalse(preview.addedMoves.any {
+            it.contains("tạ", ignoreCase = true) || it.contains("dây kháng lực", ignoreCase = true)
+        })
+        val added = preview.after.filter { it.name in preview.addedMoves }
+        assertTrue(added.all {
+            it.equipmentOptions.isEmpty() || it.equipmentOptions.any { equipment ->
+                equipment == TrainingEquipment.MAT
+            }
+        })
+    }
 }

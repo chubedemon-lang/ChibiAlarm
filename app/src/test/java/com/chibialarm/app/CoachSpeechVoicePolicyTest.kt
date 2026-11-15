@@ -45,4 +45,30 @@ class CoachSpeechVoicePolicyTest {
         assertFalse(CoachSpeechVoicePolicy.isSupportedLanguageStatus(-1))
         assertFalse(CoachSpeechVoicePolicy.isSupportedLanguageStatus(-2))
     }
+
+    @Test fun resolveKeepsAnInstalledVietnameseVoiceOnlyWhenLanguageIsSupported() {
+        assertEquals(
+            CoachSpeechVoicePolicy.Selection(true, "vi-vn-male"),
+            CoachSpeechVoicePolicy.resolve(0, "vi-vn-male", voices)
+        )
+        assertEquals(
+            CoachSpeechVoicePolicy.Selection(false, null),
+            CoachSpeechVoicePolicy.resolve(-1, "vi-vn-male", voices)
+        )
+    }
+
+    @Test fun resolveFallsBackToVietnameseAndNeverSelectsEnglish() {
+        assertEquals(
+            CoachSpeechVoicePolicy.Selection(true, "vi-vn-female"),
+            CoachSpeechVoicePolicy.resolve(1, "en-us-local", voices)
+        )
+        assertEquals(
+            CoachSpeechVoicePolicy.Selection(true, null),
+            CoachSpeechVoicePolicy.resolve(
+                1,
+                "en-us-local",
+                listOf(CoachSpeechVoicePolicy.VoiceOption("en-us-local", "en"))
+            )
+        )
+    }
 }

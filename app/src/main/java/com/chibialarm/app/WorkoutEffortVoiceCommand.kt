@@ -30,9 +30,9 @@ object WorkoutEffortVoiceCommand {
             "can nghi them", "met", "hoi met", "met roi", "met qua",
             "kha met", "met lam", "met nhung van lam duoc",
             "hoi met nhung van lam duoc", "met nhung can nghi them",
-            "hoi met can nghi them", "kho nhung van lam duoc",
-            "hoi kho nhung van lam duoc", "kha kho nhung van lam duoc",
-            "hoi nang nhung van kiem soat duoc",
+            "hoi met can nghi them", "kha met can nghi them",
+            "kho nhung van lam duoc", "hoi kho nhung van lam duoc",
+            "kha kho nhung van lam duoc", "hoi nang nhung van kiem soat duoc",
             "kha nang nhung van kiem soat duoc"
         ),
         WorkoutEffortFeedback.Level.VERY_HARD to setOf(
@@ -68,10 +68,10 @@ object WorkoutEffortVoiceCommand {
     private fun exactAnswerVariants(normalized: String): Set<String> {
         val variants = linkedSetOf(normalized)
         var current = normalized
-        repeat(2) {
+        for (ignored in 0 until 2) {
             val prefix = conversationalPrefixes.firstOrNull {
                 current.startsWith(it) && current.length > it.length
-            } ?: return@repeat
+            } ?: break
             current = current.removePrefix(prefix).trim()
             if (current.isNotBlank()) variants.add(current)
         }

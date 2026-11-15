@@ -2281,13 +2281,14 @@ class GuidedWorkoutActivity:Activity() {
                         if (!isSameEffortContext(selectedIndex, selectedSessionId, completedSets, plan)) {
                             Toast.makeText(this, "Buổi tập đã thay đổi; Chibi chưa lưu cảm nhận.", Toast.LENGTH_LONG).show()
                         } else {
-                            // Dismiss is not a cancellation: do not let a dialog callback start
-                            // prescribed rest before the confirmed effort has been recorded.
+                            // Record while the captured workout context is still attached to its
+                            // original check-in. Showing the next rest/plan dialog must not race
+                            // dismissal of the parent dialog in Robolectric or Android.
                             checkInDialog.setOnCancelListener(null)
-                            checkInDialog.dismiss()
                             applyEffortCheckIn(
                                 selectedIndex, selectedSessionId, completedSets, plan, hasNextSet, level
                             )
+                            checkInDialog.dismiss()
                         }
                     }
                     .setNegativeButton("Không đúng", null)

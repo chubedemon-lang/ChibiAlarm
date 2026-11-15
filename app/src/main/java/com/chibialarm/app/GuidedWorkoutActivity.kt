@@ -2270,7 +2270,20 @@ class GuidedWorkoutActivity:Activity() {
                     return
                 }
                 val level = parsed.level
-                AlertDialog.Builder(this)
+                // Opening a confirmation dialog can cancel its parent on some Android/test
+                // window implementations. Suppress the parent's default-rest cancellation
+                // while the recognized answer is awaiting confirmation.
+                checkInDialog.setOnCancelListener(null)
+                fun restoreParentCancelBehavior() {
+                    if (isSameEffortContext(selectedIndex, selectedSessionId, completedSets, plan)) {
+                        checkInDialog.setOnCancelListener {
+                            if (isSameEffortContext(selectedIndex, selectedSessionId, completedSets, plan)) {
+                                startSetRest(plan.defaultRestSeconds)
+                            }
+                        }
+                    }
+                }
+                val confirmation = AlertDialog.Builder(this)
                     .setTitle("🐰 Chibi nghe được")
                     .setMessage(
                         "Cảm nhận cho hiệp $completedSets của ${moves[selectedIndex].name}: " +
@@ -2281,18 +2294,17 @@ class GuidedWorkoutActivity:Activity() {
                         if (!isSameEffortContext(selectedIndex, selectedSessionId, completedSets, plan)) {
                             Toast.makeText(this, "Buổi tập đã thay đổi; Chibi chưa lưu cảm nhận.", Toast.LENGTH_LONG).show()
                         } else {
-                            // Record while the captured workout context is still attached to its
-                            // original check-in. Showing the next rest/plan dialog must not race
-                            // dismissal of the parent dialog in Robolectric or Android.
-                            checkInDialog.setOnCancelListener(null)
                             applyEffortCheckIn(
                                 selectedIndex, selectedSessionId, completedSets, plan, hasNextSet, level
                             )
+                            checkInDialog.setOnCancelListener(null)
                             checkInDialog.dismiss()
                         }
                     }
-                    .setNegativeButton("Không đúng", null)
-                    .show()
+                    .setNegativeButton("Không đúng") { _, _ -> restoreParentCancelBehavior() }
+                    .create()
+                confirmation.setOnCancelListener { restoreParentCancelBehavior() }
+                confirmation.show()
             }
             null -> AlertDialog.Builder(this)
                 .setTitle("Chibi chưa hiểu cảm nhận")

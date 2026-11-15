@@ -100,23 +100,25 @@ object WorkoutData {
         return arr.toString()
     }
 
-    private fun saveTo(source: android.content.SharedPreferences, items: List<Workout>) {
+    private fun saveTo(source: android.content.SharedPreferences, items: List<Workout>): Boolean {
         synchronized(lock) {
             // Do not turn a parse failure into an empty journal and overwrite legacy bytes.
-            if (readHistory(source) == null) return
-            source.edit().putString("history", encode(items)).apply()
+            if (readHistory(source) == null) return false
+            // A successful return now means the offline journal has been committed to disk,
+            // not merely queued in memory. Guided-session appends already use this contract.
+            return source.edit().putString("history", encode(items)).commit()
         }
     }
 
-    /** Legacy guest save path; existing callers retain their v1.3 storage behavior. */
-    fun save(ctx: Context, items: List<Workout>) = saveTo(prefs(ctx), items)
+    /** Legacy guest save path; true means the v1.3-compatible journal is durably committed. */
+    fun save(ctx: Context, items: List<Workout>): Boolean = saveTo(prefs(ctx), items)
 
     /** Save only to one verified account's journal; never copies guest history. */
     internal fun saveForVerifiedAccount(
         ctx: Context,
         verifiedSubject: String,
         items: List<Workout>
-    ) = saveTo(accountPrefs(ctx, verifiedSubject), items)
+    ): Boolean = saveTo(accountPrefs(ctx, verifiedSubject), items)
 
     private fun appendSessionTo(
         source: android.content.SharedPreferences,
@@ -231,9 +233,23 @@ class WorkoutActivity:Activity() {
                 AlertDialog.Builder(this@WorkoutActivity).setTitle("Xóa buổi tập?")
                     .setPositiveButton("Xóa"){_,_->
                         val current=WorkoutData.history(this@WorkoutActivity).toMutableList()
+                        if (current != all) {
+                            Toast.makeText(this@WorkoutActivity, "Nhật ký đã thay đổi. Hãy kiểm tra lại trước khi xóa.", Toast.LENGTH_LONG).show()
+                            render()
+                            return@setPositiveButton
+                        }
                         val original=all.size-1-index
-                        if(original in current.indices)current.removeAt(original)
-                        WorkoutData.save(this@WorkoutActivity,current);render()
+                        if (original !in current.indices) {
+                            Toast.makeText(this@WorkoutActivity, "Không tìm thấy buổi tập cần xóa.", Toast.LENGTH_LONG).show()
+                            render()
+                            return@setPositiveButton
+                        }
+                        current.removeAt(original)
+                        if (WorkoutData.save(this@WorkoutActivity,current)) {
+                            render()
+                        } else {
+                            Toast.makeText(this@WorkoutActivity, "Không thể lưu thay đổi. Nhật ký cũ vẫn được giữ nguyên.", Toast.LENGTH_LONG).show()
+                        }
                     }.setNegativeButton("Hủy",null).show()
             } })
             root.addView(row,LinearLayout.LayoutParams(-1,-2).apply { bottomMargin=9 })
@@ -259,9 +275,15 @@ class WorkoutActivity:Activity() {
                 val mins=minutes.text.toString().toIntOrNull()
                 if(mins==null || mins !in 1..600)minutes.error="Nhập 1 đến 600 phút"
                 else {
-                    WorkoutData.save(this,WorkoutData.history(this)+Workout(
-                        LifeData.today(),spinner.selectedItem.toString(),mins,note.text.toString().take(150)))
-                    dialog.dismiss();render()
+                    val updated = WorkoutData.history(this) + Workout(
+                        LifeData.today(),spinner.selectedItem.toString(),mins,note.text.toString().take(150)
+                    )
+                    if (WorkoutData.save(this, updated)) {
+                        dialog.dismiss()
+                        render()
+                    } else {
+                        Toast.makeText(this, "Chưa lưu được nhật ký. Dữ liệu cũ vẫn được giữ nguyên; hãy thử lại.", Toast.LENGTH_LONG).show()
+                    }
                 }
             }
         }

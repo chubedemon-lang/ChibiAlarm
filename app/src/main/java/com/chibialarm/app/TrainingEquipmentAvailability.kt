@@ -10,6 +10,9 @@ object TrainingEquipmentAvailability {
         1 -> setOf(TrainingEquipment.MAT)
         2 -> setOf(TrainingEquipment.DUMBBELL, TrainingEquipment.RESISTANCE_BAND)
         3 -> setOf(TrainingEquipment.STABLE_CHAIR)
+        // New exact choices are appended so existing saved indexes 0..3 keep their meaning.
+        4 -> setOf(TrainingEquipment.DUMBBELL)
+        5 -> setOf(TrainingEquipment.RESISTANCE_BAND)
         else -> throw IllegalArgumentException("Unknown equipment selection: $selection")
     }
 

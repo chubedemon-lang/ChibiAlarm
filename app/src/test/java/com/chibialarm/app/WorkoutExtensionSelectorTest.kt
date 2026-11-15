@@ -40,6 +40,23 @@ class WorkoutExtensionSelectorTest {
         assertFalse(beginner.extensionMoves.any { it.name.contains("tạ đơn") || it.name.contains("dây kháng lực") })
     }
 
+    @Test fun exactResistanceChoicesRemainValidForOptionalExerciseExtensions() {
+        for (equipment in listOf(4, 5)) {
+            val plan = WorkoutDurationPlanner.build(
+                TrainingCatalog.byId("full"),
+                level = 1,
+                targetMinutes = 30,
+                preferences(goal = 0, equipment = equipment)
+            )
+            val available = TrainingEquipmentAvailability.fromPreference(equipment)
+            assertTrue(plan.extensionMoves.isNotEmpty())
+            assertTrue(
+                "equipment=$equipment must filter every extension to the selected tool",
+                plan.extensionMoves.all { TrainingEquipmentAvailability.allows(it, available) }
+            )
+        }
+    }
+
     @Test fun wristRestrictionIsAppliedToEveryExtensionCandidate() {
         val constraints = WorkoutConstraintProfile(avoidWristLoad = true)
         val filtered = WorkoutConstraintFilter.apply(TrainingCatalog.byId("full"), constraints)

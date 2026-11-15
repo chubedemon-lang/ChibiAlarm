@@ -242,8 +242,8 @@ class FitnessNaturalRequestTest {
     }
 
     @Test fun anAvailableEquipmentAlternativeWinsOverAnotherMissingOption() {
-        assertEquals(2, FitnessNaturalRequest.parse("không có tạ, chỉ có dây kháng lực").equipment)
-        assertEquals(2, FitnessNaturalRequest.parse("không có dây, có tạ đơn").equipment)
+        assertEquals(5, FitnessNaturalRequest.parse("không có tạ, chỉ có dây kháng lực").equipment)
+        assertEquals(4, FitnessNaturalRequest.parse("không có dây, có tạ đơn").equipment)
     }
 
     @Test fun matOnlyRemainsDistinctFromNoEquipment() {
@@ -312,8 +312,21 @@ class FitnessNaturalRequestTest {
 
     @Test fun negatedChairDoesNotBecomeAnAvailableChair() {
         assertEquals(1, FitnessNaturalRequest.parse("không có ghế, có thảm tập").equipment)
-        assertEquals(2, FitnessNaturalRequest.parse("không có ghế, có tạ đơn").equipment)
+        assertEquals(4, FitnessNaturalRequest.parse("không có ghế, có tạ đơn").equipment)
         assertEquals(0, FitnessNaturalRequest.parse("không có ghế, không dụng cụ").equipment)
+    }
+
+    @Test fun singleResistanceToolsStayDistinctInsteadOfAssumingBothAreAvailable() {
+        val dumbbell = FitnessNaturalRequest.parse("có tạ đơn")
+        assertEquals(4, dumbbell.equipment)
+        assertTrue(dumbbell.additionalEquipment.orEmpty().isEmpty())
+
+        val band = FitnessNaturalRequest.parse("có dây kháng lực")
+        assertEquals(5, band.equipment)
+        assertTrue(band.additionalEquipment.orEmpty().isEmpty())
+
+        val either = FitnessNaturalRequest.parse("có tạ đơn hoặc dây kháng lực")
+        assertEquals(2, either.equipment)
     }
 
     @Test fun parsesSeveralAvailableToolsIntoPrimaryAndAdditionalSelections() {

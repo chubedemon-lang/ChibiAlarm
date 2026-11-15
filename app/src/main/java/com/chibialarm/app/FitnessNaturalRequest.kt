@@ -273,9 +273,15 @@ object FitnessNaturalRequest {
             "khong dung cu", "khong co dung cu", "tay khong",
             "khong con dung cu", "het dung cu"
         )
+        val hasResistanceChoice = hasWholePhrase(
+            "ta hoac day", "ta don hoac day khang luc",
+            "co ta hoac day", "co ta don hoac day khang luc"
+        )
         val equipment = when {
-            // A reported available alternative wins: no dumbbell but a band or stable chair is usable.
-            hasDumbbell || hasBand -> 2
+            // Preserve exact resistance-tool availability instead of treating a band as a dumbbell.
+            (hasDumbbell && hasBand) || hasResistanceChoice -> 2
+            hasDumbbell -> 4
+            hasBand -> 5
             hasMat -> 1
             hasChair -> 3
             explicitlyNoEquipment || noDumbbell || noBand || noChair -> 0

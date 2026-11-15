@@ -83,6 +83,28 @@ class CoachFitnessHandoffTest {
         assertNull(CoachFitnessHandoff.restoreFromBundle(bundle)?.additionalEquipment)
     }
 
+    @Test fun exactResistanceEquipmentChoicesSurviveCoachHandoffAndRotation() {
+        for (selection in listOf(4, 5)) {
+            val source = context().copy(
+                equipment = selection,
+                additionalEquipment = emptySet()
+            )
+            val bundle = Bundle()
+            CoachFitnessHandoff.saveToBundle(source, bundle)
+            assertEquals(selection, CoachFitnessHandoff.restoreFromBundle(bundle)?.equipment)
+
+            val intent = Intent()
+            CoachFitnessHandoff.addToFitnessIntent(source, intent)
+            val controller = Robolectric.buildActivity(FitnessActivity::class.java, intent).setup()
+            val field = FitnessActivity::class.java.getDeclaredField("conversation").apply {
+                isAccessible = true
+            }
+            val restored = field.get(controller.get()) as FitnessNaturalRequest.Result
+            assertEquals(selection, restored.equipment)
+            controller.pause().stop().destroy()
+        }
+    }
+
     @Test fun invalidCoarseSelectionsAreRejectedWhenRestoringBundle() {
         val bundle = Bundle().apply {
             putBoolean("fitness_context_present", true)

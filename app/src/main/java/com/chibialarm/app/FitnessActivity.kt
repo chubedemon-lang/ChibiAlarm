@@ -374,10 +374,17 @@ class FitnessActivity:Activity() {
         root.addView(energySpinner)
         recommendationEnergySpinner = energySpinner
         root.addView(txt("🏋️ Dụng cụ hiện có",19f))
-        val equipmentOptions=arrayOf("Không có dụng cụ","Có thảm tập","Có tạ hoặc dây kháng lực","Có ghế vững chắc (không bánh xe)")
+        val equipmentOptions=arrayOf(
+            "Không có dụng cụ",
+            "Có thảm tập",
+            "Có tạ hoặc dây kháng lực",
+            "Có ghế vững chắc (không bánh xe)",
+            "Có tạ đơn (không gồm dây)",
+            "Có dây kháng lực (không gồm tạ)"
+        )
         val equipmentSpinner=Spinner(this).apply {
             adapter=ArrayAdapter(this@FitnessActivity,android.R.layout.simple_spinner_dropdown_item,equipmentOptions)
-            setSelection(prefs.getInt("recommendEquipment",0).coerceIn(0,3))
+            setSelection(prefs.getInt("recommendEquipment",0).coerceIn(0,equipmentOptions.lastIndex))
         }
         root.addView(equipmentSpinner)
         recommendationEquipmentSpinner = equipmentSpinner
@@ -704,7 +711,7 @@ class FitnessActivity:Activity() {
                     candidate.id != baseProgram.id &&
                         (candidate.id != "advanced" || level.selectedItemPosition >= 2) &&
                         (candidate.id != "weighted" ||
-                            ((equipment == 2 || additionalEquipment.any {
+                            ((equipment in setOf(2, 4, 5) || additionalEquipment.any {
                                 it == TrainingEquipment.DUMBBELL || it == TrainingEquipment.RESISTANCE_BAND
                             }) && level.selectedItemPosition >= 1)) &&
                         filteredPrograms[candidate.id]?.second?.canStart == true

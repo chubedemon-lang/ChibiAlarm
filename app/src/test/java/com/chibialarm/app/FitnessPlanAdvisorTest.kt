@@ -1,6 +1,7 @@
 package com.chibialarm.app
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -67,6 +68,14 @@ class FitnessPlanAdvisorTest {
             prefs(goal = 0, level = 2, equipment = 2)).programId)
         assertEquals("weighted", FitnessPlanAdvisor.recommend(
             prefs(goal = 0, level = 1, equipment = 2)).programId)
+        assertEquals("weighted", FitnessPlanAdvisor.recommend(
+            prefs(goal = 0, level = 1, equipment = 4)).programId)
+        assertEquals("weighted", FitnessPlanAdvisor.recommend(
+            prefs(goal = 0, level = 1, equipment = 5)).programId)
+        assertTrue(FitnessPlanAdvisor.recommend(
+            prefs(goal = 0, level = 1, equipment = 4)).explanation.contains("tạ đơn nhẹ"))
+        assertTrue(FitnessPlanAdvisor.recommend(
+            prefs(goal = 0, level = 1, equipment = 5)).explanation.contains("dây kháng lực"))
     }
 
     @Test fun beginnersDoNotReceiveLoadedStrengthPlanEvenWhenTheyOwnEquipment() {
@@ -127,14 +136,38 @@ class FitnessPlanAdvisorTest {
         assertEquals("chair", result.programId)
     }
 
-    @Test fun allFourPrimaryEquipmentSelectionsAreAccepted() {
-        for (equipment in 0..3) {
+    @Test fun allSixPrimaryEquipmentSelectionsAreAccepted() {
+        for (equipment in 0..5) {
             val result = FitnessPlanAdvisor.recommend(
                 prefs(goal = 0, level = 1, equipment = equipment)
             )
             assertTrue("equipment=$equipment should return a catalog program", result.programId.isNotBlank())
             assertTrue(TrainingCatalog.programs.any { it.id == result.programId })
         }
+    }
+
+    @Test fun exactResistanceSelectionsFilterOutTheUnownedTool() {
+        fun move(name: String, tool: TrainingEquipment) = TrainingMove(
+            name = name,
+            dose = "2 hiệp × 8 lần",
+            steps = "Thực hiện chậm",
+            easier = "Giảm biên độ",
+            avoid = "Dừng nếu đau",
+            equipmentOptions = setOf(tool)
+        )
+        val dumbbellProgram = TrainingProgram(
+            "dumbbell-only", "Tạ đơn", "Kiểm thử", "Sức mạnh",
+            listOf(move("Kéo tạ", TrainingEquipment.DUMBBELL))
+        )
+        val bandProgram = TrainingProgram(
+            "band-only", "Dây", "Kiểm thử", "Sức mạnh",
+            listOf(move("Kéo dây", TrainingEquipment.RESISTANCE_BAND))
+        )
+
+        assertTrue(WorkoutEquipmentFilter.apply(dumbbellProgram, 4).canStart)
+        assertFalse(WorkoutEquipmentFilter.apply(dumbbellProgram, 5).canStart)
+        assertTrue(WorkoutEquipmentFilter.apply(bandProgram, 5).canStart)
+        assertFalse(WorkoutEquipmentFilter.apply(bandProgram, 4).canStart)
     }
 
     @Test(expected = IllegalArgumentException::class)

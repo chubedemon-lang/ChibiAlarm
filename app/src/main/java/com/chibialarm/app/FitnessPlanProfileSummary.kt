@@ -20,7 +20,7 @@ object FitnessPlanProfileSummary {
         require(energyLabel.isNotBlank() && energyLabel.length <= 80)
         require(levelLabel.isNotBlank() && levelLabel.length <= 80)
         require(minutes in 5..120)
-        require(equipmentSelection in 0..3)
+        require(equipmentSelection in 0..5)
         require(impact in 0..2)
         require(additionalEquipment.size <= TrainingEquipment.values().size)
 
@@ -32,7 +32,9 @@ object FitnessPlanProfileSummary {
             0 -> "Không có dụng cụ"
             1 -> "Thảm tập"
             2 -> "Tạ đơn hoặc dây kháng lực"
-            else -> "Ghế vững chắc, không bánh xe"
+            3 -> "Ghế vững chắc, không bánh xe"
+            4 -> "Tạ đơn"
+            else -> "Dây kháng lực"
         } + if (extraEquipment.isEmpty()) "" else "; bổ sung: " + extraEquipment.joinToString(", ")
 
         val impactDescription = when (impact) {

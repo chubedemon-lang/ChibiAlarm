@@ -88,8 +88,26 @@ object FitnessCoachConversation {
                 answer in setOf("thảm", "tham", "thảm tập", "tham tap") ->
                 parsed.copy(equipment = 1, additionalEquipment = emptySet(), reply = "Đã ghi nhận có thảm tập.")
             question == FitnessCoachFollowUp.Question.EQUIPMENT &&
-                answer in setOf("tạ", "ta", "tạ đơn", "ta don", "dây", "day", "dây kháng lực", "day khang luc") ->
-                parsed.copy(equipment = 2, additionalEquipment = emptySet(), reply = "Đã ghi nhận có tạ hoặc dây kháng lực. Hãy kiểm tra dụng cụ được chọn.")
+                answer in setOf("tạ", "ta", "tạ đơn", "ta don", "có tạ", "co ta", "có tạ đơn", "co ta don") ->
+                parsed.copy(
+                    equipment = 4,
+                    additionalEquipment = emptySet(),
+                    reply = "Đã ghi nhận có tạ đơn; tao không giả định mày có dây kháng lực."
+                )
+            question == FitnessCoachFollowUp.Question.EQUIPMENT &&
+                answer in setOf("dây", "day", "dây kháng lực", "day khang luc", "có dây", "co day", "có dây kháng lực", "co day khang luc") ->
+                parsed.copy(
+                    equipment = 5,
+                    additionalEquipment = emptySet(),
+                    reply = "Đã ghi nhận có dây kháng lực; tao không giả định mày có tạ đơn."
+                )
+            question == FitnessCoachFollowUp.Question.EQUIPMENT &&
+                answer in setOf("tạ hoặc dây", "ta hoac day", "tạ đơn hoặc dây kháng lực", "ta don hoac day khang luc") ->
+                parsed.copy(
+                    equipment = 2,
+                    additionalEquipment = emptySet(),
+                    reply = "Đã ghi nhận có tạ đơn hoặc dây kháng lực. Hãy kiểm tra lựa chọn trước khi tạo giáo án."
+                )
             question == FitnessCoachFollowUp.Question.EQUIPMENT &&
                 answer in setOf(
                     "ghế", "ghe", "ghế vững", "ghe vung", "ghế vững chắc", "ghe vung chac",

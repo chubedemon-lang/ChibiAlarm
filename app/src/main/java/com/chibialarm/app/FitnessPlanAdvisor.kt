@@ -24,7 +24,7 @@ object FitnessPlanAdvisor {
     /** impact: 0 = no restriction reported, 1 = prefer low impact, 2 = pain/injury. */
     fun recommend(p: Preferences): Recommendation {
         require(p.goal in 0..5 && p.energy in 0..2 && p.level in 0..2)
-        require(p.minutes in 5..120 && p.equipment in 0..3 && p.impact in 0..2)
+        require(p.minutes in 5..120 && p.equipment in 0..5 && p.impact in 0..2)
         require(p.additionalEquipment.size <= TrainingEquipment.values().size)
         val availableEquipment = TrainingEquipmentAvailability.fromPreference(p.equipment) +
             p.additionalEquipment
@@ -39,6 +39,11 @@ object FitnessPlanAdvisor {
             minutes = 0,
             requiresProfessionalReview = true
         )
+        val resistanceDescription = when (p.equipment) {
+            4 -> "tạ đơn nhẹ"
+            5 -> "dây kháng lực"
+            else -> "tạ đơn nhẹ hoặc dây kháng lực"
+        }
         val id = when {
             p.energy == 0 && p.minutes <= 10 -> "quickrecovery"
             p.energy == 0 -> "recovery"
@@ -77,7 +82,7 @@ object FitnessPlanAdvisor {
             p.minutes <= 10 ->
                 "Bạn chỉ có ít thời gian; Chibi chọn chuỗi toàn thân ngắn, giữ khởi động và thả lỏng thay vì cắt ngẫu nhiên hiệp."
             p.goal == 0 && p.level >= 1 && hasResistanceEquipment ->
-                "Bạn có tạ đơn nhẹ hoặc dây kháng lực và đã có nền tảng; ưu tiên bài sức mạnh với tải nhẹ, có kiểm soát."
+                "Bạn có $resistanceDescription và đã có nền tảng; ưu tiên bài sức mạnh với tải nhẹ, có kiểm soát."
             p.goal == 0 && hasStableChair ->
                 "Bạn có ghế vững chắc; ưu tiên bài toàn thân có điểm tựa, nhịp chậm và có thể xem trước từng bước."
             p.goal == 0 && p.level == 0 -> "Mới bắt đầu nên ưu tiên động tác cơ bản trước khi dùng tải."

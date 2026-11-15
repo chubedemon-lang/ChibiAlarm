@@ -53,8 +53,17 @@ class FitnessCoachConversationTest {
     @Test fun shortResistanceBandAnswerUsesEquipmentQuestion() {
         val previous = FitnessCoachConversation.merge(null, FitnessNaturalRequest.parse("giãn cơ 15 phút, đang tập đều"))
         val reply = FitnessCoachConversation.parseReply(previous, "dây kháng lực")
-        assertEquals(2, FitnessCoachConversation.merge(previous, reply).equipment)
+        assertEquals(5, FitnessCoachConversation.merge(previous, reply).equipment)
     }
+    @Test fun shortDumbbellAnswerUsesOnlyTheDumbbellSelection() {
+        val previous = FitnessCoachConversation.parseReply(
+            FitnessNaturalRequest.parse("giãn cơ 15 phút, đang tập đều"),
+            "tạ đơn"
+        )
+        assertEquals(4, previous.equipment)
+        assertTrue(previous.reply.contains("không giả định"))
+    }
+
     @Test fun shortEquipmentAnswerCannotOverrideSafetyWarning() {
         val previous = FitnessCoachConversation.merge(null, FitnessNaturalRequest.parse("đang đau khớp"))
         val reply = FitnessCoachConversation.parseReply(previous, "tạ")
@@ -285,7 +294,7 @@ class FitnessCoachConversationTest {
             null,
             FitnessNaturalRequest.parse("tăng cơ 30 phút, mới bắt đầu, có tạ")
         )
-        assertEquals(2, first.equipment)
+        assertEquals(4, first.equipment)
 
         val reply = FitnessCoachConversation.parseReply(first, "không còn tạ nữa")
         val updated = FitnessCoachConversation.merge(first, reply)

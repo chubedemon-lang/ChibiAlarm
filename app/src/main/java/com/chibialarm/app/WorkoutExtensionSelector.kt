@@ -13,7 +13,7 @@ data class WorkoutExtensionPreferences(
     init {
         require(goal in 0..5)
         require(energy in 0..2)
-        require(equipment in 0..3)
+        require(equipment in 0..5)
         require(impact in 0..2)
         require(additionalEquipment.size <= TrainingEquipment.values().size)
     }

@@ -43,6 +43,34 @@ class FitnessPlanProfileSummaryTest {
         assertFalse(summary.contains("bổ sung: Dây kháng lực"))
     }
 
+    @Test fun profileSummaryNamesTheExactResistanceTool() {
+        val dumbbell = FitnessPlanProfileSummary.format(
+            goalLabel = "Tăng sức mạnh",
+            energyLabel = "Bình thường",
+            levelLabel = "Đang tập đều",
+            minutes = 25,
+            equipmentSelection = 4,
+            additionalEquipment = emptySet(),
+            impact = 0,
+            constraints = WorkoutConstraintProfile()
+        )
+        val band = FitnessPlanProfileSummary.format(
+            goalLabel = "Tăng sức mạnh",
+            energyLabel = "Bình thường",
+            levelLabel = "Đang tập đều",
+            minutes = 25,
+            equipmentSelection = 5,
+            additionalEquipment = emptySet(),
+            impact = 0,
+            constraints = WorkoutConstraintProfile()
+        )
+
+        assertTrue(dumbbell.contains("Dụng cụ: Tạ đơn"))
+        assertFalse(dumbbell.contains("Dây kháng lực"))
+        assertTrue(band.contains("Dụng cụ: Dây kháng lực"))
+        assertFalse(band.contains("Tạ đơn"))
+    }
+
     @Test fun allMovementFiltersAreVisibleAndExplicitlySessionOnly() {
         val summary = FitnessPlanProfileSummary.format(
             goalLabel = "Linh hoạt",

@@ -2281,6 +2281,11 @@ class GuidedWorkoutActivity:Activity() {
                                 startSetRest(plan.defaultRestSeconds)
                             }
                         }
+                        // If the platform cancelled the parent while presenting the preview,
+                        // restore it so the user can still choose a manual effort level.
+                        if (!checkInDialog.isShowing && !isFinishing && !isDestroyed) {
+                            checkInDialog.show()
+                        }
                     }
                 }
                 val confirmation = AlertDialog.Builder(this)

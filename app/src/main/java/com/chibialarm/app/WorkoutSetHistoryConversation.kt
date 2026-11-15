@@ -18,6 +18,7 @@ object WorkoutSetHistoryConversation {
     private const val MAX_LOG_CHARS = 1_200
     private const val MAX_MOVES = 100
     private const val MAX_SETS = 20
+    private const val MAX_DISPLAY_MOVES = 8
     private val dateFormat = DateTimeFormatter.ofPattern("dd/MM/yyyy", Locale.ROOT)
     private val setPattern = Regex(
         """hiệp\s+(\d{1,2})\s*:\s*(\d{1,3})\s+(lần|nhịp|giây)""",
@@ -55,15 +56,23 @@ object WorkoutSetHistoryConversation {
                     UUID.fromString(workout.sessionId).toString() == workout.sessionId
                 }.getOrDefault(false)
                 if (date.isAfter(today) || workout.minutes !in 1..600 ||
-                    !validSessionId || workout.setLog.isBlank() ||
-                    workout.setLog.length > MAX_LOG_CHARS
+                    !validSessionId
                 ) return@mapIndexedNotNull null
 
-                val moves = parseMoves(workout.setLog)
-                if (moves.isEmpty()) return@mapIndexedNotNull null
+                // Keep the newest valid guided session even when it has no set log.
+                // A later timed-only session must not make this answer fall back to older sets.
+                val moves = if (workout.setLog.length <= MAX_LOG_CHARS) {
+                    parseMoves(workout.setLog)
+                } else {
+                    emptyList()
+                }
                 Session(date, index, moves)
             }
             .sortedWith(compareByDescending<Session> { it.date }.thenByDescending { it.originalIndex })
+
+        if (isLatestSessionMoveListQuestion(query)) {
+            return latestSessionMoveList(sessions)
+        }
 
         val knownNames = sessions.flatMap { it.moves }
             .map { it.name }
@@ -192,7 +201,42 @@ object WorkoutSetHistoryConversation {
         val asksExerciseComparison = !mentionsWeekComparison && listOf(
             "so sanh", "so voi", "tien bo", "lan truoc", "lan nay", "hai buoi", "2 buoi"
         ).any { text.contains(it) }
-        return asksSetValues || asksExerciseComparison
+        return asksSetValues || asksExerciseComparison || isLatestSessionMoveListQuestion(text)
+    }
+
+    private fun isLatestSessionMoveListQuestion(text: String): Boolean {
+        val mentionsRecentSession = text.contains("buoi") &&
+            listOf("gan nhat", "moi nhat", "vua roi", "hom qua").any { text.contains(it) }
+        val asksForMoveList = listOf(
+            "bai nao", "bai gi", "nhung bai", "cac bai",
+            "dong tac nao", "nhung dong tac", "danh sach", "liet ke"
+        ).any { text.contains(it) }
+        return mentionsRecentSession && asksForMoveList
+    }
+
+    private fun latestSessionMoveList(sessions: List<Session>): String {
+        val latest = sessions.firstOrNull()
+            ?: return "Chưa tìm thấy buổi Guided Workout hợp lệ trong nhật ký trên máy."
+        if (latest.moves.isEmpty()) {
+            return "Buổi Guided Workout gần nhất (${latest.date.format(dateFormat)}) chưa có chi tiết hiệp tự khai báo. Có thể buổi đó dùng động tác theo thời gian hoặc bạn chưa xác nhận số hiệp; Chibi sẽ không lấy dữ liệu từ buổi cũ thay thế."
+        }
+
+        val visibleMoves = latest.moves.take(MAX_DISPLAY_MOVES)
+        return buildString {
+            append("Các động tác có chi tiết hiệp đã tự ghi trong buổi Guided Workout gần nhất (")
+            append(latest.date.format(dateFormat))
+            append("):")
+            visibleMoves.forEach { move ->
+                append("\n• ")
+                append(move.name)
+                append(": ")
+                append(formatSets(move.sets))
+            }
+            val remaining = latest.moves.size - visibleMoves.size
+            if (remaining > 0) append("\n• Còn ${remaining} động tác có chi tiết hiệp khác.")
+            append("\nChỉ liệt kê động tác có số hiệp/giá trị đã ghi; bài theo thời gian có thể không xuất hiện. ")
+            append("Số liệu do bạn tự khai báo, không phải cảm biến xác minh; ghi chú riêng tư không được đọc.")
+        }
     }
 
     private fun formatSets(sets: List<SetValue>): String =

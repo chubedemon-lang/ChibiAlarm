@@ -26,38 +26,11 @@ class CoachActivity:Activity() {
     private var fitnessContext: FitnessNaturalRequest.Result? = null
     private val speechRequest=4401
     // Preserve the active coaching form across rotation, without persisting it to disk.
-    private fun restoreFitnessContext(state: Bundle?): FitnessNaturalRequest.Result? {
-        if (state?.getBoolean("fitness_context_present") != true) return null
-        fun value(key: String): Int? = if (state.containsKey(key)) state.getInt(key) else null
-        fun booleanValue(key: String): Boolean? =
-            if (state.containsKey(key)) state.getBoolean(key) else null
-        return FitnessNaturalRequest.Result(
-            goal = value("fitness_goal"),
-            level = value("fitness_level"),
-            energy = value("fitness_energy"),
-            minutes = value("fitness_minutes"),
-            equipment = value("fitness_equipment"),
-            impact = value("fitness_impact"),
-            reply = "",
-            avoidWristLoad = booleanValue("fitness_avoid_wrist_load"),
-            avoidFloorPositions = booleanValue("fitness_avoid_floor_positions"),
-            avoidOverheadReach = booleanValue("fitness_avoid_overhead_reach")
-        )
-    }
+    private fun restoreFitnessContext(state: Bundle?): FitnessNaturalRequest.Result? =
+        CoachFitnessHandoff.restoreFromBundle(state)
 
     override fun onSaveInstanceState(outState: Bundle) {
-        fitnessContext?.let { context ->
-            outState.putBoolean("fitness_context_present", true)
-            context.goal?.let { outState.putInt("fitness_goal", it) }
-            context.energy?.let { outState.putInt("fitness_energy", it) }
-            context.minutes?.let { outState.putInt("fitness_minutes", it) }
-            context.equipment?.let { outState.putInt("fitness_equipment", it) }
-            context.impact?.let { outState.putInt("fitness_impact", it) }
-            context.level?.let { outState.putInt("fitness_level", it) }
-            context.avoidWristLoad?.let { outState.putBoolean("fitness_avoid_wrist_load", it) }
-            context.avoidFloorPositions?.let { outState.putBoolean("fitness_avoid_floor_positions", it) }
-            context.avoidOverheadReach?.let { outState.putBoolean("fitness_avoid_overhead_reach", it) }
-        }
+        CoachFitnessHandoff.saveToBundle(fitnessContext, outState)
         super.onSaveInstanceState(outState)
     }
     private fun text(s:String,size:Float=16f)=TextView(this).apply { text=s;textSize=size;setTextColor(Color.rgb(82,55,99));setPadding(7,7,7,7) }
@@ -73,15 +46,7 @@ class CoachActivity:Activity() {
         buttons.addView(Button(this).apply { text="🏃 Xem bài tập";setOnClickListener {
             val current=fitnessContext
             val intent=Intent(this@CoachActivity,FitnessActivity::class.java)
-            current?.goal?.let { intent.putExtra("coach_goal",it) }
-            current?.energy?.let { intent.putExtra("coach_energy",it) }
-            current?.minutes?.let { intent.putExtra("coach_minutes",it) }
-            current?.equipment?.let { intent.putExtra("coach_equipment",it) }
-            current?.impact?.let { intent.putExtra("coach_impact",it) }
-            current?.level?.let { intent.putExtra("coach_level",it) }
-            current?.avoidWristLoad?.let { intent.putExtra("coach_avoid_wrist_load",it) }
-            current?.avoidFloorPositions?.let { intent.putExtra("coach_avoid_floor_positions",it) }
-            current?.avoidOverheadReach?.let { intent.putExtra("coach_avoid_overhead_reach",it) }
+            CoachFitnessHandoff.addToFitnessIntent(current, intent)
             startActivity(intent)
         } })
         buttons.addView(Button(this).apply { text="🗑 Xóa chat";setOnClickListener {

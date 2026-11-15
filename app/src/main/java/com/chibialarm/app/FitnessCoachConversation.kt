@@ -39,6 +39,65 @@ object FitnessCoachConversation {
         "có thể nằm sàn", "co the nam san", "nằm sàn được", "nam san duoc"
     )
 
+    private fun normalizedEquipmentUtterance(input: String): String =
+        java.text.Normalizer.normalize(
+            input.lowercase(Locale.ROOT).replace('đ', 'd'),
+            java.text.Normalizer.Form.NFD
+        )
+            .replace(Regex("\\\\p{M}+"), "")
+            .replace(Regex("[^a-z0-9 ]"), " ")
+            .replace(Regex("\\\\s+"), " ")
+            .trim()
+
+    private fun additiveEquipmentReply(
+        previous: FitnessNaturalRequest.Result,
+        input: String,
+        parsed: FitnessNaturalRequest.Result
+    ): FitnessNaturalRequest.Result? {
+        val normalized = normalizedEquipmentUtterance(input)
+        fun containsPhrase(phrase: String) =
+            Regex("(?:^| )" + Regex.escape(phrase) + "(?: |$)").containsMatchIn(normalized)
+
+        val additive = listOf("co them", "ngoai ra co", "them nua", "bo sung")
+            .any(::containsPhrase)
+        // A sentence that also removes/denies a tool is a replacement, not an additive update.
+        val removesEquipment = listOf(
+            "khong co ta", "khong co ta don", "khong dung ta", "bo ta", "bo ta don",
+            "khong co day", "khong co day khang luc", "khong dung day", "bo day", "bo day khang luc",
+            "khong co tham", "khong dung tham", "bo tham",
+            "khong co ghe", "khong dung ghe", "bo ghe", "khong dung cu", "khong co dung cu"
+        ).any(::containsPhrase)
+        val reportedPrimary = parsed.equipment?.takeIf { it in 0..5 } ?: return null
+        if (!additive || removesEquipment || parsed.impact == 2) return null
+
+        val reportedTools = TrainingEquipmentAvailability.fromPreference(reportedPrimary) +
+            parsed.additionalEquipment.orEmpty()
+        if (reportedTools.isEmpty()) return null
+
+        val previousPrimary = previous.equipment?.takeIf { it in 0..5 }
+        val existingTools = (previousPrimary?.let(TrainingEquipmentAvailability::fromPreference).orEmpty()) +
+            previous.additionalEquipment.orEmpty()
+        val combinedTools = existingTools + reportedTools
+        val retainedPrimary = previousPrimary?.takeIf { it != 0 &&
+            TrainingEquipmentAvailability.fromPreference(it).all(combinedTools::contains)
+        }
+        val primary = retainedPrimary ?: reportedPrimary.takeIf { it != 0 }
+            ?: when {
+                TrainingEquipment.DUMBBELL in combinedTools && TrainingEquipment.RESISTANCE_BAND in combinedTools -> 2
+                TrainingEquipment.DUMBBELL in combinedTools -> 4
+                TrainingEquipment.RESISTANCE_BAND in combinedTools -> 5
+                TrainingEquipment.MAT in combinedTools -> 1
+                TrainingEquipment.STABLE_CHAIR in combinedTools -> 3
+                else -> 0
+            }
+        val extras = combinedTools - TrainingEquipmentAvailability.fromPreference(primary)
+        return parsed.copy(
+            equipment = primary,
+            additionalEquipment = extras,
+            reply = "Đã bổ sung dụng cụ mới và giữ các lựa chọn trước đó. Kiểm tra lại danh sách dụng cụ trước khi tạo giáo án."
+        )
+    }
+
     /**
      * Interpret short answers only in the context of the question Chibi last asked.
      * Never infer that a bare "không" means there is no injury: safety constraints
@@ -59,6 +118,9 @@ object FitnessCoachConversation {
         val contextualMinutes = if (question == FitnessCoachFollowUp.Question.DURATION) {
             parsed.minutes ?: FitnessNaturalRequest.parse("$input phút").minutes
         } else null
+        if (previous != null) {
+            additiveEquipmentReply(previous, input, parsed)?.let { return it }
+        }
         return when {
             question == FitnessCoachFollowUp.Question.SAFETY_STOP -> parsed
             question == FitnessCoachFollowUp.Question.GOAL &&

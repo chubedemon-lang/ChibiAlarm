@@ -92,9 +92,26 @@ class WorkoutDataSessionTest {
             selfReportedSets = 4
         )
         assertFalse(WorkoutData.appendSession(context, guided))
-        // The ordinary save path also refuses to overwrite data it cannot parse.
-        WorkoutData.save(context, emptyList())
+        // The ordinary save path reports failure and refuses to overwrite unreadable bytes.
+        assertFalse(WorkoutData.save(context, emptyList()))
         assertEquals(corrupt, prefs.getString("history", null))
+    }
+
+    @Test fun manualAndVerifiedAccountReplacementsReportOnlyCommittedWrites() {
+        val guestFirst = Workout("2026-11-14", "Đi bộ", 20, "guest first")
+        val guestReplacement = Workout("2026-11-15", "Giãn cơ", 12, "guest replacement")
+        val subject = newAccountSubject("durable-save")
+        val accountWorkout = Workout("2026-11-15", "Toàn thân", 18, "account-only")
+
+        assertTrue(WorkoutData.save(context, listOf(guestFirst)))
+        assertEquals(listOf(guestFirst), WorkoutData.history(context))
+
+        assertTrue(WorkoutData.save(context, listOf(guestReplacement)))
+        assertEquals(listOf(guestReplacement), WorkoutData.history(context))
+
+        assertTrue(WorkoutData.saveForVerifiedAccount(context, subject, listOf(accountWorkout)))
+        assertEquals(listOf(accountWorkout), WorkoutData.historyForVerifiedAccount(context, subject))
+        assertEquals(listOf(guestReplacement), WorkoutData.history(context))
     }
 
     @Test fun rejectsOversizedPerSetDetailWithoutWritingJournal() {
@@ -205,7 +222,7 @@ class WorkoutDataSessionTest {
         )
 
         assertFalse(WorkoutData.appendSessionForVerifiedAccount(context, subject, guided))
-        WorkoutData.saveForVerifiedAccount(context, subject, emptyList())
+        assertFalse(WorkoutData.saveForVerifiedAccount(context, subject, emptyList()))
         assertEquals(corrupt, prefs.getString("history", null))
     }
 

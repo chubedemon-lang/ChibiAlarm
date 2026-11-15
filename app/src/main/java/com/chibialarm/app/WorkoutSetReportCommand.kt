@@ -17,13 +17,34 @@ object WorkoutSetReportCommand {
         "(?:mot|hai|ba|bon|tu|nam|lam|sau|bay|tam|chin|muoi)" +
             "(?:\\s+(?:tram|linh|le|muoi|mot|hai|ba|bon|tu|nam|lam|sau|bay|tam|chin)){0,3}"
     private val number = "(?:[0-9]{1,3}|$numberWords)"
+    // First-person forms cover common Vietnamese speech styles without accepting
+    // ambiguous bare numbers or future target commands such as "giảm còn 10 lần".
+    private val reportPrefixes = listOf(
+        "toi da lam duoc", "toi vua lam duoc", "toi lam duoc", "toi da lam", "toi lam",
+        "toi da thuc hien duoc", "toi vua thuc hien duoc", "toi thuc hien duoc",
+        "toi da thuc hien", "toi thuc hien",
+        "da lam duoc", "da lam", "da thuc hien duoc", "da thuc hien",
+        "toi da giu duoc", "toi vua giu duoc", "toi giu duoc", "da giu duoc", "da giu",
+        "toi da hoan thanh", "toi vua hoan thanh", "da hoan thanh", "vua hoan thanh", "hoan thanh",
+        "minh da lam duoc", "minh vua lam duoc", "minh lam duoc",
+        "minh da thuc hien duoc", "minh vua thuc hien duoc", "minh thuc hien duoc",
+        "minh da giu duoc", "minh vua giu duoc", "minh giu duoc",
+        "minh da hoan thanh", "minh vua hoan thanh", "minh hoan thanh",
+        "tao da lam duoc", "tao vua lam duoc", "tao lam duoc",
+        "tao da thuc hien duoc", "tao vua thuc hien duoc", "tao thuc hien duoc",
+        "tao da giu duoc", "tao vua giu duoc", "tao giu duoc",
+        "tao da hoan thanh", "tao vua hoan thanh", "tao hoan thanh",
+        "em da lam duoc", "em vua lam duoc", "em lam duoc",
+        "em da thuc hien duoc", "em vua thuc hien duoc", "em thuc hien duoc",
+        "em da giu duoc", "em vua giu duoc", "em giu duoc",
+        "tui da lam duoc", "tui vua lam duoc", "tui lam duoc",
+        "tui da thuc hien duoc", "tui vua thuc hien duoc", "tui thuc hien duoc",
+        "tui da giu duoc", "tui vua giu duoc", "tui giu duoc",
+        "hiep nay"
+    )
     private val reportPattern = Regex(
-        """^(?:toi da lam duoc|toi lam duoc|toi da lam|toi lam|""" +
-            """toi da thuc hien duoc|toi thuc hien duoc|toi da thuc hien|toi thuc hien|""" +
-            """da lam duoc|da lam|da thuc hien duoc|da thuc hien|""" +
-            """toi da giu duoc|toi giu duoc|da giu duoc|da giu|""" +
-            """toi da hoan thanh|da hoan thanh|hoan thanh|hiep nay)\s+($number)\s*""" +
-            """(lan|cai|reps?|nhip|giay|s)(?:\s+(?:roi|xong))?$"""
+        "^(?:${reportPrefixes.joinToString("|") { Regex.escape(it) }})\\s+($number)\\s*" +
+            "(lan|cai|reps?|nhip|giay|s)(?:\\s+(?:roi|xong))?$"
     )
 
     private val smallNumbers = mapOf(

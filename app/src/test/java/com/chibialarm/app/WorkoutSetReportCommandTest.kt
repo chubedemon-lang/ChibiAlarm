@@ -50,6 +50,33 @@ class WorkoutSetReportCommandTest {
         )
     }
 
+    @Test fun acceptsNaturalFirstPersonReportsFromCommonVietnameseSpeechStyles() {
+        assertEquals(
+            WorkoutSetReportCommand.Report(12, "lần"),
+            WorkoutSetReportCommand.parse("Mình vừa làm được 12 lần rồi")
+        )
+        assertEquals(
+            WorkoutSetReportCommand.Report(15, "lần"),
+            WorkoutSetReportCommand.parse("Tao đã làm được mười lăm lần")
+        )
+        assertEquals(
+            WorkoutSetReportCommand.Report(30, "giây"),
+            WorkoutSetReportCommand.parse("Em giữ được 30 giây")
+        )
+        assertEquals(
+            WorkoutSetReportCommand.Report(15, "nhịp"),
+            WorkoutSetReportCommand.parse("Tui thực hiện được 15 nhịp")
+        )
+    }
+
+    @Test fun colloquialReportsStillRejectPlanEditsAndMixedSafetyStatements() {
+        assertNull(WorkoutSetReportCommand.parse("Mình giảm còn 10 lần"))
+        assertNull(WorkoutSetReportCommand.parse("Tao tăng lên 12 lần"))
+        assertNull(WorkoutSetReportCommand.parse("Em nghỉ thêm 30 giây"))
+        assertNull(WorkoutSetReportCommand.parse("Tao đã làm được 10 lần nhưng đau gối"))
+        assertNull(WorkoutSetReportCommand.parse("Mình vừa làm được 10 lần rồi, nghỉ thêm 30 giây"))
+    }
+
     @Test fun targetChangesAreNotMisreadAsCompletedPerformance() {
         assertNull(WorkoutSetReportCommand.parse("Giảm còn 10 lần"))
         assertNull(WorkoutSetReportCommand.parse("Tăng lên 12 lần"))

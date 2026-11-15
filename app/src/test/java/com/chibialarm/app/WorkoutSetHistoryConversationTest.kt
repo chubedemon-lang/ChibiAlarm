@@ -187,7 +187,7 @@ class WorkoutSetHistoryConversationTest {
         )
         val latest = guided(
             today,
-            "Squat không tạ: hiệp 1: 12 lần, Plank: hiệp 1: 25 giây",
+            "Squat không tạ: hiệp 1: 12 lần; Plank: hiệp 1: 25 giây",
             "550e8400-e29b-41d4-a716-446655440035",
             "private current health note"
         )

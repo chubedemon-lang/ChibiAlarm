@@ -288,4 +288,21 @@ class WorkoutSetHistoryConversationTest {
         assertNotNull(answer)
         assertTrue(answer!!.contains("nhắc tên động tác"))
     }
+    @Test fun genericRecentSessionListsAreLeftToTheGeneralHistoryConversation() {
+        assertNull(
+            WorkoutSetHistoryConversation.answer(
+                "Liệt kê 3 buổi gần nhất",
+                emptyList(),
+                today
+            )
+        )
+        assertNull(
+            WorkoutSetHistoryConversation.answer(
+                "Danh sách 5 buổi tập gần nhất",
+                emptyList(),
+                today
+            )
+        )
+    }
+
 }

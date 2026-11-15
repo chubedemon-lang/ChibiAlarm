@@ -38,19 +38,21 @@ class WorkoutPlanAdjustmentConversationTest {
     @Test fun missingDumbbellCanKeepASelectedResistanceBand() {
         val answer = WorkoutPlanAdjustmentConversation.answer(
             input = "Không có tạ, có bài thay thế không?",
-            equipmentSelection = 2
+            equipmentSelection = 2,
+            programs = listOf(TrainingCatalog.byId("weighted"))
         )
 
         assertNotNull(answer)
         assertTrue(answer!!.contains("Sức mạnh với tạ hoặc dây"))
-        assertTrue(answer.contains("dây kháng lực"))
+        assertTrue(answer.contains("Kéo tạ đơn hoặc dây kháng lực"))
     }
 
     @Test fun gentleRequestPrioritizesBeginnerFriendlyPrograms() {
         val answer = WorkoutPlanAdjustmentConversation.answer("Hôm nay mệt, có bài nào dễ hơn?")
 
         assertNotNull(answer)
-        assertTrue(answer!!.indexOf("Bắt đầu nhẹ nhàng") < answer.indexOf("Thử thách"))
+        assertTrue(answer!!.contains("Bắt đầu nhẹ nhàng"))
+        assertFalse(answer.contains("Thử thách"))
     }
 
     @Test fun normalPlanRequestIsNotIntercepted() {

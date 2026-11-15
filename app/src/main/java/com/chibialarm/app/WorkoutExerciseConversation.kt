@@ -26,7 +26,7 @@ object WorkoutExerciseConversation {
         "nhu", "the", "nao", "ky", "thuat", "luu", "y", "khi", "nghi",
         "bao", "nhieu", "hiep", "lan", "giay", "giai", "thich", "bai",
         "dong", "tac", "nay", "la", "gi", "toi", "tao", "minh", "muon",
-        "biet", "cho", "tung", "buoc", "theo", "voi", "nua", "phut"
+        "biet", "cho", "tung", "buoc", "theo", "voi", "nua", "phut", "dung"
     )
 
     private data class Match(
@@ -114,9 +114,9 @@ object WorkoutExerciseConversation {
             Normalizer.Form.NFD
         )
         return withoutDiacritics
-            .replace(Regex("\\\\p{M}+"), "")
+            .replace(Regex("\\p{M}+"), "")
             .replace(Regex("[^a-z0-9 ]"), " ")
-            .replace(Regex("\\\\s+"), " ")
+            .replace(Regex("\\s+"), " ")
             .trim()
     }
 }

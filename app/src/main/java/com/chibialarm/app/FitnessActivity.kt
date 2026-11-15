@@ -595,16 +595,21 @@ class FitnessActivity:Activity() {
                         renderCoachTranscript()
                         sayFollowUp(historyAnswer)
                         naturalRequest.text.clear()
-                        AlertDialog.Builder(this@FitnessActivity)
-                            .setTitle("📊 Nhật ký tập luyện")
-                            .setMessage(historyAnswer)
-                            .setPositiveButton("Đã hiểu", null)
-                            .setNeutralButton("Hỏi tiếp") { _, _ ->
-                                naturalRequest.requestFocus()
-                                (getSystemService(INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager)
-                                    ?.showSoftInput(naturalRequest, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
-                            }
-                            .show()
+                        return@setOnClickListener
+                    }
+                    val adjustmentAnswer = WorkoutPlanAdjustmentConversation.answer(
+                        input = request,
+                        profile = currentWorkoutConstraintProfile(),
+                        equipmentSelection = recommendationEquipmentSpinner?.selectedItemPosition ?: 0,
+                        additionalEquipment = currentAdditionalEquipment()
+                    )
+                    if (adjustmentAnswer != null) {
+                        // Preview only: chat suggestions never mutate the selected or active workout.
+                        coachTranscript.addUser(request)
+                        coachTranscript.addChibi(adjustmentAnswer)
+                        renderCoachTranscript()
+                        sayFollowUp(adjustmentAnswer)
+                        naturalRequest.text.clear()
                         return@setOnClickListener
                     }
                     val exerciseAnswer = WorkoutExerciseConversation.answer(request)
@@ -615,16 +620,6 @@ class FitnessActivity:Activity() {
                         renderCoachTranscript()
                         sayFollowUp(exerciseAnswer)
                         naturalRequest.text.clear()
-                        AlertDialog.Builder(this@FitnessActivity)
-                            .setTitle("📚 Thư viện bài tập")
-                            .setMessage(exerciseAnswer)
-                            .setPositiveButton("Đã hiểu", null)
-                            .setNeutralButton("Hỏi tiếp") { _, _ ->
-                                naturalRequest.requestFocus()
-                                (getSystemService(INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager)
-                                    ?.showSoftInput(naturalRequest, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
-                            }
-                            .show()
                         return@setOnClickListener
                     }
                     val parsed=FitnessCoachConversation.merge(conversation, FitnessCoachConversation.parseReply(conversation, request))

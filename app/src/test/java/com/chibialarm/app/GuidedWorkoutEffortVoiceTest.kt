@@ -122,6 +122,10 @@ class GuidedWorkoutEffortVoiceTest {
             )
             val preview = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
             assertTrue(preview.isShowing)
+            val resting = GuidedWorkoutActivity::class.java.getDeclaredField("resting")
+                .apply { isAccessible = true }
+            assertFalse("Showing a voice preview must not start the prescribed rest",
+                resting.getBoolean(checkIn.activity))
             assertTrue(preview.findViewById<android.widget.TextView>(android.R.id.message)
                 ?.text?.toString().orEmpty().contains("Khó, cần nghỉ thêm"))
             assertTrue(effortLevels(checkIn).isEmpty())
@@ -142,6 +146,38 @@ class GuidedWorkoutEffortVoiceTest {
                 planPreview.findViewById<android.widget.TextView>(android.R.id.message)
                     ?.text?.toString().orEmpty().contains("Các hiệp đã xác nhận không bị sửa")
             )
+        } finally {
+            checkIn.activity.finish()
+        }
+    }
+
+    @Test fun rejectingVoicePreviewRestoresEffortChoicesWithoutStartingRest() {
+        val checkIn = openCheckIn()
+        try {
+            val handle = GuidedWorkoutActivity::class.java.getDeclaredMethod(
+                "handleEffortVoiceCheckIn",
+                Int::class.javaPrimitiveType,
+                String::class.java,
+                Int::class.javaPrimitiveType,
+                WorkoutSetTracker.Plan::class.java,
+                Boolean::class.javaPrimitiveType,
+                AlertDialog::class.java,
+                String::class.java
+            ).apply { isAccessible = true }
+
+            handle.invoke(
+                checkIn.activity, checkIn.moveIndex, checkIn.sessionId, 1,
+                checkIn.plan, true, checkIn.dialog, "khó quá"
+            )
+            val preview = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
+            preview.getButton(AlertDialog.BUTTON_NEGATIVE).performClick()
+
+            val resting = GuidedWorkoutActivity::class.java.getDeclaredField("resting")
+                .apply { isAccessible = true }
+            assertFalse(resting.getBoolean(checkIn.activity))
+            assertTrue("Rejecting a recognized answer must leave manual choices available",
+                checkIn.dialog.isShowing)
+            assertTrue(effortLevels(checkIn).isEmpty())
         } finally {
             checkIn.activity.finish()
         }

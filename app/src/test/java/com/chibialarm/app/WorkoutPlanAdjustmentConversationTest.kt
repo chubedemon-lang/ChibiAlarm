@@ -63,6 +63,81 @@ class WorkoutPlanAdjustmentConversationTest {
         )
     }
 
+    @Test fun remainingTimePrioritizesGoalAlignedProgramsAndShowsEstimates() {
+        val answer = WorkoutPlanAdjustmentConversation.answer(
+            input = "Tao chỉ còn 5 phút, ưu tiên cardio nhẹ",
+            level = 1,
+            goal = 1
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("Mày còn 5 phút"))
+        assertTrue(answer.contains("Cardio nhẹ 5–10 phút"))
+        assertTrue(answer.contains("Ước tính:"))
+        assertTrue(answer.contains("buổi đang tập chưa bị thay đổi"))
+    }
+
+    @Test fun spokenRemainingMinutesAndGoalAreUnderstoodWithoutChangingThePlan() {
+        val answer = WorkoutPlanAdjustmentConversation.answer(
+            "Tao chỉ còn năm phút, ưu tiên giãn cơ"
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("Mày còn 5 phút"))
+        assertTrue(answer.contains("Linh hoạt 5–10 phút"))
+        assertTrue(answer.contains("bản xem trước"))
+    }
+
+    @Test fun aProgramLongerThanRemainingTimeIsShownWithAnExplicitWarning() {
+        val answer = WorkoutPlanAdjustmentConversation.answer(
+            input = "Tao chỉ còn 5 phút, có bài nào phù hợp?",
+            programs = listOf(TrainingCatalog.byId("full"))
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("dài hơn thời gian còn lại"))
+        assertTrue(answer.contains("không tự cắt hiệp bắt buộc"))
+    }
+
+    @Test fun levelChangesTheDisplayedTimeEstimate() {
+        val program = TrainingCatalog.byId("full")
+        val beginner = WorkoutPlanAdjustmentConversation.answer(
+            input = "Tao còn 30 phút, có bài nào phù hợp?",
+            programs = listOf(program),
+            level = 0,
+            goal = 0
+        )
+        val experienced = WorkoutPlanAdjustmentConversation.answer(
+            input = "Tao còn 30 phút, có bài nào phù hợp?",
+            programs = listOf(program),
+            level = 2,
+            goal = 0
+        )
+
+        assertNotNull(beginner)
+        assertNotNull(experienced)
+        assertTrue(beginner!!.contains("Ước tính: 19 phút 0 giây"))
+        assertTrue(experienced!!.contains("Ước tính: 18 phút 0 giây"))
+    }
+
+    @Test fun painReportTakesPriorityOverRemainingTimeSuggestions() {
+        val answer = WorkoutPlanAdjustmentConversation.answer(
+            "Đau đầu gối, còn 5 phút, có bài nào nhẹ hơn?"
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("Không bắt đầu tập khi đang có triệu chứng"))
+        assertFalse(answer.contains("Phương án để xem trước"))
+    }
+
+    @Test fun negativeRemainingTimeIsNotTreatedAsAnAvailableBudget() {
+        assertNull(
+            WorkoutPlanAdjustmentConversation.answer(
+                "Tao không còn 5 phút, có bài nào phù hợp?"
+            )
+        )
+    }
+
     @Test fun noCompatibleMainMovementFailsClosed() {
         val floorMove = TrainingCatalog.allMoves.first { it.name == "Bird-dog" }
         val onlyFloorProgram = TrainingProgram(

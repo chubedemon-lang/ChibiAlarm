@@ -2275,18 +2275,16 @@ class GuidedWorkoutActivity:Activity() {
                 // Opening a confirmation dialog can cancel its parent on some Android/test
                 // window implementations. Suppress the parent's default-rest cancellation
                 // while the recognized answer is awaiting confirmation.
+                // Avoid stacking a second dialog over the check-in. Some Android window
+                // implementations cancel the parent when a nested dialog is shown; dismiss it
+                // deliberately and restore it only if the user rejects/cancels the voice preview.
                 checkInDialog.setOnCancelListener(null)
+                if (checkInDialog.isShowing) checkInDialog.dismiss()
                 fun restoreParentCancelBehavior() {
-                    if (isSameEffortContext(selectedIndex, selectedSessionId, completedSets, plan)) {
-                        // Dismissing a check-in is not consent to start a rest timer. The
-                        // explicit "Bỏ qua • nghỉ theo giáo án" button remains the only
-                        // automatic prescribed-rest action.
-                        checkInDialog.setOnCancelListener(null)
-                        // If the platform cancelled the parent while presenting the preview,
-                        // restore it so the user can still choose a manual effort level.
-                        if (!checkInDialog.isShowing && !isFinishing && !isDestroyed) {
-                            checkInDialog.show()
-                        }
+                    if (isSameEffortContext(selectedIndex, selectedSessionId, completedSets, plan) &&
+                        !isFinishing && !isDestroyed && !checkInDialog.isShowing
+                    ) {
+                        checkInDialog.show()
                     }
                 }
                 val confirmation = AlertDialog.Builder(this)
@@ -2393,11 +2391,9 @@ class GuidedWorkoutActivity:Activity() {
                         }
                     }
                     .create()
-                confirm.setOnCancelListener {
-                    if (isSameEffortContext(selectedIndex, selectedSessionId, completedSets, plan)) {
-                        startSetRest(plan.defaultRestSeconds)
-                    }
-                }
+                // Back/outside dismissal is not consent to start a timer. The two
+                // explicit buttons above are the only ways to choose a rest duration.
+                confirm.setOnCancelListener(null)
                 confirm.show()
             }
             WorkoutEffortFeedback.Level.VERY_HARD -> {

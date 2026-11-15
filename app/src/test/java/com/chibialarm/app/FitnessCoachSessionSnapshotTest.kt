@@ -147,7 +147,9 @@ class FitnessCoachSessionSnapshotTest {
         )
         val snapshot = FitnessCoachSessionSnapshot.capture(source, 0)!!
         assertEquals(3, snapshot.restore()?.equipment)
-        assertNull(FitnessCoachSessionSnapshot(equipment = 4).restore())
+        assertEquals(4, FitnessCoachSessionSnapshot(equipment = 4).restore()?.equipment)
+        assertEquals(5, FitnessCoachSessionSnapshot(equipment = 5).restore()?.equipment)
+        assertNull(FitnessCoachSessionSnapshot(equipment = 6).restore())
     }
 
     @Test fun additionalEquipmentCheckboxesSurviveRotationAndStayOutOfHealthPreferences() {

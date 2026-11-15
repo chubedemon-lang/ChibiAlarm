@@ -91,10 +91,13 @@ object WorkoutMidSessionPlanner {
             if (request.avoidExternalLoad) {
                 setOf(TrainingEquipment.DUMBBELL, TrainingEquipment.RESISTANCE_BAND)
             } else emptySet()
+        // An explicit mid-session inventory is a hard boundary for optional additions too.
+        // Do not let previously selected profile equipment leak back into the selector after
+        // the user says they only have (for example) a mat.
         val effectiveAvailableEquipment = (
             TrainingEquipmentAvailability.fromPreference(extensionPreferences.equipment) +
                 extensionPreferences.additionalEquipment + request.availableEquipment
-            ) - unavailableTools
+            ) - unavailableTools - request.unavailableEquipment
         val effectiveExtensionPreferences = extensionPreferences.copy(
             equipment = 0,
             constraints = effectiveProfile,

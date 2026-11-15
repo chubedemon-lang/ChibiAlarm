@@ -601,7 +601,9 @@ class FitnessActivity:Activity() {
                         input = request,
                         profile = currentWorkoutConstraintProfile(),
                         equipmentSelection = recommendationEquipmentSpinner?.selectedItemPosition ?: 0,
-                        additionalEquipment = currentAdditionalEquipment()
+                        additionalEquipment = currentAdditionalEquipment(),
+                        level = level.selectedItemPosition,
+                        goal = goalSpinner.selectedItemPosition
                     )
                     if (adjustmentAnswer != null) {
                         // Preview only: chat suggestions never mutate the selected or active workout.

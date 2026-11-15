@@ -607,6 +607,26 @@ class FitnessActivity:Activity() {
                             .show()
                         return@setOnClickListener
                     }
+                    val exerciseAnswer = WorkoutExerciseConversation.answer(request)
+                    if (exerciseAnswer != null) {
+                        // Answer only from the curated catalog; no journal notes or raw audio are read.
+                        coachTranscript.addUser(request)
+                        coachTranscript.addChibi(exerciseAnswer)
+                        renderCoachTranscript()
+                        sayFollowUp(exerciseAnswer)
+                        naturalRequest.text.clear()
+                        AlertDialog.Builder(this@FitnessActivity)
+                            .setTitle("📚 Thư viện bài tập")
+                            .setMessage(exerciseAnswer)
+                            .setPositiveButton("Đã hiểu", null)
+                            .setNeutralButton("Hỏi tiếp") { _, _ ->
+                                naturalRequest.requestFocus()
+                                (getSystemService(INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager)
+                                    ?.showSoftInput(naturalRequest, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+                            }
+                            .show()
+                        return@setOnClickListener
+                    }
                     val parsed=FitnessCoachConversation.merge(conversation, FitnessCoachConversation.parseReply(conversation, request))
                     conversation=parsed
                     val nextQuestion = FitnessCoachFollowUp.nextQuestion(parsed)

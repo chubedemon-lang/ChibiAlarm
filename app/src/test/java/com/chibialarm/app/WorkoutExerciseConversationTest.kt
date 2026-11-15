@@ -26,8 +26,19 @@ class WorkoutExerciseConversationTest {
         assertTrue(answer.contains("Squat chậm 3 giây"))
     }
 
-    @Test fun unaccentedSpeechRecognitionCanFindAnExercise() {
+    @Test fun unaccentedGenericPlankQuestionAsksForSafeDisambiguation() {
         val answer = WorkoutExerciseConversation.answer("cach tap plank nhu the nao")
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("vài động tác gần giống"))
+        assertTrue(answer.contains("Plank khuỷu hoặc plank gối"))
+        assertTrue(answer.contains("Side plank gối"))
+    }
+
+    @Test fun unaccentedFullExerciseNameReturnsItsGuidance() {
+        val answer = WorkoutExerciseConversation.answer(
+            "cach tap plank khuyu hoac plank goi nhu the nao"
+        )
 
         assertNotNull(answer)
         assertTrue(answer!!.contains("Plank khuỷu hoặc plank gối"))

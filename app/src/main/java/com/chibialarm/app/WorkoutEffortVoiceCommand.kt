@@ -40,7 +40,7 @@ object WorkoutEffortVoiceCommand {
             "tam dung", "khong the tiep tuc", "khong the tiep tuc nua",
             "khong chiu noi", "duoi qua", "qua met khong the tiep tuc",
             "met den muc khong the tiep tuc", "qua suc khong the tiep tuc",
-            "duoi khong the tiep tuc"
+            "qua suc roi khong the tiep tuc", "duoi khong the tiep tuc"
         )
     )
 

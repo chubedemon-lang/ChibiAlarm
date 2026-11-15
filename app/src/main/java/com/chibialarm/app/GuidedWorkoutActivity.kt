@@ -2220,7 +2220,9 @@ class GuidedWorkoutActivity:Activity() {
             .setNeutralButton("🎤 Trả lời bằng giọng nói", null)
             .setNegativeButton("Bỏ qua • nghỉ theo giáo án") { _, _ -> startPrescribedRest() }
             .create()
-        dialog.setOnCancelListener { startPrescribedRest() }
+        // Back/outside dismissal is not consent to start a rest timer. The explicit
+        // negative action above is the only path that starts prescribed rest.
+        dialog.setOnCancelListener(null)
         dialog.setOnShowListener {
             speak("Hiệp vừa rồi thế nào? Chọn nhẹ, vừa sức, khó hoặc quá sức.")
         }
@@ -2276,11 +2278,10 @@ class GuidedWorkoutActivity:Activity() {
                 checkInDialog.setOnCancelListener(null)
                 fun restoreParentCancelBehavior() {
                     if (isSameEffortContext(selectedIndex, selectedSessionId, completedSets, plan)) {
-                        checkInDialog.setOnCancelListener {
-                            if (isSameEffortContext(selectedIndex, selectedSessionId, completedSets, plan)) {
-                                startSetRest(plan.defaultRestSeconds)
-                            }
-                        }
+                        // Dismissing a check-in is not consent to start a rest timer. The
+                        // explicit "Bỏ qua • nghỉ theo giáo án" button remains the only
+                        // automatic prescribed-rest action.
+                        checkInDialog.setOnCancelListener(null)
                         // If the platform cancelled the parent while presenting the preview,
                         // restore it so the user can still choose a manual effort level.
                         if (!checkInDialog.isShowing && !isFinishing && !isDestroyed) {

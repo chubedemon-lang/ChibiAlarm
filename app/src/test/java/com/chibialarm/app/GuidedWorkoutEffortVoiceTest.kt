@@ -183,6 +183,38 @@ class GuidedWorkoutEffortVoiceTest {
         }
     }
 
+    @Test fun cancellingVoicePreviewRestoresManualChoicesWithoutStartingRest() {
+        val checkIn = openCheckIn()
+        try {
+            val handle = GuidedWorkoutActivity::class.java.getDeclaredMethod(
+                "handleEffortVoiceCheckIn",
+                Int::class.javaPrimitiveType,
+                String::class.java,
+                Int::class.javaPrimitiveType,
+                WorkoutSetTracker.Plan::class.java,
+                Boolean::class.javaPrimitiveType,
+                AlertDialog::class.java,
+                String::class.java
+            ).apply { isAccessible = true }
+
+            handle.invoke(
+                checkIn.activity, checkIn.moveIndex, checkIn.sessionId, 1,
+                checkIn.plan, true, checkIn.dialog, "khó quá"
+            )
+            val preview = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
+            preview.cancel()
+
+            val resting = GuidedWorkoutActivity::class.java.getDeclaredField("resting")
+                .apply { isAccessible = true }
+            assertFalse("Cancelling a preview must not start prescribed rest",
+                resting.getBoolean(checkIn.activity))
+            assertTrue("The manual effort choices must remain available", checkIn.dialog.isShowing)
+            assertTrue(effortLevels(checkIn).isEmpty())
+        } finally {
+            checkIn.activity.finish()
+        }
+    }
+
     @Test fun spokenPainClosesTheCheckInAndStopsTheWorkout() {
         val checkIn = openCheckIn()
         try {

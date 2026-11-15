@@ -215,6 +215,44 @@ class GuidedWorkoutEffortVoiceTest {
         }
     }
 
+    @Test fun cancellingHardRestSuggestionDoesNotStartRestWithoutAnExplicitChoice() {
+        val checkIn = openCheckIn()
+        try {
+            val handle = GuidedWorkoutActivity::class.java.getDeclaredMethod(
+                "handleEffortVoiceCheckIn",
+                Int::class.javaPrimitiveType,
+                String::class.java,
+                Int::class.javaPrimitiveType,
+                WorkoutSetTracker.Plan::class.java,
+                Boolean::class.javaPrimitiveType,
+                AlertDialog::class.java,
+                String::class.java
+            ).apply { isAccessible = true }
+
+            handle.invoke(
+                checkIn.activity, checkIn.moveIndex, checkIn.sessionId, 1,
+                checkIn.plan, true, checkIn.dialog, "khó quá"
+            )
+            val voicePreview = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
+            voicePreview.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+
+            assertEquals(
+                WorkoutEffortFeedback.Level.HARD,
+                effortLevels(checkIn)[checkIn.moveIndex]?.single()
+            )
+            val restChoice = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
+            assertTrue(restChoice.isShowing)
+            restChoice.cancel()
+
+            val resting = GuidedWorkoutActivity::class.java.getDeclaredField("resting")
+                .apply { isAccessible = true }
+            assertFalse("Back/outside dismissal must not choose a rest duration",
+                resting.getBoolean(checkIn.activity))
+        } finally {
+            checkIn.activity.finish()
+        }
+    }
+
     @Test fun spokenPainClosesTheCheckInAndStopsTheWorkout() {
         val checkIn = openCheckIn()
         try {

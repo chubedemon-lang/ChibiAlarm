@@ -16,7 +16,9 @@ object WorkoutPlanAdjustmentConversation {
         val moves: List<String>,
         val penalty: Int,
         val gentleRank: Int,
-        val notes: String
+        val notes: String,
+        val estimatedSeconds: Int,
+        val goalRank: Int
     )
 
     fun answer(
@@ -24,10 +26,19 @@ object WorkoutPlanAdjustmentConversation {
         profile: WorkoutConstraintProfile = WorkoutConstraintProfile(),
         equipmentSelection: Int = 0,
         additionalEquipment: Set<TrainingEquipment> = emptySet(),
-        programs: List<TrainingProgram> = TrainingCatalog.programs
+        programs: List<TrainingProgram> = TrainingCatalog.programs,
+        level: Int = 0,
+        goal: Int? = null
     ): String? {
         if (input.isBlank() || input.length > MAX_INPUT_CHARS) return null
         val query = normalize(input)
+        val naturalRequest = FitnessNaturalRequest.parse(input)
+        // A symptom report takes priority over time/equipment substitutions. Never turn
+        // "đau ... còn 5 phút" into another workout recommendation.
+        if (naturalRequest.impact == 2) return naturalRequest.reply
+        val remainingMinutes = naturalRequest.minutes.takeIf { hasRemainingTimeCue(query) }
+        val effectiveLevel = (naturalRequest.level ?: level).coerceIn(0, 2)
+        val effectiveGoal = (naturalRequest.goal ?: goal)?.coerceIn(0, 5)
 
         val noEquipment = containsAny(query, "khong co dung cu", "khong co thiet bi")
         val noDumbbell = containsAny(query, "khong co ta", "khong co ta don", "khong dung ta")
@@ -50,7 +61,7 @@ object WorkoutPlanAdjustmentConversation {
             query, "bai nao de hon", "co bai nao de hon",
             "hom nay met", "it nang luong", "muon tap nhe hon", "giam do kho"
         )
-        val asksForChange = noEquipment || noDumbbell || noBand || noChair || noMat ||
+        val asksForChange = remainingMinutes != null || noEquipment || noDumbbell || noBand || noChair || noMat ||
             avoidFloor != profile.avoidFloorPositions ||
             avoidWrist != profile.avoidWristLoad ||
             avoidOverhead != profile.avoidOverheadReach ||
@@ -123,12 +134,26 @@ object WorkoutPlanAdjustmentConversation {
                 moves = mainMoves.take(3),
                 penalty = constrained.removedMoves.size + equipped.removedMoves.size,
                 gentleRank = gentleOrder.indexOf(program.id).let { if (it < 0) Int.MAX_VALUE else it },
-                notes = notes
+                notes = notes,
+                estimatedSeconds = estimateSeconds(equipped.program, effectiveLevel),
+                goalRank = goalRank(program.id, effectiveGoal)
             )
-        }.sortedWith(
-            compareBy<Candidate> { if (preferGentle) it.gentleRank else 0 }
-                .thenBy { it.penalty }
-                .thenBy { it.order }
+        }
+        val orderedCandidates = candidates.sortedWith(
+            if (remainingMinutes != null) {
+                val targetSeconds = remainingMinutes.toLong() * 60L
+                compareBy<Candidate> { it.estimatedSeconds.toLong() > targetSeconds }
+                    .thenBy { if (preferGentle) it.gentleRank else 0 }
+                    .thenBy { it.goalRank }
+                    .thenBy { kotlin.math.abs(it.estimatedSeconds.toLong() - targetSeconds) }
+                    .thenBy { it.penalty }
+                    .thenBy { it.order }
+            } else {
+                compareBy<Candidate> { if (preferGentle) it.gentleRank else 0 }
+                    .thenBy { it.goalRank }
+                    .thenBy { it.penalty }
+                    .thenBy { it.order }
+            }
         ).take(3)
 
         if (candidates.isEmpty()) {
@@ -138,18 +163,64 @@ object WorkoutPlanAdjustmentConversation {
         return buildString {
             append("Chibi đã lọc thử từ thư viện offline theo điều kiện mày vừa nói. ")
             append("Đây chỉ là bản xem trước; giáo án và buổi đang tập chưa bị thay đổi.")
+            if (remainingMinutes != null) {
+                append("\nMày còn ").append(remainingMinutes).append(" phút. Chibi ưu tiên mục tiêu đã chọn và phương án nằm trong thời gian này nếu có.")
+                append(" Thời lượng là ước tính gồm vận động, nghỉ bắt buộc và chuyển tiếp; không phải cam kết hoàn thành.")
+            }
             append("\n\nPhương án để xem trước:")
-            candidates.forEachIndexed { index, candidate ->
+            orderedCandidates.forEachIndexed { index, candidate ->
                 append("\n").append(index + 1).append(". ").append(candidate.name)
                 append("\n   ").append(candidate.moves.joinToString(" • "))
                 if (candidate.notes.isNotBlank()) {
                     append("\n   ").append(candidate.notes)
+                }
+                if (remainingMinutes != null) {
+                    append("\n   Ước tính: ").append(durationLabel(candidate.estimatedSeconds))
+                    if (candidate.estimatedSeconds > remainingMinutes * 60) {
+                        append(" — dài hơn thời gian còn lại; Chibi không tự cắt hiệp bắt buộc.")
+                    }
                 }
             }
             append("\n\nMở mục “Xem bài” để kiểm tra liều lượng và hướng dẫn, rồi tự xác nhận trước khi bắt đầu. ")
             append("Thay hoặc bỏ bài có thể làm thay đổi nhóm cơ/cường độ và không tương đương hoàn toàn. ")
             append("Hình minh họa không phân tích tư thế thực tế; dừng tập nếu đau, chóng mặt, đau ngực hoặc khó thở bất thường.")
         }
+    }
+
+    private fun hasRemainingTimeCue(query: String): Boolean {
+        // A plain duration belongs to initial plan setup. Only an affirmative "còn X phút"
+        // statement is treated as the time left in an active session.
+        if (containsAny(query, "khong con", "khong con lai")) return false
+        return Regex("""(?:^| )(?:chi )?con(?: lai)?(?: (?:dung|khoang|la))? """)
+            .containsMatchIn(query)
+    }
+
+    private fun estimateSeconds(program: TrainingProgram, level: Int): Int {
+        val active = program.moves.sumOf { WorkoutDurationPlanner.activeSeconds(it).toLong() }
+        val rest = program.moves.sumOf { WorkoutDurationPlanner.prescribedRestSeconds(it).toLong() }
+        val transitions = (program.moves.size - 1).coerceAtLeast(0).toLong() *
+            WorkoutDurationPlanner.transitionAllowance(level)
+        return (active + rest + transitions).coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()
+    }
+
+    private fun goalRank(programId: String, goal: Int?): Int {
+        val preferred = when (goal) {
+            0 -> setOf("starter", "chair", "full", "legs", "upper", "weighted", "quick")
+            1 -> setOf("lowcardio", "quicklowcardio")
+            2 -> setOf("mobility", "quickmobility", "quickrecovery")
+            3 -> setOf("desk", "quickmobility")
+            4 -> setOf("starter", "chair", "quick", "quickrecovery")
+            5 -> setOf("advanced", "weighted", "full", "legs")
+            else -> return 0
+        }
+        return if (programId in preferred) 0 else 1
+    }
+
+    private fun durationLabel(totalSeconds: Int): String {
+        val safe = totalSeconds.coerceAtLeast(0)
+        val minutes = safe / 60
+        val seconds = safe % 60
+        return if (minutes == 0) "$seconds giây" else "$minutes phút $seconds giây"
     }
 
     private fun containsAny(text: String, vararg phrases: String): Boolean =

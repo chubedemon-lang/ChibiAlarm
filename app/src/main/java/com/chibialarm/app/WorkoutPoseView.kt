@@ -260,6 +260,16 @@ class WorkoutPoseView(context: Context) : View(context) {
                 line(111f, spineY, 151f, spineY); line(151f, spineY, 169f, 76f)
                 line(91f, 78f, 91f, 105f); line(160f, 78f, 160f, 105f)
             }
+            WorkoutPoseGuide.Pose.WARM_UP -> {
+                // A gentle warm-up uses a low alternating knee lift and relaxed arm swing.
+                head(120f, 20f); line(120f, 31f, 120f, 71f)
+                line(120f, 43f, if (movementPhase) 96f else 144f, 56f)
+                line(120f, 43f, if (movementPhase) 144f else 96f, 62f)
+                line(120f, 71f, 120f, 108f)
+                val kneeX = if (movementPhase) 139f else 105f
+                val kneeY = if (movementPhase) 92f else 108f
+                line(120f, 71f, kneeX, kneeY); line(kneeX, kneeY, if (movementPhase) 154f else 105f, 108f)
+            }
             WorkoutPoseGuide.Pose.MARCH -> {
                 head(120f, 20f); line(120f, 31f, 120f, 71f)
                 line(120f, 43f, 94f, if (movementPhase) 52f else 64f)
@@ -352,6 +362,13 @@ class WorkoutPoseView(context: Context) : View(context) {
                 line(100f, 44f, 83f, 62f); line(100f, 44f, 130f, 62f)
                 line(100f, 66f, 119f, 84f); line(119f, 84f, 134f, 105f)
                 line(100f, 66f, 155f, 66f); line(155f, 66f, 205f, 66f)
+            }
+            WorkoutPoseGuide.Pose.COOL_DOWN -> {
+                // A quiet cooldown stance: relaxed shoulders, easy arms and a small walking step.
+                head(120f, 20f); line(120f, 31f, 120f, 72f)
+                line(120f, 43f, 96f, 66f); line(120f, 43f, 144f, 66f)
+                line(120f, 72f, 103f, 108f); line(120f, 72f, 145f, 103f)
+                line(145f, 103f, 160f, 103f)
             }
             WorkoutPoseGuide.Pose.STRETCH -> {
                 head(120f, 22f); line(120f, 33f, 120f, 73f)

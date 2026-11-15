@@ -17,6 +17,7 @@ object WorkoutPoseMotion {
         WorkoutPoseGuide.Pose.BIRD_DOG,
         WorkoutPoseGuide.Pose.DEAD_BUG,
         WorkoutPoseGuide.Pose.CAT_COW,
+        WorkoutPoseGuide.Pose.WARM_UP,
         WorkoutPoseGuide.Pose.MARCH,
         WorkoutPoseGuide.Pose.MOUNTAIN_CLIMBER,
         WorkoutPoseGuide.Pose.SUPPORTED_MARCH,
@@ -27,6 +28,7 @@ object WorkoutPoseMotion {
         WorkoutPoseGuide.Pose.SEATED_KNEE_RAISE,
         WorkoutPoseGuide.Pose.CALF_RAISE -> true
         WorkoutPoseGuide.Pose.PLANK,
+        WorkoutPoseGuide.Pose.COOL_DOWN,
         WorkoutPoseGuide.Pose.STRETCH,
         WorkoutPoseGuide.Pose.SEATED_HAMSTRING_STRETCH,
         WorkoutPoseGuide.Pose.SIDE_PLANK,
@@ -56,6 +58,7 @@ object WorkoutPoseMotion {
         WorkoutPoseGuide.Pose.BIRD_DOG -> "Minh họa bird-dog. Chống tay và gối, duỗi tay cùng chân đối diện trong tầm kiểm soát rồi đổi bên."
         WorkoutPoseGuide.Pose.DEAD_BUG -> "Minh họa dead bug. Nằm ngửa, giữ thân ổn định, hạ tay và chân đối diện chậm rồi thu về."
         WorkoutPoseGuide.Pose.CAT_COW -> "Minh họa cat-cow. Chống tay và gối, chuyển lưng nhẹ nhàng theo nhịp thở, không ép biên độ."
+        WorkoutPoseGuide.Pose.WARM_UP -> "Bắt đầu bước chậm tại chỗ, xoay vai và cổ chân nhẹ nhàng; nâng gối thấp nếu thoải mái. Tăng nhịp từ từ, không giật mạnh."
         WorkoutPoseGuide.Pose.MARCH -> "Minh họa bước tại chỗ. Nâng từng gối luân phiên, bước nhẹ và giữ nhịp thở đều."
         WorkoutPoseGuide.Pose.MOUNTAIN_CLIMBER -> "Bắt đầu ở tư thế chống tay cao, hai tay dưới vai và thân ổn định. Luân phiên đưa từng gối về phía ngực theo nhịp chậm; duỗi chân trở lại có kiểm soát. Dừng nếu đau cổ tay, vai hoặc lưng."
         WorkoutPoseGuide.Pose.SUPPORTED_MARCH -> "Đứng cạnh ghế vững và vịn nhẹ. Nâng từng gối thấp vừa sức, đổi bên và giữ thân thẳng."
@@ -69,6 +72,7 @@ object WorkoutPoseMotion {
         WorkoutPoseGuide.Pose.SIDE_PLANK -> "Minh họa plank nghiêng. Chống khuỷu chắc chắn, nâng hông trong mức thoải mái; có thể co gối để dễ hơn."
         WorkoutPoseGuide.Pose.CALF_RAISE -> "Minh họa nhón gót. Vịn điểm tựa chắc chắn nếu cần, nâng gót chậm rồi hạ có kiểm soát."
         WorkoutPoseGuide.Pose.BALANCE -> "Minh họa thăng bằng. Đứng cạnh tường hoặc ghế chắc chắn và giữ điểm tựa trong tầm tay."
+        WorkoutPoseGuide.Pose.COOL_DOWN -> "Đi bộ chậm để hạ nhịp; thả lỏng vai; giãn nhẹ nhóm cơ vừa tập và thở bình thường. Không ép đến đau."
         WorkoutPoseGuide.Pose.REST -> "Đang nghỉ. Hít thở bình thường, nghỉ thêm nếu cần."
         WorkoutPoseGuide.Pose.STANDING -> "Chưa có minh họa riêng cho động tác này. Hãy đọc hướng dẫn từng bước bên dưới trước khi tập."
     }
@@ -95,6 +99,7 @@ object WorkoutPoseMotion {
             WorkoutPoseGuide.Pose.BIRD_DOG -> listOf("thu tay", "thu chân") to listOf("duỗi tay", "duỗi chân")
             WorkoutPoseGuide.Pose.DEAD_BUG -> listOf("co về", "thu tay", "thu chân") to listOf("duỗi tay", "duỗi chân")
             WorkoutPoseGuide.Pose.CAT_COW -> listOf("cuộn lưng") to listOf("thả lưng")
+            WorkoutPoseGuide.Pose.WARM_UP -> listOf("hạ gối", "hạ chân", "đưa chân xuống") to listOf("nâng gối", "nâng gối nhẹ", "bước tại chỗ")
             WorkoutPoseGuide.Pose.MARCH,
             WorkoutPoseGuide.Pose.SUPPORTED_MARCH -> listOf("hạ chân", "hạ gối", "đưa chân xuống") to listOf("nâng gối", "nhấc gối")
             WorkoutPoseGuide.Pose.MOUNTAIN_CLIMBER ->
@@ -190,6 +195,7 @@ object WorkoutPoseMotion {
         WorkoutPoseGuide.Pose.BIRD_DOG -> if (lowered) "Thu tay chân" else "Duỗi tay chân đối diện"
         WorkoutPoseGuide.Pose.DEAD_BUG -> if (lowered) "Co về" else "Duỗi tay chân"
         WorkoutPoseGuide.Pose.CAT_COW -> if (lowered) "Cuộn lưng nhẹ" else "Thả lưng nhẹ"
+        WorkoutPoseGuide.Pose.WARM_UP -> if (lowered) "Hạ chân nhẹ" else "Bước nhẹ, nâng gối thấp"
         WorkoutPoseGuide.Pose.MARCH -> if (lowered) "Đổi chân" else "Nâng gối"
         WorkoutPoseGuide.Pose.MOUNTAIN_CLIMBER ->
             if (lowered) "Đổi chân, duỗi chân còn lại ra sau" else "Đưa gối về phía ngực"
@@ -202,6 +208,7 @@ object WorkoutPoseMotion {
         WorkoutPoseGuide.Pose.SEATED_HAMSTRING_STRETCH -> "Giãn nhẹ phía sau đùi"
         WorkoutPoseGuide.Pose.CALF_RAISE -> if (lowered) "Hạ gót" else "Nhón gót"
         WorkoutPoseGuide.Pose.PLANK -> "Giữ thân thẳng"
+        WorkoutPoseGuide.Pose.COOL_DOWN -> "Đi chậm và thả lỏng"
         WorkoutPoseGuide.Pose.STRETCH -> "Giãn nhẹ"
         WorkoutPoseGuide.Pose.SIDE_PLANK -> "Giữ hông nâng"
         WorkoutPoseGuide.Pose.BALANCE -> "Giữ thăng bằng"

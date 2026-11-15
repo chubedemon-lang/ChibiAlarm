@@ -90,6 +90,24 @@ class WorkoutPoseGuideTest {
         assertEquals(WorkoutPoseGuide.Pose.SIDE_PLANK, WorkoutPoseGuide.classify("Side plank"))
     }
 
+    @Test fun everyCatalogMoveHasDedicatedIllustrationAndSpokenGuidance() {
+        for (move in TrainingCatalog.allMoves) {
+            val pose = WorkoutPoseGuide.classify(move.name)
+            assertTrue("${move.name} must not silently fall back to a generic standing figure", pose != WorkoutPoseGuide.Pose.STANDING)
+            assertTrue("${move.name} needs an illustration label", WorkoutPoseGuide.label(pose).isNotBlank())
+            assertTrue("${move.name} needs offline spoken guidance", WorkoutPoseMotion.spokenWalkthrough(pose).isNotBlank())
+        }
+    }
+
+    @Test fun warmupAndCooldownHaveDistinctIllustrationsAndIntent() {
+        assertEquals(WorkoutPoseGuide.Pose.WARM_UP, WorkoutPoseGuide.classify("Khởi động tại chỗ"))
+        assertEquals(WorkoutPoseGuide.Pose.COOL_DOWN, WorkoutPoseGuide.classify("Thả lỏng"))
+        assertTrue(WorkoutPoseMotion.hasMotion(WorkoutPoseGuide.Pose.WARM_UP))
+        assertTrue(!WorkoutPoseMotion.hasMotion(WorkoutPoseGuide.Pose.COOL_DOWN))
+        assertTrue(WorkoutPoseGuide.label(WorkoutPoseGuide.Pose.WARM_UP).contains("khởi động"))
+        assertTrue(WorkoutPoseMotion.spokenWalkthrough(WorkoutPoseGuide.Pose.COOL_DOWN).contains("Đi bộ chậm"))
+    }
+
     @Test fun unknownExercisesUseHonestGenericCue() {
         val pose = WorkoutPoseGuide.classify("Động tác chưa có hình riêng")
         assertEquals(WorkoutPoseGuide.Pose.STANDING, pose)

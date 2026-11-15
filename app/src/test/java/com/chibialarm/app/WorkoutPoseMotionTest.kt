@@ -22,6 +22,7 @@ class WorkoutPoseMotionTest {
             WorkoutPoseGuide.Pose.BIRD_DOG,
             WorkoutPoseGuide.Pose.DEAD_BUG,
             WorkoutPoseGuide.Pose.CAT_COW,
+            WorkoutPoseGuide.Pose.WARM_UP,
             WorkoutPoseGuide.Pose.MARCH,
             WorkoutPoseGuide.Pose.MOUNTAIN_CLIMBER,
             WorkoutPoseGuide.Pose.SCAPULAR_SQUEEZE,
@@ -33,6 +34,10 @@ class WorkoutPoseMotionTest {
     }
 
     @Test fun movementCuesDescribeBothPhases() {
+        assertEquals("Bước nhẹ, nâng gối thấp", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.WARM_UP, false))
+        assertEquals("Hạ chân nhẹ", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.WARM_UP, true))
+        assertEquals("Đi chậm và thả lỏng", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.COOL_DOWN, false))
+        assertEquals("Đi chậm và thả lỏng", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.COOL_DOWN, true))
         assertEquals("Đứng lên", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.SQUAT, false))
         assertEquals("Đứng thẳng", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.HIP_HINGE, false))
         assertEquals("Kéo khuỷu về sau", WorkoutPoseMotion.phaseCue(WorkoutPoseGuide.Pose.RESISTANCE_ROW, false))
@@ -189,6 +194,7 @@ class WorkoutPoseMotionTest {
     @Test fun staticCuesDoNotDependOnAnimationPhase() {
         for (pose in listOf(
             WorkoutPoseGuide.Pose.PLANK,
+            WorkoutPoseGuide.Pose.COOL_DOWN,
             WorkoutPoseGuide.Pose.STRETCH,
             WorkoutPoseGuide.Pose.SIDE_PLANK,
             WorkoutPoseGuide.Pose.BALANCE,
@@ -216,6 +222,8 @@ class WorkoutPoseMotionTest {
             assertTrue(cue.length < 350)
             assertFalse(cue.contains("đã đánh giá"))
         }
+        assertTrue(WorkoutPoseMotion.spokenWalkthrough(WorkoutPoseGuide.Pose.WARM_UP).contains("xoay vai"))
+        assertTrue(WorkoutPoseMotion.spokenWalkthrough(WorkoutPoseGuide.Pose.COOL_DOWN).contains("Đi bộ chậm"))
         assertTrue(WorkoutPoseMotion.spokenWalkthrough(WorkoutPoseGuide.Pose.SQUAT).contains("Hạ hông"))
         assertTrue(WorkoutPoseMotion.spokenWalkthrough(WorkoutPoseGuide.Pose.STANDING).contains("Chưa có minh họa riêng"))
         assertTrue(WorkoutPoseMotion.spokenWalkthrough(WorkoutPoseGuide.Pose.WALL_PUSH_UP).contains("tường"))
@@ -229,6 +237,7 @@ class WorkoutPoseMotionTest {
     @Test fun staticAndFallbackCuesNeverAnimate() {
         for (pose in listOf(
             WorkoutPoseGuide.Pose.PLANK,
+            WorkoutPoseGuide.Pose.COOL_DOWN,
             WorkoutPoseGuide.Pose.STRETCH,
             WorkoutPoseGuide.Pose.SIDE_PLANK,
             WorkoutPoseGuide.Pose.BALANCE,

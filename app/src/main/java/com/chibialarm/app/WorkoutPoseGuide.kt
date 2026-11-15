@@ -8,7 +8,8 @@ object WorkoutPoseGuide {
     enum class Pose {
         SQUAT, HIP_HINGE, RESISTANCE_ROW, RESISTANCE_HINGE, RESISTANCE_PRESS, PLANK, PUSH_UP, KNEE_PUSH_UP, WALL_PUSH_UP, INCLINE_PUSH_UP, LUNGE,
         BRIDGE, BIRD_DOG, DEAD_BUG, CAT_COW,
-        MARCH, MOUNTAIN_CLIMBER, SUPPORTED_MARCH, HIP_ABDUCTION, SEATED_HAMSTRING_STRETCH,
+        WARM_UP, MARCH, MOUNTAIN_CLIMBER, SUPPORTED_MARCH, HIP_ABDUCTION, SEATED_HAMSTRING_STRETCH,
+        COOL_DOWN,
         SCAPULAR_SQUEEZE, FOREARM_WALL_PRESS, SIDE_STEP, SEATED_KNEE_RAISE,
         STRETCH, SIDE_PLANK, CALF_RAISE, BALANCE, STANDING, REST
     }
@@ -26,6 +27,8 @@ object WorkoutPoseGuide {
             listOf("gập hông với tạ đơn hoặc dây", "romanian deadlift", "resistance hinge").any { it in text } -> Pose.RESISTANCE_HINGE
             listOf("đẩy vai với tạ đơn hoặc dây", "overhead press", "shoulder press").any { it in text } -> Pose.RESISTANCE_PRESS
             listOf("gập hông không dụng cụ", "hip hinge").any { it in text } -> Pose.HIP_HINGE
+            listOf("khởi động", "warm-up", "warm up").any { it in text } -> Pose.WARM_UP
+            listOf("thả lỏng", "cool-down", "cool down").any { it in text } -> Pose.COOL_DOWN
             listOf("nâng gối luân phiên có điểm tựa", "supported march").any { it in text } -> Pose.SUPPORTED_MARCH
             listOf("dang chân sang bên có điểm tựa", "hip abduction").any { it in text } -> Pose.HIP_ABDUCTION
             listOf("giãn gân kheo ngồi ghế", "seated hamstring").any { it in text } -> Pose.SEATED_HAMSTRING_STRETCH
@@ -67,6 +70,7 @@ object WorkoutPoseGuide {
         Pose.BIRD_DOG -> "Minh họa: chống tay gối, duỗi tay chân đối diện"
         Pose.DEAD_BUG -> "Minh họa: nằm ngửa, co và duỗi tay chân đối diện"
         Pose.CAT_COW -> "Minh họa: chuyển động cột sống nhẹ nhàng"
+        Pose.WARM_UP -> "Minh họa khởi động: bước nhẹ, nâng gối thấp và thả lỏng vai"
         Pose.MARCH -> "Minh họa: bước tại chỗ và nâng gối luân phiên"
         Pose.MOUNTAIN_CLIMBER -> "Minh họa: chống tay vững và luân phiên đưa gối về phía ngực"
         Pose.SUPPORTED_MARCH -> "Minh họa: đứng cạnh ghế vững và nâng gối thấp luân phiên"
@@ -80,6 +84,7 @@ object WorkoutPoseGuide {
         Pose.SIDE_PLANK -> "Minh họa: plank nghiêng có điểm tựa"
         Pose.CALF_RAISE -> "Minh họa: nhón và hạ gót chân"
         Pose.BALANCE -> "Minh họa: giữ thăng bằng cạnh điểm tựa"
+        Pose.COOL_DOWN -> "Minh họa thả lỏng: đi chậm, thả vai và thở bình thường"
         Pose.REST -> "Minh họa: nghỉ và thở đều"
         Pose.STANDING -> "Minh họa chung: đứng thẳng"
     }

@@ -1,6 +1,7 @@
 package com.chibialarm.app
 
 import android.app.AlertDialog
+import android.os.Looper
 import android.content.Context
 import android.content.Intent
 import org.junit.Assert.assertEquals
@@ -10,6 +11,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.shadows.ShadowAlertDialog
 import org.robolectric.RobolectricTestRunner
@@ -260,6 +262,7 @@ class GuidedWorkoutEffortVoiceTest {
             assertFalse("A repeated hard report must not start rest before confirmation",
                 resting.getBoolean(checkIn.activity))
             restChoice.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+            shadowOf(Looper.getMainLooper()).idle()
             assertTrue("The explicit rest choice should start the suggested countdown",
                 resting.getBoolean(checkIn.activity))
         } finally {

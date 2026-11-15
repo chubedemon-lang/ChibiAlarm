@@ -178,6 +178,90 @@ class WorkoutSetHistoryConversationTest {
         assertTrue(answer.contains("Hiệp 3: 8 lần (buổi trước chưa ghi)"))
     }
 
+    @Test fun listsSelfReportedSetDetailsFromTheLatestGuidedSessionWithoutReadingNotes() {
+        val older = guided(
+            today.minusDays(1),
+            "Squat không tạ: hiệp 1: 8 lần",
+            "550e8400-e29b-41d4-a716-446655440034",
+            "private older note"
+        )
+        val latest = guided(
+            today,
+            "Squat không tạ: hiệp 1: 12 lần, Plank: hiệp 1: 25 giây",
+            "550e8400-e29b-41d4-a716-446655440035",
+            "private current health note"
+        )
+
+        val answer = WorkoutSetHistoryConversation.answer(
+            "Buổi tập gần nhất gồm những bài nào?",
+            listOf(older, latest),
+            today
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("buổi Guided Workout gần nhất (12/11/2026)"))
+        assertTrue(answer.contains("Squat không tạ: Hiệp 1: 12 lần"))
+        assertTrue(answer.contains("Plank: Hiệp 1: 25 giây"))
+        assertFalse(answer.contains("8 lần"))
+        assertFalse(answer.contains("private"))
+        assertTrue(answer.contains("có thể không xuất hiện"))
+    }
+
+    @Test fun latestTimedOnlySessionDoesNotFallBackToAnOlderSetLog() {
+        val older = guided(
+            today.minusDays(1),
+            "Squat không tạ: hiệp 1: 8 lần",
+            "550e8400-e29b-41d4-a716-446655440036"
+        )
+        val latestTimedOnly = guided(
+            today,
+            "",
+            "550e8400-e29b-41d4-a716-446655440037"
+        )
+
+        val answer = WorkoutSetHistoryConversation.answer(
+            "Buổi gần nhất tao tập những động tác nào?",
+            listOf(older, latestTimedOnly),
+            today
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("chưa có chi tiết hiệp tự khai báo"))
+        assertFalse(answer.contains("Squat"))
+        assertFalse(answer.contains("8 lần"))
+    }
+
+    @Test fun latestMoveListIgnoresManualAndFutureEntries() {
+        val guided = guided(
+            today.minusDays(2),
+            "Đi bộ nhanh tại chỗ: hiệp 1: 60 giây",
+            "550e8400-e29b-41d4-a716-446655440038"
+        )
+        val manual = Workout(
+            date = today.toString(),
+            name = "Tập thủ công",
+            minutes = 30,
+            note = "private manual note",
+            setLog = "Burpee: hiệp 1: 99 lần"
+        )
+        val future = guided(
+            today.plusDays(1),
+            "Burpee: hiệp 1: 99 lần",
+            "550e8400-e29b-41d4-a716-446655440039"
+        )
+
+        val answer = WorkoutSetHistoryConversation.answer(
+            "Liệt kê bài tập trong buổi mới nhất",
+            listOf(guided, manual, future),
+            today
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("Đi bộ nhanh tại chỗ"))
+        assertFalse(answer.contains("Burpee"))
+        assertFalse(answer.contains("private"))
+    }
+
     @Test fun unrelatedPlanQuestionIsNotConsumed() {
         assertNull(
             WorkoutSetHistoryConversation.answer(

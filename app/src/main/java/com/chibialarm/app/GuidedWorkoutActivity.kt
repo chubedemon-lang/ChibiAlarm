@@ -78,6 +78,7 @@ class GuidedWorkoutActivity:Activity() {
         (SystemClock.elapsedRealtime()-startedAt).coerceAtLeast(0L) else 0L
     private var spoken:TextToSpeech?=null
     private var ready=false
+    private var speechStatus:TextView?=null
     // Last selected step cue is kept in memory only so voice can repeat that exact step.
     private var lastGuideStepCue:WorkoutStepGuide.SelectedCue?=null
     // Guest-only checkpoint; authenticated profiles must use isolated storage.
@@ -573,8 +574,15 @@ class GuidedWorkoutActivity:Activity() {
                 .setPositiveButton("Lưu & kết thúc"){_,_->finishWorkout()}
                 .setNegativeButton("Tiếp tục",null).show()
         } })
+        val status = TextView(this).apply {
+            text="Đang kiểm tra giọng đọc tiếng Việt…"
+            textSize=12f
+            contentDescription=text
+        }
+        speechStatus=status
+        root.addView(status)
         root.addView(TextView(this).apply {
-            text="Giọng đọc dùng engine TTS cài trên Android. Thời gian từng động tác chỉ là nhắc nhở; nghỉ thêm khi cần. Dừng ngay nếu thấy đau hoặc khó chịu."
+            text="Thời gian từng động tác chỉ là nhắc nhở; nghỉ thêm khi cần. Dừng ngay nếu thấy đau hoặc khó chịu."
             textSize=12f
         })
         // Keep every workout control reachable on small phones and with large accessibility fonts.
@@ -592,14 +600,36 @@ class GuidedWorkoutActivity:Activity() {
             root.requestApplyInsets()
         }
         spoken=TextToSpeech(this){ state ->
-            ready=state==TextToSpeech.SUCCESS
-            if(ready) {
-                val s=getSharedPreferences("settings",0)
-                spoken?.setLanguage(Locale("vi","VN"))
-                spoken?.setSpeechRate(s.getFloat("rate",1f))
-                spoken?.setPitch(s.getFloat("pitch",1f))
-                spoken?.voices?.firstOrNull { it.name==s.getString("voice","") }?.let { spoken?.voice=it }
+            val engine=spoken
+            if(state!=TextToSpeech.SUCCESS || engine==null) {
+                ready=false
+                speechStatus?.text="⚠️ Chưa khởi tạo được bộ đọc. Hướng dẫn chữ và bộ đếm vẫn dùng được."
+                speechStatus?.contentDescription=speechStatus?.text
+                return@TextToSpeech
             }
+            val settings=getSharedPreferences("settings",0)
+            var languageStatus=engine.setLanguage(Locale("vi","VN"))
+            if(languageStatus<0) languageStatus=engine.setLanguage(Locale("vi"))
+            val available=if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.LOLLIPOP) {
+                runCatching { engine.voices.orEmpty() }.getOrDefault(emptyList())
+            } else emptyList()
+            val selection=CoachSpeechVoicePolicy.resolve(
+                languageStatus,
+                settings.getString("voice",null),
+                available.map { voice -> CoachSpeechVoicePolicy.VoiceOption(voice.name,voice.locale.language) }
+            )
+            ready=selection.languageSupported
+            engine.setSpeechRate(settings.getFloat("rate",1f))
+            engine.setPitch(settings.getFloat("pitch",1f))
+            if(ready && Build.VERSION.SDK_INT>=Build.VERSION_CODES.LOLLIPOP) {
+                available.firstOrNull { it.name==selection.voiceName }?.let { engine.voice=it }
+            }
+            speechStatus?.text=if(ready) {
+                "🔊 Giọng Việt sẵn sàng. Ngoại tuyến tùy engine và gói giọng đã cài."
+            } else {
+                "⚠️ Chưa có giọng Việt tương thích. Hướng dẫn chữ vẫn dùng được; hãy cài dữ liệu Tiếng Việt trong cài đặt TTS."
+            }
+            speechStatus?.contentDescription=speechStatus?.text
         }
         displayStep()
         if (savedInstanceState == null) offerCheckpoint()

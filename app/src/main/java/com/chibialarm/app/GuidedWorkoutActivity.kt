@@ -2720,15 +2720,15 @@ class GuidedWorkoutActivity:Activity() {
                     val totalXp = rpgDatabase.dao().character()?.totalXp ?: 0L
                     WorkoutRewardDisplayFactory.create(awardedXp, totalXp)
                 }
-                if (!isFinishing && !isDestroyed) showWorkoutReward(display)
+                if (!isFinishing && !isDestroyed) showWorkoutReward(display, effortValueSummary)
             } catch (error: Exception) {
                 if (error is CancellationException) throw error
-                if (!isFinishing && !isDestroyed) showWorkoutRewardPending()
+                if (!isFinishing && !isDestroyed) showWorkoutRewardPending(effortValueSummary)
             }
         }
     }
 
-    private fun showWorkoutReward(display: WorkoutRewardDisplay) {
+    private fun showWorkoutReward(display: WorkoutRewardDisplay, effortSummary: String) {
         val panel = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(24, 14, 24, 8)
@@ -2754,6 +2754,20 @@ class GuidedWorkoutActivity:Activity() {
             setTextColor(Color.rgb(75, 55, 95))
             gravity = Gravity.CENTER
         })
+        if (effortSummary.isNotBlank()) {
+            val visibleSummary = effortSummary.take(600).let {
+                if (effortSummary.length > 600) "$it…" else it
+            }
+            panel.addView(TextView(this).apply {
+                text = "🧭 Cảm nhận các hiệp bạn đã tự ghi\n$visibleSummary\n\nĐây là tự đánh giá tại thời điểm tập, không phải phép đo thể lực hay khả năng hồi phục."
+                textSize = 13f
+                setTextColor(Color.rgb(75, 70, 88))
+                setPadding(8, 12, 8, 8)
+                maxLines = 8
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                contentDescription = "Cảm nhận hiệp đã tự ghi: $effortSummary. Không phải phép đo thể lực hay khả năng hồi phục."
+            })
+        }
         if (!display.maxLevelReached) {
             val max = display.xpRequired.coerceAtMost(Int.MAX_VALUE.toLong()).toInt().coerceAtLeast(1)
             val current = display.xpInLevel.coerceAtMost(max.toLong()).toInt()
@@ -2794,14 +2808,20 @@ class GuidedWorkoutActivity:Activity() {
             .show()
     }
 
-    private fun showWorkoutRewardPending() {
+    private fun showWorkoutRewardPending(effortSummary: String) {
         AlertDialog.Builder(this)
             .setTitle("Đã lưu buổi tập")
-            .setMessage(
-                "Nhật ký đã được lưu an toàn trên máy. Chưa thể đồng bộ EXP ngay lúc này; " +
-                    "Chibi RPG sẽ thử lại từ cùng mã buổi tập khi bạn mở màn hình RPG. " +
-                    "Không cần tập lại và không mất nhật ký."
-            )
+            .setMessage(buildString {
+                append("Nhật ký đã được lưu an toàn trên máy. Chưa thể đồng bộ EXP ngay lúc này; ")
+                append("Chibi RPG sẽ thử lại từ cùng mã buổi tập khi bạn mở màn hình RPG. ")
+                append("Không cần tập lại và không mất nhật ký.")
+                if (effortSummary.isNotBlank()) {
+                    append("\\n\\nCảm nhận các hiệp bạn đã tự ghi:\\n")
+                    append(effortSummary.take(500))
+                    if (effortSummary.length > 500) append("…")
+                    append("\\nĐây là tự đánh giá, không phải phép đo thể lực.")
+                }
+            })
             .setPositiveButton("Mở Chibi RPG") { _, _ ->
                 startActivity(Intent(this, RpgActivity::class.java))
                 finish()

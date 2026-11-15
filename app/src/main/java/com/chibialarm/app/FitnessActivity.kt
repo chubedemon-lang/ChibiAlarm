@@ -757,10 +757,16 @@ class FitnessActivity:Activity() {
                     if (equipmentResult.notice.isNotBlank()) append("\n\n").append(equipmentResult.notice)
                 }
                 AlertDialog.Builder(this@FitnessActivity).setTitle("🐰 Chibi đề xuất: "+p.name)
-                    .setMessage("Mục tiêu: "+goals[goal]+" • "+energyLevels[energy]+"\n"+
-                        "Dụng cụ: "+equipmentOptions[equipment]+"\n"+
-                        "Vận động: "+impactOptions[impact]+"\n\n"+
-                        durationSummary+"\n\n"+
+                    .setMessage(FitnessPlanProfileSummary.format(
+                        goalLabel = goals[goal],
+                        energyLabel = energyLevels[energy],
+                        levelLabel = levels[level.selectedItemPosition],
+                        minutes = targetMinutes,
+                        equipmentSelection = equipment,
+                        additionalEquipment = additionalEquipment,
+                        impact = impact,
+                        constraints = constraintProfile
+                    )+"\n\n"+durationSummary+"\n\n"+
                         recommendation.explanation+
                         (historySuggestion?.let { "\n\n📚 " + it.reason } ?: "")+
                         "\n\nGợi ý offline theo quy tắc trên máy, không phải AI chẩn đoán hay tư vấn y khoa.")

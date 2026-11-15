@@ -214,4 +214,48 @@ class WorkoutHistoryAdvisorTest {
             )
         }
     }
+
+    @Test fun weeklySummaryUsesNewestRecordsWhenJournalExceedsRetentionWindow() {
+        val olderThanWindow = List(10_000) {
+            workout(today.minusDays(7).toString(), minutes = 10)
+        }
+        val current = workout(today.toString(), minutes = 42)
+
+        val summary = WorkoutHistoryAdvisor.summarize(olderThanWindow + current, today)
+
+        assertEquals(1, summary.sessions)
+        assertEquals(1, summary.activeDays)
+        assertEquals(42, summary.totalMinutes)
+        assertEquals(today, summary.latestDate)
+    }
+
+    @Test fun varietyHintSeesYesterdayAfterJournalExceedsRetentionWindow() {
+        val recommended = TrainingCatalog.byId("full")
+        val olderSameProgram = List(10_000) {
+            workout(today.minusDays(2).toString(), name = recommended.name)
+        }
+        val yesterday = workout(
+            today.minusDays(1).toString(),
+            name = recommended.name,
+            note = "private note must remain unread"
+        )
+        val alternatives = listOf(
+            TrainingCatalog.byId("legs"),
+            TrainingCatalog.byId("upper"),
+            TrainingCatalog.byId("core")
+        )
+
+        val suggestion = WorkoutHistoryAdvisor.suggestVariety(
+            recommended,
+            olderSameProgram + yesterday,
+            alternatives,
+            today
+        )
+
+        assertNotNull(suggestion)
+        assertNotEquals(recommended.id, suggestion!!.program.id)
+        assertEquals(recommended.category, suggestion.program.category)
+        assertFalse(suggestion.toString().contains("private note"))
+    }
+
 }

@@ -176,10 +176,13 @@ class FitnessActivity:Activity() {
         )
 
     /** Reads coarse totals and structured effort labels; free-text journal notes never enter the advisor. */
+    /** Reads only bounded totals and structured self-reported effort labels; journal notes never enter the advisor. */
     private fun refreshWorkoutHistoryInsight() {
         val workouts = WorkoutData.history(this)
         val summary = WorkoutHistoryAdvisor.summarize(workouts)
-        val effortSuggestion = WorkoutEffortPlanAdvisor.suggest(workouts)
+        // A repeated HARD/VERY_HARD pattern must occur in two valid sessions inside this same
+        // seven-day window before it can offer a lighter-session choice.
+        val effortSuggestion = WorkoutEffortPlanAdvisor.suggest(workouts, lookbackDays = 7)
         effortPlanSuggestion = effortSuggestion
         val steadySuggestion = WorkoutSteadyProgressAdvisor.suggest(workouts)
         steadyProgressSuggestion = steadySuggestion
@@ -198,11 +201,17 @@ class FitnessActivity:Activity() {
             visibility = if (summary.sessions > 0) android.view.View.VISIBLE else android.view.View.GONE
             text = "📊 Nhật ký 7 ngày: ${summary.sessions} buổi • ${summary.activeDays} ngày vận động • ${summary.totalMinutes} phút (ghi trên máy)."
         }
+        val lighterMessage = WorkoutHistoryAdvisor.lighterSessionMessage(summary, effortSuggestion)
         historySuggestionView?.apply {
-            visibility = if (summary.suggestLighterSession) android.view.View.VISIBLE else android.view.View.GONE
-            text = "🐰 Nhật ký cho thấy bạn đã vận động ${summary.activeDays}/7 ngày và ghi ${summary.totalMinutes} phút. Bạn có thể cân nhắc nghỉ hoặc chọn buổi phục hồi nhẹ. Đây chỉ là gợi ý từ nhật ký tự ghi, không phải đánh giá hồi phục hay tư vấn y khoa."
+            visibility = if (lighterMessage != null) android.view.View.VISIBLE else android.view.View.GONE
+            text = lighterMessage.orEmpty()
         }
-        historyRecoveryButton?.visibility = if (summary.suggestLighterSession) android.view.View.VISIBLE else android.view.View.GONE
+        historyRecoveryButton?.apply {
+            visibility = if (lighterMessage != null) android.view.View.VISIBLE else android.view.View.GONE
+            text = if (effortSuggestion != null) "🌿 Xem giáo án nhẹ hơn từ check-in"
+                else "🌿 Xem giáo án phục hồi nhẹ"
+            contentDescription = "Xem buổi vận động nhẹ theo nhật ký và các bộ lọc an toàn hiện tại"
+        }
     }
     private fun render() {
         root=LinearLayout(this).apply {

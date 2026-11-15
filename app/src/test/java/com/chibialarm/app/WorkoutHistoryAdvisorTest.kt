@@ -61,6 +61,60 @@ class WorkoutHistoryAdvisorTest {
         assertFalse(WorkoutHistoryAdvisor.summarize(fourDays, today).suggestLighterSession)
     }
 
+    private fun effortWorkout(
+        date: LocalDate,
+        effort: String,
+        note: String = "private effort note"
+    ) = Workout(
+        date = date.toString(),
+        name = "Guided Workout",
+        minutes = 20,
+        note = note,
+        sessionId = java.util.UUID.randomUUID().toString(),
+        completedMoves = 1,
+        selfReportedSets = 1,
+        effortLog = "Squat: hiệp 1: $effort"
+    )
+
+    @Test fun repeatedHardSelfReportsOfferALighterChoiceBelowTheWeeklyVolumeThreshold() {
+        val history = listOf(
+            effortWorkout(today.minusDays(2), "Khó, cần nghỉ thêm"),
+            effortWorkout(today.minusDays(1), "Quá sức, tạm dừng")
+        )
+        val summary = WorkoutHistoryAdvisor.summarize(history, today)
+        assertFalse(summary.suggestLighterSession)
+
+        val effort = WorkoutEffortPlanAdvisor.suggest(history, today, lookbackDays = 7)
+        assertNotNull(effort)
+        val message = WorkoutHistoryAdvisor.lighterSessionMessage(summary, effort)
+
+        assertNotNull(message)
+        assertTrue(message!!.contains("Squat"))
+        assertTrue(message.contains("tự đánh dấu"))
+        assertTrue(message.contains("không phải đánh giá hồi phục"))
+        assertFalse(message.contains("private effort note"))
+    }
+
+    @Test fun oneHardSessionDoesNotCreateARepeatedEffortSuggestion() {
+        val history = listOf(effortWorkout(today, "Quá sức, tạm dừng"))
+        val summary = WorkoutHistoryAdvisor.summarize(history, today)
+        val effort = WorkoutEffortPlanAdvisor.suggest(history, today, lookbackDays = 7)
+
+        assertNull(effort)
+        assertNull(WorkoutHistoryAdvisor.lighterSessionMessage(summary, effort))
+    }
+
+    @Test fun weeklyVolumeStillOffersALighterChoiceWithoutEffortCheckIns() {
+        val history = (0..4).map { workout(today.minusDays(it.toLong()).toString(), 36) }
+        val summary = WorkoutHistoryAdvisor.summarize(history, today)
+        assertTrue(summary.suggestLighterSession)
+
+        val message = WorkoutHistoryAdvisor.lighterSessionMessage(summary, null)
+        assertNotNull(message)
+        assertTrue(message!!.contains("5/7 ngày vận động"))
+        assertTrue(message.contains("không phải đánh giá hồi phục"))
+    }
+
     @Test fun summaryDoesNotCopyFreeTextJournalNotes() {
         val summary = WorkoutHistoryAdvisor.summarize(listOf(
             workout(today.toString(), note = "private health detail")

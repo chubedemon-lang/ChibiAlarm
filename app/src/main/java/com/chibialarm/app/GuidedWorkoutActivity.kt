@@ -92,6 +92,9 @@ class GuidedWorkoutActivity:Activity() {
     private val actualSetValuesByMove=mutableMapOf<Int,List<Int>>()
     // Optional subjective effort answers, keyed to the exact confirmed set; guest-local only.
     private val effortLevelsByMove=mutableMapOf<Int,List<WorkoutEffortFeedback.Level?>>()
+    // One active check-in surface; a voice result remains pending until explicitly confirmed.
+    private var activeEffortDialog: AlertDialog? = null
+    private var pendingEffortLevel: WorkoutEffortFeedback.Level? = null
     private lateinit var setProgress:TextView
     private lateinit var completeSetButton:Button
     private lateinit var restSetButton:Button
@@ -2205,29 +2208,73 @@ class GuidedWorkoutActivity:Activity() {
             else -> "Còn hiệp theo giáo án nếu bạn thấy sẵn sàng. "
         }
         val levels = WorkoutEffortFeedback.Level.values()
+        pendingEffortLevel = null
         val dialog = AlertDialog.Builder(this)
             .setTitle("💬 Hiệp vừa rồi thế nào?")
             .setMessage(
                 optionalNotice +
                     "Chọn cảm nhận của bạn. Đây là tự đánh giá để điều chỉnh nghỉ, không phải phép đo thể lực."
             )
-            .setItems(levels.map { it.label }.toTypedArray()) { _, choice ->
+            .setItems(levels.map { it.label }.toTypedArray()) { owner, choice ->
                 val level = levels.getOrNull(choice) ?: return@setItems
+                val active = owner as? AlertDialog ?: return@setItems
+                if (activeEffortDialog !== active || !active.isShowing) return@setItems
+                if (!isSameEffortContext(selectedIndex, selectedSessionId, completedSets, plan)) {
+                    activeEffortDialog = null
+                    pendingEffortLevel = null
+                    active.dismiss()
+                    Toast.makeText(this, "Buổi tập đã thay đổi; không áp dụng cảm nhận cũ.", Toast.LENGTH_LONG).show()
+                    return@setItems
+                }
+                // A direct tap is an explicit manual answer. Voice results use the separate
+                // positive confirmation button below and are never stored on recognition alone.
+                activeEffortDialog = null
+                pendingEffortLevel = null
+                active.dismiss()
                 applyEffortCheckIn(
                     selectedIndex, selectedSessionId, completedSets, plan, hasNextSet, level
                 )
             }
+            .setPositiveButton("Xác nhận giọng nói", null)
             .setNeutralButton("🎤 Trả lời bằng giọng nói", null)
             .setNegativeButton("Bỏ qua • nghỉ theo giáo án") { _, _ -> startPrescribedRest() }
             .create()
-        // Back/outside dismissal is not consent to start a rest timer. The explicit
-        // negative action above is the only path that starts prescribed rest.
+
+        activeEffortDialog = dialog
         dialog.setOnCancelListener(null)
+        dialog.setOnDismissListener {
+            if (activeEffortDialog === dialog) {
+                activeEffortDialog = null
+                pendingEffortLevel = null
+            }
+        }
         dialog.setOnShowListener {
             speak("Hiệp vừa rồi thế nào? Chọn nhẹ, vừa sức, khó hoặc quá sức.")
         }
         dialog.show()
-        // Install the custom neutral-button action after show(), when AlertDialog has created it.
+
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).apply {
+            isEnabled = false
+            contentDescription = "Xác nhận mức cảm nhận Chibi nhận dạng được bằng giọng nói"
+            setOnClickListener {
+                val selected = pendingEffortLevel
+                if (activeEffortDialog !== dialog || selected == null) return@setOnClickListener
+                if (!isSameEffortContext(selectedIndex, selectedSessionId, completedSets, plan)) {
+                    activeEffortDialog = null
+                    pendingEffortLevel = null
+                    dialog.dismiss()
+                    Toast.makeText(this@GuidedWorkoutActivity,
+                        "Buổi tập đã thay đổi; Chibi chưa lưu cảm nhận.", Toast.LENGTH_LONG).show()
+                    return@setOnClickListener
+                }
+                activeEffortDialog = null
+                pendingEffortLevel = null
+                dialog.dismiss()
+                applyEffortCheckIn(
+                    selectedIndex, selectedSessionId, completedSets, plan, hasNextSet, selected
+                )
+            }
+        }
         dialog.getButton(AlertDialog.BUTTON_NEUTRAL).apply {
             contentDescription = "Trả lời cảm nhận hiệp bằng giọng nói sau khi xác nhận quyền micro"
             setOnClickListener {
@@ -2261,72 +2308,41 @@ class GuidedWorkoutActivity:Activity() {
         checkInDialog: AlertDialog,
         utterance: String
     ) {
+        if (activeEffortDialog !== checkInDialog || !checkInDialog.isShowing) return
         when (val parsed = WorkoutEffortVoiceCommand.parse(utterance)) {
             WorkoutEffortVoiceCommand.Result.SafetyStop -> {
+                activeEffortDialog = null
+                pendingEffortLevel = null
                 checkInDialog.dismiss()
                 stopForSafety()
             }
             is WorkoutEffortVoiceCommand.Result.Report -> {
                 if (!isSameEffortContext(selectedIndex, selectedSessionId, completedSets, plan)) {
+                    pendingEffortLevel = null
+                    checkInDialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = false
+                    checkInDialog.setMessage("Buổi tập đã thay đổi. Chibi chưa lưu cảm nhận; hãy kiểm tra lại buổi tập.")
                     Toast.makeText(this, "Buổi tập đã thay đổi; không áp dụng cảm nhận cũ.", Toast.LENGTH_LONG).show()
                     return
                 }
-                val level = parsed.level
-                // Opening a confirmation dialog can cancel its parent on some Android/test
-                // window implementations. Suppress the parent's default-rest cancellation
-                // while the recognized answer is awaiting confirmation.
-                // Avoid stacking a second dialog over the check-in. Some Android window
-                // implementations cancel the parent when a nested dialog is shown; dismiss it
-                // deliberately and restore it only if the user rejects/cancels the voice preview.
-                checkInDialog.setOnCancelListener(null)
-                if (checkInDialog.isShowing) checkInDialog.dismiss()
-                fun restoreParentCancelBehavior() {
-                    if (isSameEffortContext(selectedIndex, selectedSessionId, completedSets, plan) &&
-                        !isFinishing && !isDestroyed && !checkInDialog.isShowing
-                    ) {
-                        checkInDialog.show()
-                    }
-                }
-                val confirmation = AlertDialog.Builder(this)
-                    .setTitle("🐰 Chibi nghe được")
-                    .setMessage(
-                        "Cảm nhận cho hiệp $completedSets của ${moves[selectedIndex].name}: " +
-                            "${level.label}.\n\nĐây là tự đánh giá của bạn, không phải phép đo thể lực. " +
-                            "Chibi chỉ lưu sau khi bạn xác nhận."
-                    )
-                    .setPositiveButton("Đúng, ghi cảm nhận") { _, _ ->
-                        if (!isSameEffortContext(selectedIndex, selectedSessionId, completedSets, plan)) {
-                            Toast.makeText(this, "Buổi tập đã thay đổi; Chibi chưa lưu cảm nhận.", Toast.LENGTH_LONG).show()
-                        } else {
-                            applyEffortCheckIn(
-                                selectedIndex, selectedSessionId, completedSets, plan, hasNextSet, level
-                            )
-                            checkInDialog.setOnCancelListener(null)
-                            checkInDialog.dismiss()
-                        }
-                    }
-                    .setNegativeButton("Không đúng") { _, _ -> restoreParentCancelBehavior() }
-                    .create()
-                confirmation.setOnCancelListener { restoreParentCancelBehavior() }
-                confirmation.show()
+                pendingEffortLevel = parsed.level
+                checkInDialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = true
+                checkInDialog.setMessage(
+                    "🐰 Chibi nghe được: ${parsed.level.label}.\n\n" +
+                        "Đây là tự đánh giá của bạn, không phải phép đo thể lực. " +
+                        "Chibi chưa lưu câu trả lời. Nếu đúng, nhấn “Xác nhận giọng nói”; " +
+                        "nếu chưa đúng, hãy chọn lại một mức trong danh sách."
+                )
+                speak("Chibi nghe được ${parsed.level.label}. Hãy kiểm tra rồi xác nhận.")
             }
-            null -> AlertDialog.Builder(this)
-                .setTitle("Chibi chưa hiểu cảm nhận")
-                .setMessage(
-                    "Hãy nói ngắn gọn một lựa chọn: “nhẹ”, “vừa sức”, “khó quá” hoặc “quá sức”. " +
-                        "Nếu đau, khó thở hoặc chóng mặt, hãy nói rõ để Chibi dừng buổi tập. " +
+            null -> {
+                pendingEffortLevel = null
+                checkInDialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = false
+                checkInDialog.setMessage(
+                    "Chibi chưa hiểu cảm nhận. Hãy nói ngắn gọn “nhẹ”, “vừa sức”, “khó quá” " +
+                        "hoặc “quá sức”, rồi thử lại; hoặc chọn trực tiếp trong danh sách. " +
                         "Câu chưa rõ sẽ không được ghi nhận."
                 )
-                .setPositiveButton("Thử lại") { _, _ ->
-                    requestEffortVoiceCommand { phrase ->
-                        handleEffortVoiceCheckIn(
-                            selectedIndex, selectedSessionId, completedSets, plan,
-                            hasNextSet, checkInDialog, phrase
-                        )
-                    }
-                }
-                .setNegativeButton("Chọn bằng nút", null)
-                .show()
+            }
         }
     }
 

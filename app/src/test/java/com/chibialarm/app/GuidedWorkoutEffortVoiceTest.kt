@@ -78,6 +78,23 @@ class GuidedWorkoutEffortVoiceTest {
         return field.get(checkIn.activity) as Map<Int, List<WorkoutEffortFeedback.Level?>>
     }
 
+    private fun sendVoice(checkIn: CheckIn, phrase: String) {
+        val handle = GuidedWorkoutActivity::class.java.getDeclaredMethod(
+            "handleEffortVoiceCheckIn",
+            Int::class.javaPrimitiveType,
+            String::class.java,
+            Int::class.javaPrimitiveType,
+            WorkoutSetTracker.Plan::class.java,
+            Boolean::class.javaPrimitiveType,
+            AlertDialog::class.java,
+            String::class.java
+        ).apply { isAccessible = true }
+        handle.invoke(
+            checkIn.activity, checkIn.moveIndex, checkIn.sessionId, 1,
+            checkIn.plan, true, checkIn.dialog, phrase
+        )
+    }
+
     @Test fun voiceAnswerRequiresDisclosureAndCanBeCancelledWithoutChangingTheCheckIn() {
         val checkIn = openCheckIn()
         try {
@@ -102,42 +119,28 @@ class GuidedWorkoutEffortVoiceTest {
         }
     }
 
-    @Test fun recognizedEffortIsPreviewedAndOnlyStoredAfterConfirmation() {
+    @Test fun recognizedEffortStaysPendingUntilTheUserConfirmsIt() {
         val checkIn = openCheckIn()
         try {
-            val handle = GuidedWorkoutActivity::class.java.getDeclaredMethod(
-                "handleEffortVoiceCheckIn",
-                Int::class.javaPrimitiveType,
-                String::class.java,
-                Int::class.javaPrimitiveType,
-                WorkoutSetTracker.Plan::class.java,
-                Boolean::class.javaPrimitiveType,
-                AlertDialog::class.java,
-                String::class.java
-            ).apply { isAccessible = true }
-
-            handle.invoke(
-                checkIn.activity, checkIn.moveIndex, checkIn.sessionId, 1,
-                checkIn.plan, true, checkIn.dialog, "khó quá"
-            )
-            val preview = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
-            assertTrue(preview.isShowing)
-            val resting = GuidedWorkoutActivity::class.java.getDeclaredField("resting")
-                .apply { isAccessible = true }
-            assertFalse("Showing a voice preview must not start the prescribed rest",
-                resting.getBoolean(checkIn.activity))
-            assertTrue(preview.findViewById<android.widget.TextView>(android.R.id.message)
-                ?.text?.toString().orEmpty().contains("Khó, cần nghỉ thêm"))
+            sendVoice(checkIn, "khó quá")
+            assertTrue(checkIn.dialog.isShowing)
+            val message = checkIn.dialog.findViewById<android.widget.TextView>(android.R.id.message)
+                ?.text?.toString().orEmpty()
+            assertTrue(message.contains("Khó, cần nghỉ thêm"))
+            assertTrue(message.contains("Chibi chưa lưu"))
             assertTrue(effortLevels(checkIn).isEmpty())
 
-            preview.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+            val confirm = checkIn.dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+            assertTrue(confirm.isEnabled)
+            confirm.performClick()
+
             assertEquals(
                 WorkoutEffortFeedback.Level.HARD,
                 effortLevels(checkIn)[checkIn.moveIndex]?.single()
             )
-            assertTrue("A rest suggestion still requires its own choice",
-                (ShadowAlertDialog.getLatestAlertDialog() as AlertDialog).isShowing)
+            assertFalse(checkIn.dialog.isShowing)
             val restChoice = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
+            assertTrue(restChoice.isShowing)
             assertTrue(restChoice.getButton(AlertDialog.BUTTON_NEUTRAL).text.toString().contains("nhẹ hơn"))
             restChoice.getButton(AlertDialog.BUTTON_NEUTRAL).performClick()
             val planPreview = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
@@ -151,65 +154,46 @@ class GuidedWorkoutEffortVoiceTest {
         }
     }
 
-    @Test fun rejectingVoicePreviewRestoresEffortChoicesWithoutStartingRest() {
+    @Test fun cancellingRecognizedVoiceCheckInDoesNotStoreOrStartRest() {
         val checkIn = openCheckIn()
         try {
-            val handle = GuidedWorkoutActivity::class.java.getDeclaredMethod(
-                "handleEffortVoiceCheckIn",
-                Int::class.javaPrimitiveType,
-                String::class.java,
-                Int::class.javaPrimitiveType,
-                WorkoutSetTracker.Plan::class.java,
-                Boolean::class.javaPrimitiveType,
-                AlertDialog::class.java,
-                String::class.java
-            ).apply { isAccessible = true }
+            sendVoice(checkIn, "khó quá")
+            assertTrue(checkIn.dialog.isShowing)
+            assertTrue(checkIn.dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled)
+            assertTrue(effortLevels(checkIn).isEmpty())
+            assertEquals(WorkoutEffortFeedback.Level.values().size, checkIn.dialog.listView.count)
 
-            handle.invoke(
-                checkIn.activity, checkIn.moveIndex, checkIn.sessionId, 1,
-                checkIn.plan, true, checkIn.dialog, "khó quá"
-            )
-            val preview = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
-            preview.getButton(AlertDialog.BUTTON_NEGATIVE).performClick()
+            checkIn.dialog.cancel()
 
             val resting = GuidedWorkoutActivity::class.java.getDeclaredField("resting")
                 .apply { isAccessible = true }
             assertFalse(resting.getBoolean(checkIn.activity))
-            assertTrue("Rejecting a recognized answer must leave manual choices available",
-                checkIn.dialog.isShowing)
             assertTrue(effortLevels(checkIn).isEmpty())
         } finally {
             checkIn.activity.finish()
         }
     }
 
-    @Test fun cancellingVoicePreviewRestoresManualChoicesWithoutStartingRest() {
+    @Test fun manualChoiceCanCorrectARecognizedVoiceAnswer() {
         val checkIn = openCheckIn()
         try {
-            val handle = GuidedWorkoutActivity::class.java.getDeclaredMethod(
-                "handleEffortVoiceCheckIn",
-                Int::class.javaPrimitiveType,
-                String::class.java,
-                Int::class.javaPrimitiveType,
-                WorkoutSetTracker.Plan::class.java,
-                Boolean::class.javaPrimitiveType,
-                AlertDialog::class.java,
-                String::class.java
-            ).apply { isAccessible = true }
-
-            handle.invoke(
-                checkIn.activity, checkIn.moveIndex, checkIn.sessionId, 1,
-                checkIn.plan, true, checkIn.dialog, "khó quá"
+            sendVoice(checkIn, "khó quá")
+            val list = checkIn.dialog.listView
+            val manualChoice = WorkoutEffortFeedback.Level.MODERATE.ordinal
+            list.performItemClick(
+                list.getChildAt(manualChoice),
+                manualChoice,
+                list.getItemIdAtPosition(manualChoice)
             )
-            val preview = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
-            preview.cancel()
 
+            assertEquals(
+                WorkoutEffortFeedback.Level.MODERATE,
+                effortLevels(checkIn)[checkIn.moveIndex]?.single()
+            )
             val resting = GuidedWorkoutActivity::class.java.getDeclaredField("resting")
                 .apply { isAccessible = true }
-            assertFalse("Cancelling a preview must not start prescribed rest",
+            assertTrue("A direct manual choice is explicit and follows the normal rest recommendation",
                 resting.getBoolean(checkIn.activity))
-            assertTrue("The manual effort choices must remain available", checkIn.dialog.isShowing)
-            assertTrue(effortLevels(checkIn).isEmpty())
         } finally {
             checkIn.activity.finish()
         }
@@ -218,23 +202,8 @@ class GuidedWorkoutEffortVoiceTest {
     @Test fun cancellingHardRestSuggestionDoesNotStartRestWithoutAnExplicitChoice() {
         val checkIn = openCheckIn()
         try {
-            val handle = GuidedWorkoutActivity::class.java.getDeclaredMethod(
-                "handleEffortVoiceCheckIn",
-                Int::class.javaPrimitiveType,
-                String::class.java,
-                Int::class.javaPrimitiveType,
-                WorkoutSetTracker.Plan::class.java,
-                Boolean::class.javaPrimitiveType,
-                AlertDialog::class.java,
-                String::class.java
-            ).apply { isAccessible = true }
-
-            handle.invoke(
-                checkIn.activity, checkIn.moveIndex, checkIn.sessionId, 1,
-                checkIn.plan, true, checkIn.dialog, "khó quá"
-            )
-            val voicePreview = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
-            voicePreview.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+            sendVoice(checkIn, "khó quá")
+            checkIn.dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
 
             assertEquals(
                 WorkoutEffortFeedback.Level.HARD,

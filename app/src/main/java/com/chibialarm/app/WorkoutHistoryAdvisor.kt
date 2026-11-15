@@ -50,6 +50,31 @@ object WorkoutHistoryAdvisor {
     }
 
     /**
+     * Combines weekly activity totals with recent, repeated self-reported hard effort.
+     * The result is an optional reflection, never a recovery/readiness diagnosis.
+     */
+    fun lighterSessionMessage(
+        summary: Summary,
+        recentEffort: WorkoutEffortPlanAdvisor.Suggestion?
+    ): String? {
+        val reasons = mutableListOf<String>()
+        if (summary.suggestLighterSession) {
+            reasons += "Trong 7 ngày, bạn đã ghi ${summary.activeDays}/7 ngày vận động và ${summary.totalMinutes} phút."
+        }
+        if (recentEffort != null) {
+            val severity = buildList {
+                if (recentEffort.hardSets > 0) add("${recentEffort.hardSets} hiệp khó")
+                if (recentEffort.veryHardSets > 0) add("${recentEffort.veryHardSets} hiệp quá sức")
+            }.joinToString(" và ")
+            reasons += "Trong ${recentEffort.repeatedSessions} buổi Guided Workout gần đây, bạn tự đánh dấu ${severity.ifBlank { "mức gắng sức cao" }} ở ${recentEffort.exerciseName}."
+        }
+        if (reasons.isEmpty()) return null
+        return "🐰 " + reasons.joinToString(" ") +
+            " Bạn có thể cân nhắc nghỉ hoặc xem giáo án phục hồi nhẹ. " +
+            "Đây là gợi ý từ nhật ký tự ghi, không phải đánh giá hồi phục hay tư vấn y khoa."
+    }
+
+    /**
      * Avoids offering the exact same catalog program on two consecutive calendar days.
      * Only structured catalog names, dates and durations are inspected; private journal notes
      * are deliberately ignored. Alternatives must already have passed the caller's safety filters.

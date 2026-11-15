@@ -207,11 +207,15 @@ object WorkoutSetHistoryConversation {
     private fun isLatestSessionMoveListQuestion(text: String): Boolean {
         val mentionsRecentSession = text.contains("buoi") &&
             listOf("gan nhat", "moi nhat", "vua roi", "hom qua").any { text.contains(it) }
-        val asksForMoveList = listOf(
-            "bai nao", "bai gi", "nhung bai", "cac bai",
-            "dong tac nao", "nhung dong tac", "danh sach", "liet ke"
+        // A generic request to list recent sessions belongs to WorkoutHistoryConversation.
+        // This router should only consume a request that explicitly asks for exercises.
+        val namesExercise = listOf(
+            "bai nao", "bai gi", "nhung bai", "cac bai", "bai tap",
+            "dong tac nao", "nhung dong tac", "dong tac"
         ).any { text.contains(it) }
-        return mentionsRecentSession && asksForMoveList
+        val listsExercises = text.contains("liet ke") &&
+            listOf("bai tap", "dong tac", "cac bai", "nhung bai").any { text.contains(it) }
+        return mentionsRecentSession && (namesExercise || listsExercises)
     }
 
     private fun latestSessionMoveList(sessions: List<Session>): String {

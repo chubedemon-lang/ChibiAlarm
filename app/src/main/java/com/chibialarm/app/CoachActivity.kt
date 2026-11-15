@@ -80,17 +80,20 @@ class CoachActivity:Activity() {
             // Some engines expose only the language-level Vietnamese locale, not vi-VN.
             var languageStatus=engine.setLanguage(Locale("vi","VN"))
             if (languageStatus<0) languageStatus=engine.setLanguage(Locale("vi"))
-            speakerReady=CoachSpeechVoicePolicy.isSupportedLanguageStatus(languageStatus)
             val pref=getSharedPreferences("settings",0)
+            val available=if (Build.VERSION.SDK_INT>=Build.VERSION_CODES.LOLLIPOP) {
+                runCatching { engine.voices.orEmpty() }.getOrDefault(emptyList())
+            } else emptyList()
+            val selection=CoachSpeechVoicePolicy.resolve(
+                languageStatus,
+                pref.getString("voice",null),
+                available.map { voice -> CoachSpeechVoicePolicy.VoiceOption(voice.name,voice.locale.language) }
+            )
+            speakerReady=selection.languageSupported
             engine.setSpeechRate(pref.getFloat("rate",1f))
             engine.setPitch(pref.getFloat("pitch",1f))
             if (speakerReady && Build.VERSION.SDK_INT>=Build.VERSION_CODES.LOLLIPOP) {
-                val available=runCatching { engine.voices.orEmpty() }.getOrDefault(emptyList())
-                val selected=CoachSpeechVoicePolicy.selectVietnameseVoice(
-                    pref.getString("voice",null),
-                    available.map { voice -> CoachSpeechVoicePolicy.VoiceOption(voice.name,voice.locale.language) }
-                )
-                available.firstOrNull { it.name==selected }?.let { engine.voice=it }
+                available.firstOrNull { it.name==selection.voiceName }?.let { engine.voice=it }
             }
             speechStatus.text=if(speakerReady) {
                 "🔊 Giọng Việt đã sẵn sàng. Khả năng ngoại tuyến tùy bộ TTS và giọng đã cài trên máy."

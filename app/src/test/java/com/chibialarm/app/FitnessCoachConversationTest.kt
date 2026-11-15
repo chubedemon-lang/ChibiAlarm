@@ -407,6 +407,51 @@ class FitnessCoachConversationTest {
         assertEquals(15, explicitPermission.minutes)
     }
 
+    @Test fun addingMatOnALaterTurnPreservesThePreviouslySelectedDumbbell() {
+        val first = FitnessCoachConversation.merge(
+            null,
+            FitnessNaturalRequest.parse("tăng cơ 30 phút, đang tập đều, có tạ đơn")
+        )
+        assertEquals(4, first.equipment)
+
+        val reply = FitnessCoachConversation.parseReply(first, "À, tao có thêm thảm tập")
+        val updated = FitnessCoachConversation.merge(first, reply)
+
+        assertEquals(4, updated.equipment)
+        assertEquals(setOf(TrainingEquipment.MAT), updated.additionalEquipment)
+        assertEquals(0, updated.goal)
+        assertEquals(1, updated.level)
+        assertEquals(30, updated.minutes)
+        assertTrue(reply.reply.contains("giữ các lựa chọn trước đó"))
+    }
+
+    @Test fun addingResistanceBandOnALaterTurnKeepsTheDumbbellAsASeparateTool() {
+        val first = FitnessCoachConversation.merge(
+            null,
+            FitnessNaturalRequest.parse("tăng cơ 30 phút, có tạ đơn")
+        )
+        val reply = FitnessCoachConversation.parseReply(first, "Ngoài ra có thêm dây kháng lực")
+        val updated = FitnessCoachConversation.merge(first, reply)
+
+        assertEquals(4, updated.equipment)
+        assertEquals(setOf(TrainingEquipment.RESISTANCE_BAND), updated.additionalEquipment)
+    }
+
+    @Test fun additiveEquipmentWordingDoesNotOverrideAnExplicitRemoval() {
+        val first = FitnessCoachConversation.merge(
+            null,
+            FitnessNaturalRequest.parse("tăng cơ 30 phút, có tạ đơn")
+        )
+        val reply = FitnessCoachConversation.parseReply(
+            first,
+            "Có thêm thảm tập nhưng không có tạ nữa"
+        )
+        val updated = FitnessCoachConversation.merge(first, reply)
+
+        assertEquals(1, updated.equipment)
+        assertEquals(emptySet<TrainingEquipment>(), updated.additionalEquipment)
+    }
+
     @Test fun multipleToolsSurviveUnrelatedTurnsAndExplicitNoEquipmentClearsThem() {
         val first = FitnessCoachConversation.merge(
             null,

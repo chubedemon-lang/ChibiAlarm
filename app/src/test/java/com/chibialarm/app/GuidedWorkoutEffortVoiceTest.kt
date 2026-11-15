@@ -27,11 +27,15 @@ class GuidedWorkoutEffortVoiceTest {
         val dialog: AlertDialog,
         val moveIndex: Int,
         val plan: WorkoutSetTracker.Plan,
-        val sessionId: String
+        val sessionId: String,
+        val completedSets: Int
     )
 
     @Suppress("UNCHECKED_CAST")
-    private fun openCheckIn(): CheckIn {
+    private fun openCheckIn(
+        completedSetCount: Int = 1,
+        previousEfforts: List<WorkoutEffortFeedback.Level?> = emptyList()
+    ): CheckIn {
         val app = RuntimeEnvironment.getApplication()
         val intent = Intent(app, GuidedWorkoutActivity::class.java)
             .putExtra("program", "full")
@@ -49,7 +53,10 @@ class GuidedWorkoutEffortVoiceTest {
         val plan = WorkoutSetTracker.parse(moves[moveIndex].dose, moves[moveIndex].restSeconds)!!
         field("index").setInt(activity, moveIndex)
         val completedSets = field("completedSetsByMove").get(activity) as MutableMap<Int, Int>
-        completedSets[moveIndex] = 1
+        completedSets[moveIndex] = completedSetCount
+        val priorEffortMap = field("effortLevelsByMove").get(activity)
+            as MutableMap<Int, List<WorkoutEffortFeedback.Level?>>
+        if (previousEfforts.isNotEmpty()) priorEffortMap[moveIndex] = previousEfforts
         val sessionId = field("sessionId").get(activity) as String
 
         GuidedWorkoutActivity::class.java.getDeclaredMethod(
@@ -60,14 +67,15 @@ class GuidedWorkoutEffortVoiceTest {
             WorkoutSetTracker.Plan::class.java,
             Boolean::class.javaPrimitiveType
         ).apply { isAccessible = true }
-            .invoke(activity, moveIndex, sessionId, 1, plan, true)
+            .invoke(activity, moveIndex, sessionId, completedSetCount, plan, true)
 
         return CheckIn(
             activity,
             ShadowAlertDialog.getLatestAlertDialog() as AlertDialog,
             moveIndex,
             plan,
-            sessionId
+            sessionId,
+            completedSetCount
         )
     }
 
@@ -90,7 +98,7 @@ class GuidedWorkoutEffortVoiceTest {
             String::class.java
         ).apply { isAccessible = true }
         handle.invoke(
-            checkIn.activity, checkIn.moveIndex, checkIn.sessionId, 1,
+            checkIn.activity, checkIn.moveIndex, checkIn.sessionId, checkIn.completedSets,
             checkIn.plan, true, checkIn.dialog, phrase
         )
     }
@@ -217,6 +225,42 @@ class GuidedWorkoutEffortVoiceTest {
             val resting = GuidedWorkoutActivity::class.java.getDeclaredField("resting")
                 .apply { isAccessible = true }
             assertFalse("Back/outside dismissal must not choose a rest duration",
+                resting.getBoolean(checkIn.activity))
+        } finally {
+            checkIn.activity.finish()
+        }
+    }
+
+    @Test fun repeatedHardCheckInsOfferLongerRestButStillRequireAnExplicitChoice() {
+        val checkIn = openCheckIn(
+            completedSetCount = 2,
+            previousEfforts = listOf(WorkoutEffortFeedback.Level.HARD)
+        )
+        try {
+            val hardChoice = checkIn.dialog.listView
+            val hardIndex = WorkoutEffortFeedback.Level.HARD.ordinal
+            hardChoice.performItemClick(
+                hardChoice.getChildAt(hardIndex),
+                hardIndex,
+                hardChoice.getItemIdAtPosition(hardIndex)
+            )
+
+            assertEquals(
+                listOf(WorkoutEffortFeedback.Level.HARD, WorkoutEffortFeedback.Level.HARD),
+                effortLevels(checkIn)[checkIn.moveIndex]
+            )
+            val restChoice = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
+            val message = restChoice.findViewById<android.widget.TextView>(android.R.id.message)
+                ?.text?.toString().orEmpty()
+            assertTrue(message.contains("2 hiệp liên tiếp"))
+            assertTrue(message.contains((checkIn.plan.defaultRestSeconds + 30).toString() + " giây"))
+
+            val resting = GuidedWorkoutActivity::class.java.getDeclaredField("resting")
+                .apply { isAccessible = true }
+            assertFalse("A repeated hard report must not start rest before confirmation",
+                resting.getBoolean(checkIn.activity))
+            restChoice.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+            assertTrue("The explicit rest choice should start the suggested countdown",
                 resting.getBoolean(checkIn.activity))
         } finally {
             checkIn.activity.finish()

@@ -6,9 +6,9 @@ import java.util.Locale
 /**
  * Conservative title-only relevance screening for exercise tutorial links.
  *
- * A match only means the public title contains a curated exercise alias (or a
- * distinctive term for an uncatalogued move). It never verifies video frames,
- * coaching credentials, movement technique, or exercise safety.
+ * A match only means the public title contains a curated exercise alias (or
+ * enough distinctive terms for an uncatalogued move). It never verifies video
+ * frames, coaching credentials, movement technique, or exercise safety.
  */
 object ExerciseVideoRelevance {
     private val curatedAliases = mapOf(
@@ -46,14 +46,15 @@ object ExerciseVideoRelevance {
             return aliases.any { alias -> containsPhrase(title, normalize(alias)) }
         }
 
-        // Unknown catalog entries use only distinctive words. Generic words
-        // such as "exercise" or "at home" must never make a title look relevant.
+        // Unknown catalog entries require two distinctive terms when available.
+        // Generic words such as "exercise" or "at home" cannot pass this gate.
         val moveTokens = move.split(' ')
             .filter { it.length >= 3 && it !in genericTokens }
             .toSet()
         if (moveTokens.isEmpty()) return false
         val titleTokens = title.split(' ').toSet()
-        return moveTokens.any { it in titleTokens }
+        val matchedTerms = moveTokens.count { it in titleTokens }
+        return matchedTerms >= minOf(2, moveTokens.size)
     }
 
     private fun containsPhrase(normalizedTitle: String, normalizedPhrase: String): Boolean {

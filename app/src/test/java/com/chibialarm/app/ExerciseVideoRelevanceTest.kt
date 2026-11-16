@@ -38,11 +38,17 @@ class ExerciseVideoRelevanceTest {
         )
     }
 
-    @Test fun accentInsensitiveFallbackSupportsUnmappedCatalogNames() {
+    @Test fun accentInsensitiveFallbackRequiresDistinctiveTerms() {
         assertTrue(
             ExerciseVideoRelevance.matches(
                 "Giãn cơ vai",
                 "Gian co vai tai nha"
+            )
+        )
+        assertFalse(
+            ExerciseVideoRelevance.matches(
+                "Giãn cơ vai",
+                "Vai workout at home"
             )
         )
     }

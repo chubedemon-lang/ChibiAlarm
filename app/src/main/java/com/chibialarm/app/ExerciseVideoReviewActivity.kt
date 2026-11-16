@@ -134,7 +134,7 @@ class ExerciseVideoReviewActivity:Activity() {
     private fun youtubeUri(link:String):Uri? {
         val uri=runCatching { Uri.parse(link) }.getOrNull() ?: return null
         val host=uri.host?.lowercase(Locale.ROOT) ?: return null
-        val authority=uri.encodedAuthority?.lowercase(Locale.ROOT)
+        val authority=uri.encodedAuthority?.lowercase(Locale.ROOT) ?: return null
         if(uri.scheme!="https" ||
             host !in setOf("youtube.com","www.youtube.com","m.youtube.com","youtu.be") ||
             authority !in setOf(host,"$host:443")
@@ -160,8 +160,8 @@ class ExerciseVideoReviewActivity:Activity() {
         var connection:HttpURLConnection?=null
         return try {
             val uri=Uri.parse(imageUrl)
-            val host=uri.host?.lowercase(Locale.ROOT)
-            val authority=uri.encodedAuthority?.lowercase(Locale.ROOT)
+            val host=uri.host?.lowercase(Locale.ROOT) ?: return null
+            val authority=uri.encodedAuthority?.lowercase(Locale.ROOT) ?: return null
             if(uri.scheme!="https" || host !in setOf("i.ytimg.com","img.youtube.com") ||
                 authority !in setOf(host,"$host:443")
             ) return null
@@ -191,6 +191,7 @@ class ExerciseVideoReviewActivity:Activity() {
     private fun review() {
         val link=field.text.toString().trim()
         if(youtubeUri(link)==null) {
+            reviewGeneration++
             pendingReviewUrl=""
             reviewedUrl=""
             reviewedRelevant=false
@@ -223,6 +224,8 @@ class ExerciseVideoReviewActivity:Activity() {
                 val title=json.optString("title")
                 val author=json.optString("author_name").take(120)
                 val imageUrl=json.optString("thumbnail_url")
+                connection.disconnect()
+                connection=null
                 val relevant=ExerciseVideoRelevance.matches(moveName,title)
                 val bitmap=loadThumbnail(imageUrl)
                 runOnUiThread {

@@ -292,7 +292,7 @@ object WorkoutPlanAdjustmentConversation {
         return withoutDiacritics
             .replace(Regex("\\p{M}+"), "")
             .replace(Regex("[^a-z0-9 ]"), " ")
-            .replace(Regex("\s+"), " ")
+            .replace(Regex("\\s+"), " ")
             .trim()
     }
 }

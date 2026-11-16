@@ -107,4 +107,17 @@ class WorkoutStepVoiceCommandTest {
         assertEquals(WorkoutStepVoiceCommand.Command.UNKNOWN, WorkoutStepVoiceCommand.parse(""))
         assertEquals(WorkoutStepVoiceCommand.Command.UNKNOWN, WorkoutStepVoiceCommand.parse(null))
     }
+    @Test fun recognizesNaturalQuestionsAboutTheCurrentExerciseFocus() {
+        for (phrase in listOf(
+            "Bài này tác động nhóm cơ nào?",
+            "Nhóm cơ chính?",
+            "Tập vào đâu?",
+            "Tác dụng của bài này là gì?"
+        )) {
+            assertEquals(
+                WorkoutStepVoiceCommand.Command.ASK_EXERCISE,
+                WorkoutStepVoiceCommand.parse(phrase)
+            )
+        }
+    }
 }

@@ -796,7 +796,7 @@ class FitnessActivity:Activity() {
                         "\n\nGợi ý offline theo quy tắc trên máy, không phải AI chẩn đoán hay tư vấn y khoa.")
                     .setPositiveButton("▶ Bắt đầu"){_,_->startProgram(p, constraintProfile)}
                     .setNeutralButton("📖 Xem từng bước") { _, _ ->
-                        showProgramPreview(p, planned.moves, constraintProfile)
+                        showProgramPreview(p, planned, constraintProfile, equipment, additionalEquipment)
                     }
                     .setNegativeButton("Chọn bài khác",null).show()
             }
@@ -845,10 +845,23 @@ class FitnessActivity:Activity() {
      */
     private fun showProgramPreview(
         program: TrainingProgram,
-        moves: List<TrainingMove>,
-        constraints: WorkoutConstraintProfile
+        planned: WorkoutDurationPlanner.Plan,
+        constraints: WorkoutConstraintProfile,
+        equipmentSelection: Int,
+        additionalEquipment: Set<TrainingEquipment>
     ) {
-        var preview = WorkoutLibraryPreview.start(moves) ?: run {
+        var planDraft = WorkoutPlanPreviewEditor.start(
+            moves = planned.moves,
+            targetMinutes = planned.targetMinutes,
+            level = level.selectedItemPosition,
+            constraints = constraints,
+            equipmentSelection = equipmentSelection,
+            additionalEquipment = additionalEquipment
+        ) ?: run {
+            Toast.makeText(this, "Giáo án không còn khớp dụng cụ hoặc hạn chế vận động. Hãy tạo bản xem trước mới.", Toast.LENGTH_LONG).show()
+            return
+        }
+        var preview = WorkoutLibraryPreview.start(planDraft.moves) ?: run {
             Toast.makeText(this, "Chưa có động tác phù hợp để xem trước.", Toast.LENGTH_LONG).show()
             return
         }
@@ -875,8 +888,13 @@ class FitnessActivity:Activity() {
         val steps = txt("", 14f)
         val easier = txt("", 14f)
         val caution = txt("", 14f)
+        val durationSummary = txt("", 13f)
         val previous = Button(this).apply { text = "← Bài trước" }
         val next = Button(this).apply { text = "Bài tiếp →" }
+        val substitute = Button(this).apply {
+            text = "🔁 Thay động tác đang xem"
+            isAllCaps = false
+        }
         val navigation = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             addView(previous, LinearLayout.LayoutParams(0, -2, 1f))
@@ -898,6 +916,7 @@ class FitnessActivity:Activity() {
         }
 
         content.addView(position)
+        content.addView(durationSummary)
         content.addView(heading)
         content.addView(pose)
         content.addView(phaseCaption)
@@ -911,12 +930,23 @@ class FitnessActivity:Activity() {
         content.addView(easier)
         content.addView(caution)
         content.addView(speak)
+        content.addView(substitute)
         content.addView(navigation)
         content.addView(txt(program.caution, 12f))
+        content.addView(txt(
+            "Bài thay thế chỉ được đưa vào bản xem trước sau khi chọn. Chibi không sửa nhật ký cũ, không tự bắt đầu và không tự cộng EXP.",
+            12f
+        ))
 
         fun renderPreview() {
             val move = preview.currentMove
             position.text = "Bài ${preview.position}/${preview.size}"
+            val durationText = "⏱ Ước tính mới: ${WorkoutPlanPreviewEditor.durationLabel(planDraft.estimatedSeconds)} • mục tiêu: ${planDraft.targetMinutes} phút"
+            durationSummary.text = if (planDraft.exceedsTarget) {
+                "$durationText\n⚠️ Bản xem trước dài hơn mục tiêu; Chibi không tự cắt hiệp bắt buộc."
+            } else durationText
+            substitute.isEnabled = WorkoutPlanPreviewEditor.alternatives(planDraft, preview.index).isNotEmpty()
+            substitute.text = if (substitute.isEnabled) "🔁 Thay động tác đang xem" else "Không có biến thể đã duyệt phù hợp"
             heading.text = move.name
             pose.pose = WorkoutPoseGuide.classify(move.name)
             phaseCaption.text = "↔ " + WorkoutPoseMotion.phaseCue(pose.pose, pose.isInAlternatePose)
@@ -941,6 +971,33 @@ class FitnessActivity:Activity() {
             preview = preview.next()
             renderPreview()
         }
+        substitute.setOnClickListener {
+            val options = WorkoutPlanPreviewEditor.alternatives(planDraft, preview.index)
+            if (options.isEmpty()) {
+                Toast.makeText(this@FitnessActivity, "Chưa có biến thể phù hợp với dụng cụ và hạn chế hiện tại.", Toast.LENGTH_LONG).show()
+            } else {
+                val labels = options.map { "${it.name} • ${it.dose}" }.toTypedArray()
+                AlertDialog.Builder(this@FitnessActivity)
+                    .setTitle("Chọn bài thay thế đã duyệt")
+                    .setItems(labels) { _, selected ->
+                        val chosen = options.getOrNull(selected) ?: return@setItems
+                        val updated = WorkoutPlanPreviewEditor.replace(planDraft, preview.index, chosen)
+                        if (updated == null) {
+                            Toast.makeText(this@FitnessActivity, "Phương án đã thay đổi hoặc không còn phù hợp. Hãy xem lại giáo án.", Toast.LENGTH_LONG).show()
+                        } else {
+                            planDraft = updated
+                            preview = WorkoutLibraryPreview.start(planDraft.moves, preview.index)
+                                ?: return@setItems
+                            renderPreview()
+                            sayFollowUp(
+                                "Đã thêm ${chosen.name} vào bản xem trước. Thời lượng ước tính ${WorkoutPlanPreviewEditor.durationLabel(planDraft.estimatedSeconds)}. Chưa bắt đầu buổi tập."
+                            )
+                        }
+                    }
+                    .setNegativeButton("Hủy", null)
+                    .show()
+            }
+        }
 
         val dialog = AlertDialog.Builder(this)
             .setTitle("📚 ${program.name} • thư viện bài tập")
@@ -950,8 +1007,12 @@ class FitnessActivity:Activity() {
             .create()
         dialog.setOnShowListener {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                if (!WorkoutPlanPreviewEditor.isValid(planDraft)) {
+                    Toast.makeText(this@FitnessActivity, "Bản xem trước đã cũ hoặc không còn hợp lệ. Hãy mở lại trước khi bắt đầu.", Toast.LENGTH_LONG).show()
+                    return@setOnClickListener
+                }
                 dialog.dismiss()
-                startProgram(program, constraints)
+                startProgram(program, constraints, previewDraft = planDraft)
             }
         }
         dialog.setOnDismissListener {
@@ -989,7 +1050,13 @@ class FitnessActivity:Activity() {
             if (!equipped.canStart) card.addView(txt("Không còn động tác chính phù hợp với dụng cụ đã chọn.",12f))
             val buttons=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
             buttons.addView(Button(this).apply { text="📖 Xem bài";isAllCaps=false;isEnabled=equipped.canStart;setOnClickListener {
-                showProgramPreview(equipped.program, planned.moves, constraints)
+                showProgramPreview(
+                    equipped.program,
+                    planned,
+                    constraints,
+                    recommendationEquipmentSpinner?.selectedItemPosition ?: 0,
+                    currentAdditionalEquipment()
+                )
             } },LinearLayout.LayoutParams(0,-2,1f))
             buttons.addView(Button(this).apply { text="▶ Tập ngay";isAllCaps=false;isEnabled=equipped.canStart;setOnClickListener {
                 startProgram(equipped.program, constraints)
@@ -1141,7 +1208,8 @@ class FitnessActivity:Activity() {
     private fun startProgram(
         p: TrainingProgram,
         constraints: WorkoutConstraintProfile = currentWorkoutConstraintProfile(),
-        progression: WorkoutProgressionPreview.Proposal? = null
+        progression: WorkoutProgressionPreview.Proposal? = null,
+        previewDraft: WorkoutPlanPreviewEditor.Draft? = null
     ) {
         if (effectiveImpactRestriction() == 2) {
             AlertDialog.Builder(this)
@@ -1166,6 +1234,42 @@ class FitnessActivity:Activity() {
         }
         val l=level.selectedItemPosition
         val m=mins[length.selectedItemPosition]
+        var initialSubstitutions: String? = null
+        if (previewDraft != null) {
+            val currentPlan = WorkoutDurationPlanner.build(
+                equipped.program, l, m, currentExtensionPreferences(constraints)
+            )
+            val expected = WorkoutPlanPreviewEditor.start(
+                moves = currentPlan.moves,
+                targetMinutes = currentPlan.targetMinutes,
+                level = l,
+                constraints = constraints,
+                equipmentSelection = equipmentSelection,
+                additionalEquipment = additionalEquipment
+            )
+            if (expected == null || !WorkoutPlanPreviewEditor.isValid(previewDraft) ||
+                expected.originalMoves != previewDraft.originalMoves ||
+                previewDraft.targetMinutes != m || previewDraft.level != l ||
+                previewDraft.constraints != constraints ||
+                previewDraft.equipmentSelection != equipmentSelection ||
+                previewDraft.additionalEquipment != additionalEquipment
+            ) {
+                Toast.makeText(this, "Giáo án hoặc lựa chọn đã thay đổi. Hãy mở lại bản xem trước.", Toast.LENGTH_LONG).show()
+                return
+            }
+            val encoded = WorkoutPlanPreviewEditor.encodeSubstitutions(previewDraft)
+            val decoded = WorkoutMoveSubstitution.decode(
+                encoded, expected.originalMoves, constraints
+            )
+            val available = TrainingEquipmentAvailability.fromPreference(equipmentSelection) + additionalEquipment
+            if (decoded.size != previewDraft.substitutions.size ||
+                decoded.any { !TrainingEquipmentAvailability.allows(it.value, available) }
+            ) {
+                Toast.makeText(this, "Bài thay thế không còn hợp lệ với dụng cụ hiện tại.", Toast.LENGTH_LONG).show()
+                return
+            }
+            initialSubstitutions = encoded
+        }
         if (progression != null) {
             val planned = WorkoutDurationPlanner.build(
                 equipped.program, l, m, currentExtensionPreferences(constraints)
@@ -1210,6 +1314,7 @@ class FitnessActivity:Activity() {
             launchIntent.putExtra("progression_exercise", progression.exerciseName)
                 .putExtra("progression_reps", progression.targetReps)
         }
+        initialSubstitutions?.let { launchIntent.putExtra("initial_substitutions", it) }
         startActivity(launchIntent)
     }
     private fun addRoutine(p:TrainingProgram) {

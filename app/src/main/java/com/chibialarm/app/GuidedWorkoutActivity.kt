@@ -403,6 +403,34 @@ class GuidedWorkoutActivity:Activity() {
         originalMoves=moves.toList()
         optionalExtensionNames.clear()
         optionalExtensionNames.addAll(planned.extensionMoves.map { it.name })
+        // A new-session preview may carry only catalog-approved substitutions. The original
+        // plan stays intact for checkpoint validation; completed work does not exist yet.
+        val initialSubstitutionRaw = intent.getStringExtra("initial_substitutions")
+        if (savedInstanceState == null && !initialSubstitutionRaw.isNullOrBlank()) {
+            val decoded = WorkoutMoveSubstitution.decode(
+                initialSubstitutionRaw, originalMoves, workoutConstraints
+            )
+            val available = TrainingEquipmentAvailability.fromPreference(extensionPreferences.equipment) +
+                extensionPreferences.additionalEquipment
+            val approved = decoded.filter { (_, replacement) ->
+                TrainingEquipmentAvailability.allows(replacement, available)
+            }
+            substitutions.putAll(approved)
+            val safeCheckpoint = WorkoutMoveSubstitution.encode(
+                approved, originalMoves, workoutConstraints
+            )
+            moves = WorkoutMoveSubstitution.apply(originalMoves, safeCheckpoint, workoutConstraints)
+            approved.forEach { (position, replacement) ->
+                if (originalMoves[position].name in optionalExtensionNames) {
+                    optionalExtensionNames.remove(originalMoves[position].name)
+                    optionalExtensionNames.add(replacement.name)
+                }
+            }
+            if (approved.size != decoded.size) {
+                Toast.makeText(this, "Một số thay đổi xem trước không còn phù hợp nên đã được bỏ qua.", Toast.LENGTH_LONG).show()
+            }
+            program = program.copy(moves = moves)
+        }
         val restoredPlanNames = savedInstanceState?.getString("workout_plan_names")
         if (!restoredPlanNames.isNullOrBlank()) {
             WorkoutMidSessionPlanner.decodePlan(restoredPlanNames)?.let { restoredPlan ->

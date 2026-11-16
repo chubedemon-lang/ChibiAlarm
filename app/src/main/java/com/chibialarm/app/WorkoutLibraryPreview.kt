@@ -38,9 +38,9 @@ internal class WorkoutLibraryPreview private constructor(
         const val MAX_MOVES = 100
 
         /** Returns null for an empty or unreasonable plan instead of opening a broken preview. */
-        fun start(moves: List<TrainingMove>): WorkoutLibraryPreview? {
-            if (moves.isEmpty() || moves.size > MAX_MOVES) return null
-            return WorkoutLibraryPreview(moves.toList(), 0)
+        fun start(moves: List<TrainingMove>, index: Int = 0): WorkoutLibraryPreview? {
+            if (moves.isEmpty() || moves.size > MAX_MOVES || index !in moves.indices) return null
+            return WorkoutLibraryPreview(moves.toList(), index)
         }
     }
 }

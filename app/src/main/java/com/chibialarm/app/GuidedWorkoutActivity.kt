@@ -2224,6 +2224,8 @@ class GuidedWorkoutActivity:Activity() {
         spoken?.stop()
         val move = moves.getOrNull(index) ?: return
         var walkthrough = WorkoutStepGuide.Walkthrough.start(move.steps)
+        // Latest catalog-grounded answer is kept only while this guide dialog is open.
+        var lastCoachAnswer: String? = null
         val container = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(28, 20, 28, 12)
@@ -2282,8 +2284,8 @@ class GuidedWorkoutActivity:Activity() {
         }
         val voiceButton = Button(this).apply {
             tag = "workout-step-voice-control"
-            text = "🎤 Nói: bước tiếp, hỏi cách tập, đọc cách dễ hơn, số lần, nghỉ bao lâu, lưu ý an toàn"
-            contentDescription = "Mở nhận dạng giọng nói sau khi xác nhận quyền micro để chuyển bước, hỏi cách tập của động tác hiện tại, đọc cách tập dễ hơn, đọc lưu ý an toàn, hỏi số lần hoặc thời gian nghỉ"
+            text = "🎤 Nói: bước tiếp, hỏi cách tập, đọc lại câu trả lời, đọc cách dễ hơn, số lần, nghỉ bao lâu, lưu ý an toàn"
+            contentDescription = "Mở nhận dạng giọng nói sau khi xác nhận quyền micro để chuyển bước, hỏi cách tập của động tác hiện tại, đọc lại câu trả lời gần nhất, đọc cách tập dễ hơn, đọc lưu ý an toàn, hỏi số lần hoặc thời gian nghỉ"
         }
         container.addView(illustration, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
@@ -2367,6 +2369,14 @@ class GuidedWorkoutActivity:Activity() {
                             renderStep()
                         } else Toast.makeText(this,"Đã ở bước đầu của hướng dẫn.",Toast.LENGTH_SHORT).show()
                     }
+                    WorkoutStepVoiceCommand.Command.REPEAT_ANSWER -> {
+                        val answer = lastCoachAnswer
+                        if (answer.isNullOrBlank()) {
+                            Toast.makeText(this, "Chưa có câu trả lời nào trong hướng dẫn này để đọc lại.", Toast.LENGTH_SHORT).show()
+                        } else {
+                            speak(answer)
+                        }
+                    }
                     WorkoutStepVoiceCommand.Command.REPEAT -> {
                         val cue = lastGuideStepCue
                             ?.takeIf { it.moveIndex == index }
@@ -2380,13 +2390,18 @@ class GuidedWorkoutActivity:Activity() {
                             plan = currentSetPlan(),
                             completedSets = completedSetsByMove[index] ?: 0
                         )
+                        lastCoachAnswer = summary
                         speak(summary)
                     }
                     WorkoutStepVoiceCommand.Command.EASIER -> {
-                        speak(WorkoutStepGuide.spokenEasierCue(move.name, move.easier))
+                        val answer = WorkoutStepGuide.spokenEasierCue(move.name, move.easier)
+                        lastCoachAnswer = answer
+                        speak(answer)
                     }
                     WorkoutStepVoiceCommand.Command.SAFETY_NOTE -> {
-                        speak(WorkoutStepGuide.spokenSafetyNoteCue(move.name, move.avoid))
+                        val answer = WorkoutStepGuide.spokenSafetyNoteCue(move.name, move.avoid)
+                        lastCoachAnswer = answer
+                        speak(answer)
                     }
                     WorkoutStepVoiceCommand.Command.ASK_EXERCISE -> {
                         val answer = WorkoutExerciseConversation.answerForCurrentMove(
@@ -2394,7 +2409,9 @@ class GuidedWorkoutActivity:Activity() {
                             move = move,
                             currentDose = targetDose(index)
                         )
-                        speak(answer ?: "Mày có thể hỏi cách tập bài này, mục tiêu bao nhiêu lần hoặc nghỉ bao lâu.")
+                        val reply = answer ?: "Mày có thể hỏi cách tập bài này, mục tiêu bao nhiêu lần hoặc nghỉ bao lâu."
+                        lastCoachAnswer = reply.take(1_200)
+                        speak(reply)
                     }
                     WorkoutStepVoiceCommand.Command.REST -> {
                         val seconds = WorkoutRestRequest.seconds(phrase)
@@ -2410,7 +2427,7 @@ class GuidedWorkoutActivity:Activity() {
                     }
                     WorkoutStepVoiceCommand.Command.UNKNOWN -> {
                         AlertDialog.Builder(this).setTitle("Chibi chưa hiểu lệnh")
-                            .setMessage("Bạn có thể nói: bước tiếp, bước trước, đọc lại, hỏi cách tập bài này, hỏi bao nhiêu lần, nghỉ bao lâu, đọc cách dễ hơn, đọc lưu ý an toàn, nghỉ thêm 30 giây hoặc đóng hướng dẫn. Nếu đau, khó thở hay khó chịu, Chibi sẽ dừng buổi tập.")
+                            .setMessage("Bạn có thể nói: bước tiếp, bước trước, đọc lại bước, đọc lại câu trả lời, hỏi cách tập bài này, hỏi bao nhiêu lần, nghỉ bao lâu, đọc cách dễ hơn, đọc lưu ý an toàn, nghỉ thêm 30 giây hoặc đóng hướng dẫn. Nếu đau, khó thở hay khó chịu, Chibi sẽ dừng buổi tập.")
                             .setPositiveButton("Đã hiểu",null).show()
                     }
                 }
@@ -2419,6 +2436,7 @@ class GuidedWorkoutActivity:Activity() {
         // Register before show so every dismissal path restores the background animator.
         dialog.setOnDismissListener {
             spoken?.stop()
+            lastCoachAnswer = null
             guideVoiceResultHandler = null
             illustration.onPhaseChanged = null
             poseView.motionEnabled = true

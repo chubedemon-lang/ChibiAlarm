@@ -42,6 +42,7 @@ class WorkoutEffortPlanAdvisorTest {
         assertTrue(suggestion.message.contains("tự đánh dấu"))
         assertTrue(suggestion.prompt.contains("buổi tập nhẹ hơn"))
         assertTrue(suggestion.prompt.contains("không tự tăng số hiệp"))
+        assertTrue(suggestion.prompt.contains("động tác: Squat"))
         assertFalse(suggestion.message.contains("private health note"))
     }
 

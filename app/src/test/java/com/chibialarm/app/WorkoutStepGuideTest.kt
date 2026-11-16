@@ -123,6 +123,64 @@ class WorkoutStepGuideTest {
         }
     }
 
+    @Test fun workoutSummaryShowsRequiredSetsRepRangeRestAndConfirmedProgress() {
+        val plan = WorkoutSetTracker.Plan(
+            requiredSets = 2,
+            maximumSets = 3,
+            targetMin = 8,
+            targetMax = 12,
+            unit = "lần",
+            restSeconds = 45
+        )
+        val summary = WorkoutStepGuide.workoutSummary("2 hiệp × 8–12 lần", plan, 1)
+        assertTrue(summary.contains("2 hiệp bắt buộc"))
+        assertTrue(summary.contains("8 đến 12 lần/hiệp"))
+        assertTrue(summary.contains("Nghỉ đề xuất 45 giây"))
+        assertTrue(summary.contains("Đã xác nhận 1/3 hiệp"))
+    }
+
+    @Test fun workoutSummaryUsesTheAdjustedTargetForRemainingSets() {
+        val plan = WorkoutSetTracker.Plan(
+            requiredSets = 2,
+            maximumSets = 3,
+            targetMin = 10,
+            targetMax = 10,
+            unit = "lần",
+            restSeconds = 60
+        )
+        val summary = WorkoutStepGuide.workoutSummary("10 lần (đã chỉnh)", plan, 2)
+        assertTrue(summary.contains("10 lần/hiệp"))
+        assertTrue(summary.contains("Nghỉ đề xuất 60 giây"))
+        assertTrue(summary.contains("hiệp bổ sung còn lại là tùy chọn"))
+    }
+
+    @Test fun workoutSummaryDoesNotInviteSetsAfterMaximum() {
+        val plan = WorkoutSetTracker.Plan(
+            requiredSets = 2,
+            maximumSets = 3,
+            targetMin = 8,
+            targetMax = 12,
+            unit = "lần",
+            restSeconds = 45
+        )
+        val summary = WorkoutStepGuide.workoutSummary("Squat", plan, 99)
+        assertTrue(summary.contains("Đã ghi nhận đủ 3 hiệp"))
+        assertFalse(summary.contains("Đã xác nhận 99"))
+    }
+
+    @Test fun timedWorkoutSummaryDoesNotInventSetCounts() {
+        val summary = WorkoutStepGuide.workoutSummary("30 giây", null, 0)
+        assertTrue(summary.contains("Mục tiêu: 30 giây"))
+        assertTrue(summary.contains("Bộ đếm thời gian chỉ là gợi ý"))
+        assertFalse(summary.contains("hiệp bắt buộc"))
+    }
+
+    @Test fun workoutSummarySanitizesMultilineCatalogDose() {
+        val summary = WorkoutStepGuide.workoutSummary("  2 hiệp\\n× 8 lần  ", null, 0)
+        assertTrue(summary.contains("2 hiệp × 8 lần"))
+        assertFalse(summary.contains("\\n"))
+    }
+
     @Test fun autoSpeechOnlyRunsAfterOptInAndRealNavigation() {
         assertFalse(WorkoutStepGuide.shouldSpeakOnNavigation(false, null, 1))
         assertFalse(WorkoutStepGuide.shouldSpeakOnNavigation(true, null, 1))

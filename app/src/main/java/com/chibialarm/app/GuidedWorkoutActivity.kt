@@ -105,7 +105,10 @@ class GuidedWorkoutActivity:Activity() {
     private var restDeadline=0L
     private var restRemainingMs=0L
     private var setTimerExpired=false
-    private fun targetDose(position:Int):String = repTargets[position]?.let { "$it lần (mục tiêu đã chỉnh)" } ?: moves[position].dose
+    private fun targetDose(position:Int):String = repTargets[position]?.let {
+        val unit = WorkoutSetTracker.parse(moves[position].dose, moves[position].restSeconds)?.unit ?: "lần"
+        "$it $unit (mục tiêu đã chỉnh)"
+    } ?: moves[position].dose
 
     /** Apply only a validated, user-confirmed next-session target; never infer or add sets. */
     private fun applyInitialProgression(savedInstanceState: Bundle?) {
@@ -849,7 +852,7 @@ class GuidedWorkoutActivity:Activity() {
             .setNegativeButton("Hủy",null).show()
     }
     /** Spoken target edits preserve confirmed sets and apply only to the unfinished sets. */
-    private fun confirmSpokenRepTarget(reps: Int, restSeconds: Int? = null) {
+    private fun confirmSpokenTarget(value: Int, spokenUnit: String = "lần", restSeconds: Int? = null) {
         if (pausedForSafety || completed || index !in moves.indices) return
         val wasResting = resting
         val wasRestRunning = wasResting && !paused
@@ -857,7 +860,16 @@ class GuidedWorkoutActivity:Activity() {
         val selected = index
         val plan = currentSetPlan()
         if (plan == null) {
-            Toast.makeText(this, "Động tác hiện tại không có mục tiêu hiệp/lần để chỉnh.", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Động tác hiện tại không có mục tiêu hiệp/lần/nhịp/giây để chỉnh.", Toast.LENGTH_LONG).show()
+            if (wasRestRunning && resting && paused && !pausedForSafety) resume()
+            return
+        }
+        if (plan.unit != spokenUnit) {
+            Toast.makeText(
+                this,
+                "Đơn vị bạn nói là $spokenUnit nhưng giáo án dùng ${plan.unit}; Chibi chưa đổi mục tiêu.",
+                Toast.LENGTH_LONG
+            ).show()
             if (wasRestRunning && resting && paused && !pausedForSafety) resume()
             return
         }
@@ -867,7 +879,7 @@ class GuidedWorkoutActivity:Activity() {
             currentTarget = before,
             completedSets = completedBefore,
             maximumSets = plan.maximumSets,
-            requestedReps = reps
+            requestedReps = value
         )
         if (proposal == null) {
             val message = if (completedBefore >= plan.maximumSets) {
@@ -898,10 +910,10 @@ class GuidedWorkoutActivity:Activity() {
             else -> "\nSau khi áp dụng, Chibi sẽ bắt đầu nghỉ riêng $restSeconds giây."
         }
         val message = buildString {
-            append("${selectedMove.name}: ${targetDose(selected)} → $reps lần.\n")
+            append("${selectedMove.name}: ${targetDose(selected)} → $value ${plan.unit}.\n")
             append("Đã ghi nhận $completedBefore/${plan.maximumSets} hiệp; ")
             append("mục tiêu mới chỉ áp dụng cho ${proposal.remainingSets} hiệp còn lại. ")
-            append("Giá trị các hiệp đã ghi không bị sửa và Chibi không tự đếm số lần.")
+            append("Giá trị các hiệp đã ghi không bị sửa và Chibi không tự đếm ${plan.unit}.")
             append(restDescription)
         }
         val dialog = AlertDialog.Builder(this).setTitle("🎯 Xem trước mục tiêu hiệp còn lại")
@@ -928,7 +940,7 @@ class GuidedWorkoutActivity:Activity() {
                 renderDose()
                 renderSetControls()
                 saveCheckpoint()
-                val cue = "Đã đổi mục tiêu thành $reps lần cho ${proposal.remainingSets} hiệp còn lại. Các hiệp đã ghi được giữ nguyên."
+                val cue = "Đã đổi mục tiêu thành $value ${plan.unit} cho ${proposal.remainingSets} hiệp còn lại. Các hiệp đã ghi được giữ nguyên."
                 if (restSeconds != null) {
                     if (wasResting) {
                         val extension = restPreview ?: return@setPositiveButton
@@ -1279,11 +1291,11 @@ class GuidedWorkoutActivity:Activity() {
                 // Do not route a self-reported completed set into the target editor.
                 val voiceIntent = WorkoutVoiceCommands.parse(utterance)
                 val spokenSetReport = WorkoutSetReportCommand.parse(utterance)
-                val spokenReps = if (parsed.request.isRestOnly && spokenSetReport == null &&
+                val spokenTarget = if (parsed.request.isRestOnly && spokenSetReport == null &&
                     voiceIntent in setOf(WorkoutVoiceCommands.Command.REST, WorkoutVoiceCommands.Command.UNKNOWN)
-                ) com.chibialarm.app.fitness.WorkoutTargetCommand.spokenReps(utterance) else null
-                if (spokenReps != null) {
-                    confirmSpokenRepTarget(spokenReps, parsed.request.restSeconds)
+                ) com.chibialarm.app.fitness.WorkoutTargetCommand.spokenTarget(utterance) else null
+                if (spokenTarget != null) {
+                    confirmSpokenTarget(spokenTarget.value, spokenTarget.unit, parsed.request.restSeconds)
                 } else {
                     applyMidSessionRequest(parsed.request)
                 }
@@ -1309,9 +1321,9 @@ class GuidedWorkoutActivity:Activity() {
         }
 
         // Safety words always take precedence over any numeric exercise request.
-        val spokenReps = com.chibialarm.app.fitness.WorkoutTargetCommand.spokenReps(utterance)
-        if (spokenReps != null && WorkoutVoiceCommands.mayEditReps(utterance)) {
-            confirmSpokenRepTarget(spokenReps)
+        val spokenTarget = com.chibialarm.app.fitness.WorkoutTargetCommand.spokenTarget(utterance)
+        if (spokenTarget != null && WorkoutVoiceCommands.mayEditReps(utterance)) {
+            confirmSpokenTarget(spokenTarget.value, spokenTarget.unit)
             return
         }
 

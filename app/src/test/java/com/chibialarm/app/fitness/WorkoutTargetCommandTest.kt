@@ -13,6 +13,20 @@ class WorkoutTargetCommandTest {
         assertNull(WorkoutTargetCommand.spokenReps("Nghỉ thêm 30 giây"))
     }
 
+    @Test fun spokenTargetsPreserveTheExerciseUnitAndDoNotConfuseRestWithPlankTime() {
+        assertEquals(WorkoutTargetCommand.SpokenTarget(6, "lần"),
+            WorkoutTargetCommand.spokenTarget("Giảm còn 6 lần"))
+        assertEquals(WorkoutTargetCommand.SpokenTarget(8, "nhịp"),
+            WorkoutTargetCommand.spokenTarget("Đổi thành tám nhịp"))
+        assertEquals(WorkoutTargetCommand.SpokenTarget(20, "giây"),
+            WorkoutTargetCommand.spokenTarget("Giảm còn hai mươi giây"))
+        assertNull(WorkoutTargetCommand.spokenTarget("Nghỉ thêm 30 giây"))
+        assertEquals(WorkoutTargetCommand.SpokenTarget(6, "lần"),
+            WorkoutTargetCommand.spokenTarget("Nghỉ thêm 30 giây rồi giảm còn 6 lần"))
+        assertNull(WorkoutTargetCommand.spokenTarget("Đau gối, giảm còn 20 giây"))
+        assertNull(WorkoutTargetCommand.spokenTarget("Dừng tập và giảm còn 6 lần"))
+    }
+
     private val session = CoachSessionPlanner.Session(listOf(
         CoachSessionPlanner.SetPlan("squat", 12, 45),
         CoachSessionPlanner.SetPlan("walk", 20, 30),

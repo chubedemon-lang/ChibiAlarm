@@ -9,6 +9,8 @@ import com.chibialarm.app.WorkoutVoiceCommands
  * WorkoutTargetEdit.accept after explicit confirmation.
  */
 object WorkoutTargetCommand {
+    data class SpokenTarget(val value: Int, val unit: String)
+
     sealed class Result {
         data class Proposed(val preview: WorkoutTargetEdit.Preview) : Result()
         object Unsupported : Result()
@@ -20,6 +22,9 @@ object WorkoutTargetCommand {
     // and mixed units ("một phút ba mươi giây"), without a network dependency.
     private val numeral = """(?:\d{1,3}|một|hai|ba|bốn|tư|năm|lăm|sáu|bảy|tám|chín|mười|mươi|linh|lẻ|trăm)(?:\s+(?:\d{1,3}|một|hai|ba|bốn|tư|năm|lăm|sáu|bảy|tám|chín|mười|mươi|linh|lẻ|trăm))*"""
     private val repsPattern = Regex("""(?:\b(?:còn|xuống|thành|giảm xuống|tăng lên|đổi thành)\s*)?($numeral)\s*(?:lần|cái|reps?)\b""")
+    private val spokenTargetPattern = Regex(
+        """(?:(còn|xuống|thành|giảm xuống|tăng lên|đổi thành)\s*)?($numeral)\s*(lần|cái|reps?|nhịp|giây)\b"""
+    )
     private val restPattern = Regex("""(?:nghỉ|thời gian nghỉ)\s*(?:thêm|lên|thành|còn)?\s*($numeral)\s*(giây|phút)\b""")
     private val secondsAfterMinutes = Regex("""^\s*($numeral)\s*giây\b""")
     private val units = mapOf("một" to 1, "hai" to 2, "ba" to 3, "bốn" to 4,
@@ -68,12 +73,34 @@ object WorkoutTargetCommand {
         WorkoutVoiceCommands.Command.UNKNOWN -> false
     }
 
-    /** Parse a spoken repetition target without changing the workout. */
-    fun spokenReps(spokenText: String): Int? {
+    /**
+     * Parse a spoken target using the selected exercise's unit. A bare rest duration
+     * must never become a Plank target; time targets require an explicit change marker.
+     */
+    fun spokenTarget(spokenText: String): SpokenTarget? {
         val normalized = spokenText.lowercase(Locale.ROOT).trim()
         if (painWords.containsMatchIn(normalized) || hasCompetingControlIntent(normalized)) return null
-        return number(repsPattern.find(normalized)?.groupValues?.get(1))?.takeIf { it in 1..100 }
+        val matches = spokenTargetPattern.findAll(normalized).toList()
+        val match = matches.firstOrNull { it.groupValues[1].isNotBlank() }
+            ?: matches.firstOrNull()
+            ?: return null
+        val rawUnit = match.groupValues[3]
+        val unit = when (rawUnit) {
+            "lần", "cái", "rep", "reps" -> "lần"
+            "nhịp" -> "nhịp"
+            "giây" -> "giây"
+            else -> return null
+        }
+        if (match.groupValues[1].isBlank() &&
+            (unit == "giây" || WorkoutVoiceCommands.parse(normalized) == WorkoutVoiceCommands.Command.REST)
+        ) return null
+        val value = number(match.groupValues[2])?.takeIf { it in 1..100 } ?: return null
+        return SpokenTarget(value, unit)
     }
+
+    /** Backwards-compatible rep-only parser for callers that explicitly need repetitions. */
+    fun spokenReps(spokenText: String): Int? =
+        spokenTarget(spokenText)?.takeIf { it.unit == "lần" }?.value
 
     fun propose(
         spokenText: String,

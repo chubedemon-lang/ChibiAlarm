@@ -4,6 +4,7 @@ import com.chibialarm.app.fitness.WorkoutMidSessionRequest
 
 import android.app.AlertDialog
 import android.content.Context
+import android.content.Intent
 import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
@@ -25,6 +26,20 @@ class GuidedWorkoutRestConfirmationTest {
         RuntimeEnvironment.getApplication()
             .getSharedPreferences("chibi_workout_checkpoint_guest", Context.MODE_PRIVATE)
             .edit().clear().commit()
+    }
+
+    private fun selectSetBasedMove(activity: GuidedWorkoutActivity, unit: String) {
+        val movesField = GuidedWorkoutActivity::class.java.getDeclaredField("moves")
+            .apply { isAccessible = true }
+        @Suppress("UNCHECKED_CAST")
+        val moves = movesField.get(activity) as List<TrainingMove>
+        val selected = moves.indices.firstOrNull { position ->
+            WorkoutSetTracker.parse(moves[position].dose, moves[position].restSeconds)?.unit == unit
+        } ?: throw AssertionError("No set-based exercise with unit $unit in the test program")
+        GuidedWorkoutActivity::class.java.getDeclaredField("index")
+            .apply { isAccessible = true }.setInt(activity, selected)
+        GuidedWorkoutActivity::class.java.getDeclaredMethod("displayStep")
+            .apply { isAccessible = true }.invoke(activity)
     }
 
     private fun remaining(activity: GuidedWorkoutActivity): Long {
@@ -169,10 +184,33 @@ class GuidedWorkoutRestConfirmationTest {
 
     @Test fun spokenRepPreviewRejectsChangedTimer() {
         val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup().get()
+        selectSetBasedMove(activity, "lần")
         val command = GuidedWorkoutActivity::class.java
             .getDeclaredMethod("handleCoachCommand", String::class.java)
         command.isAccessible = true
         command.invoke(activity, "giảm còn 6 lần")
+        val dialog = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
+        assertTrue(dialog.isShowing)
+        val timer = GuidedWorkoutActivity::class.java.getDeclaredField("remainingMs")
+        timer.isAccessible = true
+        timer.setLong(activity, remaining(activity) + 2_000L)
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+        shadowOf(Looper.getMainLooper()).idle()
+        val targets = GuidedWorkoutActivity::class.java.getDeclaredField("repTargets")
+        targets.isAccessible = true
+        assertTrue((targets.get(activity) as Map<*, *>).isEmpty())
+        activity.finish()
+    }
+
+    @Test fun spokenSecondsTargetUsesPlankUnitAndRejectsChangedTimer() {
+        val intent = Intent(RuntimeEnvironment.getApplication(), GuidedWorkoutActivity::class.java)
+            .putExtra("program", "core")
+        val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java, intent).setup().get()
+        selectSetBasedMove(activity, "giây")
+        val command = GuidedWorkoutActivity::class.java
+            .getDeclaredMethod("handleCoachCommand", String::class.java)
+        command.isAccessible = true
+        command.invoke(activity, "giảm còn 20 giây")
         val dialog = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
         assertTrue(dialog.isShowing)
         val timer = GuidedWorkoutActivity::class.java.getDeclaredField("remainingMs")

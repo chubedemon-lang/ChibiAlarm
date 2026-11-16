@@ -54,6 +54,8 @@ class GuidedWorkoutStepSpeechTest {
             assertFalse("Auto narration must be off until the user opts in", toggle.isChecked)
             assertTrue(label.text.toString().startsWith("Bước 1/"))
             assertTrue("The first exercise must expose a next step", dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled)
+            assertTrue(voiceButton.contentDescription.toString().contains("cách tập dễ hơn"))
+            assertTrue(voiceButton.contentDescription.toString().contains("lưu ý an toàn"))
 
             voiceButton.performClick()
             val consent = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog

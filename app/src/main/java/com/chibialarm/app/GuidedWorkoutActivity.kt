@@ -163,19 +163,17 @@ class GuidedWorkoutActivity:Activity() {
     }
     private fun offerCheckpoint() {
         if (checkpoint.getString("program",null)!=program.id) return
+        // Read and validate the saved session without mutating the newly requested plan.
+        // The user may choose “Bắt đầu lại”; in that case the current intent/equipment must win.
         val savedPlanNames = checkpoint.getString("planNames", null)
-        if (!savedPlanNames.isNullOrBlank()) {
-            val restoredPlan = WorkoutMidSessionPlanner.decodePlan(savedPlanNames)
-            if (restoredPlan == null) {
+        val restoredPlan = if (!savedPlanNames.isNullOrBlank()) {
+            WorkoutMidSessionPlanner.decodePlan(savedPlanNames) ?: run {
                 checkpoint.edit().clear().apply()
                 Toast.makeText(this,"Không thể xác minh giáo án đã lưu; tiến độ cũ không được áp dụng nhầm.",Toast.LENGTH_LONG).show()
                 return
             }
-            originalMoves = restoredPlan
-            moves = restoredPlan
-            program = program.copy(moves = restoredPlan)
-        }
-        workoutConstraints = WorkoutConstraintProfile(
+        } else null
+        val restoredConstraints = WorkoutConstraintProfile(
             avoidWristLoad = workoutConstraints.avoidWristLoad ||
                 checkpoint.getBoolean("avoidWristLoad", false),
             avoidFloorPositions = workoutConstraints.avoidFloorPositions ||
@@ -183,26 +181,26 @@ class GuidedWorkoutActivity:Activity() {
             avoidOverheadReach = workoutConstraints.avoidOverheadReach ||
                 checkpoint.getBoolean("avoidOverheadReach", false)
         )
-        optionalExtensionNames.clear()
-        optionalExtensionNames.addAll(
-            checkpoint.getString("extensionMoves", "").orEmpty().split("\n")
-                .filter { name -> name.isNotBlank() && moves.any { it.name == name } }
-                .take(20)
-        )
         val restoredEquipment = checkpoint.getInt("extensionEquipment", extensionPreferences.equipment).coerceIn(0, 5)
         val restoredAdditionalEquipment = checkpoint.getString("additionalEquipment", "").orEmpty()
             .split(',')
             .mapNotNull { raw -> TrainingEquipment.values().firstOrNull { it.name == raw } }
             .toSet()
-        extensionPreferences = extensionPreferences.copy(
-            equipment = restoredEquipment,
-            additionalEquipment = restoredAdditionalEquipment,
-            constraints = workoutConstraints
-        )
+        val restoredExtensionNames = checkpoint.getString("extensionMoves", "").orEmpty()
+            .split("\n").filter { it.isNotBlank() }.take(20)
+        val restoredAvailableEquipment = TrainingEquipmentAvailability.fromPreference(restoredEquipment) +
+            restoredAdditionalEquipment
+        val checkpointPlan = restoredPlan ?: originalMoves
+        val restoredPlanCompatible = checkpointPlan.all { move ->
+            WorkoutConstraintFilter.isAllowed(move, restoredConstraints) &&
+                TrainingEquipmentAvailability.allows(move, restoredAvailableEquipment)
+        }
         val savedFingerprint = checkpoint.getString("planFingerprint", null)
-        if ((savedFingerprint != null && savedFingerprint != currentPlanFingerprint()) ||
-            (savedFingerprint == null && (workoutConstraints.avoidWristLoad ||
-                workoutConstraints.avoidFloorPositions || workoutConstraints.avoidOverheadReach))) {
+        val restoredFingerprint = WorkoutConstraintFilter.fingerprint(checkpointPlan, restoredConstraints)
+        if (!restoredPlanCompatible ||
+            (savedFingerprint != null && savedFingerprint != restoredFingerprint) ||
+            (savedFingerprint == null && (restoredConstraints.avoidWristLoad ||
+                restoredConstraints.avoidFloorPositions || restoredConstraints.avoidOverheadReach))) {
             checkpoint.edit().clear().apply()
             Toast.makeText(this,
                 "Giáo án đã thay đổi theo lựa chọn hiện tại. Chibi không khôi phục hiệp cũ để tránh gán nhầm tiến độ; hãy bắt đầu buổi mới.",
@@ -225,6 +223,22 @@ class GuidedWorkoutActivity:Activity() {
             .setMessage("Đã lưu bước và thời gian còn lại trên máy. Khôi phục luôn ở trạng thái tạm dừng.")
             .setPositiveButton("Khôi phục") { _,_ ->
                 checkpointDecisionPending=false
+                // Apply the checkpoint snapshot only after the user explicitly chooses Restore.
+                restoredPlan?.let { savedPlan ->
+                    originalMoves = savedPlan
+                    moves = savedPlan
+                    program = program.copy(moves = savedPlan)
+                }
+                workoutConstraints = restoredConstraints
+                extensionPreferences = extensionPreferences.copy(
+                    equipment = restoredEquipment,
+                    additionalEquipment = restoredAdditionalEquipment,
+                    constraints = restoredConstraints
+                )
+                optionalExtensionNames.clear()
+                optionalExtensionNames.addAll(
+                    restoredExtensionNames.filter { name -> moves.any { it.name == name } }.take(20)
+                )
                 sessionId=validSessionId(checkpoint.getString("sessionId",null)) ?: UUID.randomUUID().toString()
                 index=checkpoint.getInt("index",0).coerceIn(0,moves.lastIndex)
                 val savedSubstitutions=checkpoint.getString("substitutions",null)

@@ -38,6 +38,43 @@ object WorkoutStepGuide {
     }
 
     /**
+     * Read a catalogued easier variation without changing the active plan or timer.
+     * Catalog text is bounded and normalized before it reaches platform TTS.
+     */
+    fun spokenEasierCue(moveName: String, easierInstructions: String): String =
+        spokenMoveNote(
+            moveName,
+            easierInstructions,
+            "Chưa có hướng dẫn giảm độ khó riêng cho động tác này. Hãy giữ biên độ thoải mái và chỉ tiếp tục khi thấy ổn."
+        )
+
+    /**
+     * Read the exercise-specific caution note on request. This is not a symptom report:
+     * only the separate voice-command parser decides whether the user needs to stop.
+     */
+    fun spokenSafetyNoteCue(moveName: String, safetyNote: String): String =
+        spokenMoveNote(
+            moveName,
+            safetyNote,
+            "Chưa có lưu ý riêng cho động tác này. Hãy đọc phần lưu ý trên màn hình và dừng nếu thấy đau hoặc khó chịu."
+        )
+
+    private fun spokenMoveNote(moveName: String, note: String, fallback: String): String {
+        val safeName = moveName
+            .replace(Regex("[\\r\\n\\p{Cc}]+"), " ")
+            .replace(Regex("\\s+"), " ")
+            .trim()
+            .take(80)
+        val safeNote = note
+            .replace(Regex("[\\r\\n\\p{Cc}]+"), " ")
+            .replace(Regex("\\s+"), " ")
+            .trim()
+            .take(500)
+        if (safeNote.isBlank()) return fallback
+        return if (safeName.isBlank()) safeNote else "$safeName. $safeNote"
+    }
+
+    /**
      * A compact, accessible dose summary for the step-by-step guide.
      * Uses the already-adjusted plan and self-reported completed-set count;
      * it never infers completion from the timer.

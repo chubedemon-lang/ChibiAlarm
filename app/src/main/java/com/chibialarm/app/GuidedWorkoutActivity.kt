@@ -2282,8 +2282,8 @@ class GuidedWorkoutActivity:Activity() {
         }
         val voiceButton = Button(this).apply {
             tag = "workout-step-voice-control"
-            text = "🎤 Nói: bước tiếp, bước trước, đọc lại, nghỉ thêm"
-            contentDescription = "Mở nhận dạng giọng nói sau khi xác nhận quyền micro để chuyển bước, đọc lại, yêu cầu nghỉ hoặc đóng hướng dẫn"
+            text = "🎤 Nói: bước tiếp, bước trước, đọc lại, đọc mục tiêu"
+            contentDescription = "Mở nhận dạng giọng nói sau khi xác nhận quyền micro để chuyển bước, đọc lại, đọc mục tiêu hiệp và nghỉ thêm"
         }
         container.addView(illustration, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
@@ -2374,6 +2374,14 @@ class GuidedWorkoutActivity:Activity() {
                             ?: WorkoutStepGuide.spokenCue(move.name,move.steps,walkthrough.position)
                         speak(cue)
                     }
+                    WorkoutStepVoiceCommand.Command.SUMMARY -> {
+                        val summary = WorkoutStepGuide.workoutSummary(
+                            dose = targetDose(index),
+                            plan = currentSetPlan(),
+                            completedSets = completedSetsByMove[index] ?: 0
+                        )
+                        speak(summary)
+                    }
                     WorkoutStepVoiceCommand.Command.REST -> {
                         val seconds = WorkoutRestRequest.seconds(phrase)
                         if (resting) confirmRestExtension(seconds) else confirmExtraRest(seconds)
@@ -2388,7 +2396,7 @@ class GuidedWorkoutActivity:Activity() {
                     }
                     WorkoutStepVoiceCommand.Command.UNKNOWN -> {
                         AlertDialog.Builder(this).setTitle("Chibi chưa hiểu lệnh")
-                            .setMessage("Bạn có thể nói: bước tiếp, bước trước, đọc lại, nghỉ thêm 30 giây hoặc đóng hướng dẫn. Nếu đau, khó thở hay khó chịu, Chibi sẽ dừng buổi tập.")
+                            .setMessage("Bạn có thể nói: bước tiếp, bước trước, đọc lại, đọc mục tiêu, nghỉ thêm 30 giây hoặc đóng hướng dẫn. Nếu đau, khó thở hay khó chịu, Chibi sẽ dừng buổi tập.")
                             .setPositiveButton("Đã hiểu",null).show()
                     }
                 }

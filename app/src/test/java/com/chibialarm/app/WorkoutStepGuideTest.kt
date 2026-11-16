@@ -176,7 +176,7 @@ class WorkoutStepGuideTest {
     }
 
     @Test fun workoutSummarySanitizesMultilineCatalogDose() {
-        val summary = WorkoutStepGuide.workoutSummary("  2 hiệp\\n× 8 lần  ", null, 0)
+        val summary = WorkoutStepGuide.workoutSummary("  2 hiệp\n× 8 lần  ", null, 0)
         assertTrue(summary.contains("2 hiệp × 8 lần"))
         assertFalse(summary.contains("\\n"))
     }

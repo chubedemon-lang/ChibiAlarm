@@ -10,12 +10,19 @@ class WorkoutStepVoiceCommandTest {
         assertEquals(WorkoutStepVoiceCommand.Command.PREVIOUS, WorkoutStepVoiceCommand.parse("Quay lại bước trước"))
         assertEquals(WorkoutStepVoiceCommand.Command.REPEAT, WorkoutStepVoiceCommand.parse("Đọc lại"))
         assertEquals(WorkoutStepVoiceCommand.Command.CLOSE, WorkoutStepVoiceCommand.parse("Đóng hướng dẫn"))
+        assertEquals(WorkoutStepVoiceCommand.Command.SUMMARY, WorkoutStepVoiceCommand.parse("Đọc mục tiêu"))
+        assertEquals(WorkoutStepVoiceCommand.Command.SUMMARY, WorkoutStepVoiceCommand.parse("doc so hiep"))
+        assertEquals(WorkoutStepVoiceCommand.Command.SUMMARY, WorkoutStepVoiceCommand.parse("Mục tiêu bài tập"))
     }
 
     @Test fun safetyLanguageTakesPriorityOverNavigation() {
         assertEquals(WorkoutStepVoiceCommand.Command.SAFETY, WorkoutStepVoiceCommand.parse("Bước tiếp nhưng tôi khó thở"))
         assertEquals(WorkoutStepVoiceCommand.Command.SAFETY, WorkoutStepVoiceCommand.parse("đau cổ tay"))
         assertEquals(WorkoutStepVoiceCommand.Command.SAFETY, WorkoutStepVoiceCommand.parse("dau lung"))
+        assertEquals(
+            WorkoutStepVoiceCommand.Command.SAFETY,
+            WorkoutStepVoiceCommand.parse("Đọc mục tiêu nhưng tôi đau cổ tay")
+        )
     }
 
     @Test fun unaccentedBodyPartWordIsNotMistakenForPain() {
@@ -39,6 +46,7 @@ class WorkoutStepVoiceCommandTest {
     @Test fun incompleteOrUnrelatedPhrasesDoNotMoveTheGuide() {
         assertEquals(WorkoutStepVoiceCommand.Command.UNKNOWN, WorkoutStepVoiceCommand.parse("tiếp tục tập"))
         assertEquals(WorkoutStepVoiceCommand.Command.UNKNOWN, WorkoutStepVoiceCommand.parse("nói to hơn"))
+        assertEquals(WorkoutStepVoiceCommand.Command.UNKNOWN, WorkoutStepVoiceCommand.parse("mục tiêu tuần"))
         assertEquals(WorkoutStepVoiceCommand.Command.UNKNOWN, WorkoutStepVoiceCommand.parse(""))
         assertEquals(WorkoutStepVoiceCommand.Command.UNKNOWN, WorkoutStepVoiceCommand.parse(null))
     }

@@ -5,7 +5,7 @@ import java.util.Locale
 
 /** Small offline command grammar for the step-by-step guide; no transcript is retained. */
 object WorkoutStepVoiceCommand {
-    enum class Command { NEXT, PREVIOUS, REPEAT, SUMMARY, REST, CLOSE, SAFETY, UNKNOWN }
+    enum class Command { NEXT, PREVIOUS, REPEAT, SUMMARY, EASIER, SAFETY_NOTE, REST, CLOSE, SAFETY, UNKNOWN }
 
     private fun containsPhrase(text: String, phrase: String): Boolean =
         Regex("(^|\\s)" + Regex.escape(phrase) + "(\\s|$)").containsMatchIn(text)
@@ -31,12 +31,24 @@ object WorkoutStepVoiceCommand {
         if (listOf("kho tho", "choang", "chong mat", "tuc nguc", "kho chiu")
                 .any { containsPhrase(normalized, it) }) return Command.SAFETY
 
-        if (listOf("khong doc muc tieu", "dung doc muc tieu", "khong doc so hiep")
-                .any { normalized.contains(it) }) return Command.UNKNOWN
+        if (listOf(
+                "khong doc muc tieu", "dung doc muc tieu", "khong doc so hiep",
+                "khong doc cach tap de hon", "dung doc cach tap de hon",
+                "khong doc luu y", "dung doc luu y", "khong nhac luu y"
+            ).any { normalized.contains(it) }) return Command.UNKNOWN
         if (listOf(
                 "doc muc tieu", "doc lai muc tieu", "doc so hiep", "doc so lan",
                 "muc tieu bai tap", "read workout target", "read workout summary"
             ).any { normalized.contains(it) }) return Command.SUMMARY
+        if (listOf(
+                "doc cach tap de hon", "doc cach de hon", "doc phuong an nhe hon",
+                "read easier option"
+            ).any { normalized.contains(it) }) return Command.EASIER
+        if (listOf(
+                "doc luu y an toan", "doc luu y", "nhac luu y an toan",
+                "nhac lai luu y", "doc canh bao an toan", "doc phan luu y",
+                "safety note"
+            ).any { normalized.contains(it) }) return Command.SAFETY_NOTE
         if (listOf("khong nghi them", "dung nghi them", "khong them thoi gian nghi")
                 .any { normalized.contains(it) }) return Command.UNKNOWN
         if (listOf("nghi them", "them thoi gian nghi", "keo dai thoi gian nghi", "rest more", "extend rest")

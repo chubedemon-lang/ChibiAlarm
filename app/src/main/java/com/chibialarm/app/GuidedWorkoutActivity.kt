@@ -366,7 +366,13 @@ class GuidedWorkoutActivity:Activity() {
                     control.text="▶ Tiếp tục hiệp"
                     counter.text=clockText(remainingMs)
                     saveCheckpoint()
-                    speak("Đã hết giờ nghỉ. Tiếp tục khi bạn sẵn sàng.")
+                    speak(
+                        WorkoutRestVoiceCue.completionMessage(
+                            moveName = moves.getOrNull(index)?.name,
+                            completedSets = completedSetsByMove[index] ?: 0,
+                            plan = currentSetPlan()
+                        )
+                    )
                 } else handler.postDelayed(this,300)
                 return
             }

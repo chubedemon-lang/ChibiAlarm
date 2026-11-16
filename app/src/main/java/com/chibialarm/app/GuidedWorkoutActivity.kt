@@ -2284,8 +2284,8 @@ class GuidedWorkoutActivity:Activity() {
         }
         val voiceButton = Button(this).apply {
             tag = "workout-step-voice-control"
-            text = "🎤 Nói: bước tiếp, hỏi cách tập, đọc lại câu trả lời, đọc cách dễ hơn, số lần, nghỉ bao lâu, lưu ý an toàn"
-            contentDescription = "Mở nhận dạng giọng nói sau khi xác nhận quyền micro để chuyển bước, hỏi cách tập của động tác hiện tại, đọc lại câu trả lời gần nhất, đọc cách tập dễ hơn, đọc lưu ý an toàn, hỏi số lần hoặc thời gian nghỉ"
+            text = "🎤 Nói: bước tiếp, hỏi cách tập, hỏi nhóm cơ, đọc lại câu trả lời, đọc cách dễ hơn, số lần, nghỉ bao lâu, lưu ý an toàn"
+            contentDescription = "Mở nhận dạng giọng nói sau khi xác nhận quyền micro để chuyển bước, hỏi cách tập hoặc nhóm cơ của động tác hiện tại, đọc lại câu trả lời gần nhất, đọc cách tập dễ hơn, đọc lưu ý an toàn, hỏi số lần hoặc thời gian nghỉ"
         }
         container.addView(illustration, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
@@ -2427,7 +2427,7 @@ class GuidedWorkoutActivity:Activity() {
                     }
                     WorkoutStepVoiceCommand.Command.UNKNOWN -> {
                         AlertDialog.Builder(this).setTitle("Chibi chưa hiểu lệnh")
-                            .setMessage("Bạn có thể nói: bước tiếp, bước trước, đọc lại bước, đọc lại câu trả lời, hỏi cách tập bài này, hỏi bao nhiêu lần, nghỉ bao lâu, đọc cách dễ hơn, đọc lưu ý an toàn, nghỉ thêm 30 giây hoặc đóng hướng dẫn. Nếu đau, khó thở hay khó chịu, Chibi sẽ dừng buổi tập.")
+                            .setMessage("Bạn có thể nói: bước tiếp, bước trước, đọc lại bước, đọc lại câu trả lời, hỏi cách tập bài này, hỏi nhóm cơ chính, hỏi bao nhiêu lần, nghỉ bao lâu, đọc cách dễ hơn, đọc lưu ý an toàn, nghỉ thêm 30 giây hoặc đóng hướng dẫn. Nếu đau, khó thở hay khó chịu, Chibi sẽ dừng buổi tập.")
                             .setPositiveButton("Đã hiểu",null).show()
                     }
                 }

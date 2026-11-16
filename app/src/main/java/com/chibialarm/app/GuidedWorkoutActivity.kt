@@ -23,6 +23,7 @@ import com.chibialarm.app.fitness.WorkoutMidSessionPlanner
 import com.chibialarm.app.fitness.WorkoutMidSessionRequest
 import com.chibialarm.app.fitness.WorkoutMidSessionPreviewFormatter
 import com.chibialarm.app.fitness.WorkoutEffortPlanChange
+import com.chibialarm.app.fitness.WorkoutRemainingRepTarget
 import com.chibialarm.app.TrainingEquipment
 import com.chibialarm.app.WorkoutExtensionPreferences
 import com.chibialarm.app.rpg.RpgDatabase
@@ -1586,7 +1587,9 @@ class GuidedWorkoutActivity:Activity() {
         val dialog=AlertDialog.Builder(this).setTitle("🔢 Chọn số lần tập")
             .setMessage("$disclosure Chibi chưa tự đếm số lần tập.")
             .setView(field).setPositiveButton("Xem trước",null)
-            .setNegativeButton("Hủy",null).create()
+            .setNegativeButton("Hủy") { _, _ ->
+                if (wasRestRunning && resting && paused && !pausedForSafety) resume()
+            }.create()
         dialog.setOnShowListener {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                 val reps=field.text.toString().trim().toIntOrNull()

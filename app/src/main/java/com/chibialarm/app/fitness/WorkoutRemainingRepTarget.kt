@@ -22,7 +22,9 @@ object WorkoutRemainingRepTarget {
         requestedReps: Int
     ): Preview? {
         if (maximumSets !in 1..20 || completedSets !in 0 until maximumSets ||
-            requestedReps !in 1..100 || currentTarget == requestedReps
+            requestedReps !in 1..100 ||
+            (currentTarget != null && currentTarget !in 1..100) ||
+            currentTarget == requestedReps
         ) return null
         return Preview(currentTarget, requestedReps, completedSets, maximumSets)
     }
@@ -38,7 +40,10 @@ object WorkoutRemainingRepTarget {
             completedSets != proposal.completedSets ||
             maximumSets != proposal.maximumSets ||
             maximumSets !in 1..20 ||
-            completedSets !in 0 until maximumSets
+            completedSets !in 0 until maximumSets ||
+            proposal.requestedTarget !in 1..100 ||
+            proposal.requestedTarget == proposal.previousTarget ||
+            proposal.remainingSets <= 0
         ) return null
         return proposal.requestedTarget
     }

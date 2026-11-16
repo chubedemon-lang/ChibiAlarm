@@ -41,6 +41,19 @@ class WorkoutRemainingRepTargetTest {
         assertNull(WorkoutRemainingRepTarget.accept(proposal, null, 1, 4))
     }
 
+    @Test fun combinedRepAndRestSpeechRemainsAConfirmedTargetEdit() {
+        val utterance = "Giảm xuống 6 lần và nghỉ 90 giây"
+        val parsed = com.chibialarm.app.WorkoutMidSessionRequest.parse(utterance)
+        assertTrue(parsed is com.chibialarm.app.WorkoutMidSessionRequest.Result.Proposed)
+        val request = (parsed as com.chibialarm.app.WorkoutMidSessionRequest.Result.Proposed).request
+        assertTrue(request.isRestOnly)
+        assertEquals(90, request.restSeconds)
+        assertEquals(6, WorkoutTargetCommand.spokenReps(utterance))
+        assertEquals(com.chibialarm.app.WorkoutVoiceCommands.Command.REST,
+            com.chibialarm.app.WorkoutVoiceCommands.parse(utterance))
+        assertNull(com.chibialarm.app.WorkoutSetReportCommand.parse(utterance))
+    }
+
     @Test fun invalidCountsAndTargetsAreRejected() {
         assertNull(WorkoutRemainingRepTarget.preview(null, -1, 3, 6))
         assertNull(WorkoutRemainingRepTarget.preview(null, 0, 0, 6))

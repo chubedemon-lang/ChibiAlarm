@@ -19,7 +19,8 @@ object WorkoutExerciseConversation {
         "luu y khi tap", "luu y khi thuc hien", "nghi bao lau",
         "bao nhieu hiep", "bao nhieu lan", "bao nhieu giay",
         "muc tieu bai nay", "bai nay tap sao", "dong tac nay tap sao",
-        "nghi giua hiep bao lau", "how do i do this", "how many reps",
+        "nhom co nao", "nhom co chinh", "co nao", "tap vao dau", "tac dung",
+        "bai nay tac dong vao dau", "nghi giua hiep bao lau", "how do i do this", "how many reps",
         "how many sets", "how long rest", "giai thich"
     )
 
@@ -28,7 +29,8 @@ object WorkoutExerciseConversation {
         "nhu", "the", "nao", "ky", "thuat", "luu", "y", "khi", "nghi",
         "bao", "nhieu", "hiep", "lan", "giay", "giai", "thich", "bai",
         "dong", "tac", "nay", "la", "gi", "toi", "tao", "minh", "muon",
-        "biet", "cho", "tung", "buoc", "theo", "voi", "nua", "phut", "dung"
+        "biet", "cho", "tung", "buoc", "theo", "voi", "nua", "phut", "dung",
+        "nhom", "co", "vao", "dau", "tac"
     )
 
     private data class Match(
@@ -85,6 +87,14 @@ object WorkoutExerciseConversation {
         val setPlan = WorkoutSetTracker.parse(move.dose, move.restSeconds)
 
         return when {
+            asks("nhom co", "co nao", "tap vao dau", "tac dung", "bai nay tac dong vao dau") -> {
+                val focus = WorkoutExerciseFocus.descriptionFor(move.name)
+                if (focus == null) {
+                    "$name: thư viện hiện chưa có mô tả nhóm cơ hoặc chuyển động chính cho bài này."
+                } else {
+                    "$name. $focus Đây là mô tả khái quát từ thư viện, không phải đánh giá tư thế hay chẩn đoán."
+                }
+            }
             asks("bao nhieu hiep", "bao nhieu lan", "bao nhieu giay",
                 "muc tieu bai nay", "how many reps", "how many sets") -> {
                 if (setPlan == null) {
@@ -164,6 +174,7 @@ object WorkoutExerciseConversation {
             append("Hướng dẫn offline từ thư viện cho ").append(move.name).append(":")
             append("\n🎯 Liều lượng tham khảo: ").append(move.dose).append(".")
             if (rest != null) append("\n⏱ ").append(rest).append(".")
+            WorkoutExerciseFocus.descriptionFor(move.name)?.let { append("\n🧭 ").append(it) }
             append("\n📖 Các bước:")
             steps.forEachIndexed { index, step ->
                 append("\n").append(index + 1).append(". ").append(step.take(MAX_STEP_CHARS))

@@ -33,15 +33,41 @@ class FitnessActivity:Activity() {
     private var recommendationAction: Button? = null
     private val additionalEquipmentCheckBoxes = linkedMapOf<TrainingEquipment, CheckBox>()
 
+    private fun applySpeechCandidate(candidate: CoachSpeechTranscript.Candidate) {
+        val input = speechInput ?: return
+        input.setText(candidate.text)
+        input.setSelection(input.text.length)
+        val message = if (candidate.truncated) {
+            "Bản nhận dạng vượt giới hạn ${CoachSpeechTranscript.MAX_CHARS} ký tự và đã được rút gọn. Hãy kiểm tra, sửa văn bản rồi mới gửi."
+        } else {
+            "Kiểm tra hoặc sửa văn bản nhận dạng rồi nhấn Chibi hiểu yêu cầu. Chibi chưa gửi nội dung này."
+        }
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+    }
+
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode != speechRequestCode || resultCode != RESULT_OK) return
-        val recognized = data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
-            ?.firstOrNull()?.trim().orEmpty()
-        if (recognized.isNotEmpty()) {
-            speechInput?.setText(recognized)
-            speechInput?.setSelection(recognized.length)
-            Toast.makeText(this, "Kiểm tra lời nhận dạng rồi nhấn Chibi hiểu yêu cầu", Toast.LENGTH_LONG).show()
+
+        val candidates = CoachSpeechTranscript.candidates(
+            data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+        )
+        when {
+            candidates.isEmpty() -> Toast.makeText(
+                this,
+                "Không nhận được câu nói rõ ràng. Bạn có thể gõ thay thế.",
+                Toast.LENGTH_LONG
+            ).show()
+            candidates.size == 1 -> applySpeechCandidate(candidates.single())
+            else -> AlertDialog.Builder(this)
+                .setTitle("Chọn nội dung Chibi nghe được")
+                .setItems(candidates.mapIndexed { index, candidate ->
+                    "${index + 1}. ${candidate.label}"
+                }.toTypedArray()) { _, which ->
+                    candidates.getOrNull(which)?.let(::applySpeechCandidate)
+                }
+                .setNegativeButton("Để tôi gõ", null)
+                .show()
         }
     }
 

@@ -157,4 +157,67 @@ class WorkoutPlanAdjustmentConversationTest {
         assertTrue(answer!!.contains("chưa tìm thấy chương trình còn động tác chính phù hợp"))
         assertFalse(answer.contains("Bird-dog"))
     }
+
+    @Test fun effortHistoryFollowUpOffersOnlyCuratedAlternativeForTheNamedMove() {
+        val answer = WorkoutPlanAdjustmentConversation.answer(
+            input = "Tao muốn xem một buổi tập nhẹ hơn, không tự tăng số hiệp; ưu tiên thay thế cho động tác: Kéo tạ đơn hoặc dây kháng lực",
+            equipmentSelection = 0
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("Kéo tạ đơn hoặc dây kháng lực"))
+        assertTrue(answer.contains("Siết bả vai đứng"))
+        assertTrue(answer.contains("giáo án hoặc buổi đang tập"))
+        assertFalse(answer.contains("Phương án để xem trước"))
+        assertFalse(answer.contains("Chống đẩy tường"))
+    }
+
+    @Test fun targetedAlternativeRespectsMovementAndEquipmentFilters() {
+        val answer = WorkoutPlanAdjustmentConversation.answer(
+            input = "Ưu tiên thay thế cho động tác: Gập hông với tạ đơn hoặc dây",
+            profile = WorkoutConstraintProfile(avoidFloorPositions = true),
+            equipmentSelection = 0
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("Gập hông không dụng cụ"))
+        assertFalse(answer.contains("Nâng hông trên sàn"))
+    }
+
+    @Test fun targetedChairAlternativeRequiresTheUserToHaveAChair() {
+        val request = "Ưu tiên thay thế cho động tác: Squat không tạ"
+        val withoutChair = WorkoutPlanAdjustmentConversation.answer(
+            input = request,
+            equipmentSelection = 0
+        )
+        val withChair = WorkoutPlanAdjustmentConversation.answer(
+            input = request,
+            equipmentSelection = 3
+        )
+
+        assertNotNull(withoutChair)
+        assertTrue(withoutChair!!.contains("chưa tìm thấy biến thể đã duyệt"))
+        assertFalse(withoutChair.contains("Đứng lên – ngồi xuống"))
+        assertNotNull(withChair)
+        assertTrue(withChair!!.contains("Đứng lên – ngồi xuống"))
+    }
+
+    @Test fun ambiguousOrUnknownTargetDoesNotFallBackToAGenericProgramList() {
+        val ambiguous = WorkoutPlanAdjustmentConversation.answer(
+            "Ưu tiên thay thế cho động tác: Squat"
+        )
+        val unknown = WorkoutPlanAdjustmentConversation.answer(
+            "Ưu tiên thay thế cho động tác: Động tác không có trong thư viện"
+        )
+
+        assertNotNull(ambiguous)
+        assertTrue(ambiguous!!.contains("chưa đủ cụ thể"))
+        assertTrue(ambiguous.contains("Squat không tạ"))
+        assertTrue(ambiguous.contains("Squat chậm 3 giây"))
+        assertNotNull(unknown)
+        assertTrue(unknown!!.contains("chưa tìm thấy động tác"))
+        assertFalse(ambiguous.contains("Phương án để xem trước"))
+        assertFalse(unknown.contains("Phương án để xem trước"))
+    }
+
 }

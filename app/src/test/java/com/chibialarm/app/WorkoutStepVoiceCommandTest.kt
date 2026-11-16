@@ -89,6 +89,17 @@ class WorkoutStepVoiceCommandTest {
             WorkoutStepVoiceCommand.parse("Bao nhiêu lần nhưng tôi khó thở"))
     }
 
+    @Test fun canReplayTheLatestCoachAnswerWithoutRepeatingTheCurrentStep() {
+        assertEquals(WorkoutStepVoiceCommand.Command.REPEAT_ANSWER,
+            WorkoutStepVoiceCommand.parse("Đọc lại câu trả lời"))
+        assertEquals(WorkoutStepVoiceCommand.Command.REPEAT_ANSWER,
+            WorkoutStepVoiceCommand.parse("nhac lai cau tra loi"))
+        assertEquals(WorkoutStepVoiceCommand.Command.REPEAT,
+            WorkoutStepVoiceCommand.parse("Đọc lại"))
+        assertEquals(WorkoutStepVoiceCommand.Command.SAFETY,
+            WorkoutStepVoiceCommand.parse("Đọc lại câu trả lời, tôi đau cổ tay"))
+    }
+
     @Test fun incompleteOrUnrelatedPhrasesDoNotMoveTheGuide() {
         assertEquals(WorkoutStepVoiceCommand.Command.UNKNOWN, WorkoutStepVoiceCommand.parse("tiếp tục tập"))
         assertEquals(WorkoutStepVoiceCommand.Command.UNKNOWN, WorkoutStepVoiceCommand.parse("nói to hơn"))

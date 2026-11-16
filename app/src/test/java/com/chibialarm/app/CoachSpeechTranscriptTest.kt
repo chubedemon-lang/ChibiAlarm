@@ -9,7 +9,7 @@ class CoachSpeechTranscriptTest {
     @Test fun alternativesAreTrimmedWhitespaceNormalizedAndDeduplicatedInRecognizerOrder() {
         val result = CoachSpeechTranscript.candidates(
             listOf(
-                "  giãn   cơ\\n15 phút ",
+                "  giãn   cơ\n15 phút ",
                 "",
                 "giãn cơ 15 phút",
                 "cardio 10 phút"
@@ -47,5 +47,17 @@ class CoachSpeechTranscriptTest {
         assertEquals(listOf("abcdef", "short"), result.map { it.text })
         assertTrue(result.first().truncated)
         assertFalse(result.last().truncated)
+    }
+
+    @Test fun callersCannotRaiseTheTranscriptOrAlternativeSafetyBounds() {
+        val raw = (1..10).map { index -> "choice$index " + "x".repeat(1_000) }
+        val result = CoachSpeechTranscript.candidates(
+            raw,
+            maxChars = 2_000,
+            maxAlternatives = 20
+        )
+
+        assertEquals(CoachSpeechTranscript.MAX_ALTERNATIVES, result.size)
+        assertTrue(result.all { it.text.length == CoachSpeechTranscript.MAX_CHARS && it.truncated })
     }
 }

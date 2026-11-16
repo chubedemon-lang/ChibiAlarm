@@ -25,8 +25,8 @@ object CoachSpeechTranscript {
         maxChars: Int = MAX_CHARS,
         maxAlternatives: Int = MAX_ALTERNATIVES
     ): List<Candidate> {
-        val characterLimit = maxChars.coerceAtLeast(1)
-        val alternativeLimit = maxAlternatives.coerceAtLeast(1)
+        val characterLimit = maxChars.coerceIn(1, MAX_CHARS)
+        val alternativeLimit = maxAlternatives.coerceIn(1, MAX_ALTERNATIVES)
         val seen = linkedSetOf<String>()
 
         return raw.orEmpty().asSequence()

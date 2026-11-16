@@ -225,7 +225,7 @@ class CoachActivity:Activity() {
                 candidates.size == 1 -> applySpeechCandidate(candidates.single())
                 else -> AlertDialog.Builder(this)
                     .setTitle("Chọn nội dung Chibi nghe được")
-                    .setItems(candidates.map { it.label }.toTypedArray()) { _, which ->
+                    .setItems(candidates.mapIndexed { index, candidate -> "${index + 1}. ${candidate.label}" }.toTypedArray()) { _, which ->
                         candidates.getOrNull(which)?.let(::applySpeechCandidate)
                     }
                     .setNegativeButton("Để tôi gõ", null)

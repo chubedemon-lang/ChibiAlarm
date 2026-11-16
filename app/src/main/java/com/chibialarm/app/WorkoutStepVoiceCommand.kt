@@ -5,7 +5,7 @@ import java.util.Locale
 
 /** Small offline command grammar for the step-by-step guide; no transcript is retained. */
 object WorkoutStepVoiceCommand {
-    enum class Command { NEXT, PREVIOUS, REPEAT, SUMMARY, EASIER, SAFETY_NOTE, REST, ASK_EXERCISE, CLOSE, SAFETY, UNKNOWN }
+    enum class Command { NEXT, PREVIOUS, REPEAT, REPEAT_ANSWER, SUMMARY, EASIER, SAFETY_NOTE, REST, ASK_EXERCISE, CLOSE, SAFETY, UNKNOWN }
 
     private fun containsPhrase(text: String, phrase: String): Boolean =
         Regex("(^|\\s)" + Regex.escape(phrase) + "(\\s|$)").containsMatchIn(text)
@@ -36,6 +36,10 @@ object WorkoutStepVoiceCommand {
                 "khong doc cach tap de hon", "dung doc cach tap de hon",
                 "khong doc luu y", "dung doc luu y", "khong nhac luu y"
             ).any { normalized.contains(it) }) return Command.UNKNOWN
+        if (listOf(
+                "doc lai cau tra loi", "nhac lai cau tra loi", "nghe lai cau tra loi",
+                "lap lai cau tra loi", "doc lai phan tra loi"
+            ).any { normalized.contains(it) }) return Command.REPEAT_ANSWER
         if (listOf(
                 "doc muc tieu", "doc lai muc tieu", "doc so hiep", "doc so lan",
                 "muc tieu bai tap", "read workout target", "read workout summary"

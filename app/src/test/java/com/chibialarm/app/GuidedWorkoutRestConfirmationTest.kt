@@ -106,6 +106,13 @@ class GuidedWorkoutRestConfirmationTest {
         assertEquals(changed, remaining(activity))
         activity.finish()
     }
+    private fun skipRest(activity: GuidedWorkoutActivity): AlertDialog {
+        val method = GuidedWorkoutActivity::class.java.getDeclaredMethod("confirmSkipRest")
+        method.isAccessible = true
+        method.invoke(activity)
+        return ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
+    }
+
     private fun editText(view: View): EditText? {
         if (view is EditText) return view
         if (view is ViewGroup) for (i in 0 until view.childCount) {
@@ -286,6 +293,85 @@ class GuidedWorkoutRestConfirmationTest {
         activity.finish()
     }
 
+
+    @Test fun skipRestDoesNotMutateUntilTheUserConfirmsAndCancelKeepsTheRest() {
+        val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup().get()
+        fun field(name: String) = GuidedWorkoutActivity::class.java.getDeclaredField(name).apply {
+            isAccessible = true
+        }
+        field("resting").setBoolean(activity, true)
+        field("paused").setBoolean(activity, true)
+        field("restRemainingMs").setLong(activity, 45_000L)
+        val exerciseBefore = remaining(activity)
+
+        val dialog = skipRest(activity)
+        assertTrue(dialog.isShowing)
+        assertTrue(field("resting").getBoolean(activity))
+        assertEquals(45_000L, field("restRemainingMs").getLong(activity))
+        assertEquals(exerciseBefore, remaining(activity))
+
+        dialog.getButton(AlertDialog.BUTTON_NEGATIVE).performClick()
+        assertTrue(field("resting").getBoolean(activity))
+        assertTrue(field("paused").getBoolean(activity))
+        assertEquals(45_000L, field("restRemainingMs").getLong(activity))
+        assertEquals(exerciseBefore, remaining(activity))
+        activity.finish()
+    }
+
+    @Test fun confirmedSkipRestClearsOnlyRestAndLeavesWorkoutPaused() {
+        val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup().get()
+        fun field(name: String) = GuidedWorkoutActivity::class.java.getDeclaredField(name).apply {
+            isAccessible = true
+        }
+        field("resting").setBoolean(activity, true)
+        field("paused").setBoolean(activity, true)
+        field("restRemainingMs").setLong(activity, 45_000L)
+        val exerciseBefore = remaining(activity)
+        val render = GuidedWorkoutActivity::class.java.getDeclaredMethod("renderSetControls")
+            .apply { isAccessible = true }
+        render.invoke(activity)
+        val button = field("skipRestButton").get(activity) as android.widget.Button
+        assertEquals(View.VISIBLE, button.visibility)
+
+        button.performClick()
+        val dialog = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
+        assertTrue(dialog.isShowing)
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertFalse(field("resting").getBoolean(activity))
+        assertTrue("Skipping rest must not auto-start the next exercise", field("paused").getBoolean(activity))
+        assertEquals(0L, field("restRemainingMs").getLong(activity))
+        assertEquals(exerciseBefore, remaining(activity))
+        assertEquals(View.GONE, button.visibility)
+        val saved = RuntimeEnvironment.getApplication()
+            .getSharedPreferences("chibi_workout_checkpoint_guest", Context.MODE_PRIVATE)
+        assertFalse(saved.getBoolean("resting", true))
+        assertEquals(0L, saved.getLong("restRemaining", -1L))
+        activity.finish()
+    }
+
+    @Test fun spokenSkipRestUsesTheSameConfirmationGate() {
+        val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup().get()
+        fun field(name: String) = GuidedWorkoutActivity::class.java.getDeclaredField(name).apply {
+            isAccessible = true
+        }
+        field("resting").setBoolean(activity, true)
+        field("paused").setBoolean(activity, true)
+        field("restRemainingMs").setLong(activity, 30_000L)
+        val command = GuidedWorkoutActivity::class.java.getDeclaredMethod(
+            "handleCoachCommand", String::class.java
+        ).apply { isAccessible = true }
+        command.invoke(activity, "bỏ qua nghỉ")
+        val dialog = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
+        assertTrue(dialog.isShowing)
+        assertTrue(field("resting").getBoolean(activity))
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+        shadowOf(Looper.getMainLooper()).idle()
+        assertFalse(field("resting").getBoolean(activity))
+        assertTrue(field("paused").getBoolean(activity))
+        activity.finish()
+    }
 
     @Test fun finalSetEffortIsSavedWithoutStartingAnotherSetRest() {
         val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup().get()

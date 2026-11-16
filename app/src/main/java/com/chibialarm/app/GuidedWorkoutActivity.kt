@@ -113,6 +113,7 @@ class GuidedWorkoutActivity:Activity() {
     private lateinit var completeSetButton:Button
     private lateinit var restSetButton:Button
     private lateinit var customSetRestButton:Button
+    private lateinit var skipRestButton:Button
     private var resting=false
     private var restDeadline=0L
     private var restRemainingMs=0L
@@ -573,6 +574,12 @@ class GuidedWorkoutActivity:Activity() {
             setOnClickListener { requestSetRest() }
         }
         root.addView(customSetRestButton)
+        skipRestButton=Button(this).apply {
+            text="⏭ Bỏ qua nghỉ"
+            contentDescription="Bỏ qua thời gian nghỉ còn lại sau khi xác nhận; buổi tập vẫn tạm dừng"
+            setOnClickListener { confirmSkipRest() }
+        }
+        root.addView(skipRestButton)
         progress=ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal).apply {
             max=moves.size;progress=0
         }
@@ -905,7 +912,7 @@ class GuidedWorkoutActivity:Activity() {
     }
 
     private fun requestTypedCommand() {
-        val field=EditText(this).apply { hint="Ví dụ: tôi đã làm 10 lần, xong hiệp, bài này khó quá, không theo kịp, hướng dẫn từng bước, đọc tiến độ, đổi bài, nghỉ thêm";setSingleLine(false) }
+        val field=EditText(this).apply { hint="Ví dụ: tôi đã làm 10 lần, xong hiệp, bài này khó quá, hướng dẫn từng bước, đọc tiến độ, đổi bài, nghỉ thêm, bỏ qua nghỉ";setSingleLine(false) }
         AlertDialog.Builder(this).setTitle("💬 Chibi Coach • lệnh offline")
             .setMessage("Điều khiển buổi tập bằng chữ, không gửi dữ liệu lên mạng.")
             .setView(field).setPositiveButton("Gửi"){_,_->handleCoachCommand(field.text.toString())}
@@ -1341,6 +1348,12 @@ class GuidedWorkoutActivity:Activity() {
     }
 
     private fun handleCoachCommand(utterance:String) {
+        // Explicitly skipping a rest is separate from adding rest or moving to the next exercise.
+        // Safety and pause phrases still win inside the command parser.
+        if (WorkoutVoiceCommands.parse(utterance) == WorkoutVoiceCommands.Command.SKIP_REST) {
+            confirmSkipRest()
+            return
+        }
         when (val parsed = WorkoutMidSessionRequest.parse(utterance)) {
             WorkoutMidSessionRequest.Result.SafetyStop -> {
                 stopForSafety()
@@ -1507,6 +1520,7 @@ class GuidedWorkoutActivity:Activity() {
                     confirmExtraRest(WorkoutRestRequest.seconds(utterance))
                 }
             }
+            WorkoutVoiceCommands.Command.SKIP_REST -> confirmSkipRest()
             WorkoutVoiceCommands.Command.NO_EQUIPMENT -> {
                 when (val parsed = WorkoutMidSessionRequest.parse(utterance)) {
                     is WorkoutMidSessionRequest.Result.Proposed -> applyMidSessionRequest(parsed.request)
@@ -1518,11 +1532,73 @@ class GuidedWorkoutActivity:Activity() {
             }
             WorkoutVoiceCommands.Command.UNKNOWN -> {
                 AlertDialog.Builder(this).setTitle("Chibi chưa hiểu yêu cầu")
-                    .setMessage("Bạn có thể nói: tôi đã làm 10 lần, xong hiệp, bài này khó quá, không theo kịp, hướng dẫn từng bước, đọc tiến độ, tạm dừng, tiếp tục, đổi động tác hoặc nghỉ thêm. Đây là bộ lệnh offline, chưa phải hội thoại AI tự do.")
+                    .setMessage("Bạn có thể nói: tôi đã làm 10 lần, xong hiệp, bài này khó quá, hướng dẫn từng bước, đọc tiến độ, tạm dừng, tiếp tục, đổi động tác, nghỉ thêm hoặc bỏ qua nghỉ. Đây là bộ lệnh offline, chưa phải hội thoại AI tự do.")
                     .setPositiveButton("Đóng",null).show()
             }
         }
     }
+    /**
+     * Skip only the remaining rest interval after explicit confirmation.
+     * The exercise timer is preserved and the workout remains paused afterwards.
+     */
+    private fun confirmSkipRest() {
+        if (pausedForSafety || completed || !resting || index !in moves.indices) {
+            Toast.makeText(this, "Hiện không có thời gian nghỉ để bỏ qua.", Toast.LENGTH_LONG).show()
+            return
+        }
+        val wasRunning = !paused
+        if (wasRunning) pause()
+        val selectedSessionId = sessionId
+        val selectedIndex = index
+        val exerciseBefore = remainingMs
+        val restBefore = restRemainingMs
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("⏭ Bỏ qua thời gian nghỉ?")
+            .setMessage(
+                "Còn khoảng ${((restBefore + 999L) / 1_000L).coerceAtMost(600L)} giây nghỉ. " +
+                    "Nếu xác nhận, bộ đếm động tác (${exerciseBefore / 1_000L} giây) được giữ nguyên. " +
+                    "Chỉ bỏ qua khi bạn đã hồi phục; nếu còn mệt, hãy giữ thời gian nghỉ."
+            )
+            .setPositiveButton("Bỏ qua nghỉ") { _, _ ->
+                if (pausedForSafety || completed || !resting || sessionId != selectedSessionId ||
+                    index != selectedIndex || remainingMs != exerciseBefore || restRemainingMs != restBefore
+                ) {
+                    Toast.makeText(this, "Buổi tập đã thay đổi. Hãy kiểm tra lại trước khi bỏ qua nghỉ.", Toast.LENGTH_LONG).show()
+                    return@setPositiveButton
+                }
+                val next = runCatching {
+                    WorkoutRestSession.skip(WorkoutRestSession.State(exerciseBefore, restBefore))
+                }.getOrElse {
+                    Toast.makeText(this, "Không thể xác minh bộ đếm nghỉ; thời gian cũ được giữ nguyên.", Toast.LENGTH_LONG).show()
+                    return@setPositiveButton
+                }
+                remainingMs = next.exerciseRemainingMs
+                restRemainingMs = next.restRemainingMs
+                resting = false
+                restDeadline = 0L
+                paused = true
+                startedAt = 0L
+                handler.removeCallbacks(tick)
+                renderSetControls()
+                control.text = "▶ Tiếp tục"
+                counter.text = clockText(remainingMs)
+                saveCheckpoint()
+                speak("Đã bỏ qua thời gian nghỉ. Nhấn tiếp tục khi sẵn sàng.")
+            }
+            .setNegativeButton("Giữ thời gian nghỉ") { _, _ ->
+                if (wasRunning && !pausedForSafety && !completed && resting &&
+                    sessionId == selectedSessionId && index == selectedIndex && remainingMs == exerciseBefore
+                ) resume()
+            }
+            .create()
+        dialog.setOnCancelListener {
+            if (wasRunning && !pausedForSafety && !completed && resting &&
+                sessionId == selectedSessionId && index == selectedIndex && remainingMs == exerciseBefore
+            ) resume()
+        }
+        dialog.show()
+    }
+
     /**
      * Extend an existing rest countdown only after a preview and explicit confirmation.
      * The exercise countdown is preserved and the combined rest is capped at ten minutes.
@@ -2355,6 +2431,9 @@ class GuidedWorkoutActivity:Activity() {
         val visibility=if(plan==null) android.view.View.GONE else android.view.View.VISIBLE
         setProgress.visibility=visibility
         completeSetButton.visibility=visibility
+        val canSkipRest = resting && !pausedForSafety && !completed
+        skipRestButton.visibility = if (canSkipRest) android.view.View.VISIBLE else android.view.View.GONE
+        skipRestButton.isEnabled = canSkipRest
         if(plan==null) {
             restSetButton.visibility=android.view.View.GONE
             customSetRestButton.visibility=android.view.View.GONE

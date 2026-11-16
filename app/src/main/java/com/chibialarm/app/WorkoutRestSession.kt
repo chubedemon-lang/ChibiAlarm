@@ -18,4 +18,14 @@ object WorkoutRestSession {
             restRemainingMs = restSeconds.toLong() * 1_000L
         )
     }
+
+    /**
+     * Finish only the current rest interval. The active exercise countdown is preserved,
+     * and callers must still leave the workout paused until the user explicitly resumes.
+     */
+    fun skip(state: State): State {
+        require(state.exerciseRemainingMs in 0L..600_000L)
+        require(state.restRemainingMs in 0L..600_000L)
+        return state.copy(restRemainingMs = 0L)
+    }
 }

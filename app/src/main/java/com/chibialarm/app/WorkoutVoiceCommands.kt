@@ -7,7 +7,7 @@ import java.util.Locale
 object WorkoutVoiceCommands {
     enum class Command {
         PAIN, PAUSE, STATUS, STEP_GUIDE, RESUME, NEXT, PREVIOUS, REPEAT, REPEAT_STEP, EASIER, SWAP_EASIER,
-        EASIER_AND_REST, SHORTER, SHORTER_REMAINING, REST, COMPLETE_SET, NO_EQUIPMENT, UNKNOWN
+        EASIER_AND_REST, SHORTER, SHORTER_REMAINING, REST, SKIP_REST, COMPLETE_SET, NO_EQUIPMENT, UNKNOWN
     }
 
     /** Human-readable action shown before applying fallible speech recognition. */
@@ -30,6 +30,7 @@ object WorkoutVoiceCommands {
             Command.SHORTER -> "Rút ngắn thời gian động tác hiện tại"
             Command.SHORTER_REMAINING -> "Rút ngắn động tác hiện tại và tất cả động tác còn lại"
             Command.REST -> "Bắt đầu nghỉ riêng $restSeconds giây"
+            Command.SKIP_REST -> "Bỏ qua phần nghỉ còn lại sau khi xác nhận"
             Command.NO_EQUIPMENT -> "Đề xuất thay động tác cần tạ/dây ở phần chưa tập bằng biến thể không cần tải ngoài"
             Command.UNKNOWN -> "Chưa hiểu yêu cầu; không tự thay đổi buổi tập"
         }
@@ -70,6 +71,8 @@ object WorkoutVoiceCommands {
             normalized.contains("tam dung") || normalized.contains("dung lai") ||
                 normalized.contains("dung tap") || normalized.contains("khong tap noi") ||
                 normalized.contains("het suc") || "pause" in words -> Command.PAUSE
+            normalized.contains("bo qua nghi") || normalized.contains("bo qua thoi gian nghi") ||
+                normalized.contains("ket thuc nghi") || "skip rest" in normalized -> Command.SKIP_REST
             listOf(
                 "khong co dung cu", "khong dung cu", "khong can dung cu", "tay khong",
                 "khong dung ta", "khong co ta", "khong co ta don", "bo ta",

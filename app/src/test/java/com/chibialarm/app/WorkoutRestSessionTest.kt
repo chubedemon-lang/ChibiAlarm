@@ -25,4 +25,21 @@ class WorkoutRestSessionTest {
     fun rejectsInvalidExerciseCountdown() {
         WorkoutRestSession.start(600_001L, 30)
     }
+
+    @Test fun skippingRestPreservesExerciseTimeAndClearsOnlyTheRestCountdown() {
+        val before = WorkoutRestSession.start(exerciseRemainingMs = 42_000L, restSeconds = 90)
+        val after = WorkoutRestSession.skip(before)
+        assertEquals(42_000L, after.exerciseRemainingMs)
+        assertEquals(0L, after.restRemainingMs)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun skippingRestRejectsAnInvalidExerciseCountdown() {
+        WorkoutRestSession.skip(WorkoutRestSession.State(600_001L, 30_000L))
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun skippingRestRejectsAnInvalidRestCountdown() {
+        WorkoutRestSession.skip(WorkoutRestSession.State(10_000L, 600_001L))
+    }
 }

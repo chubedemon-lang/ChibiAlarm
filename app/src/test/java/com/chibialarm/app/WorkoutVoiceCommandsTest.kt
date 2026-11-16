@@ -236,6 +236,19 @@ class WorkoutVoiceCommandsTest {
             WorkoutVoiceCommands.describe(C.EASIER_AND_REST, "nhẹ hơn và nghỉ một phút rưỡi"))
     }
 
+    @Test fun skipRestIsExplicitAndDoesNotConfuseSkippingAnExercise() {
+        for (phrase in listOf("Bỏ qua nghỉ", "Bỏ qua thời gian nghỉ", "Kết thúc nghỉ", "skip rest")) {
+            assertEquals(phrase, C.SKIP_REST, WorkoutVoiceCommands.parse(phrase))
+            assertFalse(phrase, WorkoutVoiceCommands.mayEditReps(phrase))
+        }
+        assertEquals(C.NEXT, WorkoutVoiceCommands.parse("Bỏ qua bài này"))
+        assertEquals(C.REST, WorkoutVoiceCommands.parse("Nghỉ thêm 30 giây"))
+        assertEquals(C.PAIN, WorkoutVoiceCommands.parse("Đau gối, bỏ qua nghỉ"))
+        assertEquals(C.PAUSE, WorkoutVoiceCommands.parse("Dừng tập rồi bỏ qua nghỉ"))
+        assertEquals("Bỏ qua phần nghỉ còn lại sau khi xác nhận",
+            WorkoutVoiceCommands.describe(C.SKIP_REST))
+    }
+
     @Test fun spokenActionPreviewCoversEveryCommand() {
         for (command in C.values()) {
             val preview = WorkoutVoiceCommands.describe(command)

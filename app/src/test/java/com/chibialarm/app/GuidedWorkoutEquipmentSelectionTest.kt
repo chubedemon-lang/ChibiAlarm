@@ -89,7 +89,8 @@ class GuidedWorkoutEquipmentSelectionTest {
 
         val dialog = ShadowAlertDialog.getLatestAlertDialog()
         assertNotNull(dialog)
-        assertEquals("Tiếp tục buổi tập đã lưu?", dialog.getTitle())
+        assertEquals("Khôi phục", dialog.getButton(DialogInterface.BUTTON_POSITIVE).text.toString())
+        assertEquals("Bắt đầu lại", dialog.getButton(DialogInterface.BUTTON_NEGATIVE).text.toString())
         dialog.getButton(DialogInterface.BUTTON_POSITIVE).performClick()
 
         assertEquals("Khôi phục must restore the saved dumbbell selection", 4, preferences(activity).equipment)

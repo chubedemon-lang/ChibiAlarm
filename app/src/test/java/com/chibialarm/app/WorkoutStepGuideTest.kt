@@ -146,8 +146,8 @@ class WorkoutStepGuideTest {
 
     @Test fun spokenCatalogNotesAreBoundedAndStripControlCharacters() {
         val cue = WorkoutStepGuide.spokenSafetyNoteCue(
-            "Squat\\nkhông tạ",
-            "Giữ lưng thẳng\\u0000\\nKhông cố quá sức."
+            "Squat\nkhông tạ",
+            "Giữ lưng thẳng\u0000\nKhông cố quá sức."
         )
         assertTrue(cue.startsWith("Squat không tạ."))
         assertTrue(cue.contains("Giữ lưng thẳng Không cố quá sức."))

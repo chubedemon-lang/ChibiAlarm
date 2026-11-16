@@ -173,6 +173,15 @@ class WorkoutTargetCommandTest {
     }
 
 
+    @Test fun skipRestCommandsCannotBeMisroutedIntoRepetitionEditor() {
+        for (utterance in listOf("Bỏ qua nghỉ và giảm còn 6 lần", "Kết thúc nghỉ rồi đổi thành 8 lần")) {
+            assertEquals(WorkoutVoiceCommands.Command.SKIP_REST, WorkoutVoiceCommands.parse(utterance))
+            assertNull(utterance, WorkoutTargetCommand.spokenReps(utterance))
+            assertSame(utterance, WorkoutTargetCommand.Result.Unsupported,
+                WorkoutTargetCommand.propose(utterance, "squat", session, 0))
+        }
+    }
+
     @Test fun noEquipmentCommandsCannotBeMisroutedIntoRepetitionEditor() {
         val utterances = listOf(
             "Hôm nay không có dụng cụ, đổi sang bài tay không",

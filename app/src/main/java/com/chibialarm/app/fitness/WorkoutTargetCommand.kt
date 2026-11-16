@@ -67,8 +67,9 @@ object WorkoutTargetCommand {
         WorkoutVoiceCommands.Command.STEP_GUIDE,
         // Set completion is a state-changing workout action, never a repetition edit.
         WorkoutVoiceCommands.Command.COMPLETE_SET,
-        // Equipment changes are plan-level actions and must not be parsed as rep edits.
-        WorkoutVoiceCommands.Command.NO_EQUIPMENT -> true
+        // Equipment changes and rest skipping are plan/session actions, never rep edits.
+        WorkoutVoiceCommands.Command.NO_EQUIPMENT,
+        WorkoutVoiceCommands.Command.SKIP_REST -> true
         WorkoutVoiceCommands.Command.REST,
         WorkoutVoiceCommands.Command.UNKNOWN -> false
     }

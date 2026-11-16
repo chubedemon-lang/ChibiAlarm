@@ -3,6 +3,7 @@ package com.chibialarm.app.fitness
 import com.chibialarm.app.FitnessNaturalRequest
 import com.chibialarm.app.WorkoutRestRequest
 import com.chibialarm.app.TrainingEquipment
+import com.chibialarm.app.TrainingCatalog
 import java.text.Normalizer
 import java.util.Locale
 
@@ -30,7 +31,9 @@ object WorkoutMidSessionRequest {
         val avoidOverheadReach: Boolean = false,
         val allowOverheadReach: Boolean = false,
         val addOptionalExercise: Boolean = false,
-        val availableEquipment: Set<TrainingEquipment> = emptySet()
+        val availableEquipment: Set<TrainingEquipment> = emptySet(),
+        // Exact catalog name only; free-form exercise instructions are never accepted.
+        val replaceCurrentWith: String? = null
     ) {
         init {
             require(remainingMinutes == null || remainingMinutes in 5..120)
@@ -38,6 +41,7 @@ object WorkoutMidSessionRequest {
             require(!(avoidWristLoad && allowWristLoad))
             require(!(avoidFloorPositions && allowFloorPositions))
             require(!(avoidOverheadReach && allowOverheadReach))
+            require(replaceCurrentWith == null || replaceCurrentWith.length in 1..90)
         }
 
         /** True only when the request changes the rest countdown and nothing else. */
@@ -55,7 +59,8 @@ object WorkoutMidSessionRequest {
                 !allowOverheadReach &&
                 !addOptionalExercise &&
                 availableEquipment.isEmpty() &&
-                unavailableEquipment.isEmpty()
+                unavailableEquipment.isEmpty() &&
+                replaceCurrentWith == null
     }
 
     sealed class Result {
@@ -87,6 +92,19 @@ object WorkoutMidSessionRequest {
 
         val text = normalize(input)
         fun has(vararg phrases: String): Boolean = phrases.any(text::contains)
+
+        // Explicit mid-session replacement is deliberately strict: the user must name
+        // a canonical catalog exercise, not provide arbitrary instructions.
+        val replacementMatch = Regex(
+            """\b(?:doi|thay)\s+(?:bai|dong tac)\s+(?:hien tai|nay)\s+(?:thanh|sang|bang)\s+(.+)$"""
+        ).find(text)
+        val replacementTarget = replacementMatch?.groupValues?.get(1)
+            ?.removePrefix("bai ")
+            ?.trim()
+        val replacementExercise = replacementTarget?.let { target ->
+            TrainingCatalog.allMoves.singleOrNull { normalize(it.name) == target }?.name
+        }
+        if (replacementMatch != null && replacementExercise == null) return Result.Unsupported
 
         val hasRemainingTime = Regex(
             """\bcon\s+(?:[0-9]{1,3}|[a-z]+(?:\s+[a-z]+){0,3})\s+(?:phut|minute|min)\b"""
@@ -218,7 +236,7 @@ object WorkoutMidSessionRequest {
             !avoidOverheadReach && !allowOverheadReach &&
             !preferEasier && restSeconds == null && !avoidExternalLoad &&
             !addOptionalExercise && availableEquipment.isEmpty() &&
-            unavailableEquipment.isEmpty()
+            unavailableEquipment.isEmpty() && replacementExercise == null
         ) return Result.Unsupported
 
         return Result.Proposed(
@@ -236,7 +254,8 @@ object WorkoutMidSessionRequest {
                 allowOverheadReach = allowOverheadReach,
                 unavailableEquipment = unavailableEquipment,
                 addOptionalExercise = addOptionalExercise,
-                availableEquipment = availableEquipment
+                availableEquipment = availableEquipment,
+                replaceCurrentWith = replacementExercise
             )
         )
     }

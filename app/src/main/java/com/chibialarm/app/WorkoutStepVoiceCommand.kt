@@ -63,7 +63,8 @@ object WorkoutStepVoiceCommand {
                 "luu y khi tap", "luu y khi thuc hien", "nghi bao lau",
                 "bao nhieu hiep", "bao nhieu lan", "bao nhieu giay",
                 "muc tieu bai nay", "giai thich bai nay", "bai nay tap sao",
-                "dong tac nay tap sao", "how do i do this", "how many reps",
+                "dong tac nay tap sao", "nhom co nao", "nhom co chinh", "co nao",
+                "tap vao dau", "tac dung", "bai nay tac dong vao dau", "how do i do this", "how many reps",
                 "how many sets", "how long rest"
             ).any { normalized.contains(it) }) return Command.ASK_EXERCISE
         if (listOf("buoc tiep", "tiep theo", "buoc sau", "sang buoc", "next step")

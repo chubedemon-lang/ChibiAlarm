@@ -37,6 +37,45 @@ object WorkoutStepGuide {
         )
     }
 
+    /**
+     * A compact, accessible dose summary for the step-by-step guide.
+     * Uses the already-adjusted plan and self-reported completed-set count;
+     * it never infers completion from the timer.
+     */
+    fun workoutSummary(
+        dose: String,
+        plan: WorkoutSetTracker.Plan?,
+        completedSets: Int
+    ): String {
+        val safeDose = dose
+            .replace(Regex("[\\r\\n\\p{Cc}]+"), " ")
+            .replace(Regex("\\s+"), " ")
+            .trim()
+            .take(120)
+            .ifBlank { "Theo giáo án" }
+        if (plan == null) {
+            return "Mục tiêu: $safeDose. Bộ đếm thời gian chỉ là gợi ý; nghỉ thêm nếu cần."
+        }
+
+        val maximum = plan.maximumSets.coerceAtLeast(0)
+        val required = plan.requiredSets.coerceIn(0, maximum)
+        val done = completedSets.coerceIn(0, maximum)
+        val target = if (plan.targetMin == plan.targetMax) {
+            "${plan.targetMin}"
+        } else {
+            "${plan.targetMin} đến ${plan.targetMax}"
+        }
+        val unit = plan.unit.replace(Regex("[\\r\\n\\p{Cc}]"), " ").take(20)
+        val progress = when {
+            done >= maximum -> "Đã ghi nhận đủ $maximum hiệp; không cần tập thêm."
+            done >= required -> "Đã hoàn thành đủ hiệp bắt buộc; hiệp bổ sung còn lại là tùy chọn."
+            else -> "Đã xác nhận $done/$maximum hiệp."
+        }
+        val rest = plan.defaultRestSeconds.coerceIn(0, 600)
+        return "Mục tiêu: $required hiệp bắt buộc, tối đa $maximum hiệp; " +
+            "$target $unit/hiệp. Nghỉ đề xuất $rest giây. $progress"
+    }
+
     /** Last selected spoken step, scoped to the current exercise index. */
     data class SelectedCue(val moveIndex: Int, val speech: String)
 

@@ -76,7 +76,7 @@ class WorkoutRestVoiceCueTest {
     @Test fun restCompletionBoundsAndNormalizesTheMoveName() {
         assertEquals(
             "Đã hết giờ nghỉ. Khi bạn sẵn sàng, tiếp tục: Squat không tạ.",
-            WorkoutRestVoiceCue.completionMessage("  Squat\\nkhông tạ  ", 0, null)
+            WorkoutRestVoiceCue.completionMessage("  Squat\nkhông tạ  ", 0, null)
         )
         assertEquals(
             "Đã hết giờ nghỉ. Tiếp tục khi bạn sẵn sàng.",

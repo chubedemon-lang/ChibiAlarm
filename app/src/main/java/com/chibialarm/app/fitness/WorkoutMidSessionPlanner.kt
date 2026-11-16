@@ -107,6 +107,36 @@ object WorkoutMidSessionPlanner {
         val prefix = currentMoves.take(currentIndex)
         val usedNames = prefix.mapTo(mutableSetOf()) { it.name }
         val reservedFutureNames = currentMoves.drop(currentIndex + 1).map { it.name }.toSet()
+        val explicitReplacement = request.replaceCurrentWith?.let { requestedName ->
+            if (currentStepLocked || completedCurrentSets > 0) {
+                return Result.Blocked(
+                    "Hiệp hiện tại đã được ghi nhận. Chibi không thể thay động tác hồi tố; hãy giữ nguyên hiệp đã làm."
+                )
+            }
+            val requestedMove = TrainingCatalog.allMoves.singleOrNull { it.name == requestedName }
+                ?: return Result.Unsupported
+            val approved = WorkoutMoveSubstitution.alternativesFor(
+                currentMoves[currentIndex],
+                effectiveProfile
+            ).firstOrNull { it.name == requestedMove.name }
+                ?: return Result.Blocked(
+                    "Bài bạn chọn chưa phải biến thể thay thế được tuyển chọn cho động tác hiện tại. Giáo án được giữ nguyên."
+                )
+            if (!isMainExercise(approved) ||
+                !TrainingEquipmentAvailability.allows(approved, effectiveAvailableEquipment) ||
+                !equipmentAvailable(approved, request)
+            ) {
+                return Result.Blocked(
+                    "Bài thay thế không phù hợp với dụng cụ hoặc hạn chế hiện tại. Giáo án được giữ nguyên."
+                )
+            }
+            if (approved.name in usedNames || approved.name in reservedFutureNames) {
+                return Result.Blocked(
+                    "Bài thay thế đã có ở phần khác của giáo án. Chibi không thêm trùng động tác."
+                )
+            }
+            approved
+        }
         val remaining = mutableListOf<TrainingMove>()
         val replacements = mutableListOf<String>()
         val removed = mutableListOf<String>()
@@ -137,9 +167,13 @@ object WorkoutMidSessionPlanner {
             } else {
                 emptyList()
             }
-            val replacement = candidates.firstOrNull {
-                it.name !in usedNames && it.name !in reservedFutureNames && it.name != move.name &&
-                    equipmentAvailable(it, request)
+            val replacement = if (isCurrent && explicitReplacement != null) {
+                explicitReplacement
+            } else {
+                candidates.firstOrNull {
+                    it.name !in usedNames && it.name !in reservedFutureNames && it.name != move.name &&
+                        equipmentAvailable(it, request)
+                }
             }
 
             when {

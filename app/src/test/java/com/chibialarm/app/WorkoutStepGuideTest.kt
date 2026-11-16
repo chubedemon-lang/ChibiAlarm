@@ -123,6 +123,37 @@ class WorkoutStepGuideTest {
         }
     }
 
+    @Test fun spokenEasierCueReadsOnlyBoundedCatalogGuidance() {
+        val cue = WorkoutStepGuide.spokenEasierCue(
+            "Squat không tạ",
+            "Giảm biên độ.\nDùng ghế vững để hỗ trợ.\nGiữ nhịp chậm."
+        )
+        assertTrue(cue.startsWith("Squat không tạ."))
+        assertTrue(cue.contains("Giảm biên độ. Dùng ghế vững để hỗ trợ. Giữ nhịp chậm."))
+        assertFalse(cue.contains("\\n"))
+        assertTrue(WorkoutStepGuide.spokenEasierCue("Squat", " ").contains("Chưa có hướng dẫn giảm độ khó"))
+    }
+
+    @Test fun spokenSafetyNoteReadsExerciseCautionWithoutTreatingItAsAUserSymptom() {
+        val cue = WorkoutStepGuide.spokenSafetyNoteCue(
+            "Chống đẩy tường",
+            "Dừng nếu đau cổ tay. Không khóa cứng khuỷu."
+        )
+        assertTrue(cue.startsWith("Chống đẩy tường."))
+        assertTrue(cue.contains("Dừng nếu đau cổ tay. Không khóa cứng khuỷu."))
+        assertTrue(WorkoutStepGuide.spokenSafetyNoteCue("Plank", "").contains("Chưa có lưu ý riêng"))
+    }
+
+    @Test fun spokenCatalogNotesAreBoundedAndStripControlCharacters() {
+        val cue = WorkoutStepGuide.spokenSafetyNoteCue(
+            "Squat\\nkhông tạ",
+            "Giữ lưng thẳng\\u0000\\nKhông cố quá sức."
+        )
+        assertTrue(cue.startsWith("Squat không tạ."))
+        assertTrue(cue.contains("Giữ lưng thẳng Không cố quá sức."))
+        assertTrue(cue.length < 600)
+    }
+
     @Test fun workoutSummaryShowsRequiredSetsRepRangeRestAndConfirmedProgress() {
         val plan = WorkoutSetTracker.Plan(
             requiredSets = 2,

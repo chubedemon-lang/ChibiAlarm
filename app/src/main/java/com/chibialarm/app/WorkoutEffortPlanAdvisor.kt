@@ -157,8 +157,8 @@ object WorkoutEffortPlanAdvisor {
             veryHardSets = best.veryHardSets,
             latestDate = best.latestDate,
             message = message,
-            prompt = "Tao muốn xem một buổi tập nhẹ hơn dựa trên lịch sử check-in, " +
-                "ưu tiên vận động nhẹ và không tự tăng số hiệp."
+            prompt = "Tao muốn xem một buổi tập nhẹ hơn, không tự tăng số hiệp; " +
+                "ưu tiên thay thế cho động tác: ${best.name}"
         )
     }
 

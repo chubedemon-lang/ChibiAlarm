@@ -5,6 +5,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
+import android.widget.TextView
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -63,8 +64,10 @@ class FitnessCoachPlanPreviewActionTest {
         previewAction.performClick()
 
         val recommendation = ShadowAlertDialog.getLatestAlertDialog()
-        assertTrue(recommendation.title.toString().startsWith("🐰 Chibi đề xuất:"))
-        assertTrue(recommendation.message.toString().contains("15 phút"))
+        assertTrue(recommendation.getTitle().toString().startsWith("🐰 Chibi đề xuất:"))
+        val message = recommendation.findViewById<TextView>(android.R.id.message)
+        assertNotNull(message)
+        assertTrue(message.text.toString().contains("15 phút"))
         controller.pause().stop().destroy()
     }
 

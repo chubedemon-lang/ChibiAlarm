@@ -5,6 +5,7 @@ import android.content.Intent
 import android.speech.RecognizerIntent
 import android.speech.tts.TextToSpeech
 import android.os.Bundle
+import android.os.Build
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.view.*
@@ -13,58 +14,101 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.util.Locale
 
-/** Direct Gemini BYOK coach. AI only proposes schedules; user explicitly approves changes. */
+/** Offline-first fitness coach. Network AI requires a separate authenticated backend. */
 class CoachActivity:Activity() {
     private val memory by lazy { getSharedPreferences("coach_history",0) }
     private lateinit var messages:LinearLayout
     private lateinit var prompt:EditText
     private lateinit var send:Button
+    private lateinit var speechStatus:TextView
     private var history=JSONArray()
     private var speaker:TextToSpeech?=null
     private var speakerReady=false
     private var autoSpeak=false
+    private var fitnessContext: FitnessNaturalRequest.Result? = null
     private val speechRequest=4401
-    private fun text(s:String,size:Float=16f)=TextView(this).apply { text=s;textSize=size;setTextColor(Color.rgb(82,55,99));setPadding(7,7,7,7) }
-    private fun key():String? {
-        val k=GeminiSecrets.load(this)
-        if(k.isNullOrBlank()) AlertDialog.Builder(this).setTitle("🔑 Cần Gemini API key")
-            .setMessage("Hãy nhập API key trong mục Gemini AI Studio ở trang chủ. Không cần gửi khóa cho ai.")
-            .setPositiveButton("Đã hiểu",null).show()
-        return k
+    // Preserve the active coaching form across rotation, without persisting it to disk.
+    private fun restoreFitnessContext(state: Bundle?): FitnessNaturalRequest.Result? =
+        CoachFitnessHandoff.restoreFromBundle(state)
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        CoachFitnessHandoff.saveToBundle(fitnessContext, outState)
+        super.onSaveInstanceState(outState)
     }
+    private fun text(s:String,size:Float=16f)=TextView(this).apply { text=s;textSize=size;setTextColor(Color.rgb(82,55,99));setPadding(7,7,7,7) }
     override fun onCreate(savedInstanceState:Bundle?) {
         super.onCreate(savedInstanceState)
+        fitnessContext = restoreFitnessContext(savedInstanceState)
         history=try { JSONArray(memory.getString("messages","[]")) }catch(_:Exception){ JSONArray() }
         val root=LinearLayout(this).apply { orientation=1;setPadding(17,18,17,14);setBackgroundColor(Color.rgb(250,241,255)) }
         root.addView(text("🐰 Chibi • Huấn luyện viên cá nhân",26f))
-        root.addView(text("Nói chuyện bằng giọng Việt hoặc nhập tin nhắn. Ngoại tuyến dùng hướng dẫn có quy tắc; Gemini tùy chọn.",13f))
+        root.addView(text("Nói chuyện bằng giọng Việt hoặc nhập tin nhắn. Huấn luyện offline trên thiết bị; AI trực tuyến chỉ mở khi có backend bảo vệ tài khoản.",13f))
         val buttons=LinearLayout(this).apply { orientation=0 }
         buttons.addView(Button(this).apply { text="🗓 Tạo lịch AI";setOnClickListener { askPlan() } },LinearLayout.LayoutParams(0,-2,1f))
+        buttons.addView(Button(this).apply { text="🏃 Xem bài tập";setOnClickListener {
+            val current=fitnessContext
+            val intent=Intent(this@CoachActivity,FitnessActivity::class.java)
+            CoachFitnessHandoff.addToFitnessIntent(current, intent)
+            startActivity(intent)
+        } })
         buttons.addView(Button(this).apply { text="🗑 Xóa chat";setOnClickListener {
-            history=JSONArray();memory.edit().remove("messages").apply();redraw()
+            history=JSONArray();fitnessContext=null;memory.edit().remove("messages").apply();redraw()
         } })
         root.addView(buttons)
         val voiceTools=LinearLayout(this).apply { orientation=0 }
-        voiceTools.addView(Button(this).apply { text="🎤 Nói";setOnClickListener { listen() } },LinearLayout.LayoutParams(0,-2,1f))
+        voiceTools.addView(Button(this).apply { text="🎤 Nói";setOnClickListener { explainMicrophoneThenListen() } },LinearLayout.LayoutParams(0,-2,1f))
         voiceTools.addView(Button(this).apply { text="🔊 Bật đọc";setOnClickListener {
-            autoSpeak=!autoSpeak;text=if(autoSpeak)"🔇 Tắt đọc" else "🔊 Bật đọc"
+            if (!speakerReady && !autoSpeak) {
+                Toast.makeText(this@CoachActivity,"Chưa có giọng tiếng Việt sẵn sàng. Chat chữ và nhập giọng nói vẫn dùng được.",Toast.LENGTH_LONG).show()
+                return@setOnClickListener
+            }
+            autoSpeak=!autoSpeak
+            text=if(autoSpeak)"🔇 Tắt đọc" else "🔊 Bật đọc"
             if(!autoSpeak)speaker?.stop()
         } },LinearLayout.LayoutParams(0,-2,1f))
         voiceTools.addView(Button(this).apply { text="■ Dừng";setOnClickListener { speaker?.stop() } },LinearLayout.LayoutParams(0,-2,1f))
         root.addView(voiceTools)
+        speechStatus=text("Đang kiểm tra dữ liệu giọng đọc tiếng Việt…",12f)
+        root.addView(speechStatus)
         speaker=TextToSpeech(this) { result ->
-            speakerReady=result==TextToSpeech.SUCCESS
-            if(speakerReady) { speaker?.setLanguage(Locale("vi","VN"))
-                val pref=getSharedPreferences("settings",0)
-                speaker?.setSpeechRate(pref.getFloat("rate",1f));speaker?.setPitch(pref.getFloat("pitch",1f))
-                speaker?.voices?.firstOrNull { it.name==pref.getString("voice","") }?.let { speaker?.voice=it }
+            val engine=speaker
+            if (result!=TextToSpeech.SUCCESS || engine==null) {
+                speakerReady=false
+                speechStatus.text="⚠️ Chưa khởi tạo được bộ đọc. Bạn vẫn có thể trò chuyện bằng chữ và nhập giọng nói."
+                return@TextToSpeech
+            }
+            // Some engines expose only the language-level Vietnamese locale, not vi-VN.
+            var languageStatus=engine.setLanguage(Locale("vi","VN"))
+            if (languageStatus<0) languageStatus=engine.setLanguage(Locale("vi"))
+            val pref=getSharedPreferences("settings",0)
+            val available=if (Build.VERSION.SDK_INT>=Build.VERSION_CODES.LOLLIPOP) {
+                runCatching { engine.voices.orEmpty() }.getOrDefault(emptyList())
+            } else emptyList()
+            val selection=CoachSpeechVoicePolicy.resolve(
+                languageStatus,
+                pref.getString("voice",null),
+                available.map { voice -> CoachSpeechVoicePolicy.VoiceOption(voice.name,voice.locale.language) }
+            )
+            speakerReady=selection.languageSupported
+            engine.setSpeechRate(pref.getFloat("rate",1f))
+            engine.setPitch(pref.getFloat("pitch",1f))
+            if (speakerReady && Build.VERSION.SDK_INT>=Build.VERSION_CODES.LOLLIPOP) {
+                available.firstOrNull { it.name==selection.voiceName }?.let { engine.voice=it }
+            }
+            speechStatus.text=if(speakerReady) {
+                "🔊 Giọng Việt đã sẵn sàng. Khả năng ngoại tuyến tùy bộ TTS và giọng đã cài trên máy."
+            } else {
+                autoSpeak=false
+                "⚠️ Chưa có dữ liệu giọng Việt. Hãy cài giọng Tiếng Việt trong cài đặt TTS; chat chữ và nhập giọng nói vẫn hoạt động."
             }
         }
         messages=LinearLayout(this).apply { orientation=1 }
         root.addView(ScrollView(this).apply { addView(messages) },LinearLayout.LayoutParams(-1,0,1f))
         val composer=LinearLayout(this).apply { orientation=0;gravity=Gravity.CENTER_VERTICAL }
         prompt=EditText(this).apply {
-            hint="Chibi ơi, giúp mình…";minLines=1;maxLines=4
+            hint="Chibi ơi, giúp mình… (tối đa ${CoachSpeechTranscript.MAX_CHARS} ký tự)"
+            minLines=1;maxLines=4
+            filters = arrayOf(android.text.InputFilter.LengthFilter(CoachSpeechTranscript.MAX_CHARS))
         }
         composer.addView(prompt,LinearLayout.LayoutParams(0,-2,1f))
         send=Button(this).apply { text="➤";setOnClickListener { chat() } }
@@ -88,42 +132,65 @@ class CoachActivity:Activity() {
             messages.addView(bubble,LinearLayout.LayoutParams(-1,-2).apply { bottomMargin=11 })
         }
     }
-    private fun append(role:String,value:String) {
-        history.put(JSONObject().put("role",role).put("text",value.take(2500)))
+    /** Keep journal-derived health details transient; never copy them into chat history storage. */
+    private fun persistChatHistory() {
+        val durable = JSONArray()
+        for (index in 0 until history.length()) {
+            val item = history.optJSONObject(index) ?: continue
+            if (!item.optBoolean("ephemeral", false)) durable.put(item)
+        }
+        memory.edit().putString("messages", durable.toString()).apply()
+    }
+
+    private fun append(role:String,value:String,persist:Boolean=true) {
+        val item = JSONObject().put("role",role).put("text",value.take(2500))
+        if (!persist) item.put("ephemeral",true)
+        history.put(item)
         while(history.length()>14) history.remove(0)
-        memory.edit().putString("messages",history.toString()).apply();redraw()
+        persistChatHistory();redraw()
         if(role=="assistant" && autoSpeak && speakerReady) speaker?.speak(value.take(1100),TextToSpeech.QUEUE_FLUSH,null,"coach-reply")
     }
     private fun chat() {
-        val k=GeminiSecrets.load(this)
-        val question=prompt.text.toString().trim().take(900)
-        if(question.isEmpty())return
+        val question=prompt.text.toString().trim().take(CoachSpeechTranscript.MAX_CHARS)
+        if(question.isEmpty()) return
         prompt.setText("")
-        append("user",question)
-        if(k.isNullOrBlank()) {
-            append("assistant",CoachBrain.reply(this,question)+" (Huấn luyện viên ngoại tuyến)")
+
+        // Answer local journal questions before interpreting the message as a new plan reply.
+        // The prompt and answer remain visible only for this Activity session and are not persisted.
+        val journalReply = WorkoutHistoryConversation.answer(question, WorkoutData.history(this))
+        if (journalReply != null) {
+            append("user",question,persist=false)
+            append(
+                "assistant",
+                journalReply + "\n\n(Đọc từ nhật ký trên thiết bị; câu hỏi và kết quả không được lưu vào lịch sử chat.)",
+                persist=false
+            )
             return
         }
-        send.isEnabled=false
-        val context=(0 until history.length()).joinToString("\n") { i ->
-            val item=history.getJSONObject(i)
-            (if(item.optString("role")=="user") "Người dùng: " else "Trợ lý: ")+item.optString("text")
-        }
-        Thread {
-            try {
-                val answer=GeminiService.generatePrompt(k,
-                    "Bạn là trợ lý Chibi Life thân thiện, nói tiếng Việt, đưa gợi ý thực tế và an toàn về quản lý thời gian, thói quen, vận động nhẹ. Không tự nhận đã tạo lịch, không chẩn đoán bệnh, không đưa kế hoạch quá sức. Tối đa 170 từ mỗi câu trả lời.\n"+context).first
-                runOnUiThread { append("assistant",answer);send.isEnabled=true }
-            } catch(e:Exception) { runOnUiThread {
-                send.isEnabled=true
-                AlertDialog.Builder(this).setTitle("Gemini không khả dụng")
-                    .setMessage(e.message ?: "Kiểm tra mạng và API key")
-                    .setPositiveButton("Dùng miễn phí"){_,_->append("assistant",CoachBrain.reply(this,question)+" (Ngoại tuyến)")}
-                    .setNegativeButton("Đóng",null).show()
-            } }
-        }.start()
+
+        append("user",question)
+        val next=FitnessCoachConversation.parseReply(fitnessContext,question)
+        fitnessContext=FitnessCoachConversation.merge(fitnessContext,next)
+        append("assistant",next.reply+"\n\n"+FitnessCoachFollowUp.nextQuestion(fitnessContext!!)+"\n(Chế độ Fitness ngoại tuyến)")
     }
+    /**
+     * Android's speech recognizer may be provided by another app and may use
+     * network processing. Require an explicit tap before each recording.
+     */
+    private fun explainMicrophoneThenListen() {
+        // Avoid transcribing Chibi's own TTS reply.
+        speaker?.stop()
+        AlertDialog.Builder(this)
+            .setTitle("🎤 Nhận dạng giọng nói")
+            .setMessage("Chibi sẽ mở dịch vụ nhận dạng giọng nói trên máy. Dịch vụ này có thể dùng Internet và xử lý âm thanh theo chính sách của nhà cung cấp. Chibi chỉ nhận văn bản được trả về. Bạn sẽ được xem và sửa văn bản trước khi gửi. Bạn cũng có thể gõ thay vì dùng mic.")
+            .setPositiveButton("Tiếp tục dùng mic") { _, _ -> listen() }
+            .setNegativeButton("Để tôi gõ", null)
+            .show()
+    }
+
     private fun listen() {
+        // Listening is user-initiated, never restarted by TTS callbacks.
+        speaker?.stop()
         try {
             val i=Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
@@ -133,17 +200,42 @@ class CoachActivity:Activity() {
             startActivityForResult(i,speechRequest)
         } catch(_:Exception) { Toast.makeText(this,"Máy chưa có dịch vụ nhận dạng tiếng Việt. Bạn vẫn có thể gõ tin nhắn.",Toast.LENGTH_LONG).show() }
     }
+    private fun applySpeechCandidate(candidate: CoachSpeechTranscript.Candidate) {
+        prompt.setText(candidate.text)
+        prompt.setSelection(prompt.text.length)
+        val message = if (candidate.truncated) {
+            "Bản nhận dạng vượt giới hạn ${CoachSpeechTranscript.MAX_CHARS} ký tự và đã được rút gọn. Hãy kiểm tra, sửa phần văn bản rồi mới gửi."
+        } else {
+            "Kiểm tra hoặc sửa văn bản nhận dạng rồi bấm gửi. Chibi chưa gửi nội dung này."
+        }
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+    }
+
     @Deprecated("Deprecated in Android API")
     override fun onActivityResult(requestCode:Int,resultCode:Int,data:Intent?) {
         super.onActivityResult(requestCode,resultCode,data)
         if(requestCode==speechRequest && resultCode==RESULT_OK) {
-            val recognized=data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
-            if(!recognized.isNullOrBlank()) { prompt.setText(recognized);chat() }
+            val candidates = CoachSpeechTranscript.candidates(
+                data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS).orEmpty()
+            )
+            when {
+                candidates.isEmpty() -> Toast.makeText(
+                    this, "Không nhận được câu nói rõ ràng. Bạn có thể gõ thay thế.", Toast.LENGTH_LONG
+                ).show()
+                candidates.size == 1 -> applySpeechCandidate(candidates.single())
+                else -> AlertDialog.Builder(this)
+                    .setTitle("Chọn nội dung Chibi nghe được")
+                    .setItems(candidates.mapIndexed { index, candidate -> "${index + 1}. ${candidate.label}" }.toTypedArray()) { _, which ->
+                        candidates.getOrNull(which)?.let(::applySpeechCandidate)
+                    }
+                    .setNegativeButton("Để tôi gõ", null)
+                    .show()
+            }
         }
     }
+    override fun onPause() { speaker?.stop();super.onPause() }
     override fun onDestroy() { speaker?.stop();speaker?.shutdown();super.onDestroy() }
     private fun askPlan() {
-        val k=GeminiSecrets.load(this)
         val field=EditText(this).apply { hint="Ví dụ: Mình làm việc 8h–17h, muốn học tiếng Anh và chạy bộ";minLines=3;maxLines=6 }
         val box=LinearLayout(this).apply { orientation=1;setPadding(22,12,22,12) }
         box.addView(text("Mô tả lịch hiện tại, mục tiêu và thời gian rảnh. Không nhập thông tin nhạy cảm.",14f))
@@ -155,79 +247,45 @@ class CoachActivity:Activity() {
             addView(RadioButton(this@CoachActivity).apply { id=901; text="90 ngày" })
             setOnCheckedChangeListener { _,id->days=if(id==901)90 else 30 }
         })
-        val dialog=AlertDialog.Builder(this).setTitle("✨ Lập kế hoạch cùng Gemini")
+        val dialog=AlertDialog.Builder(this).setTitle("✨ Lập kế hoạch ngoại tuyến")
             .setView(box).setPositiveButton("Tạo bản nháp",null).setNegativeButton("Hủy",null).create()
         dialog.setOnShowListener {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                 val detail=field.text.toString().trim().take(1500)
                 if(detail.isBlank()) { field.error="Mô tả mục tiêu của bạn";return@setOnClickListener }
                 dialog.dismiss()
-                val progress=ProgressDialog.show(this,"🐰 Chibi đang nghĩ…","Đang chuẩn bị bản nháp để bạn duyệt",true,false)
-                val span=days
-                if(k.isNullOrBlank()) {
-                    progress.dismiss()
-                    val (title,draft)=FreeCoach.plan(detail,span)
-                    showFreePlan(title,draft,span)
-                    return@setOnClickListener
-                }
-                Thread {
-                    try {
-                        val instruction="""Bạn là AI lập lịch cá nhân lành mạnh cho người trưởng thành.
-Trả về CHỈ MỘT JSON object hợp lệ, không markdown, cấu trúc:
-{"title":"mục tiêu ngắn","routines":[{"title":"tên 1","category":"🏃 Sức khỏe","hour":7,"minute":30,"duration":20}, {"title":"tên 2","category":"📚 Học tập","hour":19,"minute":0,"duration":30}]}
-Tạo 3 tới 6 hoạt động thực tế, không trùng giờ rõ rệt, giờ 0..23, phút 0..59, thời lượng 5..120, tiếng Việt. Không phải lời khuyên y tế. Thời gian chương trình: $span ngày.
-Thông tin người dùng: $detail"""
-                        val response=GeminiService.generatePrompt(k,instruction).first
-                        val left=response.indexOf('{');val right=response.lastIndexOf('}')
-                        if(left<0 || right<=left) throw IllegalStateException("AI không trả về bản nháp JSON hợp lệ.")
-                        val json=JSONObject(response.substring(left,right+1))
-                        val arr=json.getJSONArray("routines")
-                        val draft=mutableListOf<Routine>()
-                        for(i in 0 until arr.length().coerceAtMost(8)) {
-                            val r=arr.getJSONObject(i)
-                            val name=r.optString("title").trim().take(60)
-                            val h=r.optInt("hour",-1);val m=r.optInt("minute",-1)
-                            val duration=r.optInt("duration",30)
-                            if(name.isNotBlank() && h in 0..23 && m in 0..59 && duration in 5..120)
-                                draft.add(Routine(LifeData.nextId()+i,name,r.optString("category","📚 Học tập").take(25),h,m,duration))
-                        }
-                        if(draft.isEmpty())throw IllegalStateException("Bản nháp không có hoạt động hợp lệ.")
-                        val goalTitle=json.optString("title","Kế hoạch mới").take(80)
-                        runOnUiThread {
-                            progress.dismiss()
-                            val preview=draft.sortedWith(compareBy({it.hour},{it.minute}))
-                                .joinToString("\n") { it.label()+"  •  "+it.title+" ("+it.duration+"p)" }
-                            AlertDialog.Builder(this).setTitle("🗓 Duyệt kế hoạch $span ngày")
-                                .setMessage("🎯 $goalTitle\n\n$preview\n\nLịch cũ sẽ được giữ nguyên. Chỉ thêm lịch sau khi bạn đồng ý.")
-                                .setPositiveButton("✓ Đồng ý thêm lịch"){_,_->
-                                    LifeData.save(this,LifeData.routines(this)+draft)
-                                    GoalData.save(this,GoalData.goals(this)+LifeGoal(LifeData.nextId()+99,goalTitle,span,System.currentTimeMillis(),emptySet()))
-                                    append("assistant","Đã thêm kế hoạch $span ngày: $goalTitle, gồm ${draft.size} hoạt động.")
-                                    Toast.makeText(this,"Đã thêm lịch và mục tiêu!",Toast.LENGTH_LONG).show()
-                                }.setNegativeButton("Bỏ qua",null).show()
-                        }
-                    }catch(e:Exception){runOnUiThread {
-                        progress.dismiss()
-                        AlertDialog.Builder(this).setTitle("Gemini không khả dụng")
-                            .setMessage("Bạn có thể tạo lịch mẫu miễn phí ngoại tuyến.")
-                            .setPositiveButton("Tạo miễn phí"){_,_->
-                                val (title,draft)=FreeCoach.plan(detail,span)
-                                showFreePlan(title,draft,span)
-                            }.setNegativeButton("Đóng",null).show()
-                    }}
-                }.start()
+                val (title,draft)=FreeCoach.plan(detail,days)
+                showFreePlan(title,draft,days)
             }
         }
         dialog.show()
+    }
+    /** AI only drafts plans; commit routines before claiming an approved plan was saved. */
+    private fun saveApprovedPlan(title:String,draft:List<Routine>,span:Int) {
+        try {
+            LifeData.save(this,LifeData.routines(this)+draft)
+        } catch (_:Exception) {
+            Toast.makeText(this,"Không lưu được lịch. Dữ liệu cũ vẫn được giữ, hãy thử lại.",Toast.LENGTH_LONG).show()
+            return
+        }
+        try {
+            if (!GoalData.save(this,GoalData.goals(this)+
+                LifeGoal(LifeData.nextId()+99,title,span,System.currentTimeMillis(),emptySet()))) {
+                Toast.makeText(this,"Đã lưu lịch, nhưng chưa lưu được mục tiêu. Hãy kiểm tra lại.",Toast.LENGTH_LONG).show()
+                return
+            }
+            append("assistant","Đã lưu kế hoạch $span ngày: $title, gồm ${draft.size} hoạt động.")
+            Toast.makeText(this,"Đã lưu lịch và mục tiêu!",Toast.LENGTH_LONG).show()
+        } catch (_:Exception) {
+            Toast.makeText(this,"Đã lưu lịch, nhưng chưa lưu được mục tiêu. Hãy kiểm tra lại.",Toast.LENGTH_LONG).show()
+        }
     }
     private fun showFreePlan(title:String,draft:List<Routine>,span:Int) {
         val preview=draft.joinToString("\n") { it.label()+" • "+it.title+" ("+it.duration+" phút)" }
         AlertDialog.Builder(this).setTitle("🐰 Lịch mẫu miễn phí $span ngày")
             .setMessage(title+"\n\n"+preview+"\n\nĐây là lịch mẫu, không phải kế hoạch do AI tạo.")
             .setPositiveButton("Lưu lịch"){_,_->
-                LifeData.save(this,LifeData.routines(this)+draft)
-                GoalData.save(this,GoalData.goals(this)+LifeGoal(LifeData.nextId()+99,title,span,System.currentTimeMillis(),emptySet()))
-                append("assistant","Đã lưu lịch mẫu ngoại tuyến gồm "+draft.size+" hoạt động.")
+                saveApprovedPlan(title,draft,span)
             }.setNegativeButton("Hủy",null).show()
     }
 

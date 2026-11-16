@@ -40,13 +40,30 @@ class FocusActivity:Activity() {
         root.addView(clock)
         listOf(15,25,45,60).forEach { mins ->
             root.addView(Button(this).apply { text="▶ Bắt đầu $mins phút";setOnClickListener {
-                FocusTimer.start(this@FocusActivity,mins)
-                Toast.makeText(this@FocusActivity,"Chibi nhắc sau $mins phút!",Toast.LENGTH_SHORT).show()
+                try {
+                    FocusTimer.start(this@FocusActivity,mins)
+                    Toast.makeText(this@FocusActivity,
+                        "Chibi nhắc sau $mins phút!",Toast.LENGTH_SHORT).show()
+                } catch (_: RuntimeException) {
+                    Toast.makeText(this@FocusActivity,
+                        "Không thể đặt nhắc Focus. Hãy kiểm tra quyền báo thức và thử lại.",
+                        Toast.LENGTH_LONG).show()
+                }
             } })
         }
         root.addView(Button(this).apply { text="■ Hủy phiên hiện tại";setOnClickListener {
-            FocusTimer.stop(this@FocusActivity)
-            clock.text="00:00"
+            try {
+                if (FocusTimer.stop(this@FocusActivity)) {
+                    clock.text="00:00"
+                } else {
+                    Toast.makeText(this@FocusActivity,
+                        "Không thể lưu thao tác hủy. Phiên Focus cũ vẫn được giữ.",
+                        Toast.LENGTH_LONG).show()
+                }
+            } catch (_: RuntimeException) {
+                Toast.makeText(this@FocusActivity,
+                    "Chưa thể hủy nhắc Focus. Hãy thử lại.",Toast.LENGTH_LONG).show()
+            }
         } })
         score=TextView(this).apply { textSize=17f }
         root.addView(score)

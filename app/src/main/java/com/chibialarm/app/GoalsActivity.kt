@@ -29,23 +29,23 @@ class GoalsActivity:Activity() {
             }
             card.addView(txt("🌟 "+g.title,19f))
             val elapsed=GoalData.elapsed(g)
-            val marked=g.checked.size.coerceAtMost(g.span)
+            val marked=GoalData.completedDays(g)
             card.addView(txt("Ngày ${elapsed.coerceAtMost(g.span)} / ${g.span}   •   Đã hoàn thành $marked ngày",14f))
             card.addView(ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal).apply {
                 max=g.span;progress=marked
             })
-            card.addView(txt("🎁 Thành tích: ${marked*20} XP   "+(if(elapsed>g.span) "• Đã hết thời hạn" else "• Còn ${g.span-elapsed} ngày"),14f))
+            card.addView(txt("🎯 Đã điểm danh $marked ngày hợp lệ   "+(if(elapsed>g.span) "• Đã hết thời hạn" else "• Còn ${g.span-elapsed} ngày"),14f))
             val actions=LinearLayout(this).apply { orientation=0;gravity=Gravity.CENTER_VERTICAL }
             actions.addView(Button(this).apply {
                 text=if(LifeData.today() in g.checked) "✓ Đã hoàn thành hôm nay" else "✓ Check-in hôm nay"
                 isEnabled=elapsed<=g.span
-                setOnClickListener { GoalData.toggle(this@GoalsActivity,g);render() }
+                setOnClickListener { if (GoalData.toggle(this@GoalsActivity,g)) render() else Toast.makeText(this@GoalsActivity, "Không thể lưu điểm danh", Toast.LENGTH_LONG).show() }
             },LinearLayout.LayoutParams(0,-2,1f))
             actions.addView(Button(this).apply { text="🗑";setOnClickListener {
                 AlertDialog.Builder(this@GoalsActivity).setTitle("Xóa thử thách?")
                     .setMessage(g.title).setPositiveButton("Xóa"){_,_->
-                        GoalData.save(this@GoalsActivity,GoalData.goals(this@GoalsActivity).filterNot { it.id==g.id })
-                        render()
+                        if (GoalData.save(this@GoalsActivity,GoalData.goals(this@GoalsActivity).filterNot { it.id==g.id })) render()
+                        else Toast.makeText(this@GoalsActivity, "Không thể xóa thử thách", Toast.LENGTH_LONG).show()
                     }.setNegativeButton("Hủy",null).show()
             } })
             card.addView(actions)
@@ -74,8 +74,8 @@ class GoalsActivity:Activity() {
                     field.error="Nhập tên mục tiêu"
                 } else {
                     val goal=LifeGoal(LifeData.nextId(),title,days,System.currentTimeMillis(),emptySet())
-                    GoalData.save(this,GoalData.goals(this)+goal)
-                    dialog.dismiss();render()
+                    if (GoalData.save(this,GoalData.goals(this)+goal)) { dialog.dismiss();render() }
+                    else Toast.makeText(this, "Không thể lưu thử thách", Toast.LENGTH_LONG).show()
                 }
             }
         }

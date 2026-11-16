@@ -100,6 +100,30 @@ class WorkoutPlanPreviewEditorTest {
         assertTrue(WorkoutPlanPreviewEditor.isValid(updated))
     }
 
+    @Test fun multiplePreviewReplacementsAccumulateWithoutLosingEarlierChoices() {
+        val source = TrainingCatalog.byId("advanced").moves
+        val squatIndex = source.indexOfFirst { it.name == "Squat chậm 3 giây" }
+        val pushIndex = source.indexOfFirst { it.name == "Chống đẩy sàn" }
+        val draft = WorkoutPlanPreviewEditor.start(
+            source, 30, 1, WorkoutConstraintProfile(), 3
+        )!!
+        val chairSquat = WorkoutPlanPreviewEditor.alternatives(draft, squatIndex).single()
+        val afterSquat = WorkoutPlanPreviewEditor.replace(draft, squatIndex, chairSquat)!!
+        val wallPush = WorkoutPlanPreviewEditor.alternatives(afterSquat, pushIndex)
+            .first { it.name == "Chống đẩy tường" }
+        val afterBoth = WorkoutPlanPreviewEditor.replace(afterSquat, pushIndex, wallPush)!!
+
+        assertEquals("Đứng lên – ngồi xuống", afterBoth.moves[squatIndex].name)
+        assertEquals("Chống đẩy tường", afterBoth.moves[pushIndex].name)
+        assertEquals(2, afterBoth.substitutions.size)
+        assertTrue(WorkoutPlanPreviewEditor.isValid(afterBoth))
+        assertEquals(2, WorkoutMoveSubstitution.decode(
+            WorkoutPlanPreviewEditor.encodeSubstitutions(afterBoth),
+            afterBoth.originalMoves,
+            afterBoth.constraints
+        ).size)
+    }
+
     @Test fun draftReportsWhenAReplacementMakesThePlanExceedItsTarget() {
         val catalog = TrainingCatalog.byId("advanced").moves
         val source = List(12) { catalog[it % catalog.size] }

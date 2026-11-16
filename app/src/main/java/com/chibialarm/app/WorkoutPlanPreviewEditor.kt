@@ -75,7 +75,7 @@ internal object WorkoutPlanPreviewEditor {
         if (!isValid(draft) || index !in draft.originalMoves.indices) return null
         val canonical = alternatives(draft, index).firstOrNull { it.name == requested.name }
             ?: return null
-        val nextMoves = draft.originalMoves.toMutableList().also { it[index] = canonical }.toList()
+        val nextMoves = draft.moves.toMutableList().also { it[index] = canonical }.toList()
         val nextSubstitutions = draft.substitutions.toMutableMap().also {
             it[index] = canonical
         }.toSortedMap()

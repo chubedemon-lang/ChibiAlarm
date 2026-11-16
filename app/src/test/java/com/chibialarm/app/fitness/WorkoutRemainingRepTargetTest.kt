@@ -43,15 +43,32 @@ class WorkoutRemainingRepTargetTest {
 
     @Test fun combinedRepAndRestSpeechRemainsAConfirmedTargetEdit() {
         val utterance = "Giảm xuống 6 lần và nghỉ 90 giây"
-        val parsed = com.chibialarm.app.WorkoutMidSessionRequest.parse(utterance)
-        assertTrue(parsed is com.chibialarm.app.WorkoutMidSessionRequest.Result.Proposed)
-        val request = (parsed as com.chibialarm.app.WorkoutMidSessionRequest.Result.Proposed).request
+        val parsed = WorkoutMidSessionRequest.parse(utterance)
+        assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
+        val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
         assertTrue(request.isRestOnly)
         assertEquals(90, request.restSeconds)
         assertEquals(6, WorkoutTargetCommand.spokenReps(utterance))
         assertEquals(com.chibialarm.app.WorkoutVoiceCommands.Command.REST,
             com.chibialarm.app.WorkoutVoiceCommands.parse(utterance))
         assertNull(com.chibialarm.app.WorkoutSetReportCommand.parse(utterance))
+    }
+
+    @Test fun editorUsesTheExercisePrescriptionInsteadOfAHardCodedDefault() {
+        assertEquals(12, WorkoutRemainingRepTarget.initialValue(null, 12))
+        assertEquals(6, WorkoutRemainingRepTarget.initialValue(6, 12))
+        assertNull(WorkoutRemainingRepTarget.initialValue(null, 150))
+        assertNull(WorkoutRemainingRepTarget.initialValue(101, 12))
+    }
+
+    @Test fun malformedPreviousTargetCannotBeAccepted() {
+        val proposal = WorkoutRemainingRepTarget.Preview(
+            previousTarget = 101,
+            requestedTarget = 6,
+            completedSets = 1,
+            maximumSets = 3
+        )
+        assertNull(WorkoutRemainingRepTarget.accept(proposal, 101, 1, 3))
     }
 
     @Test fun invalidCountsAndTargetsAreRejected() {

@@ -15,6 +15,15 @@ object WorkoutRemainingRepTarget {
             get() = (maximumSets - completedSets).coerceAtLeast(0)
     }
 
+    /**
+     * Use the exercise's own prescription as the editor default. Never inject a
+     * generic "8" into a plank/time-based or higher-repetition prescription.
+     */
+    fun initialValue(currentTarget: Int?, prescribedMinimum: Int): Int? {
+        if (currentTarget != null) return currentTarget.takeIf { it in 1..100 }
+        return prescribedMinimum.takeIf { it in 1..100 }
+    }
+
     fun preview(
         currentTarget: Int?,
         completedSets: Int,
@@ -42,6 +51,7 @@ object WorkoutRemainingRepTarget {
             maximumSets !in 1..20 ||
             completedSets !in 0 until maximumSets ||
             proposal.requestedTarget !in 1..100 ||
+            (proposal.previousTarget != null && proposal.previousTarget !in 1..100) ||
             proposal.requestedTarget == proposal.previousTarget ||
             proposal.remainingSets <= 0
         ) return null

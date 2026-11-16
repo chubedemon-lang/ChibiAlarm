@@ -1577,15 +1577,22 @@ class GuidedWorkoutActivity:Activity() {
         val beforeRestRemainingMs = if (wasResting) restRemainingMs else 0L
         val selectedMove = moves[selected]
         val selectedSessionId = sessionId
+        val initialValue = WorkoutRemainingRepTarget.initialValue(before, plan.targetMin)
+        val currentDose = before?.let { "$it ${plan.unit} (đã điều chỉnh)" } ?: run {
+            val prescribed = if (plan.targetMin == plan.targetMax) "${plan.targetMin}"
+                else "${plan.targetMin}–${plan.targetMax}"
+            "$prescribed ${plan.unit}"
+        }
         val field=EditText(this).apply {
             inputType=android.text.InputType.TYPE_CLASS_NUMBER
-            hint="Số lần từ 1 đến 100"
-            setText(before?.toString() ?: "8")
+            hint="Mục tiêu ${plan.unit} từ 1 đến 100"
+            setText(initialValue?.toString().orEmpty())
             selectAll()
         }
-        val disclosure = "Đã ghi nhận $completedBefore/${plan.maximumSets} hiệp. Mục tiêu mới chỉ áp dụng cho ${plan.maximumSets - completedBefore} hiệp còn lại; dữ liệu hiệp đã ghi không đổi."
-        val dialog=AlertDialog.Builder(this).setTitle("🔢 Chọn số lần tập")
-            .setMessage("$disclosure Chibi chưa tự đếm số lần tập.")
+        val disclosure = "Đã ghi nhận $completedBefore/${plan.maximumSets} hiệp. Mục tiêu hiện tại: $currentDose. " +
+            "Mục tiêu mới chỉ áp dụng cho ${plan.maximumSets - completedBefore} hiệp còn lại; dữ liệu hiệp đã ghi không đổi."
+        val dialog=AlertDialog.Builder(this).setTitle("🔢 Chọn mục tiêu mỗi hiệp")
+            .setMessage("$disclosure Chibi chưa tự đếm ${plan.unit}.")
             .setView(field).setPositiveButton("Xem trước",null)
             .setNegativeButton("Hủy") { _, _ ->
                 if (wasRestRunning && resting && paused && !pausedForSafety) resume()
@@ -1594,7 +1601,7 @@ class GuidedWorkoutActivity:Activity() {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                 val reps=field.text.toString().trim().toIntOrNull()
                 if (reps==null || reps !in 1..100) {
-                    field.error="Nhập từ 1 đến 100 lần"
+                    field.error="Nhập từ 1 đến 100 ${plan.unit}"
                 } else {
                     val proposal = WorkoutRemainingRepTarget.preview(
                         before, completedBefore, plan.maximumSets, reps
@@ -1603,7 +1610,7 @@ class GuidedWorkoutActivity:Activity() {
                         field.error = "Mục tiêu này đã được chọn hoặc không hợp lệ"
                     } else {
                         dialog.dismiss()
-                        val previewText = "${selectedMove.name}\n${targetDose(selected)} → $reps lần.\n" +
+                        val previewText = "${selectedMove.name}\n${targetDose(selected)} → $reps ${plan.unit}.\n" +
                             "$disclosure Không sửa giá trị hiệp đã xác nhận hoặc thời gian vận động."
                         val confirm = AlertDialog.Builder(this).setTitle("Xác nhận mục tiêu còn lại")
                             .setMessage(previewText)
@@ -1627,7 +1634,7 @@ class GuidedWorkoutActivity:Activity() {
                                     renderDose()
                                     renderSetControls()
                                     saveCheckpoint()
-                                    speak("Mục tiêu mới là $reps lần cho ${proposal.remainingSets} hiệp còn lại. Các hiệp đã ghi được giữ nguyên.")
+                                    speak("Mục tiêu mới là $reps ${plan.unit} cho ${proposal.remainingSets} hiệp còn lại. Các hiệp đã ghi được giữ nguyên.")
                                     if (wasRestRunning && resting && paused && !pausedForSafety) resume()
                                 }
                             }

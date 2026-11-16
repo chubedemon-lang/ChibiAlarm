@@ -2289,7 +2289,19 @@ class GuidedWorkoutActivity:Activity() {
             LinearLayout.LayoutParams.MATCH_PARENT,
             (140 * resources.displayMetrics.density).toInt()
         ))
+        val workoutSummary = TextView(this).apply {
+            tag = "workout-step-workout-summary"
+            textSize = 14f
+            setPadding(10, 8, 10, 12)
+            text = WorkoutStepGuide.workoutSummary(
+                dose = move.dose,
+                plan = currentSetPlan(),
+                completedSets = completedSetsByMove[index] ?: 0
+            )
+            contentDescription = text.toString()
+        }
         container.addView(phaseCaption)
+        container.addView(workoutSummary)
         container.addView(stepProgress)
         container.addView(autoSpeakToggle)
         container.addView(voiceButton)

@@ -102,7 +102,9 @@ class WorkoutExerciseConversationTest {
         assertNotNull(answer)
         assertTrue(answer!!.contains("3–6 phút"))
         assertTrue(answer.contains("không quy đổi"))
-        assertFalse(answer.contains("hiệp"))
+        assertTrue(answer.contains("không quy đổi bài này thành số hiệp hoặc số lần"))
+        assertFalse(answer.contains("hiệp bắt buộc"))
+        assertFalse(answer.contains("lần/hiệp"))
     }
 
     @Test fun unrelatedTextIsNotAnsweredAsAContextualExerciseQuestion() {

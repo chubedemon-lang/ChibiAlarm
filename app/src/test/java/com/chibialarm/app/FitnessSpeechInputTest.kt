@@ -26,6 +26,20 @@ class FitnessSpeechInputTest {
             field.get(activity) as EditText
         }
 
+    private fun deliverSpeechResult(activity: FitnessActivity, result: Intent) {
+        // onActivityResult is a protected Android lifecycle callback. Invoke the override
+        // reflectively so this test exercises the real Activity handler without widening
+        // production visibility solely for Robolectric.
+        val callback = FitnessActivity::class.java.getDeclaredMethod(
+            "onActivityResult",
+            Int::class.javaPrimitiveType,
+            Int::class.javaPrimitiveType,
+            Intent::class.java
+        )
+        callback.isAccessible = true
+        callback.invoke(activity, speechRequestCode(activity), Activity.RESULT_OK, result)
+    }
+
     @Test fun multipleSpeechAlternativesRequireAnExplicitChoiceBeforePrefilling() {
         val controller = Robolectric.buildActivity(FitnessActivity::class.java).setup()
         val activity = controller.get()
@@ -36,7 +50,7 @@ class FitnessSpeechInputTest {
             RecognizerIntent.EXTRA_RESULTS,
             arrayListOf("cardio 10 phút", "giãn cơ 20 phút")
         )
-        activity.onActivityResult(speechRequestCode(activity), Activity.RESULT_OK, result)
+        deliverSpeechResult(activity, result)
 
         val dialog = ShadowAlertDialog.getLatestAlertDialog()
         assertNotNull(dialog)
@@ -61,7 +75,7 @@ class FitnessSpeechInputTest {
             RecognizerIntent.EXTRA_RESULTS,
             arrayListOf("  cardio   10 phút  ")
         )
-        activity.onActivityResult(speechRequestCode(activity), Activity.RESULT_OK, result)
+        deliverSpeechResult(activity, result)
 
         assertEquals("cardio 10 phút", input.text.toString())
         assertEquals(input.text.length, input.selectionStart)
@@ -78,7 +92,7 @@ class FitnessSpeechInputTest {
             RecognizerIntent.EXTRA_RESULTS,
             arrayListOf("", "   ")
         )
-        activity.onActivityResult(speechRequestCode(activity), Activity.RESULT_OK, result)
+        deliverSpeechResult(activity, result)
 
         assertEquals("giữ nguyên bản nháp", input.text.toString())
         controller.pause().stop().destroy()

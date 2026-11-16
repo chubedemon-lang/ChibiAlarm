@@ -124,4 +124,41 @@ class WorkoutExerciseConversationTest {
     @Test fun oversizedInputIsIgnored() {
         assertNull(WorkoutExerciseConversation.answer("Cách tập squat " + "x".repeat(400)))
     }
+    @Test fun contextualFocusQuestionUsesOnlyTheCuratedExerciseNote() {
+        val squat = TrainingCatalog.allMoves.single { it.name == "Squat không tạ" }
+        val answer = WorkoutExerciseConversation.answerForCurrentMove(
+            "Bài này tác động nhóm cơ nào?",
+            squat
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("đùi trước"))
+        assertTrue(answer.contains("cơ mông"))
+        assertTrue(answer.contains("không phải đánh giá tư thế"))
+    }
+
+    @Test fun generalCatalogAnswerIncludesFocusWhenAvailable() {
+        val answer = WorkoutExerciseConversation.answer("Cách tập Squat không tạ?")
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("Nhóm cơ chính"))
+        assertTrue(answer.contains("đùi trước"))
+    }
+
+    @Test fun unknownMoveDoesNotInventExerciseFocus() {
+        val unknown = TrainingMove(
+            name = "Động tác thử nghiệm",
+            dose = "2 hiệp × 8 lần",
+            steps = "Thực hiện chậm.",
+            easier = "Giảm biên độ.",
+            avoid = "Dừng nếu đau."
+        )
+        val answer = WorkoutExerciseConversation.answerForCurrentMove(
+            "Nhóm cơ nào?",
+            unknown
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("chưa có mô tả nhóm cơ"))
+    }
 }

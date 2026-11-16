@@ -1,6 +1,7 @@
 package com.chibialarm.app
 
 import android.content.Intent
+import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
@@ -11,6 +12,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows
 import org.robolectric.shadows.ShadowAlertDialog
 
 @RunWith(RobolectricTestRunner::class)
@@ -55,6 +57,7 @@ class FitnessCoachPlanPreviewActionTest {
         val understand = findButton(activity.window.decorView, "💬 Chibi hiểu yêu cầu của tôi")
         assertNotNull(understand)
         understand!!.performClick()
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
 
         val coachDialog = ShadowAlertDialog.getLatestAlertDialog()
         assertNotNull(coachDialog)
@@ -62,6 +65,7 @@ class FitnessCoachPlanPreviewActionTest {
         assertTrue("A complete, non-injury profile should enable the preview action", previewAction.isEnabled)
         assertEquals("Xem giáo án", previewAction.text.toString())
         previewAction.performClick()
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
 
         val recommendation = ShadowAlertDialog.getLatestAlertDialog()
         assertNotNull("The curated recommendation dialog should open", recommendation)
@@ -79,6 +83,7 @@ class FitnessCoachPlanPreviewActionTest {
         val understand = findButton(activity.window.decorView, "💬 Chibi hiểu yêu cầu của tôi")
         assertNotNull(understand)
         understand!!.performClick()
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
 
         val coachDialog = ShadowAlertDialog.getLatestAlertDialog()
         assertNotNull(coachDialog)
@@ -98,6 +103,7 @@ class FitnessCoachPlanPreviewActionTest {
         val understand = findButton(activity.window.decorView, "💬 Chibi hiểu yêu cầu của tôi")
         assertNotNull(understand)
         understand!!.performClick()
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
 
         val coachDialog = ShadowAlertDialog.getLatestAlertDialog()
         assertNotNull(coachDialog)

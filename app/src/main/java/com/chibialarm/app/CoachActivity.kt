@@ -106,7 +106,9 @@ class CoachActivity:Activity() {
         root.addView(ScrollView(this).apply { addView(messages) },LinearLayout.LayoutParams(-1,0,1f))
         val composer=LinearLayout(this).apply { orientation=0;gravity=Gravity.CENTER_VERTICAL }
         prompt=EditText(this).apply {
-            hint="Chibi ơi, giúp mình…";minLines=1;maxLines=4
+            hint="Chibi ơi, giúp mình… (tối đa ${CoachSpeechTranscript.MAX_CHARS} ký tự)"
+            minLines=1;maxLines=4
+            filters = arrayOf(android.text.InputFilter.LengthFilter(CoachSpeechTranscript.MAX_CHARS))
         }
         composer.addView(prompt,LinearLayout.LayoutParams(0,-2,1f))
         send=Button(this).apply { text="➤";setOnClickListener { chat() } }
@@ -149,7 +151,7 @@ class CoachActivity:Activity() {
         if(role=="assistant" && autoSpeak && speakerReady) speaker?.speak(value.take(1100),TextToSpeech.QUEUE_FLUSH,null,"coach-reply")
     }
     private fun chat() {
-        val question=prompt.text.toString().trim().take(900)
+        val question=prompt.text.toString().trim().take(CoachSpeechTranscript.MAX_CHARS)
         if(question.isEmpty()) return
         prompt.setText("")
 
@@ -198,15 +200,36 @@ class CoachActivity:Activity() {
             startActivityForResult(i,speechRequest)
         } catch(_:Exception) { Toast.makeText(this,"Máy chưa có dịch vụ nhận dạng tiếng Việt. Bạn vẫn có thể gõ tin nhắn.",Toast.LENGTH_LONG).show() }
     }
+    private fun applySpeechCandidate(candidate: CoachSpeechTranscript.Candidate) {
+        prompt.setText(candidate.text)
+        prompt.setSelection(prompt.text.length)
+        val message = if (candidate.truncated) {
+            "Bản nhận dạng vượt giới hạn ${CoachSpeechTranscript.MAX_CHARS} ký tự và đã được rút gọn. Hãy kiểm tra, sửa phần văn bản rồi mới gửi."
+        } else {
+            "Kiểm tra hoặc sửa văn bản nhận dạng rồi bấm gửi. Chibi chưa gửi nội dung này."
+        }
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+    }
+
     @Deprecated("Deprecated in Android API")
     override fun onActivityResult(requestCode:Int,resultCode:Int,data:Intent?) {
         super.onActivityResult(requestCode,resultCode,data)
         if(requestCode==speechRequest && resultCode==RESULT_OK) {
-            val recognized=data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
-            if(!recognized.isNullOrBlank()) {
-                prompt.setText(recognized)
-                prompt.setSelection(prompt.text.length)
-                Toast.makeText(this,"Kiểm tra nội dung nhận dạng rồi bấm gửi.",Toast.LENGTH_LONG).show()
+            val candidates = CoachSpeechTranscript.candidates(
+                data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS).orEmpty()
+            )
+            when {
+                candidates.isEmpty() -> Toast.makeText(
+                    this, "Không nhận được câu nói rõ ràng. Bạn có thể gõ thay thế.", Toast.LENGTH_LONG
+                ).show()
+                candidates.size == 1 -> applySpeechCandidate(candidates.single())
+                else -> AlertDialog.Builder(this)
+                    .setTitle("Chọn nội dung Chibi nghe được")
+                    .setItems(candidates.map { it.label }.toTypedArray()) { _, which ->
+                        candidates.getOrNull(which)?.let(::applySpeechCandidate)
+                    }
+                    .setNegativeButton("Để tôi gõ", null)
+                    .show()
             }
         }
     }

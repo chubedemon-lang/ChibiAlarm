@@ -3,12 +3,14 @@ package com.chibialarm.app
 import android.content.Context
 import android.content.DialogInterface
 import android.content.Intent
+import android.os.Looper
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.shadows.ShadowAlertDialog
 
@@ -73,6 +75,7 @@ class GuidedWorkoutEquipmentSelectionTest {
         val dialog = ShadowAlertDialog.getLatestAlertDialog()
         assertNotNull(dialog)
         dialog.getButton(DialogInterface.BUTTON_NEGATIVE).performClick()
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
 
         assertEquals("Bắt đầu lại must keep the newly selected band", 5, preferences(activity).equipment)
         assertTrue(moves(activity).any { it.name == "Kéo tạ đơn hoặc dây kháng lực" })
@@ -92,6 +95,7 @@ class GuidedWorkoutEquipmentSelectionTest {
         assertEquals("Khôi phục", dialog.getButton(DialogInterface.BUTTON_POSITIVE).text.toString())
         assertEquals("Bắt đầu lại", dialog.getButton(DialogInterface.BUTTON_NEGATIVE).text.toString())
         dialog.getButton(DialogInterface.BUTTON_POSITIVE).performClick()
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
 
         assertEquals("Khôi phục must restore the saved dumbbell selection", 4, preferences(activity).equipment)
         assertTrue(moves(activity).any { it.name == "Kéo tạ đơn hoặc dây kháng lực" })

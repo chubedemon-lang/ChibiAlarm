@@ -117,6 +117,7 @@ class GuidedWorkoutActivity:Activity() {
     private var resting=false
     private var restDeadline=0L
     private var restRemainingMs=0L
+    private var restTenSecondCueGiven=false
     private var setTimerExpired=false
     private fun targetDose(position:Int):String = repTargets[position]?.let {
         val unit = WorkoutSetTracker.parse(moves[position].dose, moves[position].restSeconds)?.unit ?: "lần"
@@ -168,6 +169,7 @@ class GuidedWorkoutActivity:Activity() {
             .putString("effortLog",WorkoutEffortLog.encode(effortLevelsByMove,moves,completedSetsByMove))
             .putBoolean("resting",resting)
             .putLong("restRemaining",restRemainingMs.coerceIn(0L,600_000L))
+            .putBoolean("restTenSecondCueGiven",restTenSecondCueGiven)
             .putBoolean("setTimerExpired",setTimerExpired)
             .putBoolean("started",activeElapsedMs()>0L)
             .putLong("elapsed",activeElapsedMs())
@@ -287,6 +289,7 @@ class GuidedWorkoutActivity:Activity() {
                 pausedForSafety=checkpoint.getBoolean("safety",false)
                 resting=checkpoint.getBoolean("resting",false)
                 restRemainingMs=checkpoint.getLong("restRemaining",0L).coerceIn(0L,600_000L)
+                restTenSecondCueGiven=checkpoint.getBoolean("restTenSecondCueGiven",false)
                 restDeadline=0L
                 setTimerExpired=checkpoint.getBoolean("setTimerExpired",remainingMs<=0L)
                 renderSetControls()
@@ -319,6 +322,7 @@ class GuidedWorkoutActivity:Activity() {
                 remainingMs=0L
                 resting=false
                 restRemainingMs=0L
+                restTenSecondCueGiven=false
                 restDeadline=0L
                 setTimerExpired=false
                 pausedForSafety=keepSafetyLock
@@ -349,6 +353,11 @@ class GuidedWorkoutActivity:Activity() {
                 val left=(restDeadline-SystemClock.elapsedRealtime()).coerceAtLeast(0L)
                 restRemainingMs=left
                 counter.text=restCounterText(left)
+                if (WorkoutRestVoiceCue.shouldAnnounce(left, restTenSecondCueGiven, pausedForSafety)) {
+                    restTenSecondCueGiven = true
+                    speak(WorkoutRestVoiceCue.message(left).orEmpty())
+                    saveCheckpoint()
+                }
                 if(left==0L) {
                     resting=false
                     paused=true
@@ -748,6 +757,7 @@ class GuidedWorkoutActivity:Activity() {
             pausedForSafety=savedInstanceState.getBoolean("workout_safety",false)
             resting=savedInstanceState.getBoolean("workout_resting",false)
             restRemainingMs=savedInstanceState.getLong("workout_rest_remaining",0L).coerceIn(0L,600_000L)
+            restTenSecondCueGiven=savedInstanceState.getBoolean("workout_rest_ten_second_cue",false)
             restDeadline=0L
             setTimerExpired=savedInstanceState.getBoolean("workout_set_timer_expired",remainingMs<=0L)
             shorterFromIndex=savedInstanceState.getInt("workout_shorter_from",Int.MAX_VALUE).coerceIn(0,moves.size)
@@ -792,6 +802,7 @@ class GuidedWorkoutActivity:Activity() {
         outState.putString("workout_effort_log",WorkoutEffortLog.encode(effortLevelsByMove,moves,completedSetsByMove))
         outState.putBoolean("workout_resting",resting)
         outState.putLong("workout_rest_remaining",restRemainingMs.coerceIn(0L,600_000L))
+        outState.putBoolean("workout_rest_ten_second_cue",restTenSecondCueGiven)
         outState.putBoolean("workout_set_timer_expired",setTimerExpired)
         outState.putInt("workout_index",index)
         outState.putLong("workout_remaining",remainingMs)
@@ -1012,6 +1023,7 @@ class GuidedWorkoutActivity:Activity() {
                     if (wasResting) {
                         val extension = restPreview ?: return@setPositiveButton
                         restRemainingMs = extension.afterRemainingMs
+                        if (restRemainingMs > WorkoutRestVoiceCue.WARNING_WINDOW_MS) restTenSecondCueGiven = false
                         restDeadline = 0L
                         counter.text = restCounterText(restRemainingMs)
                         control.text = "▶ Tiếp tục nghỉ"
@@ -1586,6 +1598,7 @@ class GuidedWorkoutActivity:Activity() {
                 }
                 remainingMs = next.exerciseRemainingMs
                 restRemainingMs = next.restRemainingMs
+                restTenSecondCueGiven = false
                 resting = false
                 restDeadline = 0L
                 paused = true
@@ -1661,6 +1674,7 @@ class GuidedWorkoutActivity:Activity() {
                     return@setPositiveButton
                 }
                 restRemainingMs = preview.afterRemainingMs
+                if (restRemainingMs > WorkoutRestVoiceCue.WARNING_WINDOW_MS) restTenSecondCueGiven = false
                 restDeadline = 0L
                 counter.text = restCounterText(restRemainingMs)
                 control.text = "▶ Tiếp tục nghỉ"
@@ -2851,6 +2865,7 @@ class GuidedWorkoutActivity:Activity() {
         remainingMs = restState.exerciseRemainingMs
         resting=true
         restRemainingMs=restState.restRemainingMs
+        restTenSecondCueGiven=false
         restDeadline=SystemClock.elapsedRealtime()+restRemainingMs
         startedAt=0L
         paused=false

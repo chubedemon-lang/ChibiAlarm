@@ -945,4 +945,80 @@ class WorkoutMidSessionPlannerTest {
             }
         })
     }
+    @Test fun explicitCatalogReplacementIsPreviewedWithoutChangingCompletedPrefixOrFutureMoves() {
+        val parsed = WorkoutMidSessionRequest.parse(
+            "Đổi bài hiện tại thành chống đẩy tường"
+        )
+        assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
+        val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+        assertEquals("Chống đẩy tường", request.replaceCurrentWith)
+        assertFalse(request.isRestOnly)
+
+        val moves = listOf(
+            move("Khởi động tại chỗ"),
+            move("Chống đẩy sàn"),
+            move("Squat không tạ"),
+            move("Thả lỏng")
+        )
+        val result = WorkoutMidSessionPlanner.preview(
+            currentMoves = moves,
+            currentIndex = 1,
+            completedCurrentSets = 0,
+            currentStepLocked = false,
+            constraints = WorkoutConstraintProfile(),
+            request = request,
+            remainingCurrentSeconds = 45,
+            extensionMoveNames = emptySet(),
+            level = 0
+        )
+
+        assertTrue(result is WorkoutMidSessionPlanner.Result.Proposed)
+        val preview = (result as WorkoutMidSessionPlanner.Result.Proposed).preview
+        assertEquals(
+            listOf("Khởi động tại chỗ", "Chống đẩy tường", "Squat không tạ", "Thả lỏng"),
+            preview.after.map { it.name }
+        )
+        assertTrue(preview.currentMoveChanged)
+        assertEquals(listOf("Chống đẩy sàn → Chống đẩy tường"), preview.replacements)
+    }
+
+    @Test fun explicitCatalogReplacementCannotRewriteAConfirmedSet() {
+        val parsed = WorkoutMidSessionRequest.parse(
+            "Thay động tác hiện tại bằng chống đẩy tường"
+        )
+        assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
+        val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+        val result = WorkoutMidSessionPlanner.preview(
+            currentMoves = listOf(move("Chống đẩy sàn"), move("Squat không tạ"), move("Thả lỏng")),
+            currentIndex = 0,
+            completedCurrentSets = 1,
+            currentStepLocked = true,
+            constraints = WorkoutConstraintProfile(),
+            request = request,
+            remainingCurrentSeconds = 20,
+            extensionMoveNames = emptySet(),
+            level = 0
+        )
+        assertTrue(result is WorkoutMidSessionPlanner.Result.Blocked)
+    }
+
+    @Test fun explicitReplacementRejectsUnknownAndUnapprovedExercises() {
+        assertSame(
+            WorkoutMidSessionRequest.Result.Unsupported,
+            WorkoutMidSessionRequest.parse("Đổi bài hiện tại thành burpee")
+        )
+        val result = WorkoutMidSessionPlanner.preview(
+            currentMoves = listOf(move("Chống đẩy sàn"), move("Squat không tạ"), move("Thả lỏng")),
+            currentIndex = 0,
+            completedCurrentSets = 0,
+            currentStepLocked = false,
+            constraints = WorkoutConstraintProfile(),
+            request = WorkoutMidSessionRequest.Request(replaceCurrentWith = "Squat không tạ"),
+            remainingCurrentSeconds = 30,
+            extensionMoveNames = emptySet(),
+            level = 0
+        )
+        assertTrue(result is WorkoutMidSessionPlanner.Result.Blocked)
+    }
+
 }

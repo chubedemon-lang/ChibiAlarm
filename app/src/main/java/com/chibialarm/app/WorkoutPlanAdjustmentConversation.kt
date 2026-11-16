@@ -109,6 +109,57 @@ object WorkoutPlanAdjustmentConversation {
             }
         }
 
+        // A history-derived follow-up names one exercise explicitly. Resolve it against the
+        // canonical catalog and show only reviewed alternatives; never silently switch a plan.
+        val requestedMove = targetedMoveName(input)
+        if (requestedMove != null) {
+            val catalog = TrainingCatalog.allMoves
+            val normalizedTarget = normalize(requestedMove)
+            val exactMove = catalog.firstOrNull { normalize(it.name) == normalizedTarget }
+            val partialMatches = if (exactMove == null) {
+                catalog.filter { move ->
+                    val candidate = normalize(move.name)
+                    candidate.startsWith(normalizedTarget) || normalizedTarget.startsWith(candidate)
+                }.distinctBy { normalize(it.name) }
+            } else emptyList()
+            val sourceMove = exactMove ?: partialMatches.singleOrNull()
+            if (sourceMove == null) {
+                return if (partialMatches.size > 1) {
+                    "Tên động tác \"$requestedMove\" chưa đủ cụ thể. Chibi tìm thấy: " +
+                        partialMatches.take(4).joinToString(", ") { it.name } +
+                        ". Hãy chọn đúng tên trong thư viện; Chibi chưa đoán hoặc đổi bài."
+                } else {
+                    "Chibi chưa tìm thấy động tác \"$requestedMove\" trong thư viện đã duyệt. " +
+                        "Hãy kiểm tra tên bài; giáo án chưa bị thay đổi."
+                }
+            }
+
+            val availableEquipment =
+                TrainingEquipmentAvailability.fromPreference(effectiveEquipment) + extras
+            val alternatives = WorkoutMoveSubstitution.alternativesFor(sourceMove, effectiveProfile)
+                .filter { TrainingEquipmentAvailability.allows(it, availableEquipment) }
+                .distinctBy { it.name }
+                .take(3)
+            if (alternatives.isEmpty()) {
+                return "Chibi chưa tìm thấy biến thể đã duyệt phù hợp với dụng cụ và các hạn chế hiện tại " +
+                    "cho ${sourceMove.name}. Chibi không tự chọn bài khác; giáo án chưa bị thay đổi."
+            }
+
+            return buildString {
+                append("Động tác được hỏi: ").append(sourceMove.name)
+                append("\\nCác phương án thay thế đã có trong thư viện và vượt qua bộ lọc hiện tại:")
+                alternatives.forEachIndexed { index, move ->
+                    append("\\n").append(index + 1).append(". ").append(move.name)
+                    append(" — ").append(move.dose)
+                    append("\\n   Hướng dẫn: ").append(move.steps.take(220))
+                    append("\\n   Lưu ý: ").append(move.avoid.take(160))
+                }
+                append("\\n\\nĐây chỉ là bản xem trước; Chibi chưa thay đổi giáo án hoặc buổi đang tập.")
+                append(" Các bài thay thế không tương đương hoàn toàn về nhóm cơ/cường độ.")
+                append(" Hãy đọc hướng dẫn và chỉ chọn nếu thấy thoải mái; dừng nếu đau hoặc có triệu chứng bất thường.")
+            }
+        }
+
         val gentleOrder = listOf(
             "starter", "chair", "lowcardio", "quickrecovery", "mobility",
             "quickmobility", "desk", "recovery"
@@ -185,6 +236,13 @@ object WorkoutPlanAdjustmentConversation {
             append("Thay hoặc bỏ bài có thể làm thay đổi nhóm cơ/cường độ và không tương đương hoàn toàn. ")
             append("Hình minh họa không phân tích tư thế thực tế; dừng tập nếu đau, chóng mặt, đau ngực hoặc khó thở bất thường.")
         }
+    }
+
+    private fun targetedMoveName(input: String): String? {
+        val match = Regex("""(?:động tác|bài tập)\s*:\s*(.+)$""", RegexOption.IGNORE_CASE)
+            .find(input) ?: return null
+        return match.groupValues[1].trim().trimEnd('.', '!', '?')
+            .takeIf { it.isNotBlank() && it.length <= 100 }
     }
 
     private fun hasRemainingTimeCue(query: String): Boolean {

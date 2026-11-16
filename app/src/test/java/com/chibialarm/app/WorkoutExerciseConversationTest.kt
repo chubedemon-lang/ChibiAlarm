@@ -86,7 +86,7 @@ class WorkoutExerciseConversationTest {
         )
 
         assertNotNull(technique)
-        assertTrue(technique!!.contains("Đẩy hông nhẹ về sau"))
+        assertTrue(technique!!.contains("đẩy hông nhẹ về sau"))
         assertTrue(technique.contains("Hình minh họa không đánh giá tư thế"))
         assertNotNull(rest)
         assertTrue(rest!!.contains("60 giây"))

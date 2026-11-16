@@ -55,6 +55,18 @@ class GuidedWorkoutActivity:Activity() {
         runCatching { UUID.fromString(it).toString()==it }.getOrDefault(false)
     }
     private fun currentPlanFingerprint(): String = WorkoutConstraintFilter.fingerprint(originalMoves, workoutConstraints)
+
+    /**
+     * Checkpoints persist canonical catalog exercise names, not runtime-adjusted doses.
+     * Fingerprint the same canonical reconstruction so valid restores are not rejected
+     * merely because the duration planner tuned an extension's dose before saving.
+     */
+    private fun checkpointPlanFingerprint(): String {
+        val canonicalPlan = WorkoutMidSessionPlanner.decodePlan(
+            WorkoutMidSessionPlanner.encodePlan(originalMoves)
+        ) ?: originalMoves
+        return WorkoutConstraintFilter.fingerprint(canonicalPlan, workoutConstraints)
+    }
     private var moves:List<TrainingMove> = emptyList()
     private var originalMoves:List<TrainingMove> = emptyList()
     private val substitutions=mutableMapOf<Int,TrainingMove>()
@@ -135,7 +147,7 @@ class GuidedWorkoutActivity:Activity() {
         if (completed || checkpointDecisionPending || moves.isEmpty()) return true
         return checkpoint.edit().putString("program",program.id)
             .putString("planNames",WorkoutMidSessionPlanner.encodePlan(originalMoves))
-            .putString("planFingerprint",currentPlanFingerprint())
+            .putString("planFingerprint",checkpointPlanFingerprint())
             .putBoolean("avoidWristLoad",workoutConstraints.avoidWristLoad)
             .putBoolean("avoidFloorPositions",workoutConstraints.avoidFloorPositions)
             .putBoolean("avoidOverheadReach",workoutConstraints.avoidOverheadReach)
@@ -197,8 +209,14 @@ class GuidedWorkoutActivity:Activity() {
         }
         val savedFingerprint = checkpoint.getString("planFingerprint", null)
         val restoredFingerprint = WorkoutConstraintFilter.fingerprint(checkpointPlan, restoredConstraints)
-        if (!restoredPlanCompatible ||
-            (savedFingerprint != null && savedFingerprint != restoredFingerprint) ||
+        // Older checkpoints fingerprinted duration-adjusted moves even though only catalog
+        // names were stored. Accept that legacy fingerprint only when the current plan matches;
+        // all new checkpoints use the canonical catalog fingerprint above.
+        val legacyFingerprint = WorkoutConstraintFilter.fingerprint(originalMoves, restoredConstraints)
+        val fingerprintMatches = savedFingerprint == null ||
+            savedFingerprint == restoredFingerprint ||
+            savedFingerprint == legacyFingerprint
+        if (!restoredPlanCompatible || !fingerprintMatches ||
             (savedFingerprint == null && (restoredConstraints.avoidWristLoad ||
                 restoredConstraints.avoidFloorPositions || restoredConstraints.avoidOverheadReach))) {
             checkpoint.edit().clear().apply()

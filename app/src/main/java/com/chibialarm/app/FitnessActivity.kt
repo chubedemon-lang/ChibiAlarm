@@ -30,6 +30,7 @@ class FitnessActivity:Activity() {
     private var recommendationGoalSpinner: Spinner? = null
     private var recommendationEnergySpinner: Spinner? = null
     private var recommendationEquipmentSpinner: Spinner? = null
+    private var recommendationAction: Button? = null
     private val additionalEquipmentCheckBoxes = linkedMapOf<TrainingEquipment, CheckBox>()
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -53,6 +54,7 @@ class FitnessActivity:Activity() {
         coachTranscriptView = null
         coachTranscriptClearButton = null
         coachRequestInput = null
+        recommendationAction = null
         historyEffortInsightView = null
         historyEffortAction = null
         effortPlanSuggestion = null
@@ -645,10 +647,13 @@ class FitnessActivity:Activity() {
                     parsed.avoidOverheadReach?.let { overheadReachCheckBox?.isChecked = it }
                     parsed.additionalEquipment?.let { setAdditionalEquipmentSelection(it) }
                     sayFollowUp(coachMessage)
-                    AlertDialog.Builder(this@FitnessActivity)
+                    val planReady =
+                        FitnessCoachFollowUp.nextQuestionType(parsed) == FitnessCoachFollowUp.Question.COMPLETE &&
+                            parsed.impact != 2
+                    val coachDialog = AlertDialog.Builder(this@FitnessActivity)
                         .setTitle("🐰 Chibi đã nghe")
                         .setMessage(coachMessage)
-                        .setPositiveButton("Xem giáo án",null)
+                        .setPositiveButton(if (planReady) "Xem giáo án" else "Chưa đủ thông tin", null)
                         .setNeutralButton("Trả lời tiếp") { _, _ ->
                             naturalRequest.text.clear()
                             naturalRequest.hint=FitnessCoachFollowUp.nextQuestion(parsed)
@@ -679,11 +684,30 @@ class FitnessActivity:Activity() {
                                 }
                                 .setNegativeButton("Hủy", null)
                                 .show()
-                        }.show()
+                        }
+                        .create()
+                    coachDialog.setOnShowListener {
+                        val previewButton = coachDialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                        previewButton.isEnabled = planReady
+                        if (planReady) {
+                            previewButton.setOnClickListener {
+                                coachDialog.dismiss()
+                                val action = recommendationAction
+                                if (action == null) {
+                                    Toast.makeText(this@FitnessActivity,
+                                        "Chưa mở được bộ tạo giáo án. Hãy thử lại từ màn hình Fitness.",
+                                        Toast.LENGTH_LONG).show()
+                                } else {
+                                    action.performClick()
+                                }
+                            }
+                        }
+                    }
+                    coachDialog.show()
                 }
             }
         })
-        root.addView(Button(this).apply {
+        val recommendationButton = Button(this).apply {
             text="🐰 Gợi ý chương trình phù hợp"
             setOnClickListener {
                 val goal=goalSpinner.selectedItemPosition
@@ -800,7 +824,9 @@ class FitnessActivity:Activity() {
                     }
                     .setNegativeButton("Chọn bài khác",null).show()
             }
-        })
+        }
+        recommendationAction = recommendationButton
+        root.addView(recommendationButton)
         val actions=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
         actions.addView(Button(this).apply {
             text="🥗 Dinh dưỡng"

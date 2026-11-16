@@ -847,32 +847,118 @@ class GuidedWorkoutActivity:Activity() {
             .setView(field).setPositiveButton("Gửi"){_,_->handleCoachCommand(field.text.toString())}
             .setNegativeButton("Hủy",null).show()
     }
-    /** Spoken repetition changes use the same preview/confirmation as manual edits. */
-    private fun confirmSpokenRepTarget(reps: Int) {
+    /** Spoken target edits preserve confirmed sets and apply only to the unfinished sets. */
+    private fun confirmSpokenRepTarget(reps: Int, restSeconds: Int? = null) {
         if (pausedForSafety || completed || index !in moves.indices) return
-        if ((completedSetsByMove[index] ?: 0) > 0) {
-            Toast.makeText(this, "Đã ghi nhận hiệp; không sửa lại mục tiêu của động tác này.", Toast.LENGTH_LONG).show()
-            return
-        }
+        val wasResting = resting
+        val wasRestRunning = wasResting && !paused
         pause()
         val selected = index
+        val plan = currentSetPlan()
+        if (plan == null) {
+            Toast.makeText(this, "Động tác hiện tại không có mục tiêu hiệp/lần để chỉnh.", Toast.LENGTH_LONG).show()
+            if (wasRestRunning && resting && paused && !pausedForSafety) resume()
+            return
+        }
+        val completedBefore = (completedSetsByMove[selected] ?: 0).coerceIn(0, plan.maximumSets)
         val before = repTargets[selected]
+        val proposal = WorkoutRemainingRepTarget.preview(
+            currentTarget = before,
+            completedSets = completedBefore,
+            maximumSets = plan.maximumSets,
+            requestedReps = reps
+        )
+        if (proposal == null) {
+            val message = if (completedBefore >= plan.maximumSets) {
+                "Động tác đã đủ số hiệp; không còn hiệp nào để đổi mục tiêu."
+            } else {
+                "Mục tiêu này đã được chọn hoặc không hợp lệ. Các hiệp đã ghi vẫn được giữ nguyên."
+            }
+            Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+            if (wasRestRunning && resting && paused && !pausedForSafety) resume()
+            return
+        }
+
         val previewRemainingMs = remainingMs
-        val oldDose = targetDose(selected)
-        AlertDialog.Builder(this).setTitle("🎯 Xác nhận số lần tập")
-            .setMessage("${moves[selected].name}: $oldDose → $reps lần.\nChỉ thay đổi hướng dẫn, không tự đếm lần tập.")
+        val previewRestRemainingMs = if (wasResting) restRemainingMs else 0L
+        val restPreview = if (wasResting && restSeconds != null) {
+            WorkoutRestAdjustment.previewExtension(restRemainingMs, restSeconds)
+        } else null
+        if (wasResting && restSeconds != null && restPreview == null) {
+            Toast.makeText(this, "Thời gian nghỉ đã đạt giới hạn 10 phút; mục tiêu chưa được đổi.", Toast.LENGTH_LONG).show()
+            if (wasRestRunning && resting && paused && !pausedForSafety) resume()
+            return
+        }
+        val selectedMove = moves[selected]
+        val selectedSessionId = sessionId
+        val restDescription = when {
+            restSeconds == null -> ""
+            wasResting -> "\nĐồng thời thêm $restSeconds giây vào bộ đếm nghỉ hiện tại (tối đa 10 phút)."
+            else -> "\nSau khi áp dụng, Chibi sẽ bắt đầu nghỉ riêng $restSeconds giây."
+        }
+        val message = buildString {
+            append("${selectedMove.name}: ${targetDose(selected)} → $reps lần.\n")
+            append("Đã ghi nhận $completedBefore/${plan.maximumSets} hiệp; ")
+            append("mục tiêu mới chỉ áp dụng cho ${proposal.remainingSets} hiệp còn lại. ")
+            append("Giá trị các hiệp đã ghi không bị sửa và Chibi không tự đếm số lần.")
+            append(restDescription)
+        }
+        val dialog = AlertDialog.Builder(this).setTitle("🎯 Xem trước mục tiêu hiệp còn lại")
+            .setMessage(message)
             .setPositiveButton("Áp dụng") { _, _ ->
-                if (pausedForSafety || completed || index != selected ||
-                    repTargets[selected] != before || remainingMs != previewRemainingMs) {
-                    Toast.makeText(this, "Buổi tập đã thay đổi. Hãy xem trước lại.", Toast.LENGTH_LONG).show()
-                } else {
-                    repTargets[selected] = reps
-                    renderDose()
-                    renderSetControls()
-                    saveCheckpoint()
-                    speak("Đã đổi mục tiêu thành $reps lần. Tập trong khả năng của bạn.")
+                val currentDone = completedSetsByMove[selected] ?: 0
+                val currentMaximum = currentSetPlan()?.maximumSets ?: -1
+                val stale = pausedForSafety || completed || index != selected ||
+                    sessionId != selectedSessionId || moves.getOrNull(selected) != selectedMove ||
+                    repTargets[selected] != before || currentDone != completedBefore ||
+                    currentMaximum != plan.maximumSets || remainingMs != previewRemainingMs ||
+                    resting != wasResting ||
+                    (wasResting && restRemainingMs != previewRestRemainingMs)
+                val accepted = if (stale) null else WorkoutRemainingRepTarget.accept(
+                    proposal, repTargets[selected], currentDone, currentMaximum
+                )
+                if (accepted == null) {
+                    Toast.makeText(this, "Buổi tập đã thay đổi. Hãy xem trước lại; tiến độ cũ được giữ nguyên.", Toast.LENGTH_LONG).show()
+                    if (wasRestRunning && resting && paused && !pausedForSafety) resume()
+                    return@setPositiveButton
                 }
-            }.setNegativeButton("Giữ nguyên", null).show()
+
+                repTargets[selected] = accepted
+                renderDose()
+                renderSetControls()
+                saveCheckpoint()
+                val cue = "Đã đổi mục tiêu thành $reps lần cho ${proposal.remainingSets} hiệp còn lại. Các hiệp đã ghi được giữ nguyên."
+                if (restSeconds != null) {
+                    if (wasResting) {
+                        val extension = restPreview ?: return@setPositiveButton
+                        restRemainingMs = extension.afterRemainingMs
+                        restDeadline = 0L
+                        counter.text = restCounterText(restRemainingMs)
+                        control.text = "▶ Tiếp tục nghỉ"
+                        saveCheckpoint()
+                        speak("$cue Đã thêm ${(extension.actualAddedMs + 999L) / 1_000L} giây nghỉ.")
+                        if (wasRestRunning) resume()
+                        else {
+                            paused = true
+                            control.text = "▶ Tiếp tục nghỉ"
+                            counter.text = restCounterText(restRemainingMs)
+                        }
+                    } else {
+                        startSetRest(restSeconds, cue)
+                    }
+                } else {
+                    speak(cue)
+                    if (wasRestRunning && resting && paused && !pausedForSafety) resume()
+                }
+            }
+            .setNegativeButton("Giữ nguyên") { _, _ ->
+                if (wasRestRunning && resting && paused && !pausedForSafety) resume()
+            }
+            .create()
+        dialog.setOnCancelListener {
+            if (wasRestRunning && resting && paused && !pausedForSafety) resume()
+        }
+        dialog.show()
     }
 
     /** Voice recognition is fallible: confirm before recording a self-reported set. */
@@ -1188,7 +1274,18 @@ class GuidedWorkoutActivity:Activity() {
                 return
             }
             is WorkoutMidSessionRequest.Result.Proposed -> {
-                applyMidSessionRequest(parsed.request)
+                // A combined "change reps + rest" utterance is one confirmed action.
+                // Do not route a self-reported completed set into the target editor.
+                val voiceIntent = WorkoutVoiceCommands.parse(utterance)
+                val spokenSetReport = WorkoutSetReportCommand.parse(utterance)
+                val spokenReps = if (parsed.request.isRestOnly && spokenSetReport == null &&
+                    voiceIntent in setOf(WorkoutVoiceCommands.Command.REST, WorkoutVoiceCommands.Command.UNKNOWN)
+                ) com.chibialarm.app.fitness.WorkoutTargetCommand.spokenReps(utterance) else null
+                if (spokenReps != null) {
+                    confirmSpokenRepTarget(spokenReps, parsed.request.restSeconds)
+                } else {
+                    applyMidSessionRequest(parsed.request)
+                }
                 return
             }
             WorkoutMidSessionRequest.Result.Unsupported -> Unit
@@ -1458,47 +1555,93 @@ class GuidedWorkoutActivity:Activity() {
             .show()
     }
 
-    /** Repetition guidance for the current step, without pretending to count actual reps. */
+    /** Manual target edits apply only to unfinished sets; confirmed set values remain immutable. */
     private fun requestRepTarget() {
         if (pausedForSafety || completed || index !in moves.indices) return
-        if ((completedSetsByMove[index] ?: 0) > 0) {
-            Toast.makeText(this, "Đã ghi nhận hiệp; không sửa lại mục tiêu của động tác này.", Toast.LENGTH_LONG).show()
+        val selected = index
+        val plan = currentSetPlan() ?: run {
+            Toast.makeText(this, "Động tác hiện tại không có mục tiêu hiệp/lần để chỉnh.", Toast.LENGTH_LONG).show()
             return
         }
+        val completedBefore = (completedSetsByMove[selected] ?: 0).coerceIn(0, plan.maximumSets)
+        if (completedBefore >= plan.maximumSets) {
+            Toast.makeText(this, "Động tác đã đủ số hiệp; không còn hiệp nào để đổi mục tiêu.", Toast.LENGTH_LONG).show()
+            return
+        }
+        val wasResting = resting
+        val wasRestRunning = wasResting && !paused
         pause()
-        val selected=index
-        val before=repTargets[selected]
+        val before = repTargets[selected]
+        val beforeRemainingMs = remainingMs
+        val beforeRestRemainingMs = if (wasResting) restRemainingMs else 0L
+        val selectedMove = moves[selected]
+        val selectedSessionId = sessionId
         val field=EditText(this).apply {
             inputType=android.text.InputType.TYPE_CLASS_NUMBER
             hint="Số lần từ 1 đến 100"
             setText(before?.toString() ?: "8")
             selectAll()
         }
+        val disclosure = "Đã ghi nhận $completedBefore/${plan.maximumSets} hiệp. Mục tiêu mới chỉ áp dụng cho ${plan.maximumSets - completedBefore} hiệp còn lại; dữ liệu hiệp đã ghi không đổi."
         val dialog=AlertDialog.Builder(this).setTitle("🔢 Chọn số lần tập")
-            .setMessage("Chỉ thay đổi mục tiêu hướng dẫn của bước hiện tại; Chibi chưa tự đếm số lần tập thực tế.")
+            .setMessage("$disclosure Chibi chưa tự đếm số lần tập.")
             .setView(field).setPositiveButton("Xem trước",null)
             .setNegativeButton("Hủy",null).create()
         dialog.setOnShowListener {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                 val reps=field.text.toString().trim().toIntOrNull()
-                if (reps==null || reps !in 1..100) field.error="Nhập từ 1 đến 100 lần"
-                else {
-                    dialog.dismiss()
-                    AlertDialog.Builder(this).setTitle("Xác nhận số lần tập")
-                        .setMessage("${moves[selected].name}\n${targetDose(selected)} → $reps lần.\nKhông sửa các bước đã hoàn thành hoặc thời gian đếm ngược.")
-                        .setPositiveButton("Áp dụng") { _, _ ->
-                            if (completed || pausedForSafety || index!=selected || repTargets[selected]!=before) {
-                                Toast.makeText(this,"Buổi tập đã thay đổi. Hãy xem trước lại.",Toast.LENGTH_LONG).show()
-                            } else {
-                                repTargets[selected]=reps
-                                renderDose()
-                                renderSetControls()
-                                saveCheckpoint()
-                                speak("Mục tiêu động tác hiện tại là $reps lần. Tập trong khả năng của bạn.")
+                if (reps==null || reps !in 1..100) {
+                    field.error="Nhập từ 1 đến 100 lần"
+                } else {
+                    val proposal = WorkoutRemainingRepTarget.preview(
+                        before, completedBefore, plan.maximumSets, reps
+                    )
+                    if (proposal == null) {
+                        field.error = "Mục tiêu này đã được chọn hoặc không hợp lệ"
+                    } else {
+                        dialog.dismiss()
+                        val previewText = "${selectedMove.name}\n${targetDose(selected)} → $reps lần.\n" +
+                            "$disclosure Không sửa giá trị hiệp đã xác nhận hoặc thời gian vận động."
+                        val confirm = AlertDialog.Builder(this).setTitle("Xác nhận mục tiêu còn lại")
+                            .setMessage(previewText)
+                            .setPositiveButton("Áp dụng") { _, _ ->
+                                val currentDone = completedSetsByMove[selected] ?: 0
+                                val currentMaximum = currentSetPlan()?.maximumSets ?: -1
+                                val stale = completed || pausedForSafety || index != selected ||
+                                    sessionId != selectedSessionId || moves.getOrNull(selected) != selectedMove ||
+                                    repTargets[selected] != before || currentDone != completedBefore ||
+                                    currentMaximum != plan.maximumSets || remainingMs != beforeRemainingMs ||
+                                    resting != wasResting ||
+                                    (wasResting && restRemainingMs != beforeRestRemainingMs)
+                                val accepted = if (stale) null else WorkoutRemainingRepTarget.accept(
+                                    proposal, repTargets[selected], currentDone, currentMaximum
+                                )
+                                if (accepted == null) {
+                                    Toast.makeText(this,"Buổi tập đã thay đổi. Hãy xem trước lại.",Toast.LENGTH_LONG).show()
+                                    if (wasRestRunning && resting && paused && !pausedForSafety) resume()
+                                } else {
+                                    repTargets[selected] = accepted
+                                    renderDose()
+                                    renderSetControls()
+                                    saveCheckpoint()
+                                    speak("Mục tiêu mới là $reps lần cho ${proposal.remainingSets} hiệp còn lại. Các hiệp đã ghi được giữ nguyên.")
+                                    if (wasRestRunning && resting && paused && !pausedForSafety) resume()
+                                }
                             }
-                        }.setNegativeButton("Giữ nguyên",null).show()
+                            .setNegativeButton("Giữ nguyên") { _, _ ->
+                                if (wasRestRunning && resting && paused && !pausedForSafety) resume()
+                            }
+                            .create()
+                        confirm.setOnCancelListener {
+                            if (wasRestRunning && resting && paused && !pausedForSafety) resume()
+                        }
+                        confirm.show()
+                    }
                 }
             }
+        }
+        dialog.setOnCancelListener {
+            if (wasRestRunning && resting && paused && !pausedForSafety) resume()
         }
         dialog.show()
     }

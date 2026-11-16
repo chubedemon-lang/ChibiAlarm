@@ -65,6 +65,30 @@ class WorkoutStepVoiceCommandTest {
         )
     }
 
+    @Test fun asksQuestionsAboutTheCurrentlyOpenExercise() {
+        assertEquals(WorkoutStepVoiceCommand.Command.ASK_EXERCISE,
+            WorkoutStepVoiceCommand.parse("Cách tập bài này?"))
+        assertEquals(WorkoutStepVoiceCommand.Command.ASK_EXERCISE,
+            WorkoutStepVoiceCommand.parse("Bao nhiêu lần?"))
+        assertEquals(WorkoutStepVoiceCommand.Command.ASK_EXERCISE,
+            WorkoutStepVoiceCommand.parse("Nghỉ bao lâu?"))
+        assertEquals(WorkoutStepVoiceCommand.Command.ASK_EXERCISE,
+            WorkoutStepVoiceCommand.parse("cach tap nhu the nao"))
+    }
+
+    @Test fun explicitGuideCommandsAndSafetyKeepPriorityOverQuestions() {
+        assertEquals(WorkoutStepVoiceCommand.Command.EASIER,
+            WorkoutStepVoiceCommand.parse("Đọc cách tập dễ hơn"))
+        assertEquals(WorkoutStepVoiceCommand.Command.SAFETY_NOTE,
+            WorkoutStepVoiceCommand.parse("Đọc lưu ý an toàn"))
+        assertEquals(WorkoutStepVoiceCommand.Command.REST,
+            WorkoutStepVoiceCommand.parse("Nghỉ thêm 30 giây"))
+        assertEquals(WorkoutStepVoiceCommand.Command.SAFETY,
+            WorkoutStepVoiceCommand.parse("Cách tập bài này nhưng tôi đau cổ tay"))
+        assertEquals(WorkoutStepVoiceCommand.Command.SAFETY,
+            WorkoutStepVoiceCommand.parse("Bao nhiêu lần nhưng tôi khó thở"))
+    }
+
     @Test fun incompleteOrUnrelatedPhrasesDoNotMoveTheGuide() {
         assertEquals(WorkoutStepVoiceCommand.Command.UNKNOWN, WorkoutStepVoiceCommand.parse("tiếp tục tập"))
         assertEquals(WorkoutStepVoiceCommand.Command.UNKNOWN, WorkoutStepVoiceCommand.parse("nói to hơn"))

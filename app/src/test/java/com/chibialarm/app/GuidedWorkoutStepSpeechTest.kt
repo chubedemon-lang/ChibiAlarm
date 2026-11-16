@@ -56,6 +56,8 @@ class GuidedWorkoutStepSpeechTest {
             assertTrue("The first exercise must expose a next step", dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled)
             assertTrue(voiceButton.contentDescription.toString().contains("cách tập dễ hơn"))
             assertTrue(voiceButton.contentDescription.toString().contains("lưu ý an toàn"))
+            assertTrue(voiceButton.contentDescription.toString().contains("hỏi cách tập"))
+            assertTrue(voiceButton.contentDescription.toString().contains("nghỉ bao lâu"))
 
             voiceButton.performClick()
             val consent = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog

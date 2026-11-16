@@ -18,7 +18,9 @@ object WorkoutExerciseConversation {
         "tap nhu the nao", "thuc hien nhu the nao", "ky thuat",
         "luu y khi tap", "luu y khi thuc hien", "nghi bao lau",
         "bao nhieu hiep", "bao nhieu lan", "bao nhieu giay",
-        "giai thich"
+        "muc tieu bai nay", "bai nay tap sao", "dong tac nay tap sao",
+        "nghi giua hiep bao lau", "how do i do this", "how many reps",
+        "how many sets", "how long rest", "giai thich"
     )
 
     private val questionWords = setOf(
@@ -55,6 +57,70 @@ object WorkoutExerciseConversation {
                 "Mày hãy nêu rõ tên bài, ví dụ: “cách tập Squat không tạ” hoặc “hướng dẫn Plank”."
             )
         return format(move)
+    }
+
+    /**
+     * Answers a short follow-up about the move already open in the guided workout.
+     * This contextual path avoids asking the user to repeat the exercise name.
+     * All wording comes from the curated catalog or the active, user-confirmed dose.
+     */
+    fun answerForCurrentMove(
+        input: String,
+        move: TrainingMove,
+        currentDose: String = move.dose
+    ): String? {
+        if (input.isBlank() || input.length > 160) return null
+        val query = normalize(input)
+        if (!isExerciseQuestion(query)) return null
+
+        fun asks(vararg phrases: String): Boolean = phrases.any(query::contains)
+        fun safe(value: String, limit: Int): String = value
+            .replace(Regex("[\\r\\n\\p{Cc}]+"), " ")
+            .replace(Regex("\\s+"), " ")
+            .trim()
+            .take(limit)
+
+        val name = safe(move.name, 80).ifBlank { "Động tác hiện tại" }
+        val dose = safe(currentDose, 120).ifBlank { safe(move.dose, 120) }
+        val setPlan = WorkoutSetTracker.parse(move.dose, move.restSeconds)
+
+        return when {
+            asks("bao nhieu hiep", "bao nhieu lan", "bao nhieu giay",
+                "muc tieu bai nay", "how many reps", "how many sets") -> {
+                if (setPlan == null) {
+                    "$name là bài tính theo thời gian hoặc nhịp. Mục tiêu hiện tại: $dose. " +
+                        "Thư viện không quy đổi bài này thành số hiệp hoặc số lần."
+                } else {
+                    "Mục tiêu hiện tại của $name: $dose. Đây là mục tiêu của giáo án đang mở; " +
+                        "chỉ xác nhận hiệp sau khi mày thực sự hoàn thành."
+                }
+            }
+            asks("nghi bao lau", "nghi giua hiep bao lau", "how long rest") -> {
+                val rest = WorkoutSetTracker.restGuidance(move.dose, move.restSeconds)
+                if (rest == null) {
+                    "$name không có khoảng nghỉ giữa hiệp cố định trong thư viện. " +
+                        "Mày có thể nghỉ thêm nếu cần, không phải vội."
+                } else {
+                    "$rest. Đây là thời gian đề xuất; có thể nghỉ lâu hơn nếu chưa sẵn sàng."
+                }
+            }
+            asks("de hon", "nhe hon", "phuong an nhe", "easier option") ->
+                WorkoutStepGuide.spokenEasierCue(name, move.easier)
+            asks("luu y", "can than", "an toan", "safety") ->
+                WorkoutStepGuide.spokenSafetyNoteCue(name, move.avoid)
+            else -> {
+                val steps = WorkoutStepGuide.split(move.steps).take(4)
+                buildString {
+                    append("Hướng dẫn ").append(name).append(". ")
+                    steps.forEachIndexed { index, step ->
+                        append("Bước ").append(index + 1).append(": ")
+                            .append(safe(step, 150)).append(". ")
+                    }
+                    append("Mục tiêu tham khảo: ").append(dose).append(". ")
+                    append("Hình minh họa không đánh giá tư thế thực tế. Dừng nếu đau hoặc có triệu chứng bất thường.")
+                }
+            }
+        }.take(1_200)
     }
 
     private fun isExerciseQuestion(text: String): Boolean {

@@ -5,7 +5,7 @@ import java.util.Locale
 
 /** Small offline command grammar for the step-by-step guide; no transcript is retained. */
 object WorkoutStepVoiceCommand {
-    enum class Command { NEXT, PREVIOUS, REPEAT, SUMMARY, EASIER, SAFETY_NOTE, REST, CLOSE, SAFETY, UNKNOWN }
+    enum class Command { NEXT, PREVIOUS, REPEAT, SUMMARY, EASIER, SAFETY_NOTE, REST, ASK_EXERCISE, CLOSE, SAFETY, UNKNOWN }
 
     private fun containsPhrase(text: String, phrase: String): Boolean =
         Regex("(^|\\s)" + Regex.escape(phrase) + "(\\s|$)").containsMatchIn(text)
@@ -42,7 +42,7 @@ object WorkoutStepVoiceCommand {
             ).any { normalized.contains(it) }) return Command.SUMMARY
         if (listOf(
                 "doc cach tap de hon", "doc cach de hon", "doc phuong an nhe hon",
-                "read easier option"
+                "read easier option", "cach tap de hon", "tap de hon"
             ).any { normalized.contains(it) }) return Command.EASIER
         if (listOf(
                 "doc luu y an toan", "doc luu y", "nhac luu y an toan",
@@ -53,6 +53,15 @@ object WorkoutStepVoiceCommand {
                 .any { normalized.contains(it) }) return Command.UNKNOWN
         if (listOf("nghi them", "them thoi gian nghi", "keo dai thoi gian nghi", "rest more", "extend rest")
                 .any { normalized.contains(it) }) return Command.REST
+        if (listOf(
+                "cach tap", "huong dan bai nay", "lam sao tap", "lam sao de tap",
+                "tap nhu the nao", "thuc hien nhu the nao", "ky thuat",
+                "luu y khi tap", "luu y khi thuc hien", "nghi bao lau",
+                "bao nhieu hiep", "bao nhieu lan", "bao nhieu giay",
+                "muc tieu bai nay", "giai thich bai nay", "bai nay tap sao",
+                "dong tac nay tap sao", "how do i do this", "how many reps",
+                "how many sets", "how long rest"
+            ).any { normalized.contains(it) }) return Command.ASK_EXERCISE
         if (listOf("buoc tiep", "tiep theo", "buoc sau", "sang buoc", "next step")
                 .any { normalized.contains(it) }) return Command.NEXT
         if (listOf("buoc truoc", "quay lai", "lui lai", "previous step")

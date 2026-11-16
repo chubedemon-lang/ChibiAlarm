@@ -61,6 +61,56 @@ class WorkoutExerciseConversationTest {
         assertTrue(answer!!.contains("nêu rõ tên bài"))
     }
 
+    @Test fun contextualQuestionUsesTheCurrentlySelectedMoveAndAdjustedDose() {
+        val squat = TrainingCatalog.allMoves.single { it.name == "Squat không tạ" }
+        val answer = WorkoutExerciseConversation.answerForCurrentMove(
+            input = "Bao nhiêu lần?",
+            move = squat,
+            currentDose = "10 lần (mục tiêu đã chỉnh)"
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("Squat không tạ"))
+        assertTrue(answer.contains("10 lần (mục tiêu đã chỉnh)"))
+        assertFalse(answer.contains("8–12 lần"))
+        assertTrue(answer.contains("chỉ xác nhận hiệp"))
+    }
+
+    @Test fun contextualTechniqueAndRestQuestionsNeedNoRepeatedExerciseName() {
+        val squat = TrainingCatalog.allMoves.single { it.name == "Squat không tạ" }
+        val technique = WorkoutExerciseConversation.answerForCurrentMove(
+            "Cách tập bài này?", squat
+        )
+        val rest = WorkoutExerciseConversation.answerForCurrentMove(
+            "Nghỉ bao lâu?", squat
+        )
+
+        assertNotNull(technique)
+        assertTrue(technique!!.contains("Đẩy hông nhẹ về sau"))
+        assertTrue(technique.contains("Hình minh họa không đánh giá tư thế"))
+        assertNotNull(rest)
+        assertTrue(rest!!.contains("60 giây"))
+        assertTrue(rest.contains("nghỉ lâu hơn"))
+    }
+
+    @Test fun contextualQuestionsDoNotInventSetCountsForTimedMoves() {
+        val walk = TrainingCatalog.allMoves.single { it.name == "Đi bộ nhanh tại chỗ" }
+        val answer = WorkoutExerciseConversation.answerForCurrentMove(
+            "Bao nhiêu lần?", walk, "3–6 phút"
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("3–6 phút"))
+        assertTrue(answer.contains("không quy đổi"))
+        assertFalse(answer.contains("hiệp"))
+    }
+
+    @Test fun unrelatedTextIsNotAnsweredAsAContextualExerciseQuestion() {
+        val squat = TrainingCatalog.allMoves.single { it.name == "Squat không tạ" }
+        assertNull(WorkoutExerciseConversation.answerForCurrentMove("Tao muốn đổi bài", squat))
+        assertNull(WorkoutExerciseConversation.answerForCurrentMove("x".repeat(200), squat))
+    }
+
     @Test fun ordinaryPlanRequestIsLeftForThePlanConversation() {
         assertNull(
             WorkoutExerciseConversation.answer(

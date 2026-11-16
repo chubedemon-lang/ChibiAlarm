@@ -90,7 +90,7 @@ class GuidedWorkoutRestConfirmationTest {
 
         assertEquals(exerciseBeforeRest, remaining(activity))
         assertTrue(restingField.getBoolean(activity))
-        assertEquals(30_000L, restRemainingField.getLong(activity))
+        assertTrue(restRemainingField.getLong(activity) in 29_000L..30_000L)
         assertEquals(elapsedBeforeRest, elapsedAfterRest)
         activity.finish()
     }

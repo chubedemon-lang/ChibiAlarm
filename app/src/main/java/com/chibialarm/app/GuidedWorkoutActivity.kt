@@ -189,7 +189,7 @@ class GuidedWorkoutActivity:Activity() {
                 .filter { name -> name.isNotBlank() && moves.any { it.name == name } }
                 .take(20)
         )
-        val restoredEquipment = checkpoint.getInt("extensionEquipment", extensionPreferences.equipment).coerceIn(0, 3)
+        val restoredEquipment = checkpoint.getInt("extensionEquipment", extensionPreferences.equipment).coerceIn(0, 5)
         val restoredAdditionalEquipment = checkpoint.getString("additionalEquipment", "").orEmpty()
             .split(',')
             .mapNotNull { raw -> TrainingEquipment.values().firstOrNull { it.name == raw } }
@@ -365,7 +365,7 @@ class GuidedWorkoutActivity:Activity() {
                 savedInstanceState?.getBoolean("workout_avoid_overhead_reach", false) == true
         )
         val constraintResult = WorkoutConstraintFilter.apply(baseProgram, workoutConstraints)
-        val equipmentSelection = intent.getIntExtra("extension_equipment", 0).coerceIn(0, 3)
+        val equipmentSelection = intent.getIntExtra("extension_equipment", 0).coerceIn(0, 5)
         val additionalEquipment = intent.getStringArrayListExtra("extension_additional_equipment")
             ?.mapNotNull { raw -> TrainingEquipment.values().firstOrNull { it.name == raw } }
             ?.toSet().orEmpty()
@@ -384,7 +384,7 @@ class GuidedWorkoutActivity:Activity() {
         extensionPreferences = WorkoutExtensionPreferences(
             goal = intent.getIntExtra("extension_goal", 0).coerceIn(0, 5),
             energy = intent.getIntExtra("extension_energy", 1).coerceIn(0, 2),
-            equipment = intent.getIntExtra("extension_equipment", 0).coerceIn(0, 3),
+            equipment = intent.getIntExtra("extension_equipment", 0).coerceIn(0, 5),
             impact = intent.getIntExtra("extension_impact", 0).coerceIn(0, 2),
             constraints = workoutConstraints,
             additionalEquipment = additionalEquipment
@@ -394,7 +394,7 @@ class GuidedWorkoutActivity:Activity() {
                 ?.mapNotNull { raw -> TrainingEquipment.values().firstOrNull { it.name == raw } }
                 ?.toSet() ?: extensionPreferences.additionalEquipment
             extensionPreferences = extensionPreferences.copy(
-                equipment = state.getInt("workout_extension_equipment", extensionPreferences.equipment).coerceIn(0, 3),
+                equipment = state.getInt("workout_extension_equipment", extensionPreferences.equipment).coerceIn(0, 5),
                 additionalEquipment = additional
             )
         }

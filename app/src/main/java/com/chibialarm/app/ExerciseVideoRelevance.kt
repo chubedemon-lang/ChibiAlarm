@@ -25,7 +25,7 @@ object ExerciseVideoRelevance {
         "gap hong voi ta don hoac day" to listOf("dumbbell hip hinge", "resistance band hip hinge", "romanian deadlift"),
         "di bo nhanh tai cho" to listOf("marching in place", "march in place"),
         "dang chan sang ben co diem tua" to listOf("standing hip abduction", "supported side leg raise"),
-        "gian co vai" to listOf("shoulder stretch", "shoulder mobility", "shoulder stretches")
+        "gian co vai" to listOf("gian co vai", "shoulder stretch", "shoulder mobility", "shoulder stretches")
     )
 
     private val genericTokens = setOf(

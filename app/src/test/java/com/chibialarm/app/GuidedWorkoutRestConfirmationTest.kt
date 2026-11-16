@@ -351,6 +351,27 @@ class GuidedWorkoutRestConfirmationTest {
         activity.finish()
     }
 
+    @Test fun pauseCommandWinsOverRestOnlyParserWhenItMentionsSkippingRest() {
+        val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup().get()
+        fun field(name: String) = GuidedWorkoutActivity::class.java.getDeclaredField(name).apply {
+            isAccessible = true
+        }
+        field("resting").setBoolean(activity, true)
+        field("paused").setBoolean(activity, false)
+        field("restRemainingMs").setLong(activity, 45_000L)
+        field("restDeadline").setLong(activity, android.os.SystemClock.elapsedRealtime() + 45_000L)
+
+        val command = GuidedWorkoutActivity::class.java.getDeclaredMethod(
+            "handleCoachCommand", String::class.java
+        ).apply { isAccessible = true }
+        command.invoke(activity, "dừng tập rồi bỏ qua nghỉ")
+
+        assertTrue("Pause must stop the running rest countdown", field("paused").getBoolean(activity))
+        assertTrue("The request must not skip the rest", field("resting").getBoolean(activity))
+        assertTrue(field("restRemainingMs").getLong(activity) in 44_000L..45_000L)
+        activity.finish()
+    }
+
     @Test fun spokenSkipRestUsesTheSameConfirmationGate() {
         val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup().get()
         fun field(name: String) = GuidedWorkoutActivity::class.java.getDeclaredField(name).apply {

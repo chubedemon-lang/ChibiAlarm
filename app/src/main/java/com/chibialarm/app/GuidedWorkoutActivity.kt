@@ -1348,11 +1348,23 @@ class GuidedWorkoutActivity:Activity() {
     }
 
     private fun handleCoachCommand(utterance:String) {
-        // Explicitly skipping a rest is separate from adding rest or moving to the next exercise.
-        // Safety and pause phrases still win inside the command parser.
-        if (WorkoutVoiceCommands.parse(utterance) == WorkoutVoiceCommands.Command.SKIP_REST) {
-            confirmSkipRest()
-            return
+        // Route safety and pause intents before the broader plan parser, which also recognizes
+        // the word "nghỉ". A compound "dừng tập rồi bỏ qua nghỉ" must pause, not alter rest.
+        when (WorkoutVoiceCommands.parse(utterance)) {
+            WorkoutVoiceCommands.Command.PAIN -> {
+                stopForSafety()
+                return
+            }
+            WorkoutVoiceCommands.Command.PAUSE -> {
+                pause()
+                speak("Đã tạm dừng.")
+                return
+            }
+            WorkoutVoiceCommands.Command.SKIP_REST -> {
+                confirmSkipRest()
+                return
+            }
+            else -> Unit
         }
         when (val parsed = WorkoutMidSessionRequest.parse(utterance)) {
             WorkoutMidSessionRequest.Result.SafetyStop -> {

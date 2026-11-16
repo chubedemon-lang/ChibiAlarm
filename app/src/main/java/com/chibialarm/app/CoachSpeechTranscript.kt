@@ -1,5 +1,7 @@
 package com.chibialarm.app
 
+import java.util.Locale
+
 /**
  * Bounded, reviewable alternatives returned by Android's external speech recognizer.
  * Raw audio is never accepted or stored here; candidates remain in the Activity until sent.
@@ -38,7 +40,9 @@ object CoachSpeechTranscript {
                     truncated = normalized.length > characterLimit
                 )
             }
-            .filter { seen.add(it.text) }
+            // Recognizers may vary only capitalization between alternatives. Keep the
+            // first display form, but avoid presenting the same spoken sentence twice.
+            .filter { seen.add(it.text.lowercase(Locale.ROOT)) }
             .take(alternativeLimit)
             .toList()
     }

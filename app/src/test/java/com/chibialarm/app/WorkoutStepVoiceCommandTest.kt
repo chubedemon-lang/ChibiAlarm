@@ -15,6 +15,28 @@ class WorkoutStepVoiceCommandTest {
         assertEquals(WorkoutStepVoiceCommand.Command.SUMMARY, WorkoutStepVoiceCommand.parse("Mục tiêu bài tập"))
     }
 
+    @Test fun guideCanReadEasierOptionsAndExerciseSafetyNotes() {
+        assertEquals(WorkoutStepVoiceCommand.Command.EASIER,
+            WorkoutStepVoiceCommand.parse("Đọc cách tập dễ hơn"))
+        assertEquals(WorkoutStepVoiceCommand.Command.EASIER,
+            WorkoutStepVoiceCommand.parse("doc phuong an nhe hon"))
+        assertEquals(WorkoutStepVoiceCommand.Command.SAFETY_NOTE,
+            WorkoutStepVoiceCommand.parse("Đọc lưu ý an toàn"))
+        assertEquals(WorkoutStepVoiceCommand.Command.SAFETY_NOTE,
+            WorkoutStepVoiceCommand.parse("nhắc lại lưu ý"))
+        assertEquals(WorkoutStepVoiceCommand.Command.UNKNOWN,
+            WorkoutStepVoiceCommand.parse("không đọc lưu ý"))
+        assertEquals(WorkoutStepVoiceCommand.Command.UNKNOWN,
+            WorkoutStepVoiceCommand.parse("không đọc cách tập dễ hơn"))
+    }
+
+    @Test fun symptomReportsStillOverrideRequestsToReadNotes() {
+        assertEquals(WorkoutStepVoiceCommand.Command.SAFETY,
+            WorkoutStepVoiceCommand.parse("Đọc lưu ý an toàn, tôi đau cổ tay"))
+        assertEquals(WorkoutStepVoiceCommand.Command.SAFETY,
+            WorkoutStepVoiceCommand.parse("Đọc cách dễ hơn nhưng tôi khó thở"))
+    }
+
     @Test fun safetyLanguageTakesPriorityOverNavigation() {
         assertEquals(WorkoutStepVoiceCommand.Command.SAFETY, WorkoutStepVoiceCommand.parse("Bước tiếp nhưng tôi khó thở"))
         assertEquals(WorkoutStepVoiceCommand.Command.SAFETY, WorkoutStepVoiceCommand.parse("đau cổ tay"))

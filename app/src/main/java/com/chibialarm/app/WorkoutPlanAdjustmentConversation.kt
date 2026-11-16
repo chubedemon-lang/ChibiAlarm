@@ -147,14 +147,14 @@ object WorkoutPlanAdjustmentConversation {
 
             return buildString {
                 append("Động tác được hỏi: ").append(sourceMove.name)
-                append("\\nCác phương án thay thế đã có trong thư viện và vượt qua bộ lọc hiện tại:")
+                append("\nCác phương án thay thế đã có trong thư viện và vượt qua bộ lọc hiện tại:")
                 alternatives.forEachIndexed { index, move ->
-                    append("\\n").append(index + 1).append(". ").append(move.name)
+                    append("\n").append(index + 1).append(". ").append(move.name)
                     append(" — ").append(move.dose)
-                    append("\\n   Hướng dẫn: ").append(move.steps.take(220))
-                    append("\\n   Lưu ý: ").append(move.avoid.take(160))
+                    append("\n   Hướng dẫn: ").append(move.steps.take(220))
+                    append("\n   Lưu ý: ").append(move.avoid.take(160))
                 }
-                append("\\n\\nĐây chỉ là bản xem trước; Chibi chưa thay đổi giáo án hoặc buổi đang tập.")
+                append("\n\nĐây chỉ là bản xem trước; Chibi chưa thay đổi giáo án hoặc buổi đang tập.")
                 append(" Các bài thay thế không tương đương hoàn toàn về nhóm cơ/cường độ.")
                 append(" Hãy đọc hướng dẫn và chỉ chọn nếu thấy thoải mái; dừng nếu đau hoặc có triệu chứng bất thường.")
             }
@@ -292,7 +292,7 @@ object WorkoutPlanAdjustmentConversation {
         return withoutDiacritics
             .replace(Regex("\\p{M}+"), "")
             .replace(Regex("[^a-z0-9 ]"), " ")
-            .replace(Regex("\\s+"), " ")
+            .replace(Regex("\s+"), " ")
             .trim()
     }
 }

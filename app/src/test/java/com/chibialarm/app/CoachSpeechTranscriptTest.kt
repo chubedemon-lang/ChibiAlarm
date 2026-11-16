@@ -20,6 +20,22 @@ class CoachSpeechTranscriptTest {
         assertTrue(result.all { !it.truncated })
     }
 
+    @Test fun caseOnlySpeechAlternativesAreDeduplicatedKeepingTheFirstDisplayText() {
+        val result = CoachSpeechTranscript.candidates(
+            listOf(
+                "Cardio 10 phút",
+                "cardio 10 phút",
+                "GIÃN CƠ 15 PHÚT",
+                "giãn cơ 15 phút"
+            )
+        )
+
+        assertEquals(
+            listOf("Cardio 10 phút", "GIÃN CƠ 15 PHÚT"),
+            result.map { it.text }
+        )
+    }
+
     @Test fun longSpeechIsBoundedAndExplicitlyMarkedForReview() {
         val candidate = CoachSpeechTranscript.candidates(listOf("a".repeat(950))).single()
 

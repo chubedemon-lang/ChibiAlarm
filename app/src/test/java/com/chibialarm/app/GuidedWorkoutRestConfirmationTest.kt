@@ -629,4 +629,25 @@ class GuidedWorkoutRestConfirmationTest {
         activity.finish()
     }
 
+
+    @Test fun safetyPauseHidesRestPreviewAndKeepsTheMainPoseFrozen() {
+        val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup().get()
+        selectSetBasedMove(activity, "lần")
+        val resting = GuidedWorkoutActivity::class.java.getDeclaredField("resting").apply { isAccessible = true }
+        val safety = GuidedWorkoutActivity::class.java.getDeclaredField("pausedForSafety").apply { isAccessible = true }
+        resting.setBoolean(activity, true)
+        safety.setBoolean(activity, true)
+
+        GuidedWorkoutActivity::class.java.getDeclaredMethod("renderRestPreview")
+            .apply { isAccessible = true }.invoke(activity)
+
+        val preview = GuidedWorkoutActivity::class.java.getDeclaredField("restPosePreview")
+            .apply { isAccessible = true }.get(activity) as WorkoutPoseView
+        val mainPose = GuidedWorkoutActivity::class.java.getDeclaredField("poseView")
+            .apply { isAccessible = true }.get(activity) as WorkoutPoseView
+        assertEquals(View.GONE, preview.visibility)
+        assertFalse("A safety pause must not animate exercise cues", mainPose.motionEnabled)
+        activity.finish()
+    }
+
 }

@@ -105,10 +105,22 @@ class FitnessCoachPlanPreviewActionTest {
         understand!!.performClick()
         Shadows.shadowOf(Looper.getMainLooper()).idle()
 
-        val coachDialog = ShadowAlertDialog.getLatestAlertDialog()
-        assertNotNull(coachDialog)
-        assertFalse("A reported injury must keep the recommendation action disabled",
-            coachDialog.getButton(android.content.DialogInterface.BUTTON_POSITIVE).isEnabled)
+        // Injury is intentionally handled as an inline stop response, not a plan-preview dialog.
+        val transcriptField = FitnessActivity::class.java.getDeclaredField("coachTranscriptView")
+            .apply { isAccessible = true }
+        val transcript = transcriptField.get(activity) as TextView
+        assertTrue(transcript.text.toString().contains("Chibi không đề xuất đổi bài"))
+
+        val recommendation = findButton(activity.window.decorView, "🐰 Gợi ý chương trình phù hợp")
+        assertNotNull(recommendation)
+        recommendation!!.performClick()
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+        val stopDialog = ShadowAlertDialog.getLatestAlertDialog()
+        assertNotNull("The explicit recommendation action must still show the injury stop", stopDialog)
+        val message = stopDialog.findViewById<TextView>(android.R.id.message)
+        assertNotNull(message)
+        assertTrue(message.text.toString().contains("Tạm dừng kế hoạch tập"))
+        assertEquals("Đã hiểu", stopDialog.getButton(android.content.DialogInterface.BUTTON_POSITIVE).text.toString())
         controller.pause().stop().destroy()
     }
 }

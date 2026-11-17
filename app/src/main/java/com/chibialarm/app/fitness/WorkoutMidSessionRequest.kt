@@ -91,9 +91,15 @@ object WorkoutMidSessionRequest {
         // cannot leak into a mid-session replacement.
         return normalized
             .replace("khong mang theo", "khong co")
+            .replace("khong dem theo", "khong co")
             .replace("chi mang theo moi", "chi co")
             .replace("mang theo moi", "chi co")
+            .replace("chi dem theo moi", "chi co")
+            .replace("dem theo moi", "chi co")
             .replace("chi mang theo", "chi co")
+            .replace("chi dem theo", "chi co")
+            .replace("mang theo", "co")
+            .replace("dem theo", "co")
             .replace("chi co moi", "chi co")
             .replace("co moi", "chi co")
     }

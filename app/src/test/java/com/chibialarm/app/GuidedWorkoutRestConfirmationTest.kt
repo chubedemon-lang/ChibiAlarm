@@ -498,4 +498,32 @@ class GuidedWorkoutRestConfirmationTest {
         restoredController.pause().stop().destroy()
     }
 
+    @Test fun restCountdownDefersVoiceCueWhileMicrophoneRecognitionIsActive() {
+        val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup().get()
+        fun field(name: String) = GuidedWorkoutActivity::class.java.getDeclaredField(name).apply {
+            isAccessible = true
+        }
+
+        field("resting").setBoolean(activity, true)
+        field("paused").setBoolean(activity, false)
+        field("pausedForSafety").setBoolean(activity, false)
+        field("restRemainingMs").setLong(activity, 5_000L)
+        field("restDeadline").setLong(
+            activity,
+            android.os.SystemClock.elapsedRealtime() + 5_000L
+        )
+        field("pendingRecognitionRequestCode").set(activity, 891)
+
+        val tick = field("tick").get(activity) as Runnable
+        tick.run()
+        assertFalse("TTS cue must wait while speech recognition owns the microphone",
+            field("restTenSecondCueGiven").getBoolean(activity))
+
+        field("pendingRecognitionRequestCode").set(activity, null)
+        tick.run()
+        assertTrue("The one-shot cue remains available after speech input ends",
+            field("restTenSecondCueGiven").getBoolean(activity))
+        activity.finish()
+    }
+
 }

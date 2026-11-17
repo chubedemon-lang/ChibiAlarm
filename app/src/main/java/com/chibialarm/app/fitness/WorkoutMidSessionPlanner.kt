@@ -182,6 +182,7 @@ object WorkoutMidSessionPlanner {
             } else {
                 candidates.firstOrNull {
                     it.name !in usedNames && it.name !in reservedFutureNames && it.name != move.name &&
+                        TrainingEquipmentAvailability.allows(it, effectiveAvailableEquipment) &&
                         equipmentAvailable(it, request)
                 }
             }

@@ -153,6 +153,8 @@ class GuidedWorkoutActivity:Activity() {
             .putBoolean("avoidWristLoad",workoutConstraints.avoidWristLoad)
             .putBoolean("avoidFloorPositions",workoutConstraints.avoidFloorPositions)
             .putBoolean("avoidOverheadReach",workoutConstraints.avoidOverheadReach)
+            .putBoolean("avoidJumping",workoutConstraints.avoidJumping)
+            .putInt("extensionImpact",extensionPreferences.impact)
             .putString("extensionMoves",optionalExtensionNames.sorted().joinToString("\n"))
             .putInt("extensionEquipment",extensionPreferences.equipment)
             .putString("additionalEquipment",extensionPreferences.additionalEquipment.sortedBy { it.ordinal }.joinToString(",") { it.name })
@@ -194,9 +196,12 @@ class GuidedWorkoutActivity:Activity() {
             avoidFloorPositions = workoutConstraints.avoidFloorPositions ||
                 checkpoint.getBoolean("avoidFloorPositions", false),
             avoidOverheadReach = workoutConstraints.avoidOverheadReach ||
-                checkpoint.getBoolean("avoidOverheadReach", false)
+                checkpoint.getBoolean("avoidOverheadReach", false),
+            avoidJumping = workoutConstraints.avoidJumping ||
+                checkpoint.getBoolean("avoidJumping", false)
         )
         val restoredEquipment = checkpoint.getInt("extensionEquipment", extensionPreferences.equipment).coerceIn(0, 5)
+        val restoredImpact = checkpoint.getInt("extensionImpact", extensionPreferences.impact).coerceIn(0, 2)
         val restoredAdditionalEquipment = checkpoint.getString("additionalEquipment", "").orEmpty()
             .split(',')
             .mapNotNull { raw -> TrainingEquipment.values().firstOrNull { it.name == raw } }
@@ -253,6 +258,7 @@ class GuidedWorkoutActivity:Activity() {
                 workoutConstraints = restoredConstraints
                 extensionPreferences = extensionPreferences.copy(
                     equipment = restoredEquipment,
+                    impact = if (restoredConstraints.avoidJumping) 1 else restoredImpact,
                     additionalEquipment = restoredAdditionalEquipment,
                     constraints = restoredConstraints
                 )
@@ -410,7 +416,9 @@ class GuidedWorkoutActivity:Activity() {
             avoidFloorPositions = intent.getBooleanExtra("avoid_floor_positions", false) ||
                 savedInstanceState?.getBoolean("workout_avoid_floor_positions", false) == true,
             avoidOverheadReach = intent.getBooleanExtra("avoid_overhead_reach", false) ||
-                savedInstanceState?.getBoolean("workout_avoid_overhead_reach", false) == true
+                savedInstanceState?.getBoolean("workout_avoid_overhead_reach", false) == true,
+            avoidJumping = intent.getIntExtra("extension_impact", 0) == 1 ||
+                savedInstanceState?.getBoolean("workout_avoid_jumping", false) == true
         )
         val constraintResult = WorkoutConstraintFilter.apply(baseProgram, workoutConstraints)
         val equipmentSelection = intent.getIntExtra("extension_equipment", 0).coerceIn(0, 5)
@@ -443,6 +451,8 @@ class GuidedWorkoutActivity:Activity() {
                 ?.toSet() ?: extensionPreferences.additionalEquipment
             extensionPreferences = extensionPreferences.copy(
                 equipment = state.getInt("workout_extension_equipment", extensionPreferences.equipment).coerceIn(0, 5),
+                impact = if (workoutConstraints.avoidJumping) 1 else
+                    state.getInt("workout_extension_impact", extensionPreferences.impact).coerceIn(0, 2),
                 additionalEquipment = additional
             )
         }
@@ -792,8 +802,10 @@ class GuidedWorkoutActivity:Activity() {
         outState.putBoolean("workout_avoid_wrist_load",workoutConstraints.avoidWristLoad)
         outState.putBoolean("workout_avoid_floor_positions",workoutConstraints.avoidFloorPositions)
         outState.putBoolean("workout_avoid_overhead_reach",workoutConstraints.avoidOverheadReach)
+        outState.putBoolean("workout_avoid_jumping",workoutConstraints.avoidJumping)
         outState.putStringArrayList("workout_extension_names",ArrayList(optionalExtensionNames))
         outState.putInt("workout_extension_equipment",extensionPreferences.equipment)
+        outState.putInt("workout_extension_impact",extensionPreferences.impact)
         outState.putStringArrayList(
             "workout_additional_equipment",
             ArrayList(extensionPreferences.additionalEquipment.map { it.name })
@@ -1273,6 +1285,12 @@ class GuidedWorkoutActivity:Activity() {
                     if (request.allowFloorPositions) {
                         append("\nBỏ hạn chế nằm/quỳ sàn cho phần chưa hoàn thành; các hiệp đã ghi nhận vẫn giữ nguyên.")
                     }
+                    if (request.avoidJumping) {
+                        append("\nLoại bỏ bật nhảy khỏi phần chưa hoàn thành; thay bằng bước ngang nhẹ đã có trong thư viện.")
+                    }
+                    if (request.allowJumping) {
+                        append("\nBỏ hạn chế bật nhảy cho phần chưa hoàn thành; các hiệp đã ghi nhận vẫn giữ nguyên.")
+                    }
                     if (request.avoidExternalLoad) {
                         append("\nLoại bỏ tạ và dây kháng lực khỏi phần chưa hoàn thành; chỉ dùng biến thể đã có trong thư viện.")
                     } else if (request.unavailableEquipment.isNotEmpty()) {
@@ -1332,6 +1350,11 @@ class GuidedWorkoutActivity:Activity() {
                         )
                         extensionPreferences = extensionPreferences.copy(
                             equipment = 0,
+                            impact = when {
+                                request.avoidJumping -> 1
+                                request.allowJumping -> 0
+                                else -> extensionPreferences.impact
+                            },
                             additionalEquipment = preview.availableEquipment,
                             constraints = workoutConstraints
                         )

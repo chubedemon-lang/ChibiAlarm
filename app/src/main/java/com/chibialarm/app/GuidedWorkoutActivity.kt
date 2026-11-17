@@ -43,6 +43,7 @@ class GuidedWorkoutActivity:Activity() {
     // Reward work is asynchronous; the durable journal remains the retry source if this Activity is recreated.
     private val rewardScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private lateinit var counter:TextView
+    private lateinit var restPreview:TextView
     private lateinit var heading:TextView
     private lateinit var guide:TextView
     private lateinit var poseView:WorkoutPoseView
@@ -366,7 +367,7 @@ class GuidedWorkoutActivity:Activity() {
                         microphoneActive = pendingRecognitionRequestCode != null
                     )) {
                     restTenSecondCueGiven = true
-                    speak(WorkoutRestVoiceCue.message(left).orEmpty())
+                    speak(WorkoutRestVoiceCue.message(left, restPreview.text.toString()).orEmpty())
                     saveCheckpoint()
                 }
                 if(left==0L) {
@@ -584,6 +585,14 @@ class GuidedWorkoutActivity:Activity() {
             textSize=54f;gravity=Gravity.CENTER;setTextColor(Color.rgb(100,70,140))
         }
         root.addView(counter)
+        restPreview=TextView(this).apply {
+            textSize=14f
+            gravity=Gravity.CENTER
+            setPadding(12,8,12,12)
+            setTextColor(Color.rgb(75,55,95))
+            visibility=android.view.View.GONE
+        }
+        root.addView(restPreview)
         setProgress=TextView(this).apply {
             textSize=15f
             gravity=Gravity.CENTER
@@ -2541,7 +2550,29 @@ class GuidedWorkoutActivity:Activity() {
 
     private fun restCounterText(milliseconds:Long):String = "Nghỉ " + clockText(milliseconds)
 
+    private fun renderRestPreview() {
+        if (!::restPreview.isInitialized) return
+        if (!resting || index !in moves.indices) {
+            restPreview.text = ""
+            restPreview.contentDescription = ""
+            restPreview.visibility = android.view.View.GONE
+            return
+        }
+        val preview = WorkoutRestVoiceCue.previewMessage(
+            moveName = moves[index].name,
+            completedSets = completedSetsByMove[index] ?: 0,
+            plan = currentSetPlan(),
+            nextMoveName = moves.getOrNull(index + 1)?.name,
+            nextMoveDose = moves.getOrNull(index + 1)?.dose,
+            currentRemainingLabel = clockText(remainingMs)
+        )
+        restPreview.text = preview
+        restPreview.contentDescription = preview
+        restPreview.visibility = android.view.View.VISIBLE
+    }
+
     private fun renderSetControls() {
+        renderRestPreview()
         val plan=currentSetPlan()
         val visibility=if(plan==null) android.view.View.GONE else android.view.View.VISIBLE
         setProgress.visibility=visibility

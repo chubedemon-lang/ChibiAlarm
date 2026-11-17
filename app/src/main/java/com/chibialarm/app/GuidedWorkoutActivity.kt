@@ -44,6 +44,7 @@ class GuidedWorkoutActivity:Activity() {
     private val rewardScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private lateinit var counter:TextView
     private lateinit var restPreview:TextView
+    private lateinit var restPosePreview:WorkoutPoseView
     private lateinit var heading:TextView
     private lateinit var guide:TextView
     private lateinit var poseView:WorkoutPoseView
@@ -593,6 +594,15 @@ class GuidedWorkoutActivity:Activity() {
             visibility=android.view.View.GONE
         }
         root.addView(restPreview)
+        // A catalog-derived vector preview shows what follows the current rest.
+        // It is a static cue during rest; the main pose animation resumes afterward.
+        restPosePreview = WorkoutPoseView(this).apply {
+            tag = "workout-rest-pose-preview"
+            importantForAccessibility = android.view.View.IMPORTANT_FOR_ACCESSIBILITY_YES
+            visibility = android.view.View.GONE
+            motionEnabled = false
+        }
+        root.addView(restPosePreview)
         setProgress=TextView(this).apply {
             textSize=15f
             gravity=Gravity.CENTER
@@ -2479,7 +2489,8 @@ class GuidedWorkoutActivity:Activity() {
             lastCoachAnswer = null
             guideVoiceResultHandler = null
             illustration.onPhaseChanged = null
-            poseView.motionEnabled = true
+            // Keep the active pose frozen if the guide was opened during a rest.
+            poseView.motionEnabled = !resting
         }
         dialog.show()
         // AlertDialog creates its buttons during show. Install listeners synchronously
@@ -2551,17 +2562,30 @@ class GuidedWorkoutActivity:Activity() {
     private fun restCounterText(milliseconds:Long):String = "Nghỉ " + clockText(milliseconds)
 
     private fun renderRestPreview() {
-        if (!::restPreview.isInitialized) return
+        if (!::restPreview.isInitialized || !::restPosePreview.isInitialized) return
         if (!resting || index !in moves.indices) {
             restPreview.text = ""
             restPreview.contentDescription = ""
             restPreview.visibility = android.view.View.GONE
+            restPosePreview.contentDescription = ""
+            restPosePreview.visibility = android.view.View.GONE
+            restPosePreview.motionEnabled = false
+            if (::poseView.isInitialized) poseView.motionEnabled = true
             return
         }
+        val completedSets = completedSetsByMove[index] ?: 0
+        val plan = currentSetPlan()
+        val nextIndex = WorkoutRestPosePreview.nextMoveIndex(
+            currentIndex = index,
+            moveCount = moves.size,
+            completedSets = completedSets,
+            plan = plan
+        )
+        val upcomingMove = nextIndex?.let { moves.getOrNull(it) }
         val preview = WorkoutRestVoiceCue.previewMessage(
             moveName = moves[index].name,
-            completedSets = completedSetsByMove[index] ?: 0,
-            plan = currentSetPlan(),
+            completedSets = completedSets,
+            plan = plan,
             nextMoveName = moves.getOrNull(index + 1)?.name,
             nextMoveDose = moves.getOrNull(index + 1)?.dose,
             currentRemainingLabel = clockText(remainingMs)
@@ -2569,6 +2593,21 @@ class GuidedWorkoutActivity:Activity() {
         restPreview.text = preview
         restPreview.contentDescription = preview
         restPreview.visibility = android.view.View.VISIBLE
+
+        // Freeze the current exercise illustration while resting to avoid two
+        // simultaneous animations. Show the next required set or next move instead.
+        if (::poseView.isInitialized) poseView.motionEnabled = false
+        if (upcomingMove != null) {
+            restPosePreview.pose = WorkoutPoseGuide.classify(upcomingMove.name)
+            restPosePreview.showGuideFrame(alternate = false)
+            restPosePreview.contentDescription =
+                "Minh họa động tác ${upcomingMove.name}. Hình vector tham khảo, không phân tích tư thế thực tế."
+            restPosePreview.visibility = android.view.View.VISIBLE
+        } else {
+            restPosePreview.contentDescription = ""
+            restPosePreview.visibility = android.view.View.GONE
+            restPosePreview.motionEnabled = false
+        }
     }
 
     private fun renderSetControls() {

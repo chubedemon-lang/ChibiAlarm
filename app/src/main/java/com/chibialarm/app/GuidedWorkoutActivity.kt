@@ -2878,10 +2878,12 @@ class GuidedWorkoutActivity:Activity() {
                     .setTitle("⚠️ Tạm dừng trước hiệp tiếp theo")
                     .setMessage(
                         recommendation.message +
-                            "\n\nChibi sẽ không tự bắt đầu hiệp tiếp theo. " +
+                            "\n\nNghỉ theo giáo án: ${plan.defaultRestSeconds} giây. " +
+                            "Thời gian đề xuất: ${recommendation.restSeconds} giây; không ngắn hơn giáo án. " +
+                            "Chibi sẽ không tự bắt đầu hiệp tiếp theo. " +
                             "Nếu bạn thấy đau, khó thở, chóng mặt hoặc buồn nôn, hãy kết thúc buổi tập."
                     )
-                    .setPositiveButton("Nghỉ 2 phút") { _, _ ->
+                    .setPositiveButton("Nghỉ ${recommendation.restSeconds} giây") { _, _ ->
                         if (isSameEffortContext(selectedIndex, selectedSessionId, completedSets, plan)) {
                             startSetRest(recommendation.restSeconds, recommendation.message)
                         }

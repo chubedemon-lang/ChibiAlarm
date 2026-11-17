@@ -79,11 +79,23 @@ object WorkoutMidSessionRequest {
             .replace(Regex("đầu\\s+gối"), "kneecap")
             .replace(Regex("bắt\\s+đầu"), "beginning")
             .replace('đ', 'd')
-        return Normalizer.normalize(protected, Normalizer.Form.NFD)
+        val normalized = Normalizer.normalize(protected, Normalizer.Form.NFD)
             .replace(Regex("\\p{M}+"), "")
             .replace(Regex("[^a-z0-9 ]"), " ")
             .replace(Regex("\\s+"), " ")
             .trim()
+
+        // Spoken inventory phrases such as "có mỗi thảm", "mang theo mỗi tạ",
+        // and "chỉ mang theo ghế" express an exclusive equipment list. Canonicalize
+        // them before per-tool parsing so previously selected profile equipment
+        // cannot leak into a mid-session replacement.
+        return normalized
+            .replace(Regex("""\\bchi co moi\\b"""), "chi co")
+            .replace(Regex("""\\bchi mang theo moi\\b"""), "chi co")
+            .replace(Regex("""\\bmang theo moi\\b"""), "chi co")
+            .replace(Regex("""\\bchi mang theo\\b"""), "chi co")
+            .replace(Regex("""\\bco moi\\b"""), "chi co")
+            .replace(Regex("""\\bkhong mang theo\\b"""), "khong co")
     }
 
     fun parse(utterance: String): Result {

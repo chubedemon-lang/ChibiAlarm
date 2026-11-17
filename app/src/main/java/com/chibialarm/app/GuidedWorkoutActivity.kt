@@ -45,6 +45,7 @@ class GuidedWorkoutActivity:Activity() {
     private lateinit var counter:TextView
     private lateinit var restPreview:TextView
     private lateinit var restPosePreview:WorkoutPoseView
+    private lateinit var restStepPreview:TextView
     private lateinit var heading:TextView
     private lateinit var guide:TextView
     private lateinit var poseView:WorkoutPoseView
@@ -603,6 +604,17 @@ class GuidedWorkoutActivity:Activity() {
             motionEnabled = false
         }
         root.addView(restPosePreview)
+        // A concise, catalog-grounded first-action cue complements the static pose preview.
+        restStepPreview = TextView(this).apply {
+            tag = "workout-rest-step-preview"
+            textSize = 13f
+            gravity = Gravity.CENTER
+            setPadding(14, 4, 14, 10)
+            setTextColor(Color.rgb(75, 55, 95))
+            importantForAccessibility = android.view.View.IMPORTANT_FOR_ACCESSIBILITY_YES
+            visibility = android.view.View.GONE
+        }
+        root.addView(restStepPreview)
         setProgress=TextView(this).apply {
             textSize=15f
             gravity=Gravity.CENTER
@@ -2562,7 +2574,7 @@ class GuidedWorkoutActivity:Activity() {
     private fun restCounterText(milliseconds:Long):String = "Nghỉ " + clockText(milliseconds)
 
     private fun renderRestPreview() {
-        if (!::restPreview.isInitialized || !::restPosePreview.isInitialized) return
+        if (!::restPreview.isInitialized || !::restPosePreview.isInitialized || !::restStepPreview.isInitialized) return
         if (!resting || pausedForSafety || index !in moves.indices) {
             restPreview.text = ""
             restPreview.contentDescription = ""
@@ -2570,6 +2582,9 @@ class GuidedWorkoutActivity:Activity() {
             restPosePreview.contentDescription = ""
             restPosePreview.visibility = android.view.View.GONE
             restPosePreview.motionEnabled = false
+            restStepPreview.text = ""
+            restStepPreview.contentDescription = ""
+            restStepPreview.visibility = android.view.View.GONE
             if (::poseView.isInitialized) poseView.motionEnabled = !pausedForSafety
             return
         }
@@ -2598,15 +2613,28 @@ class GuidedWorkoutActivity:Activity() {
         // simultaneous animations. Show the next required set or next move instead.
         if (::poseView.isInitialized) poseView.motionEnabled = false
         if (upcomingMove != null) {
+            val stepCue = WorkoutRestStepPreview.forMove(upcomingMove)
+            restStepPreview.text = stepCue?.let { "Bước cần chú ý: ${it.instruction}" }.orEmpty()
+            restStepPreview.contentDescription = stepCue?.let {
+                "Hướng dẫn bước tiếp theo của ${upcomingMove.name}: ${it.instruction}"
+            }.orEmpty()
+            restStepPreview.visibility = if (stepCue != null) android.view.View.VISIBLE else android.view.View.GONE
+
             restPosePreview.pose = WorkoutPoseGuide.classify(upcomingMove.name)
-            restPosePreview.showGuideFrame(alternate = false)
-            restPosePreview.contentDescription =
-                "Minh họa động tác ${upcomingMove.name}. Hình vector tham khảo, không phân tích tư thế thực tế."
+            restPosePreview.showGuideFrame(alternate = stepCue?.alternate ?: false)
+            restPosePreview.contentDescription = buildString {
+                append("Minh họa động tác ${upcomingMove.name}. ")
+                stepCue?.let { append("Bước cần chú ý: ${it.instruction}. ") }
+                append("Hình vector tham khảo, không phân tích tư thế thực tế.")
+            }
             restPosePreview.visibility = android.view.View.VISIBLE
         } else {
             restPosePreview.contentDescription = ""
             restPosePreview.visibility = android.view.View.GONE
             restPosePreview.motionEnabled = false
+            restStepPreview.text = ""
+            restStepPreview.contentDescription = ""
+            restStepPreview.visibility = android.view.View.GONE
         }
     }
 

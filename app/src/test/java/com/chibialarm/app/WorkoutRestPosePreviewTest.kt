@@ -39,4 +39,29 @@ class WorkoutRestPosePreviewTest {
         assertNull(WorkoutRestPosePreview.nextMoveIndex(4, 4, 0, plan))
         assertNull(WorkoutRestPosePreview.nextMoveIndex(0, 0, 0, plan))
     }
+    @Test fun restStepCueChoosesTheFirstUnambiguousMovementPhase() {
+        val squat = TrainingCatalog.allMoves.first { it.name == "Squat không tạ" }
+        val cue = WorkoutRestStepPreview.forMove(squat)
+        assertEquals("hạ xuống theo khả năng", cue?.instruction)
+        assertEquals(true, cue?.alternate)
+    }
+
+    @Test fun restStepCueFallsBackToSetupWithoutInventingAMovementPhase() {
+        val plank = TrainingCatalog.allMoves.first { it.name == "Plank khuỷu hoặc plank gối" }
+        val cue = WorkoutRestStepPreview.forMove(plank)
+        assertEquals("Giữ thân thành đường thẳng", cue?.instruction)
+        assertEquals(false, cue?.alternate)
+    }
+
+    @Test fun restStepCueDoesNotCreateAnInstructionForBlankCatalogText() {
+        val move = TrainingMove(
+            name = "Động tác thử",
+            dose = "2 hiệp × 8 lần",
+            steps = "",
+            easier = "",
+            avoid = ""
+        )
+        assertNull(WorkoutRestStepPreview.forMove(move))
+    }
+
 }

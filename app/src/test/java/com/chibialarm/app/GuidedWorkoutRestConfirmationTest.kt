@@ -582,8 +582,15 @@ class GuidedWorkoutRestConfirmationTest {
             .apply { isAccessible = true }.get(activity) as WorkoutPoseView
         val mainPose = GuidedWorkoutActivity::class.java.getDeclaredField("poseView")
             .apply { isAccessible = true }.get(activity) as WorkoutPoseView
+        val stepPreview = GuidedWorkoutActivity::class.java.getDeclaredField("restStepPreview")
+            .apply { isAccessible = true }.get(activity) as android.widget.TextView
+        val expectedCue = WorkoutRestStepPreview.forMove(moves[index])
 
         assertEquals(View.VISIBLE, preview.visibility)
+        assertEquals(View.VISIBLE, stepPreview.visibility)
+        assertTrue(stepPreview.text.toString().startsWith("Bước cần chú ý:"))
+        assertTrue(stepPreview.contentDescription.toString().contains(expectedCue!!.instruction))
+        assertEquals(expectedCue.alternate, preview.isInAlternatePose)
         assertEquals(WorkoutPoseGuide.classify(moves[index].name), preview.pose)
         assertTrue(preview.contentDescription.toString().contains(moves[index].name))
         assertFalse("The active illustration must pause while the rest preview is shown", mainPose.motionEnabled)
@@ -616,9 +623,13 @@ class GuidedWorkoutRestConfirmationTest {
             .apply { isAccessible = true }.get(activity) as WorkoutPoseView
         val mainPose = GuidedWorkoutActivity::class.java.getDeclaredField("poseView")
             .apply { isAccessible = true }.get(activity) as WorkoutPoseView
+        val stepPreview = GuidedWorkoutActivity::class.java.getDeclaredField("restStepPreview")
+            .apply { isAccessible = true }.get(activity) as android.widget.TextView
         val expectedIndex = WorkoutRestPosePreview.nextMoveIndex(index, moves.size, plan.maximumSets, plan)
 
         assertEquals(View.VISIBLE, preview.visibility)
+        assertEquals(View.VISIBLE, stepPreview.visibility)
+        assertTrue(stepPreview.text.toString().contains(WorkoutRestStepPreview.forMove(moves[expectedIndex!!])!!.instruction))
         assertEquals(WorkoutPoseGuide.classify(moves[expectedIndex!!].name), preview.pose)
         assertTrue(preview.contentDescription.toString().contains(moves[expectedIndex].name))
 
@@ -645,7 +656,10 @@ class GuidedWorkoutRestConfirmationTest {
             .apply { isAccessible = true }.get(activity) as WorkoutPoseView
         val mainPose = GuidedWorkoutActivity::class.java.getDeclaredField("poseView")
             .apply { isAccessible = true }.get(activity) as WorkoutPoseView
+        val stepPreview = GuidedWorkoutActivity::class.java.getDeclaredField("restStepPreview")
+            .apply { isAccessible = true }.get(activity) as android.widget.TextView
         assertEquals(View.GONE, preview.visibility)
+        assertEquals(View.GONE, stepPreview.visibility)
         assertFalse("A safety pause must not animate exercise cues", mainPose.motionEnabled)
         activity.finish()
     }

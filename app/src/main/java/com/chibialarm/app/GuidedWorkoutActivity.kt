@@ -359,7 +359,12 @@ class GuidedWorkoutActivity:Activity() {
                 val left=(restDeadline-SystemClock.elapsedRealtime()).coerceAtLeast(0L)
                 restRemainingMs=left
                 counter.text=restCounterText(left)
-                if (WorkoutRestVoiceCue.shouldAnnounce(left, restTenSecondCueGiven, pausedForSafety)) {
+                if (WorkoutRestVoiceCue.shouldAnnounce(
+                        remainingMs = left,
+                        alreadyAnnounced = restTenSecondCueGiven,
+                        pausedForSafety = pausedForSafety,
+                        microphoneActive = pendingRecognitionRequestCode != null
+                    )) {
                     restTenSecondCueGiven = true
                     speak(WorkoutRestVoiceCue.message(left).orEmpty())
                     saveCheckpoint()
@@ -372,13 +377,16 @@ class GuidedWorkoutActivity:Activity() {
                     control.text="▶ Tiếp tục hiệp"
                     counter.text=clockText(remainingMs)
                     saveCheckpoint()
-                    speak(
-                        WorkoutRestVoiceCue.completionMessage(
-                            moveName = moves.getOrNull(index)?.name,
-                            completedSets = completedSetsByMove[index] ?: 0,
-                            plan = currentSetPlan()
+                    // Do not let TTS interrupt an active speech-recognition session.
+                    if (pendingRecognitionRequestCode == null) {
+                        speak(
+                            WorkoutRestVoiceCue.completionMessage(
+                                moveName = moves.getOrNull(index)?.name,
+                                completedSets = completedSetsByMove[index] ?: 0,
+                                plan = currentSetPlan()
+                            )
                         )
-                    )
+                    }
                 } else handler.postDelayed(this,300)
                 return
             }

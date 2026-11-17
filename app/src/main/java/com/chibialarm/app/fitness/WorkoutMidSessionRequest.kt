@@ -35,7 +35,9 @@ object WorkoutMidSessionRequest {
         // Exact catalog name only; free-form exercise instructions are never accepted.
         val replaceCurrentWith: String? = null,
         val avoidJumping: Boolean = false,
-        val allowJumping: Boolean = false
+        val allowJumping: Boolean = false,
+        // Remove only future, unstarted optional extensions; the active step is never skipped.
+        val removeOptionalExercises: Boolean = false
     ) {
         init {
             require(remainingMinutes == null || remainingMinutes in 5..120)
@@ -63,6 +65,7 @@ object WorkoutMidSessionRequest {
                 !avoidJumping &&
                 !allowJumping &&
                 !addOptionalExercise &&
+                !removeOptionalExercises &&
                 availableEquipment.isEmpty() &&
                 unavailableEquipment.isEmpty() &&
                 replaceCurrentWith == null
@@ -265,6 +268,13 @@ object WorkoutMidSessionRequest {
             "them mot bai", "them 1 bai", "them bai", "them bai tap",
             "them mot dong tac", "them 1 dong tac", "them dong tac"
         )
+        // Let the user remove only future optional volume without shortening required sets.
+        val removeOptionalExercises = has(
+            "bo bai phu", "bo bai bo sung", "bo dong tac tuy chon",
+            "xoa bai phu", "xoa bai bo sung", "khong can bai phu nua",
+            "khong can bai bo sung nua"
+        )
+        if (addOptionalExercise && removeOptionalExercises) return Result.Unsupported
 
         val hasRestRequest = Regex("""\b(nghi|rest)\b""").containsMatchIn(text)
         val explicitRest = if (hasRestRequest) WorkoutRestRequest.seconds(input) else null
@@ -275,7 +285,7 @@ object WorkoutMidSessionRequest {
             !avoidOverheadReach && !allowOverheadReach &&
             !avoidJumping && !allowJumping &&
             !preferEasier && restSeconds == null && !avoidExternalLoad &&
-            !addOptionalExercise && availableEquipment.isEmpty() &&
+            !addOptionalExercise && !removeOptionalExercises && availableEquipment.isEmpty() &&
             unavailableEquipment.isEmpty() && replacementExercise == null
         ) return Result.Unsupported
 
@@ -297,7 +307,8 @@ object WorkoutMidSessionRequest {
                 availableEquipment = availableEquipment,
                 replaceCurrentWith = replacementExercise,
                 avoidJumping = avoidJumping,
-                allowJumping = allowJumping
+                allowJumping = allowJumping,
+                removeOptionalExercises = removeOptionalExercises
             )
         )
     }

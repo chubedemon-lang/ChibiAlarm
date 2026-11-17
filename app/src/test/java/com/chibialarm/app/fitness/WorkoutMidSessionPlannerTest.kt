@@ -798,6 +798,67 @@ class WorkoutMidSessionPlannerTest {
         assertTrue(result is WorkoutMidSessionPlanner.Result.Blocked)
     }
 
+    @Test fun removingOptionalExercisesIsAPlanChangeNotAProposedAddition() {
+        val parsed = WorkoutMidSessionRequest.parse("Bỏ bài bổ sung")
+        assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
+        val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+        assertTrue(request.removeOptionalExercises)
+        assertFalse(request.addOptionalExercise)
+        assertFalse(request.isRestOnly)
+    }
+
+    @Test fun removingOptionalExercisesKeepsCompletedPrefixAndActiveRequiredWork() {
+        val moves = listOf(
+            move("Khởi động tại chỗ"),
+            move("Squat không tạ"),
+            move("Nâng gối ngồi ghế"),
+            move("Chống đẩy tường"),
+            move("Thả lỏng")
+        )
+        val result = WorkoutMidSessionPlanner.preview(
+            currentMoves = moves,
+            currentIndex = 1,
+            completedCurrentSets = 1,
+            currentStepLocked = true,
+            constraints = WorkoutConstraintProfile(),
+            request = WorkoutMidSessionRequest.Request(removeOptionalExercises = true),
+            remainingCurrentSeconds = 45,
+            extensionMoveNames = setOf("Nâng gối ngồi ghế"),
+            level = 1
+        )
+        assertTrue(result is WorkoutMidSessionPlanner.Result.Proposed)
+        val preview = (result as WorkoutMidSessionPlanner.Result.Proposed).preview
+        assertEquals(moves.first(), preview.after.first())
+        assertEquals(
+            listOf("Khởi động tại chỗ", "Squat không tạ", "Chống đẩy tường", "Thả lỏng"),
+            preview.after.map { it.name }
+        )
+        assertEquals(listOf("Nâng gối ngồi ghế"), preview.removedMoves)
+        assertFalse(preview.extensionMoveNames.contains("Nâng gối ngồi ghế"))
+        assertTrue(preview.changed)
+    }
+
+    @Test fun cannotRemoveTheOptionalMoveThatIsAlreadyActive() {
+        val result = WorkoutMidSessionPlanner.preview(
+            currentMoves = listOf(
+                move("Khởi động tại chỗ"),
+                move("Nâng gối ngồi ghế"),
+                move("Squat không tạ"),
+                move("Thả lỏng")
+            ),
+            currentIndex = 1,
+            completedCurrentSets = 1,
+            currentStepLocked = true,
+            constraints = WorkoutConstraintProfile(),
+            request = WorkoutMidSessionRequest.Request(removeOptionalExercises = true),
+            remainingCurrentSeconds = 30,
+            extensionMoveNames = setOf("Nâng gối ngồi ghế"),
+            level = 1
+        )
+        assertTrue(result is WorkoutMidSessionPlanner.Result.Blocked)
+        assertTrue((result as WorkoutMidSessionPlanner.Result.Blocked).reason.contains("đang tập"))
+    }
+
     @Test fun exclusiveSingleToolStatementsExcludeEveryUnmentionedTool() {
         val allTools = TrainingEquipment.values().toSet()
         val cases = listOf(
@@ -835,17 +896,23 @@ class WorkoutMidSessionPlannerTest {
         }
     }
 
-    @Test fun carryAlongPhrasesAddOnlyTheExplicitlyNamedEquipment() {
-        listOf(
-            "Tao mang theo thảm tập" to TrainingEquipment.MAT,
-            "Tao chỉ đem theo thảm tập" to TrainingEquipment.MAT
-        ).forEach { (utterance, tool) ->
-            val parsed = WorkoutMidSessionRequest.parse(utterance)
-            assertTrue("$utterance should be understood", parsed is WorkoutMidSessionRequest.Result.Proposed)
-            val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
-            assertEquals(utterance, setOf(tool), request.availableEquipment)
-            assertTrue(utterance, request.unavailableEquipment.isEmpty())
-        }
+    @Test fun carryingOneToolAddsItWithoutExcludingOtherEquipment() {
+        val parsed = WorkoutMidSessionRequest.parse("Tao mang theo thảm tập")
+        assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
+        val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+        assertEquals(setOf(TrainingEquipment.MAT), request.availableEquipment)
+        assertTrue(request.unavailableEquipment.isEmpty())
+    }
+
+    @Test fun sayingOnlyBringOneToolExcludesEveryUnmentionedTool() {
+        val parsed = WorkoutMidSessionRequest.parse("Tao chỉ đem theo thảm tập")
+        assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
+        val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+        assertEquals(setOf(TrainingEquipment.MAT), request.availableEquipment)
+        assertEquals(
+            TrainingEquipment.values().toSet() - setOf(TrainingEquipment.MAT),
+            request.unavailableEquipment
+        )
     }
 
     @Test fun negatedExclusiveInventoryDoesNotDiscardToolsNamedAfterTheContrast() {

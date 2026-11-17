@@ -216,6 +216,24 @@ object WorkoutMidSessionPlanner {
             }
         }
 
+        if (request.removeOptionalExercises) {
+            // The current step is index 0 in `remaining`; never remove it from under
+            // the user's feet. Only future, unstarted extension moves are removable.
+            val optionalFutureIndexes = remaining.indices.filter { index ->
+                index > 0 && remaining[index].name in extensions
+            }
+            if (optionalFutureIndexes.isEmpty()) {
+                return Result.Blocked(
+                    "Không có bài bổ sung tùy chọn nào ở phía trước để bỏ. Động tác đang tập và các hiệp đã ghi nhận được giữ nguyên."
+                )
+            }
+            optionalFutureIndexes.asReversed().forEach { index ->
+                val removedMove = remaining.removeAt(index)
+                removed += removedMove.name
+                extensions.remove(removedMove.name)
+            }
+        }
+
         if (remaining.none(::isMainExercise)) {
             return Result.Blocked(
                 "Sau khi áp dụng hạn chế, không còn động tác chính phù hợp trong phần buổi tập còn lại."

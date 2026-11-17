@@ -13,8 +13,8 @@ object WorkoutMoveSubstitution {
 
     private val easierNames = mapOf(
         "Squat không tạ" to listOf("Đứng lên – ngồi xuống"),
-        "Squat chậm 3 giây" to listOf("Đứng lên – ngồi xuống"),
-        "Bước lùi – lunge" to listOf("Đứng lên – ngồi xuống"),
+        "Squat chậm 3 giây" to listOf("Squat không tạ", "Đứng lên – ngồi xuống"),
+        "Bước lùi – lunge" to listOf("Squat không tạ", "Đứng lên – ngồi xuống"),
         // Offer a forearm-supported option as well as hand-supported regressions.
         // The constraint filter below will remove the latter when wrist loading is avoided.
         "Chống đẩy sàn" to listOf("Chống đẩy gối", "Chống đẩy tường", "Ép ngực tường bằng cẳng tay"),

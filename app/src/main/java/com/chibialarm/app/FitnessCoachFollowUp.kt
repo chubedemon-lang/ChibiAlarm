@@ -51,7 +51,9 @@ object FitnessCoachFollowUp {
                 QuickReply("Thảm tập", "thảm tập"),
                 QuickReply("Tạ đơn", "tạ đơn"),
                 QuickReply("Dây kháng lực", "dây kháng lực"),
-                QuickReply("Ghế vững", "ghế vững chắc")
+                QuickReply("Ghế vững", "ghế vững chắc"),
+                QuickReply("Thảm + ghế", "thảm tập và ghế vững chắc"),
+                QuickReply("Tạ + dây + thảm", "thảm tập, tạ đơn và dây kháng lực")
             )
             Question.MOVEMENT_LIMITS -> listOf(
                 QuickReply("Tránh nhảy", "tránh nhảy"),

@@ -197,6 +197,32 @@ class FitnessCoachFollowUpTest {
         assertEquals(1, merged.level)
     }
 
+    @Test fun combinedEquipmentQuickRepliesPreserveEveryExplicitTool() {
+        val previous = FitnessNaturalRequest.parse("giãn cơ 15 phút, đang tập đều")
+
+        val matAndChair = FitnessCoachFollowUp.quickReplies(previous).single { it.label == "Thảm + ghế" }
+        val first = FitnessCoachConversation.merge(
+            previous,
+            FitnessCoachConversation.parseReply(previous, matAndChair.utterance)
+        )
+        assertEquals(1, first.equipment)
+        assertEquals(setOf(TrainingEquipment.STABLE_CHAIR), first.additionalEquipment)
+        assertEquals(2, first.goal)
+        assertEquals(1, first.level)
+        assertEquals(15, first.minutes)
+
+        val dumbbellBandMat = FitnessCoachFollowUp.quickReplies(previous).single { it.label == "Tạ + dây + thảm" }
+        val second = FitnessCoachConversation.merge(
+            previous,
+            FitnessCoachConversation.parseReply(previous, dumbbellBandMat.utterance)
+        )
+        assertEquals(2, second.equipment)
+        assertEquals(setOf(TrainingEquipment.MAT), second.additionalEquipment)
+        assertEquals(2, second.goal)
+        assertEquals(1, second.level)
+        assertEquals(15, second.minutes)
+    }
+
     @Test fun quickReplyForMovementLimitAdvancesToTheSpecificWristQuestion() {
         val previous = FitnessNaturalRequest.parse("giãn cơ 15 phút, đang tập đều, không dụng cụ")
         val reply = FitnessCoachFollowUp.quickReplies(previous).single { it.label == "Tránh nhảy" }

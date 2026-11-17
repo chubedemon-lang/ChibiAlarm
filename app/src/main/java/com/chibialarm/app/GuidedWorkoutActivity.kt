@@ -2605,11 +2605,15 @@ class GuidedWorkoutActivity:Activity() {
         val hasCue = resting && !pausedForSafety && !restStepSpeechText.isNullOrBlank()
         restStepSpeakButton.visibility = if (hasCue) android.view.View.VISIBLE else android.view.View.GONE
         restStepSpeakButton.isEnabled = hasCue && ready && pendingRecognitionRequestCode == null
+        val actionDescription =
+            "Đọc một lần hướng dẫn bước tiếp theo; không thay đổi bộ đếm nghỉ"
         restStepSpeakButton.contentDescription = when {
             !hasCue -> "Không có hướng dẫn bước tiếp theo để đọc"
-            pendingRecognitionRequestCode != null -> "Tạm khóa đọc hướng dẫn khi đang chờ microphone"
-            !ready -> "Giọng đọc chưa sẵn sàng; hướng dẫn vẫn hiển thị bằng chữ"
-            else -> "Đọc một lần hướng dẫn bước tiếp theo; không thay đổi bộ đếm nghỉ"
+            pendingRecognitionRequestCode != null ->
+                "$actionDescription; tạm khóa khi đang chờ microphone"
+            !ready ->
+                "$actionDescription; giọng đọc chưa sẵn sàng, hướng dẫn vẫn hiển thị bằng chữ"
+            else -> actionDescription
         }
     }
 

@@ -601,6 +601,8 @@ class GuidedWorkoutRestConfirmationTest {
         assertEquals(View.VISIBLE, speakButton.visibility)
         assertEquals("🔊 Nghe bước tiếp theo", speakButton.text.toString())
         assertTrue(speakButton.contentDescription.toString().contains("Đọc một lần"))
+        assertTrue(speakButton.contentDescription.toString().contains("giọng đọc chưa sẵn sàng"))
+        assertFalse("The voice action stays disabled until the TTS engine is ready", speakButton.isEnabled)
         assertTrue(WorkoutRestStepPreview.spokenMessage(moves[index])!!.contains(expectedCue.instruction))
         activity.finish()
     }

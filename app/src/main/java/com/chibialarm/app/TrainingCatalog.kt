@@ -17,7 +17,8 @@ data class TrainingMove(
     val seconds:Int=60,
     val restSeconds:Int=if (dose.contains("giây", ignoreCase=true)) 30 else 45,
     val equipmentOptions:Set<TrainingEquipment> = emptySet(),
-    val requiresOverheadReach:Boolean = false
+    val requiresOverheadReach:Boolean = false,
+    val requiresJumping:Boolean = false
 ) {
     val requiresExternalLoad:Boolean
         get() = equipmentOptions.any { it == TrainingEquipment.DUMBBELL || it == TrainingEquipment.RESISTANCE_BAND }
@@ -35,8 +36,8 @@ data class TrainingProgram(
     val caution:String="Thở đều, tập trong phạm vi dễ chịu. Dừng khi đau, chóng mặt, đau ngực hoặc khó thở bất thường."
 )
 object TrainingCatalog {
-    private fun exercise(n:String,d:String,s:String,e:String,a:String="Nếu khó chịu hoặc mất kiểm soát kỹ thuật, dừng hoặc giảm mức độ.",secs:Int=60,restSecs:Int=if(d.contains("giây",ignoreCase=true))30 else 45,equipmentOptions:Set<TrainingEquipment> = emptySet(),requiresOverheadReach:Boolean=false)=
-        TrainingMove(n,d,s,e,a,secs,restSecs,equipmentOptions,requiresOverheadReach)
+    private fun exercise(n:String,d:String,s:String,e:String,a:String="Nếu khó chịu hoặc mất kiểm soát kỹ thuật, dừng hoặc giảm mức độ.",secs:Int=60,restSecs:Int=if(d.contains("giây",ignoreCase=true))30 else 45,equipmentOptions:Set<TrainingEquipment> = emptySet(),requiresOverheadReach:Boolean=false,requiresJumping:Boolean=false)=
+        TrainingMove(n,d,s,e,a,secs,restSecs,equipmentOptions,requiresOverheadReach,requiresJumping)
     private val warm=exercise("Khởi động tại chỗ","3–5 phút",
         "Đi bộ tại chỗ; xoay vai và cổ chân chậm; nâng gối nhẹ. Tăng tốc từng chút.",
         "Bước chậm, có thể vịn ghế chắc chắn.","Không xoay giật khớp.",120)
@@ -114,6 +115,13 @@ object TrainingCatalog {
     private val mountain=exercise("Mountain climber chậm","2 × 20 giây",
         "Ở tư thế chống tay, đưa từng gối về phía ngực theo nhịp chậm, giữ hông ổn định.",
         "Đưa gối chậm, hoặc đổi sang nâng gối tại chỗ.","Dừng nếu đau cổ tay, vai.",55)
+    private val jumpingJacks=exercise(
+        "Bật nhảy dang tay chân","2 hiệp × 15–20 giây",
+        "Đứng vững; bật hai chân ra vừa tầm đồng thời đưa tay lên; bật về vị trí ban đầu theo nhịp có kiểm soát; tiếp đất nhẹ.",
+        "Thay bằng bước ngang nhẹ, lần lượt đưa tay lên mà không bật.",
+        "Chỉ thực hiện nếu đã quen vận động bật nhảy và mặt sàn khô, vững; dừng nếu đau, chóng mặt hoặc khó thở bất thường.",
+        secs=40,restSecs=45,requiresJumping=true
+    )
     private val sidePlank=exercise("Side plank gối","2 × 15–25 giây mỗi bên",
         "Nằm nghiêng, chống khuỷu, co gối, nâng hông trong phạm vi có kiểm soát.",
         "Giảm thời gian và giữ hông thấp hơn.","Không ép vai chịu đau.",80)
@@ -176,7 +184,7 @@ object TrainingCatalog {
         TrainingProgram("quicklowcardio","🚶 Cardio nhẹ 5–10 phút","Bước tại chỗ và bước ngang, không cần nhảy","Cardio nhẹ",listOf(quickWarm,quickMarch,quickSideStep,quickCalf,quickCool)),
         TrainingProgram("quickmobility","🧘 Linh hoạt 5–10 phút","Chuyển động nhẹ, không cần xuống sàn","Linh hoạt",listOf(quickWarm,quickShoulder,quickStretch,quickCool)),
         TrainingProgram("quickrecovery","🌙 Phục hồi nhẹ","Chuỗi ngắn cho ngày ít năng lượng; không tự thêm bài","Phục hồi nhẹ",listOf(quickWarm,quickShoulder,quickSupportedMarch,quickCool)),
-        TrainingProgram("advanced","🚀 Thử thách nâng cao","Chỉ chọn khi đã quen kỹ thuật và hồi phục tốt","Thử thách",listOf(warm,tempoSquat,push,reverseLunge,mountain,sidePlank,cool)),
+        TrainingProgram("advanced","🚀 Thử thách nâng cao","Chỉ chọn khi đã quen kỹ thuật và hồi phục tốt","Thử thách",listOf(warm,tempoSquat,push,reverseLunge,mountain,jumpingJacks,sidePlank,cool)),
         TrainingProgram("weighted","🏋️ Sức mạnh với tạ hoặc dây","Cần tạ đơn nhẹ hoặc dây kháng lực • cho người đã quen động tác cơ bản","Sức mạnh",listOf(warm,resistanceRow,resistanceHinge,resistancePress,cool)),
         TrainingProgram("recovery","🌙 Ngày phục hồi tích cực","Nhẹ nhàng, không thay thế điều trị chấn thương","Phục hồi nhẹ",listOf(march,shoulder,catCow,stretch))
     )

@@ -30,6 +30,18 @@ class WorkoutRestVoiceCueTest {
         assertFalse(WorkoutRestVoiceCue.shouldAnnounce(5_000L, false, true))
     }
 
+    @Test fun microphoneInputSuppressesCueWithoutConsumingTheOneShot() {
+        assertFalse(
+            WorkoutRestVoiceCue.shouldAnnounce(
+                remainingMs = 5_000L,
+                alreadyAnnounced = false,
+                pausedForSafety = false,
+                microphoneActive = true
+            )
+        )
+        assertTrue(WorkoutRestVoiceCue.shouldAnnounce(5_000L, false, false))
+    }
+
     @Test fun roundsRemainingSecondsUpForSpeech() {
         assertEquals("Còn 2 giây nghỉ. Chuẩn bị cho động tác tiếp theo.", WorkoutRestVoiceCue.message(1_001L))
         assertEquals("Còn 1 giây nghỉ. Chuẩn bị cho động tác tiếp theo.", WorkoutRestVoiceCue.message(1L))

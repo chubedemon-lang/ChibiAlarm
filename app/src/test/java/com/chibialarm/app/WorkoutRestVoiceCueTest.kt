@@ -125,7 +125,7 @@ class WorkoutRestVoiceCueTest {
     @Test fun countdownPreviewSanitizesControlCharactersAndBoundsLength() {
         assertEquals(
             "Còn 5 giây nghỉ. Sau nghỉ: hiệp 2 của Squat.",
-            WorkoutRestVoiceCue.message(5_000L, "Sau nghỉ:\nhiệp 2\\u0000 của Squat.")
+            WorkoutRestVoiceCue.message(5_000L, "Sau nghỉ:\nhiệp 2\u0000 của Squat.")
         )
         assertTrue(WorkoutRestVoiceCue.message(5_000L, "x".repeat(300))!!.length <= 202)
     }

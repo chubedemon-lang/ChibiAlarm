@@ -57,6 +57,7 @@ class GuidedWorkoutStepSpeechTest {
             assertTrue(voiceButton.contentDescription.toString().contains("cách tập dễ hơn"))
             assertTrue(voiceButton.contentDescription.toString().contains("lưu ý an toàn"))
             assertTrue(voiceButton.contentDescription.toString().contains("hỏi cách tập"))
+            assertTrue(voiceButton.contentDescription.toString().contains("hỏi dụng cụ"))
             assertTrue(voiceButton.contentDescription.toString().contains("nghỉ bao lâu"))
             assertTrue(voiceButton.contentDescription.toString().contains("đọc lại câu trả lời"))
             assertTrue(voiceButton.text.toString().contains("đọc lại câu trả lời"))

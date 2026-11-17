@@ -20,7 +20,9 @@ object WorkoutExerciseConversation {
         "bao nhieu hiep", "bao nhieu lan", "bao nhieu giay",
         "muc tieu bai nay", "bai nay tap sao", "dong tac nay tap sao",
         "nhom co nao", "nhom co chinh", "co nao", "tap vao dau", "tac dung",
-        "bai nay tac dong vao dau", "nghi giua hiep bao lau", "how do i do this", "how many reps",
+        "bai nay tac dong vao dau", "can dung cu gi", "bai nay can gi", "dung cu nao",
+        "can ta hay day", "co can ta khong", "co can day khang luc khong", "co can tham khong",
+        "nghi giua hiep bao lau", "how do i do this", "how many reps",
         "how many sets", "how long rest", "giai thich"
     )
 
@@ -112,6 +114,29 @@ object WorkoutExerciseConversation {
                         "Mày có thể nghỉ thêm nếu cần, không phải vội."
                 } else {
                     "$rest. Đây là thời gian đề xuất; có thể nghỉ lâu hơn nếu chưa sẵn sàng."
+                }
+            }
+            asks("can dung cu gi", "bai nay can gi", "dung cu nao", "can ta hay day",
+                "co can ta khong", "co can day khang luc khong", "co can tham khong") -> {
+                val isCatalogMove = TrainingCatalog.allMoves.any { it.name == move.name }
+                when {
+                    !isCatalogMove ->
+                        "$name: thư viện chưa ghi rõ dụng cụ cho động tác này. Chibi không muốn đoán."
+                    move.equipmentOptions.isEmpty() ->
+                        "$name không yêu cầu dụng cụ riêng theo thư viện. Mày chỉ cần khoảng trống và mặt sàn ổn định."
+                    else -> {
+                        val options = move.equipmentOptions.sortedBy { it.ordinal }.map { equipment ->
+                            when (equipment) {
+                                TrainingEquipment.DUMBBELL -> "tạ đơn nhẹ"
+                                TrainingEquipment.RESISTANCE_BAND -> "dây kháng lực"
+                                TrainingEquipment.STABLE_CHAIR -> "ghế vững chắc không bánh xe"
+                                TrainingEquipment.MAT -> "thảm tập"
+                            }
+                        }
+                        "$name: theo thư viện, mày có thể dùng một trong các lựa chọn: " +
+                            options.joinToString(" hoặc ") +
+                            ". Không cần có tất cả. Nếu không có lựa chọn nào, hãy chọn bài thay thế trong giáo án; đừng tự dùng vật không chắc chắn."
+                    }
                 }
             }
             asks("de hon", "nhe hon", "phuong an nhe", "easier option") ->

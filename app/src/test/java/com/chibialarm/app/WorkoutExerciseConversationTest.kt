@@ -107,6 +107,51 @@ class WorkoutExerciseConversationTest {
         assertFalse(answer.contains("lần/hiệp"))
     }
 
+    @Test fun contextualEquipmentQuestionListsAlternativesWithoutTreatingThemAsCumulative() {
+        val row = TrainingCatalog.allMoves.single {
+            it.name == "Kéo tạ đơn hoặc dây kháng lực"
+        }
+        val answer = WorkoutExerciseConversation.answerForCurrentMove(
+            "Bài này cần dụng cụ gì?",
+            row
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("một trong các lựa chọn"))
+        assertTrue(answer.contains("tạ đơn nhẹ"))
+        assertTrue(answer.contains("dây kháng lực"))
+        assertTrue(answer.contains("Không cần có tất cả"))
+    }
+
+    @Test fun bodyweightMoveDoesNotInventAnEquipmentRequirement() {
+        val squat = TrainingCatalog.allMoves.single { it.name == "Squat không tạ" }
+        val answer = WorkoutExerciseConversation.answerForCurrentMove(
+            "Có cần tạ không?",
+            squat
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("không yêu cầu dụng cụ riêng"))
+        assertFalse(answer.contains("tạ đơn nhẹ"))
+    }
+
+    @Test fun unknownMoveDoesNotClaimThatNoEquipmentIsNeeded() {
+        val unknown = TrainingMove(
+            name = "Động tác thử nghiệm",
+            dose = "2 hiệp × 8 lần",
+            steps = "Thực hiện chậm.",
+            easier = "Giảm biên độ.",
+            avoid = "Dừng nếu đau."
+        )
+        val answer = WorkoutExerciseConversation.answerForCurrentMove(
+            "Cần dụng cụ gì?",
+            unknown
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("chưa ghi rõ dụng cụ"))
+    }
+
     @Test fun unrelatedTextIsNotAnsweredAsAContextualExerciseQuestion() {
         val squat = TrainingCatalog.allMoves.single { it.name == "Squat không tạ" }
         assertNull(WorkoutExerciseConversation.answerForCurrentMove("Tao muốn đổi bài", squat))

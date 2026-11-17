@@ -2284,8 +2284,8 @@ class GuidedWorkoutActivity:Activity() {
         }
         val voiceButton = Button(this).apply {
             tag = "workout-step-voice-control"
-            text = "🎤 Nói: bước tiếp, hỏi cách tập, hỏi nhóm cơ, đọc lại câu trả lời, đọc cách dễ hơn, số lần, nghỉ bao lâu, lưu ý an toàn"
-            contentDescription = "Mở nhận dạng giọng nói sau khi xác nhận quyền micro để chuyển bước, hỏi cách tập hoặc nhóm cơ của động tác hiện tại, đọc lại câu trả lời gần nhất, đọc cách tập dễ hơn, đọc lưu ý an toàn, hỏi số lần hoặc thời gian nghỉ"
+            text = "🎤 Nói: bước tiếp, hỏi cách tập, hỏi nhóm cơ, hỏi dụng cụ, đọc lại câu trả lời, đọc cách dễ hơn, số lần, nghỉ bao lâu, lưu ý an toàn"
+            contentDescription = "Mở nhận dạng giọng nói sau khi xác nhận quyền micro để chuyển bước, hỏi cách tập, nhóm cơ hoặc dụng cụ cần thiết của động tác hiện tại, đọc lại câu trả lời gần nhất, đọc cách tập dễ hơn, đọc lưu ý an toàn, hỏi số lần hoặc thời gian nghỉ, nghỉ bao lâu"
         }
         container.addView(illustration, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,

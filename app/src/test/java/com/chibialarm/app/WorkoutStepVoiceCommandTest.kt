@@ -100,6 +100,21 @@ class WorkoutStepVoiceCommandTest {
             WorkoutStepVoiceCommand.parse("Đọc lại câu trả lời, tôi đau cổ tay"))
     }
 
+    @Test fun recognizesQuestionsAboutExerciseEquipmentWithAndWithoutDiacritics() {
+        assertEquals(
+            WorkoutStepVoiceCommand.Command.ASK_EXERCISE,
+            WorkoutStepVoiceCommand.parse("Bài này cần dụng cụ gì?")
+        )
+        assertEquals(
+            WorkoutStepVoiceCommand.Command.ASK_EXERCISE,
+            WorkoutStepVoiceCommand.parse("co can ta khong")
+        )
+        assertEquals(
+            WorkoutStepVoiceCommand.Command.SAFETY,
+            WorkoutStepVoiceCommand.parse("Cần dụng cụ gì nhưng tôi đau cổ tay")
+        )
+    }
+
     @Test fun incompleteOrUnrelatedPhrasesDoNotMoveTheGuide() {
         assertEquals(WorkoutStepVoiceCommand.Command.UNKNOWN, WorkoutStepVoiceCommand.parse("tiếp tục tập"))
         assertEquals(WorkoutStepVoiceCommand.Command.UNKNOWN, WorkoutStepVoiceCommand.parse("nói to hơn"))

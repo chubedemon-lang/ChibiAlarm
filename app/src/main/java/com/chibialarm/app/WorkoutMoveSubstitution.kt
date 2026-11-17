@@ -38,11 +38,15 @@ object WorkoutMoveSubstitution {
 
     fun alternativesFor(
         move: TrainingMove,
-        constraints: WorkoutConstraintProfile = WorkoutConstraintProfile()
+        constraints: WorkoutConstraintProfile = WorkoutConstraintProfile(),
+        availableEquipment: Set<TrainingEquipment> = emptySet()
     ): List<TrainingMove> =
         easierNames[move.name].orEmpty()
             .mapNotNull { name -> catalogMoves.firstOrNull { it.name == name } }
-            .filter { WorkoutConstraintFilter.isAllowed(it, constraints) }
+            .filter {
+                WorkoutConstraintFilter.isAllowed(it, constraints) &&
+                    TrainingEquipmentAvailability.allows(it, availableEquipment)
+            }
             .distinctBy { it.name }
 
     /** Returns a copied list only when the selected replacement is explicitly allowed. */
@@ -50,10 +54,12 @@ object WorkoutMoveSubstitution {
         currentMoves: List<TrainingMove>,
         index: Int,
         replacement: TrainingMove,
-        constraints: WorkoutConstraintProfile = WorkoutConstraintProfile()
+        constraints: WorkoutConstraintProfile = WorkoutConstraintProfile(),
+        availableEquipment: Set<TrainingEquipment> = emptySet()
     ): List<TrainingMove>? {
         val current = currentMoves.getOrNull(index) ?: return null
-        val approved = alternativesFor(current, constraints).firstOrNull { it.name == replacement.name } ?: return null
+        val approved = alternativesFor(current, constraints, availableEquipment)
+            .firstOrNull { it.name == replacement.name } ?: return null
         // Insert the canonical catalog object, never caller-supplied exercise instructions.
         return currentMoves.toMutableList().also { it[index] = approved }
     }
@@ -62,13 +68,15 @@ object WorkoutMoveSubstitution {
     fun encode(
         substitutions: Map<Int, TrainingMove>,
         originalMoves: List<TrainingMove>,
-        constraints: WorkoutConstraintProfile = WorkoutConstraintProfile()
+        constraints: WorkoutConstraintProfile = WorkoutConstraintProfile(),
+        availableEquipment: Set<TrainingEquipment> = emptySet()
     ): String {
         if (originalMoves.isEmpty() || originalMoves.size > MAX_MOVES) return ""
         return substitutions.entries.asSequence()
             .filter { (index, replacement) ->
                 index in originalMoves.indices &&
-                    alternativesFor(originalMoves[index], constraints).any { it.name == replacement.name }
+                    alternativesFor(originalMoves[index], constraints, availableEquipment)
+                        .any { it.name == replacement.name }
             }
             .sortedBy { it.key }
             .take(MAX_MOVES)
@@ -82,7 +90,8 @@ object WorkoutMoveSubstitution {
     fun decode(
         raw: String?,
         originalMoves: List<TrainingMove>,
-        constraints: WorkoutConstraintProfile = WorkoutConstraintProfile()
+        constraints: WorkoutConstraintProfile = WorkoutConstraintProfile(),
+        availableEquipment: Set<TrainingEquipment> = emptySet()
     ): Map<Int, TrainingMove> {
         if (raw.isNullOrBlank() || raw.length > MAX_CHECKPOINT_CHARS ||
             originalMoves.isEmpty() || originalMoves.size > MAX_MOVES
@@ -97,7 +106,7 @@ object WorkoutMoveSubstitution {
             val name = runCatching {
                 URLDecoder.decode(entry.substring(separator + 1), "UTF-8")
             }.getOrNull() ?: return@forEach
-            val replacement = alternativesFor(originalMoves[index], constraints)
+            val replacement = alternativesFor(originalMoves[index], constraints, availableEquipment)
                 .firstOrNull { it.name == name } ?: return@forEach
             result[index] = replacement
         }
@@ -107,10 +116,11 @@ object WorkoutMoveSubstitution {
     fun apply(
         originalMoves: List<TrainingMove>,
         raw: String?,
-        constraints: WorkoutConstraintProfile = WorkoutConstraintProfile()
+        constraints: WorkoutConstraintProfile = WorkoutConstraintProfile(),
+        availableEquipment: Set<TrainingEquipment> = emptySet()
     ): List<TrainingMove> {
         val result = originalMoves.toMutableList()
-        decode(raw, originalMoves, constraints).forEach { (index, replacement) ->
+        decode(raw, originalMoves, constraints, availableEquipment).forEach { (index, replacement) ->
             result[index] = replacement
         }
         return result

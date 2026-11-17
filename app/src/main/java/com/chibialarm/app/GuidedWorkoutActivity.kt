@@ -2662,7 +2662,13 @@ class GuidedWorkoutActivity:Activity() {
                 "Hướng dẫn bước tiếp theo của ${upcomingMove.name}: ${it.instruction}"
             }.orEmpty()
             restStepPreview.visibility = if (stepCue != null) android.view.View.VISIBLE else android.view.View.GONE
-            restStepSpeechText = WorkoutRestStepPreview.spokenMessage(upcomingMove)
+            val upcomingPlan = nextIndex?.let(::setPlan)
+            val upcomingCompletedSets = nextIndex?.let { completedSetsByMove[it] ?: 0 } ?: 0
+            restStepSpeechText = WorkoutRestStepPreview.spokenMessage(
+                move = upcomingMove,
+                plan = upcomingPlan,
+                completedSets = upcomingCompletedSets
+            )
 
             // Visibility changes call WorkoutPoseView.refreshMotion(), which resets its
             // phase and description. Make it visible first, then pin the selected still

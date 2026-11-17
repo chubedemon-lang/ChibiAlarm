@@ -2563,14 +2563,14 @@ class GuidedWorkoutActivity:Activity() {
 
     private fun renderRestPreview() {
         if (!::restPreview.isInitialized || !::restPosePreview.isInitialized) return
-        if (!resting || index !in moves.indices) {
+        if (!resting || pausedForSafety || index !in moves.indices) {
             restPreview.text = ""
             restPreview.contentDescription = ""
             restPreview.visibility = android.view.View.GONE
             restPosePreview.contentDescription = ""
             restPosePreview.visibility = android.view.View.GONE
             restPosePreview.motionEnabled = false
-            if (::poseView.isInitialized) poseView.motionEnabled = true
+            if (::poseView.isInitialized) poseView.motionEnabled = !pausedForSafety
             return
         }
         val completedSets = completedSetsByMove[index] ?: 0

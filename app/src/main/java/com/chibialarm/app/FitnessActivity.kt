@@ -631,7 +631,8 @@ class FitnessActivity:Activity() {
                         equipmentSelection = recommendationEquipmentSpinner?.selectedItemPosition ?: 0,
                         additionalEquipment = currentAdditionalEquipment(),
                         level = level.selectedItemPosition,
-                        goal = goalSpinner.selectedItemPosition
+                        goal = goalSpinner.selectedItemPosition,
+                        impact = effectiveImpactRestriction()
                     )
                     if (adjustmentAnswer != null) {
                         // Preview only: chat suggestions never mutate the selected or active workout.

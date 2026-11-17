@@ -270,6 +270,39 @@ class GuidedWorkoutEffortVoiceTest {
         }
     }
 
+    @Test fun veryHardDialogShowsTheExactPlanAwareRestAndWaitsForConfirmation() {
+        val checkIn = openCheckIn()
+        try {
+            val choices = checkIn.dialog.listView
+            val veryHardIndex = WorkoutEffortFeedback.Level.VERY_HARD.ordinal
+            choices.performItemClick(
+                choices.getChildAt(veryHardIndex),
+                veryHardIndex,
+                choices.getItemIdAtPosition(veryHardIndex)
+            )
+
+            val pauseDialog = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
+            val expectedRest = maxOf(checkIn.plan.defaultRestSeconds, 120)
+                .coerceAtMost(300)
+            assertEquals(
+                "Nghỉ ${expectedRest} giây",
+                pauseDialog.getButton(AlertDialog.BUTTON_POSITIVE).text.toString()
+            )
+            val message = pauseDialog.findViewById<android.widget.TextView>(android.R.id.message)
+                ?.text?.toString().orEmpty()
+            assertTrue(message.contains("Nghỉ theo giáo án: ${checkIn.plan.defaultRestSeconds} giây"))
+            assertTrue(message.contains("Thời gian đề xuất: ${expectedRest} giây"))
+            assertTrue(message.contains("không ngắn hơn giáo án"))
+
+            val resting = GuidedWorkoutActivity::class.java.getDeclaredField("resting")
+                .apply { isAccessible = true }
+            assertFalse("A very-hard answer must pause for an explicit user choice",
+                resting.getBoolean(checkIn.activity))
+        } finally {
+            checkIn.activity.finish()
+        }
+    }
+
     @Test fun spokenPainClosesTheCheckInAndStopsTheWorkout() {
         val checkIn = openCheckIn()
         try {

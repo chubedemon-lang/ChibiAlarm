@@ -1585,6 +1585,18 @@ class GuidedWorkoutActivity:Activity() {
                 ))
             }
             WorkoutVoiceCommands.Command.STEP_GUIDE -> showStepByStepGuide()
+            WorkoutVoiceCommands.Command.EXPLAIN_CURRENT -> {
+                val explanation = if (pausedForSafety) {
+                    "Buổi tập đang dừng vì cảnh báo an toàn. Chibi không đề xuất tiếp tục hoặc đổi bài."
+                } else {
+                    currentSubstitutionExplanation()
+                }
+                AlertDialog.Builder(this).setTitle("🐰 Vì sao Chibi gợi ý bài này?")
+                    .setMessage(explanation)
+                    .setPositiveButton("Đã hiểu", null)
+                    .show()
+                speak(explanation)
+            }
             WorkoutVoiceCommands.Command.COMPLETE_SET -> confirmSpokenSetCompletion()
             WorkoutVoiceCommands.Command.RESUME -> resume()
             WorkoutVoiceCommands.Command.NEXT -> nextMove()
@@ -1653,7 +1665,7 @@ class GuidedWorkoutActivity:Activity() {
             }
             WorkoutVoiceCommands.Command.UNKNOWN -> {
                 AlertDialog.Builder(this).setTitle("Chibi chưa hiểu yêu cầu")
-                    .setMessage("Bạn có thể nói: tôi đã làm 10 lần, xong hiệp, bài này khó quá, hướng dẫn từng bước, đọc tiến độ, tạm dừng, tiếp tục, đổi động tác, nghỉ thêm hoặc bỏ qua nghỉ. Đây là bộ lệnh offline, chưa phải hội thoại AI tự do.")
+                    .setMessage("Bạn có thể nói: tôi đã làm 10 lần, xong hiệp, bài này khó quá, vì sao bài này dễ hơn, hướng dẫn từng bước, đọc tiến độ, tạm dừng, tiếp tục, đổi động tác, nghỉ thêm hoặc bỏ qua nghỉ. Đây là bộ lệnh offline, chưa phải hội thoại AI tự do.")
                     .setPositiveButton("Đóng",null).show()
             }
         }
@@ -2019,6 +2031,19 @@ class GuidedWorkoutActivity:Activity() {
                 }
             }.setNegativeButton("Đóng",null).show()
     }
+    /** Explain the active substitution from the local catalog; never infer a medical reason. */
+    private fun currentSubstitutionExplanation(): String {
+        val original = originalMoves.getOrNull(index)
+        val replacement = substitutions[index]
+        if (original == null || replacement == null) {
+            return "Động tác hiện tại chưa được thay thế. Nếu muốn xem phương án khác, hãy nói: đổi bài dễ hơn."
+        }
+        val reason = WorkoutMoveSubstitution.explanationFor(original, replacement)
+            ?: return "Đây là biến thể đã có trong thư viện bài tập. Chibi chưa có giải thích riêng cho cặp động tác này."
+        return "Chibi gợi ý " + replacement.name + " thay cho " + original.name + " vì: " + reason +
+            " Đây là giải thích về cách tổ chức động tác, không phải chẩn đoán hay bảo đảm phù hợp với mọi tình trạng sức khỏe."
+    }
+
     /** Replace only the current, not-yet-completed step with a curated easier catalog move. */
     private fun chooseEasierAlternative() {
         if (pausedForSafety) {
@@ -2047,8 +2072,14 @@ class GuidedWorkoutActivity:Activity() {
                 val replacement = options.getOrNull(choice) ?: return@setItems
                 val restGuidance = WorkoutSetTracker.restGuidance(replacement.dose, replacement.restSeconds)
                     ?.let { "$it\n" }.orEmpty()
+                val reason = WorkoutMoveSubstitution.explanationFor(original, replacement)
+                val reasonText = reason?.let { "Vì sao Chibi gợi ý: " + it + "\n\n" }.orEmpty()
                 AlertDialog.Builder(this).setTitle("Xác nhận thay động tác")
-                    .setMessage("${original.name} → ${replacement.name}\n\nMục tiêu: ${replacement.dose}\n${restGuidance}Cách tập: ${replacement.steps}\nDễ hơn nữa: ${replacement.easier}\nLưu ý: ${replacement.avoid}\n\nChỉ thay bước hiện tại chưa được ghi nhận hoàn thành. Các bước khác và thời gian còn lại được giữ nguyên. Chỉ chọn nếu phù hợp với cơ thể bạn; đây là gợi ý offline, không phải tư vấn điều trị.")
+                    .setMessage(original.name + " → " + replacement.name + "\n\n" + reasonText +
+                        "Mục tiêu: " + replacement.dose + "\n" + restGuidance +
+                        "Cách tập: " + replacement.steps + "\nDễ hơn nữa: " + replacement.easier +
+                        "\nLưu ý: " + replacement.avoid +
+                        "\n\nChỉ thay bước hiện tại chưa được ghi nhận hoàn thành. Các bước khác và thời gian còn lại được giữ nguyên. Chỉ chọn nếu phù hợp với cơ thể bạn; đây là gợi ý offline, không phải tư vấn điều trị.")
                     .setPositiveButton("Đổi động tác") { _, _ ->
                         if (pausedForSafety || completed || resting || index != selectedIndex ||
                             index !in moves.indices || (completedSetsByMove[index] ?: 0) > 0 ||
@@ -2070,7 +2101,7 @@ class GuidedWorkoutActivity:Activity() {
                         renderDose()
                         renderSetControls()
                         saveCheckpoint()
-                        speak("Đã đổi sang ${replacement.name}. Thời gian còn lại được giữ nguyên. Hãy kiểm tra hướng dẫn trước khi tiếp tục.")
+                        speak(currentSubstitutionExplanation() + " Thời gian còn lại được giữ nguyên. Hãy kiểm tra hướng dẫn trước khi tiếp tục.")
                     }
                     .setNegativeButton("Giữ bài cũ", null)
                     .show()

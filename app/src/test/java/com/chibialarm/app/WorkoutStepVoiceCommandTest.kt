@@ -106,6 +106,30 @@ class WorkoutStepVoiceCommandTest {
             WorkoutStepVoiceCommand.parse("Nói nhanh hơn nhưng tôi đau cổ tay"))
     }
 
+    @Test fun canPauseAndResumeTheWorkoutFromTheStepGuideVoiceCommand() {
+        assertEquals(WorkoutStepVoiceCommand.Command.PAUSE,
+            WorkoutStepVoiceCommand.parse("Tạm dừng buổi tập"))
+        assertEquals(WorkoutStepVoiceCommand.Command.PAUSE,
+            WorkoutStepVoiceCommand.parse("tam dung buoi tap"))
+        assertEquals(WorkoutStepVoiceCommand.Command.PAUSE,
+            WorkoutStepVoiceCommand.parse("Pause workout"))
+        assertEquals(WorkoutStepVoiceCommand.Command.RESUME,
+            WorkoutStepVoiceCommand.parse("Tiếp tục buổi tập"))
+        assertEquals(WorkoutStepVoiceCommand.Command.RESUME,
+            WorkoutStepVoiceCommand.parse("tiep tuc buoi tap"))
+        assertEquals(WorkoutStepVoiceCommand.Command.RESUME,
+            WorkoutStepVoiceCommand.parse("Resume workout"))
+
+        assertEquals(WorkoutStepVoiceCommand.Command.UNKNOWN,
+            WorkoutStepVoiceCommand.parse("Không tạm dừng buổi tập"))
+        assertEquals(WorkoutStepVoiceCommand.Command.UNKNOWN,
+            WorkoutStepVoiceCommand.parse("Đừng tiếp tục buổi tập"))
+        assertEquals(WorkoutStepVoiceCommand.Command.SAFETY,
+            WorkoutStepVoiceCommand.parse("Tiếp tục buổi tập nhưng tôi khó thở"))
+        assertEquals(WorkoutStepVoiceCommand.Command.SAFETY,
+            WorkoutStepVoiceCommand.parse("Tạm dừng buổi tập, tôi đau cổ tay"))
+    }
+
     @Test fun canReplayTheLatestCoachAnswerWithoutRepeatingTheCurrentStep() {
         assertEquals(WorkoutStepVoiceCommand.Command.REPEAT_ANSWER,
             WorkoutStepVoiceCommand.parse("Đọc lại câu trả lời"))

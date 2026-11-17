@@ -47,11 +47,15 @@ class GuidedWorkoutSpeechRatePersistenceTest {
     @Test fun rotationBundlePreservesTheWorkoutOnlyRateWithoutChangingGlobalVoicePreference() {
         val app = RuntimeEnvironment.getApplication()
         val settings = app.getSharedPreferences("settings", Context.MODE_PRIVATE)
-        val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java, intent()).setup().get()
+        val controller = Robolectric.buildActivity(GuidedWorkoutActivity::class.java, intent()).setup()
+        val activity = controller.get()
         try {
             setRate(activity, 1.6f)
             val state = Bundle()
-            activity.onSaveInstanceState(state)
+            GuidedWorkoutActivity::class.java
+                .getDeclaredMethod("onSaveInstanceState", Bundle::class.java)
+                .apply { isAccessible = true }
+                .invoke(activity, state)
 
             assertEquals("full", state.getString("workout_program"))
             assertEquals(1.6f, state.getFloat("workout_speech_rate"), 0.001f)

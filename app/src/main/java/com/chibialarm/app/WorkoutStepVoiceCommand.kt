@@ -5,7 +5,7 @@ import java.util.Locale
 
 /** Small offline command grammar for the step-by-step guide; no transcript is retained. */
 object WorkoutStepVoiceCommand {
-    enum class Command { NEXT, PREVIOUS, REPEAT, REPEAT_ANSWER, SUMMARY, EASIER, SAFETY_NOTE, SPEECH_SLOWER, SPEECH_FASTER, SPEECH_NORMAL, REST, ASK_EXERCISE, CLOSE, SAFETY, UNKNOWN }
+    enum class Command { NEXT, PREVIOUS, PAUSE, RESUME, REPEAT, REPEAT_ANSWER, SUMMARY, EASIER, SAFETY_NOTE, SPEECH_SLOWER, SPEECH_FASTER, SPEECH_NORMAL, REST, ASK_EXERCISE, CLOSE, SAFETY, UNKNOWN }
 
     private fun containsPhrase(text: String, phrase: String): Boolean =
         Regex("(^|\\s)" + Regex.escape(phrase) + "(\\s|$)").containsMatchIn(text)
@@ -40,8 +40,16 @@ object WorkoutStepVoiceCommand {
                 "khong doc nhanh hon", "dung doc nhanh hon",
                 "khong noi nhanh hon", "dung noi nhanh hon",
                 "khong tang toc do", "dung tang toc do",
-                "khong can doc nhanh hon", "giu toc do hien tai"
+                "khong can doc nhanh hon", "giu toc do hien tai",
+                "khong tam dung buoi tap", "dung tam dung buoi tap",
+                "khong tiep tuc buoi tap", "dung tiep tuc buoi tap",
+                "khong pause workout", "do not pause workout", "don t pause workout",
+                "khong resume workout", "do not resume workout", "don t resume workout"
             ).any { normalized.contains(it) }) return Command.UNKNOWN
+        if (listOf("tam dung buoi tap", "pause workout", "pause the workout")
+                .any { normalized.contains(it) }) return Command.PAUSE
+        if (listOf("tiep tuc buoi tap", "resume workout", "resume the workout")
+                .any { normalized.contains(it) }) return Command.RESUME
         if (listOf(
                 "noi cham lai", "doc cham hon", "noi cham hon", "cham hon nua",
                 "slow down", "speak slower"

@@ -947,7 +947,7 @@ class GuidedWorkoutActivity:Activity() {
         val guideRequest = requestCode == guideVoiceRequest
         val effortRequest = requestCode == effortVoiceRequest
         val prompt = when {
-            guideRequest -> "Nói: bước tiếp, bước trước, đọc lại hoặc đóng hướng dẫn. Nếu đau hay khó thở, hãy nói rõ."
+            guideRequest -> "Nói: bước tiếp, bước trước, đọc lại, tạm dừng buổi tập, tiếp tục buổi tập hoặc đóng hướng dẫn. Nếu đau hay khó thở, hãy nói rõ."
             effortRequest -> "Nói cảm nhận hiệp vừa rồi: nhẹ, vừa sức, khó cần nghỉ thêm hoặc quá sức. Nếu đau hay khó thở, hãy nói rõ."
             else -> "Ví dụ: tôi đã làm 10 lần, tôi giữ 20 giây, xong hiệp, bài này khó quá, nghỉ thêm, đổi bài, dừng lại"
         }
@@ -1003,7 +1003,7 @@ class GuidedWorkoutActivity:Activity() {
     private fun requestGuideVoiceCommand(onResult:(String)->Unit) {
         guideVoiceResultHandler = onResult
         val disclosure = AlertDialog.Builder(this).setTitle("🎤 Điều khiển hướng dẫn bằng giọng nói")
-            .setMessage("Chỉ mở micro sau khi bạn nhấn Bắt đầu nghe. Android sẽ hỏi quyền micro nếu cần. Dịch vụ nhận dạng của máy có thể xử lý âm thanh trực tuyến tùy nhà cung cấp. Chibi chỉ dùng câu nhận dạng để chuyển bước, đọc lại, yêu cầu nghỉ hoặc đóng hướng dẫn; không ghi âm nền và không lưu bản ghi hay bản chép lời. Bạn có thể hủy và tiếp tục dùng nút trên màn hình.")
+            .setMessage("Chỉ mở micro sau khi bạn nhấn Bắt đầu nghe. Android sẽ hỏi quyền micro nếu cần. Dịch vụ nhận dạng của máy có thể xử lý âm thanh trực tuyến tùy nhà cung cấp. Chibi chỉ dùng câu nhận dạng để chuyển bước, đọc lại, yêu cầu nghỉ, tạm dừng hoặc tiếp tục buổi tập, hoặc đóng hướng dẫn; không ghi âm nền và không lưu bản ghi hay bản chép lời. Bạn có thể hủy và tiếp tục dùng nút trên màn hình.")
             .setPositiveButton("Bắt đầu nghe"){_,_->
                 pause()
                 spoken?.stop()
@@ -2521,6 +2521,27 @@ class GuidedWorkoutActivity:Activity() {
                             renderStep()
                         } else Toast.makeText(this,"Đã ở bước đầu của hướng dẫn.",Toast.LENGTH_SHORT).show()
                     }
+                    WorkoutStepVoiceCommand.Command.PAUSE -> {
+                        // The guide deliberately pauses the timer before microphone capture.
+                        // This command confirms that state without changing progress or rewards.
+                        pause()
+                        Toast.makeText(
+                            this,
+                            "Buổi tập đang tạm dừng. Nói “tiếp tục buổi tập” khi sẵn sàng.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                    WorkoutStepVoiceCommand.Command.RESUME -> {
+                        when {
+                            completed -> Toast.makeText(
+                                this, "Buổi tập đã kết thúc; không thể tiếp tục phiên này.", Toast.LENGTH_LONG
+                            ).show()
+                            pausedForSafety || paused -> resume()
+                            else -> Toast.makeText(
+                                this, "Buổi tập đang chạy.", Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }
                     WorkoutStepVoiceCommand.Command.REPEAT_ANSWER -> {
                         val answer = lastCoachAnswer
                         if (answer.isNullOrBlank()) {
@@ -2615,7 +2636,7 @@ class GuidedWorkoutActivity:Activity() {
                     }
                     WorkoutStepVoiceCommand.Command.UNKNOWN -> {
                         AlertDialog.Builder(this).setTitle("Chibi chưa hiểu lệnh")
-                            .setMessage("Bạn có thể nói: bước tiếp, bước trước, đọc lại bước, đọc lại câu trả lời, hỏi cách tập bài này, hỏi nhóm cơ chính, hỏi bao nhiêu lần, nghỉ bao lâu, đọc cách dễ hơn, đọc lưu ý an toàn, nói chậm lại, tốc độ bình thường, nghỉ thêm 30 giây hoặc đóng hướng dẫn. Nếu đau, khó thở hay khó chịu, Chibi sẽ dừng buổi tập.")
+                            .setMessage("Bạn có thể nói: bước tiếp, bước trước, đọc lại bước, đọc lại câu trả lời, hỏi cách tập bài này, hỏi nhóm cơ chính, hỏi bao nhiêu lần, nghỉ bao lâu, đọc cách dễ hơn, đọc lưu ý an toàn, nói chậm lại, tốc độ bình thường, tạm dừng buổi tập, tiếp tục buổi tập, nghỉ thêm 30 giây hoặc đóng hướng dẫn. Nếu đau, khó thở hay khó chịu, Chibi sẽ dừng buổi tập.")
                             .setPositiveButton("Đã hiểu",null).show()
                     }
                 }

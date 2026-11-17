@@ -557,4 +557,76 @@ class GuidedWorkoutRestConfirmationTest {
             activity.finish()
         }
     }
+
+
+    @Test fun restShowsVectorPreviewForTheNextRequiredSetAndFreezesTheMainPose() {
+        val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup().get()
+        selectSetBasedMove(activity, "lần")
+
+        val movesField = GuidedWorkoutActivity::class.java.getDeclaredField("moves").apply { isAccessible = true }
+        @Suppress("UNCHECKED_CAST")
+        val moves = movesField.get(activity) as List<TrainingMove>
+        val index = GuidedWorkoutActivity::class.java.getDeclaredField("index")
+            .apply { isAccessible = true }.getInt(activity)
+        val plan = WorkoutSetTracker.parse(moves[index].dose, moves[index].restSeconds)!!
+        val completed = GuidedWorkoutActivity::class.java.getDeclaredField("completedSetsByMove")
+            .apply { isAccessible = true }.get(activity) as MutableMap<Int, Int>
+        completed[index] = 1
+        GuidedWorkoutActivity::class.java.getDeclaredField("resting")
+            .apply { isAccessible = true }.setBoolean(activity, true)
+
+        GuidedWorkoutActivity::class.java.getDeclaredMethod("renderRestPreview")
+            .apply { isAccessible = true }.invoke(activity)
+
+        val preview = GuidedWorkoutActivity::class.java.getDeclaredField("restPosePreview")
+            .apply { isAccessible = true }.get(activity) as WorkoutPoseView
+        val mainPose = GuidedWorkoutActivity::class.java.getDeclaredField("poseView")
+            .apply { isAccessible = true }.get(activity) as WorkoutPoseView
+
+        assertEquals(View.VISIBLE, preview.visibility)
+        assertEquals(WorkoutPoseGuide.classify(moves[index].name), preview.pose)
+        assertTrue(preview.contentDescription.toString().contains(moves[index].name))
+        assertFalse("The active illustration must pause while the rest preview is shown", mainPose.motionEnabled)
+        assertFalse("The rest preview is a static cue, not a second animator", preview.motionEnabled)
+        assertEquals(index, WorkoutRestPosePreview.nextMoveIndex(index, moves.size, 1, plan))
+        activity.finish()
+    }
+
+    @Test fun restPreviewAdvancesAfterMaximumSetsAndHidesWhenRestEnds() {
+        val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup().get()
+        selectSetBasedMove(activity, "lần")
+
+        val movesField = GuidedWorkoutActivity::class.java.getDeclaredField("moves").apply { isAccessible = true }
+        @Suppress("UNCHECKED_CAST")
+        val moves = movesField.get(activity) as List<TrainingMove>
+        val index = GuidedWorkoutActivity::class.java.getDeclaredField("index")
+            .apply { isAccessible = true }.getInt(activity)
+        val plan = WorkoutSetTracker.parse(moves[index].dose, moves[index].restSeconds)!!
+        val completed = GuidedWorkoutActivity::class.java.getDeclaredField("completedSetsByMove")
+            .apply { isAccessible = true }.get(activity) as MutableMap<Int, Int>
+        completed[index] = plan.maximumSets
+        val resting = GuidedWorkoutActivity::class.java.getDeclaredField("resting").apply { isAccessible = true }
+        resting.setBoolean(activity, true)
+
+        val render = GuidedWorkoutActivity::class.java.getDeclaredMethod("renderRestPreview")
+            .apply { isAccessible = true }
+        render.invoke(activity)
+
+        val preview = GuidedWorkoutActivity::class.java.getDeclaredField("restPosePreview")
+            .apply { isAccessible = true }.get(activity) as WorkoutPoseView
+        val mainPose = GuidedWorkoutActivity::class.java.getDeclaredField("poseView")
+            .apply { isAccessible = true }.get(activity) as WorkoutPoseView
+        val expectedIndex = WorkoutRestPosePreview.nextMoveIndex(index, moves.size, plan.maximumSets, plan)
+
+        assertEquals(View.VISIBLE, preview.visibility)
+        assertEquals(WorkoutPoseGuide.classify(moves[expectedIndex!!].name), preview.pose)
+        assertTrue(preview.contentDescription.toString().contains(moves[expectedIndex].name))
+
+        resting.setBoolean(activity, false)
+        render.invoke(activity)
+        assertEquals(View.GONE, preview.visibility)
+        assertTrue("The main exercise animation should resume outside rest", mainPose.motionEnabled)
+        activity.finish()
+    }
+
 }

@@ -1021,4 +1021,77 @@ class WorkoutMidSessionPlannerTest {
         assertTrue(result is WorkoutMidSessionPlanner.Result.Blocked)
     }
 
+    @Test fun spokenNoJumpRequestReplacesOnlyAnUnstartedJumpingMove() {
+        val parsed = WorkoutMidSessionRequest.parse("Không nhảy, đổi bài giúp tao")
+        assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
+        val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+        assertTrue(request.avoidJumping)
+        assertFalse(request.allowJumping)
+
+        val moves = listOf(
+            move("Khởi động tại chỗ"),
+            move("Bật nhảy dang tay chân"),
+            move("Squat không tạ"),
+            move("Thả lỏng")
+        )
+        val result = WorkoutMidSessionPlanner.preview(
+            currentMoves = moves,
+            currentIndex = 1,
+            completedCurrentSets = 0,
+            currentStepLocked = false,
+            constraints = WorkoutConstraintProfile(),
+            request = request,
+            remainingCurrentSeconds = 30,
+            extensionMoveNames = emptySet(),
+            level = 2
+        )
+        assertTrue(result is WorkoutMidSessionPlanner.Result.Proposed)
+        val preview = (result as WorkoutMidSessionPlanner.Result.Proposed).preview
+        assertEquals("Bật nhảy dang tay chân → Bước ngang nhẹ", preview.replacements.single())
+        assertEquals("Khởi động tại chỗ", preview.after.first().name)
+        assertEquals("Bước ngang nhẹ", preview.after[1].name)
+        assertTrue(preview.after.none { it.requiresJumping })
+    }
+
+    @Test fun noJumpRequestCannotRewriteAJumpingMoveAfterASetWasConfirmed() {
+        val parsed = WorkoutMidSessionRequest.parse("Không nhảy")
+        assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
+        val result = WorkoutMidSessionPlanner.preview(
+            currentMoves = listOf(move("Bật nhảy dang tay chân"), move("Squat không tạ"), move("Thả lỏng")),
+            currentIndex = 0,
+            completedCurrentSets = 1,
+            currentStepLocked = true,
+            constraints = WorkoutConstraintProfile(),
+            request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request,
+            remainingCurrentSeconds = 20,
+            extensionMoveNames = emptySet(),
+            level = 2
+        )
+        assertTrue(result is WorkoutMidSessionPlanner.Result.Blocked)
+    }
+
+    @Test fun lowImpactPreferencePersistsAcrossFollowUpsAndCanBeExplicitlyRelaxed() {
+        val selected = WorkoutConstraintProfile(avoidJumping = true)
+        val followUp = WorkoutMidSessionRequest.parse("Đổi bài nhẹ hơn")
+        assertTrue(followUp is WorkoutMidSessionRequest.Result.Proposed)
+        val retained = WorkoutMidSessionPlanner.effectiveConstraints(
+            selected, (followUp as WorkoutMidSessionRequest.Result.Proposed).request
+        )
+        assertTrue(retained.avoidJumping)
+
+        val permission = WorkoutMidSessionRequest.parse("Nhảy được")
+        assertTrue(permission is WorkoutMidSessionRequest.Result.Proposed)
+        val permissionRequest = (permission as WorkoutMidSessionRequest.Result.Proposed).request
+        assertTrue(permissionRequest.allowJumping)
+        assertFalse(WorkoutMidSessionPlanner.effectiveConstraints(selected, permissionRequest).avoidJumping)
+    }
+
+    @Test fun explicitLowImpactRestrictionWinsOverJumpingPermissionInTheSameUtterance() {
+        val parsed = WorkoutMidSessionRequest.parse("Không nhảy, nhảy được")
+        assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
+        val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+        assertTrue(request.avoidJumping)
+        assertFalse(request.allowJumping)
+    }
+
 }

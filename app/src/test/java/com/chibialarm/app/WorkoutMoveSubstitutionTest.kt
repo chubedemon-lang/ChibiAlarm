@@ -11,7 +11,11 @@ class WorkoutMoveSubstitutionTest {
 
     @Test fun offersOnlyCuratedLowerImpactAlternatives() {
         val squat = catalogMove("Squat không tạ")
-        val options = WorkoutMoveSubstitution.alternativesFor(squat)
+        assertTrue(WorkoutMoveSubstitution.alternativesFor(squat).isEmpty())
+        val options = WorkoutMoveSubstitution.alternativesFor(
+            squat,
+            availableEquipment = setOf(TrainingEquipment.STABLE_CHAIR)
+        )
         assertEquals(listOf("Đứng lên – ngồi xuống"), options.map { it.name })
 
         val push = catalogMove("Chống đẩy sàn")
@@ -27,11 +31,11 @@ class WorkoutMoveSubstitutionTest {
         val expected = listOf("Squat không tạ", "Đứng lên – ngồi xuống")
         assertEquals(
             expected,
-            WorkoutMoveSubstitution.alternativesFor(catalogMove("Bước lùi – lunge")).map { it.name }
+            WorkoutMoveSubstitution.alternativesFor(catalogMove("Bước lùi – lunge"), availableEquipment = setOf(TrainingEquipment.STABLE_CHAIR)).map { it.name }
         )
         assertEquals(
             expected,
-            WorkoutMoveSubstitution.alternativesFor(catalogMove("Squat chậm 3 giây")).map { it.name }
+            WorkoutMoveSubstitution.alternativesFor(catalogMove("Squat chậm 3 giây"), availableEquipment = setOf(TrainingEquipment.STABLE_CHAIR)).map { it.name }
         )
     }
 
@@ -69,10 +73,29 @@ class WorkoutMoveSubstitutionTest {
         assertTrue(changed.currentMoveChanged)
     }
 
+    @Test fun chairDependentAlternativesRequireReportedInventoryAtEveryBoundary() {
+        val base = listOf(catalogMove("Squat không tạ"))
+        val replacement = catalogMove("Đứng lên – ngồi xuống")
+        val chair = setOf(TrainingEquipment.STABLE_CHAIR)
+
+        assertTrue(WorkoutMoveSubstitution.alternativesFor(base[0]).isEmpty())
+        assertNull(WorkoutMoveSubstitution.replace(base, 0, replacement))
+        assertEquals(
+            listOf(replacement.name),
+            WorkoutMoveSubstitution.alternativesFor(base[0], availableEquipment = chair).map { it.name }
+        )
+        assertNotNull(WorkoutMoveSubstitution.replace(base, 0, replacement, availableEquipment = chair))
+
+        val encoded = WorkoutMoveSubstitution.encode(mapOf(0 to replacement), base, availableEquipment = chair)
+        assertTrue(WorkoutMoveSubstitution.decode(encoded, base).isEmpty())
+        assertEquals(replacement, WorkoutMoveSubstitution.decode(encoded, base, availableEquipment = chair)[0])
+        assertEquals(base, WorkoutMoveSubstitution.apply(base, encoded))
+    }
+
     @Test fun replacementChangesOnlyTheSelectedStep() {
         val base = listOf(catalogMove("Squat không tạ"), catalogMove("Chống đẩy sàn"))
         val replacement = catalogMove("Đứng lên – ngồi xuống")
-        val updated = WorkoutMoveSubstitution.replace(base, 0, replacement)
+        val updated = WorkoutMoveSubstitution.replace(base, 0, replacement, availableEquipment = setOf(TrainingEquipment.STABLE_CHAIR))
         assertNotNull(updated)
         assertEquals(replacement, updated!![0])
         assertEquals(base[1], updated[1])
@@ -86,7 +109,7 @@ class WorkoutMoveSubstitutionTest {
         assertNull(WorkoutMoveSubstitution.replace(base, 4, catalogMove("Đứng lên – ngồi xuống")))
         val canonical = catalogMove("Đứng lên – ngồi xuống")
         val spoofed = canonical.copy(steps = "instructions supplied by caller")
-        val safe = WorkoutMoveSubstitution.replace(base, 0, spoofed)!!
+        val safe = WorkoutMoveSubstitution.replace(base, 0, spoofed, availableEquipment = setOf(TrainingEquipment.STABLE_CHAIR))!!
         assertEquals(canonical.steps, safe[0].steps)
     }
 
@@ -101,12 +124,13 @@ class WorkoutMoveSubstitutionTest {
             1 to catalogMove("Chống đẩy tường"),
             2 to catalogMove("Chống đẩy tường")
         )
-        val encoded = WorkoutMoveSubstitution.encode(substitutions, base)
-        val decoded = WorkoutMoveSubstitution.decode(encoded, base)
+        val chair = setOf(TrainingEquipment.STABLE_CHAIR)
+        val encoded = WorkoutMoveSubstitution.encode(substitutions, base, availableEquipment = chair)
+        val decoded = WorkoutMoveSubstitution.decode(encoded, base, availableEquipment = chair)
         assertEquals(2, decoded.size)
         assertEquals("Đứng lên – ngồi xuống", decoded[0]?.name)
         assertEquals("Chống đẩy tường", decoded[1]?.name)
-        val restored = WorkoutMoveSubstitution.apply(base, encoded)
+        val restored = WorkoutMoveSubstitution.apply(base, encoded, availableEquipment = chair)
         assertEquals("Đứng lên – ngồi xuống", restored[0].name)
         assertEquals("Chống đẩy tường", restored[1].name)
         assertEquals("Khởi động tại chỗ", restored[2].name)
@@ -194,12 +218,13 @@ class WorkoutMoveSubstitutionTest {
 
     @Test fun malformedDuplicateAndOversizedCheckpointEntriesAreIgnored() {
         val base = listOf(catalogMove("Squat không tạ"))
+        val chair = setOf(TrainingEquipment.STABLE_CHAIR)
         val valid = WorkoutMoveSubstitution.encode(
-            mapOf(0 to catalogMove("Đứng lên – ngồi xuống")), base
+            mapOf(0 to catalogMove("Đứng lên – ngồi xuống")), base, availableEquipment = chair
         )
         assertEquals(
             mapOf(0 to catalogMove("Đứng lên – ngồi xuống")),
-            WorkoutMoveSubstitution.decode("0:unknown;$valid;9:$valid", base)
+            WorkoutMoveSubstitution.decode("0:unknown;$valid;9:$valid", base, availableEquipment = chair)
         )
         assertTrue(WorkoutMoveSubstitution.decode("x:bad;0:%ZZ", base).isEmpty())
         assertTrue(WorkoutMoveSubstitution.decode("a".repeat(4_097), base).isEmpty())

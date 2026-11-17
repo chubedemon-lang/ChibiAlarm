@@ -817,6 +817,50 @@ class WorkoutMidSessionPlannerTest {
         }
     }
 
+    @Test fun colloquialExclusiveInventoryPhrasesAreUnderstoodAsOnlyAvailableTools() {
+        val allTools = TrainingEquipment.values().toSet()
+        val cases = listOf(
+            "Tao có mỗi thảm tập" to TrainingEquipment.MAT,
+            "Tao mang theo mỗi tạ đơn" to TrainingEquipment.DUMBBELL,
+            "Tao chỉ mang theo ghế vững chắc" to TrainingEquipment.STABLE_CHAIR,
+            "Tao chỉ có mỗi dây kháng lực" to TrainingEquipment.RESISTANCE_BAND
+        )
+
+        cases.forEach { (utterance, onlyTool) ->
+            val parsed = WorkoutMidSessionRequest.parse(utterance)
+            assertTrue("$utterance should be understood", parsed is WorkoutMidSessionRequest.Result.Proposed)
+            val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+            assertEquals(utterance, setOf(onlyTool), request.availableEquipment)
+            assertEquals(utterance, allTools - setOf(onlyTool), request.unavailableEquipment)
+        }
+    }
+
+    @Test fun negatedExclusiveInventoryDoesNotDiscardToolsNamedAfterTheContrast() {
+        val parsed = WorkoutMidSessionRequest.parse(
+            "Tao không chỉ mang theo thảm tập, tao còn có tạ đơn"
+        )
+        assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
+        val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+
+        assertEquals(
+            setOf(TrainingEquipment.MAT, TrainingEquipment.DUMBBELL),
+            request.availableEquipment
+        )
+        assertTrue(request.unavailableEquipment.isEmpty())
+    }
+
+    @Test fun colloquialMissingEquipmentRemainsUnavailableRatherThanBeingGranted() {
+        val parsed = WorkoutMidSessionRequest.parse("Tao không mang theo dây kháng lực")
+        assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
+        val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+
+        assertTrue(request.availableEquipment.isEmpty())
+        assertEquals(
+            setOf(TrainingEquipment.RESISTANCE_BAND),
+            request.unavailableEquipment
+        )
+    }
+
     @Test fun exclusiveCompoundToolListKeepsEveryNamedToolAndExcludesTheRest() {
         val parsed = WorkoutMidSessionRequest.parse("Tao chỉ có tạ và dây kháng lực")
         assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)

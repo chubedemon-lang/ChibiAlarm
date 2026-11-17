@@ -150,4 +150,28 @@ class WorkoutConstraintFilterTest {
         )
     }
 
+    @Test fun lowImpactProfileReplacesOnlyTheReviewedJumpingMove() {
+        val profile = WorkoutConstraintProfile(avoidJumping = true)
+        val original = TrainingCatalog.byId("advanced")
+        val result = WorkoutConstraintFilter.apply(original, profile)
+
+        assertTrue(result.canStart)
+        assertTrue(result.substitutions.any {
+            it.originalName == "Bật nhảy dang tay chân" && it.replacementName == "Bước ngang nhẹ"
+        })
+        assertFalse(result.program.moves.any { it.requiresJumping })
+        assertTrue(result.program.moves.all { WorkoutConstraintFilter.isAllowed(it, profile) })
+        assertTrue(original.moves.any { it.requiresJumping })
+    }
+
+    @Test fun jumpingPreferenceChangesTheCheckpointFingerprint() {
+        val moves = TrainingCatalog.byId("advanced").moves
+        assertNotEquals(
+            WorkoutConstraintFilter.fingerprint(moves),
+            WorkoutConstraintFilter.fingerprint(
+                moves, WorkoutConstraintProfile(avoidJumping = true)
+            )
+        )
+    }
+
 }

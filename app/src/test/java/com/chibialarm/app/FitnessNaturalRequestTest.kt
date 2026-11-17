@@ -89,6 +89,18 @@ class FitnessNaturalRequestTest {
         assertNull(FitnessNaturalRequest.parse("Bắt đầu tập 15 phút").impact)
     }
 
+    @Test fun workoutSupplementPhrasesAreNotMistakenForSwelling() {
+        for (phrase in listOf(
+            "Bỏ bài bổ sung",
+            "Không cần tập phần bổ sung nữa",
+            "Thêm bài tập bổ sung",
+            "Tôi muốn bổ sung một bài nhẹ"
+        )) {
+            assertNull("Failed for $phrase", FitnessNaturalRequest.parse(phrase).impact)
+        }
+        assertEquals(2, FitnessNaturalRequest.parse("đầu gối đang sưng").impact)
+    }
+
     @Test fun recognizesKneePainWhenTheBodyPartComesFirst() {
         for (phrase in listOf("đầu gối đau khi squat", "đầu gối đang nhức", "khớp gối bị đau")) {
             assertEquals("Failed for $phrase", 2, FitnessNaturalRequest.parse(phrase).impact)

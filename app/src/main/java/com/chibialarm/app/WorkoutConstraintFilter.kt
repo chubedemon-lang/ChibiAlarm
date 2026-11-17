@@ -9,7 +9,8 @@ import java.security.MessageDigest
 data class WorkoutConstraintProfile(
     val avoidWristLoad: Boolean = false,
     val avoidFloorPositions: Boolean = false,
-    val avoidOverheadReach: Boolean = false
+    val avoidOverheadReach: Boolean = false,
+    val avoidJumping: Boolean = false
 )
 
 object WorkoutConstraintFilter {
@@ -60,6 +61,9 @@ object WorkoutConstraintFilter {
         "Gập hông với tạ đơn hoặc dây" to "Gập hông không dụng cụ",
         "Đẩy vai với tạ đơn hoặc dây" to "Mở vai và ngực"
     )
+    private val jumpingAlternatives = mapOf(
+        "Bật nhảy dang tay chân" to "Bước ngang nhẹ"
+    )
 
     private val wristLoadHints = listOf(
         "chống đẩy", "bird-dog", "cat-cow", "mountain climber",
@@ -78,7 +82,8 @@ object WorkoutConstraintFilter {
         val floorAllowed = !profile.avoidFloorPositions ||
             floorPositionHints.none { hint -> move.name.contains(hint, ignoreCase = true) }
         val overheadAllowed = !profile.avoidOverheadReach || !move.requiresOverheadReach
-        return wristAllowed && floorAllowed && overheadAllowed
+        val jumpingAllowed = !profile.avoidJumping || !move.requiresJumping
+        return wristAllowed && floorAllowed && overheadAllowed && jumpingAllowed
     }
 
     /** Stable identity for a planned sequence; active constraints invalidate old checkpoints. */
@@ -89,6 +94,8 @@ object WorkoutConstraintFilter {
         // Preserve legacy checkpoint fingerprints for existing wrist/floor-only profiles.
         // The new preference adds a distinct prefix only when it is actually enabled.
         val constraintPrefix = when {
+            profile.avoidJumping ->
+                "constraints:${profile.avoidWristLoad}:${profile.avoidFloorPositions}:${profile.avoidOverheadReach}:jump\u001d"
             profile.avoidOverheadReach ->
                 "constraints:${profile.avoidWristLoad}:${profile.avoidFloorPositions}:overhead\u001d"
             profile.avoidWristLoad || profile.avoidFloorPositions ->
@@ -108,7 +115,9 @@ object WorkoutConstraintFilter {
         program: TrainingProgram,
         profile: WorkoutConstraintProfile
     ): Result {
-        if (!profile.avoidWristLoad && !profile.avoidFloorPositions && !profile.avoidOverheadReach) {
+        if (!profile.avoidWristLoad && !profile.avoidFloorPositions &&
+            !profile.avoidOverheadReach && !profile.avoidJumping
+        ) {
             return Result(program, emptyList(), emptyList())
         }
 
@@ -116,7 +125,8 @@ object WorkoutConstraintFilter {
         val substitutions = mutableListOf<Substitution>()
         val removed = mutableListOf<String>()
         val filteredMoves = program.moves.mapNotNull { move ->
-            val replacementName = if (profile.avoidWristLoad) alternatives[move.name] else null
+            val replacementName = alternatives[move.name].takeIf { profile.avoidWristLoad }
+                ?: if (profile.avoidJumping && move.requiresJumping) jumpingAlternatives[move.name] else null
             if (replacementName != null) {
                 val replacement = catalog[replacementName]
                 if (replacement != null && isAllowed(replacement, profile)) {

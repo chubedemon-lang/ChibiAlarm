@@ -107,7 +107,9 @@ class WorkoutPlanPreviewEditorTest {
         val draft = WorkoutPlanPreviewEditor.start(
             source, 30, 1, WorkoutConstraintProfile(), 3
         )!!
-        val chairSquat = WorkoutPlanPreviewEditor.alternatives(draft, squatIndex).single()
+        val squatAlternatives = WorkoutPlanPreviewEditor.alternatives(draft, squatIndex)
+        assertTrue(squatAlternatives.any { it.name == "Squat không tạ" })
+        val chairSquat = squatAlternatives.first { it.name == "Đứng lên – ngồi xuống" }
         val afterSquat = WorkoutPlanPreviewEditor.replace(draft, squatIndex, chairSquat)!!
         val wallPush = WorkoutPlanPreviewEditor.alternatives(afterSquat, pushIndex)
             .first { it.name == "Chống đẩy tường" }
@@ -117,10 +119,13 @@ class WorkoutPlanPreviewEditorTest {
         assertEquals("Chống đẩy tường", afterBoth.moves[pushIndex].name)
         assertEquals(2, afterBoth.substitutions.size)
         assertTrue(WorkoutPlanPreviewEditor.isValid(afterBoth))
+        val available = TrainingEquipmentAvailability.fromPreference(afterBoth.equipmentSelection) +
+            afterBoth.additionalEquipment
         assertEquals(2, WorkoutMoveSubstitution.decode(
             WorkoutPlanPreviewEditor.encodeSubstitutions(afterBoth),
             afterBoth.originalMoves,
-            afterBoth.constraints
+            afterBoth.constraints,
+            available
         ).size)
     }
 
@@ -136,6 +141,7 @@ class WorkoutPlanPreviewEditorTest {
         assertEquals("0 phút 30 giây", WorkoutPlanPreviewEditor.durationLabel(30))
         assertEquals("2 phút", WorkoutPlanPreviewEditor.durationLabel(120))
     }
+
     @Test fun chairReplacementRemainsValidAndRestorableOnlyWithReportedChair() {
         val source = listOf(TrainingCatalog.allMoves.first { it.name == "Squat không tạ" })
         val chair = setOf(TrainingEquipment.STABLE_CHAIR)
@@ -164,5 +170,4 @@ class WorkoutPlanPreviewEditorTest {
             ).isEmpty()
         )
     }
-
 }

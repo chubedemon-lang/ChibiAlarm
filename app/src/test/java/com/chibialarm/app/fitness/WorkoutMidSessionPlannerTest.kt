@@ -835,6 +835,19 @@ class WorkoutMidSessionPlannerTest {
         }
     }
 
+    @Test fun carryAlongPhrasesAddOnlyTheExplicitlyNamedEquipment() {
+        listOf(
+            "Tao mang theo thảm tập" to TrainingEquipment.MAT,
+            "Tao chỉ đem theo thảm tập" to TrainingEquipment.MAT
+        ).forEach { (utterance, tool) ->
+            val parsed = WorkoutMidSessionRequest.parse(utterance)
+            assertTrue("$utterance should be understood", parsed is WorkoutMidSessionRequest.Result.Proposed)
+            val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+            assertEquals(utterance, setOf(tool), request.availableEquipment)
+            assertTrue(utterance, request.unavailableEquipment.isEmpty())
+        }
+    }
+
     @Test fun negatedExclusiveInventoryDoesNotDiscardToolsNamedAfterTheContrast() {
         val parsed = WorkoutMidSessionRequest.parse(
             "Tao không chỉ mang theo thảm tập, tao còn có tạ đơn"

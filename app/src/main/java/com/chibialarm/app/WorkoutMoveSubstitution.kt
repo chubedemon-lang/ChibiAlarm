@@ -23,6 +23,7 @@ object WorkoutMoveSubstitution {
         "Chống đẩy gối" to listOf("Chống đẩy tường", "Ép ngực tường bằng cẳng tay"),
         "Chống đẩy trên bề mặt cao" to listOf("Chống đẩy tường", "Ép ngực tường bằng cẳng tay"),
         "Mountain climber chậm" to listOf("Đi bộ nhanh tại chỗ"),
+        "Bật nhảy dang tay chân" to listOf("Bước ngang nhẹ"),
         "Bird-dog" to listOf("Dead bug cơ bụng"),
         "Plank khuỷu hoặc plank gối" to listOf("Bird-dog", "Dead bug cơ bụng"),
         "Side plank gối" to listOf("Bird-dog", "Dead bug cơ bụng"),

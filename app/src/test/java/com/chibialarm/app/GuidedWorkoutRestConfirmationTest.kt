@@ -526,4 +526,35 @@ class GuidedWorkoutRestConfirmationTest {
         activity.finish()
     }
 
+    @Test fun activeRestShowsTheNextSetAndTargetInAnAccessiblePreview() {
+        val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup().get()
+        try {
+            selectSetBasedMove(activity, "lần")
+            fun field(name: String) = GuidedWorkoutActivity::class.java.getDeclaredField(name).apply { isAccessible = true }
+            @Suppress("UNCHECKED_CAST")
+            val moves = field("moves").get(activity) as List<TrainingMove>
+            val index = field("index").getInt(activity)
+            val move = moves[index]
+            val plan = WorkoutSetTracker.parse(move.dose, move.restSeconds)!!
+            val completed = (plan.requiredSets - 1).coerceAtLeast(0)
+            @Suppress("UNCHECKED_CAST")
+            (field("completedSetsByMove").get(activity) as MutableMap<Int, Int>)[index] = completed
+            field("resting").setBoolean(activity, true)
+            field("restRemainingMs").setLong(activity, 45_000L)
+            GuidedWorkoutActivity::class.java.getDeclaredMethod("renderSetControls")
+                .apply { isAccessible = true }.invoke(activity)
+            val preview = field("restPreview").get(activity) as android.widget.TextView
+            assertEquals(View.VISIBLE, preview.visibility)
+            assertTrue(preview.text.toString().contains("hiệp ${completed + 1}/${plan.maximumSets}"))
+            assertTrue(preview.text.toString().contains(move.name))
+            assertTrue(preview.text.toString().contains("mục tiêu"))
+            assertEquals(preview.text.toString(), preview.contentDescription.toString())
+            field("resting").setBoolean(activity, false)
+            GuidedWorkoutActivity::class.java.getDeclaredMethod("renderSetControls")
+                .apply { isAccessible = true }.invoke(activity)
+            assertEquals(View.GONE, preview.visibility)
+        } finally {
+            activity.finish()
+        }
+    }
 }

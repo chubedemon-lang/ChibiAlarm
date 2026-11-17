@@ -260,4 +260,23 @@ class WorkoutVoiceCommandsTest {
         assertEquals("Dừng tập vì cảnh báo an toàn",
             WorkoutVoiceCommands.describe(WorkoutVoiceCommands.parse("đau ngực, tiếp tục")))
     }
+    
+    @Test fun userCanAskWhyTheCurrentExerciseWasSuggested() {
+        for (phrase in listOf(
+            "Vì sao bài này dễ hơn?",
+            "Tại sao lại đổi bài?",
+            "Giải thích bài thay thế",
+            "Lý do thay thế là gì?",
+            "Vì sao Chibi gợi ý bài này?"
+        )) {
+            assertEquals(phrase, C.EXPLAIN_CURRENT, WorkoutVoiceCommands.parse(phrase))
+            assertFalse("$phrase must not edit reps", WorkoutVoiceCommands.mayEditReps(phrase))
+        }
+        assertEquals(C.PAIN, WorkoutVoiceCommands.parse("Đau gối, vì sao bài này dễ hơn?"))
+        assertEquals(C.PAUSE, WorkoutVoiceCommands.parse("Tạm dừng và giải thích bài thay thế"))
+        assertEquals(
+            "Giải thích vì sao động tác hiện tại được thay thế",
+            WorkoutVoiceCommands.describe(C.EXPLAIN_CURRENT)
+        )
+    }
 }

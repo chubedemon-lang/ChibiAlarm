@@ -55,6 +55,60 @@ class WorkoutPlanAdjustmentConversationTest {
         assertFalse(answer.contains("Thử thách"))
     }
 
+    @Test fun spokenLowImpactRequestOnlyShowsReviewedLowImpactPrograms() {
+        val answer = WorkoutPlanAdjustmentConversation.answer(
+            input = "Không nhảy, đổi bài giúp tao",
+            programs = listOf(
+                TrainingCatalog.byId("advanced"),
+                TrainingCatalog.byId("lowcardio")
+            )
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("Cardio không bật nhảy"))
+        assertFalse(answer.contains("Thử thách nâng cao"))
+        assertTrue(answer.contains("ít tác động, không nhảy"))
+        assertTrue(answer.contains("buổi đang tập chưa bị thay đổi"))
+    }
+
+    @Test fun selectedLowImpactPreferenceSurvivesAChangeRequestThatDoesNotRepeatIt() {
+        val answer = WorkoutPlanAdjustmentConversation.answer(
+            input = "Đổi bài giúp tao",
+            impact = 1,
+            programs = listOf(
+                TrainingCatalog.byId("advanced"),
+                TrainingCatalog.byId("mobility")
+            )
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("Linh hoạt & giãn cơ"))
+        assertFalse(answer.contains("Thử thách nâng cao"))
+    }
+
+    @Test fun lowImpactRequestFailsClosedWhenNoReviewedLowImpactProgramExists() {
+        val answer = WorkoutPlanAdjustmentConversation.answer(
+            input = "Không nhảy, đổi bài giúp tao",
+            programs = listOf(TrainingCatalog.byId("advanced"))
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("chưa tìm thấy chương trình đã duyệt ít tác động"))
+        assertFalse(answer.contains("Phương án để xem trước"))
+        assertFalse(answer.contains("Thử thách nâng cao"))
+    }
+
+    @Test fun selectedPainOrInjuryBlocksMidSessionSuggestionsEvenWhenNotRepeated() {
+        val answer = WorkoutPlanAdjustmentConversation.answer(
+            input = "Đổi bài giúp tao",
+            impact = 2
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("không đề xuất đổi bài"))
+        assertFalse(answer.contains("Phương án để xem trước"))
+    }
+
     @Test fun normalPlanRequestIsNotIntercepted() {
         assertNull(
             WorkoutPlanAdjustmentConversation.answer(

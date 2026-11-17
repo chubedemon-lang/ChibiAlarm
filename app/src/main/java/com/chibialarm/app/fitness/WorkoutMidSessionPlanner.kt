@@ -66,6 +66,11 @@ object WorkoutMidSessionPlanner {
             request.avoidOverheadReach -> true
             request.allowOverheadReach -> false
             else -> current.avoidOverheadReach
+        },
+        avoidJumping = when {
+            request.avoidJumping -> true
+            request.allowJumping -> false
+            else -> current.avoidJumping
         }
     )
 
@@ -100,6 +105,11 @@ object WorkoutMidSessionPlanner {
             ) - unavailableTools - request.unavailableEquipment
         val effectiveExtensionPreferences = extensionPreferences.copy(
             equipment = 0,
+            impact = when {
+                request.avoidJumping -> 1
+                request.allowJumping -> 0
+                else -> extensionPreferences.impact
+            },
             constraints = effectiveProfile,
             energy = if (request.lowEnergy || request.preferEasier) 0 else extensionPreferences.energy,
             additionalEquipment = effectiveAvailableEquipment

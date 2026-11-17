@@ -136,4 +136,33 @@ class WorkoutPlanPreviewEditorTest {
         assertEquals("0 phút 30 giây", WorkoutPlanPreviewEditor.durationLabel(30))
         assertEquals("2 phút", WorkoutPlanPreviewEditor.durationLabel(120))
     }
+    @Test fun chairReplacementRemainsValidAndRestorableOnlyWithReportedChair() {
+        val source = listOf(TrainingCatalog.allMoves.first { it.name == "Squat không tạ" })
+        val chair = setOf(TrainingEquipment.STABLE_CHAIR)
+        val withoutChair = WorkoutPlanPreviewEditor.start(
+            source, 10, 0, WorkoutConstraintProfile(), 0
+        )!!
+        assertTrue(WorkoutPlanPreviewEditor.alternatives(withoutChair, 0).isEmpty())
+
+        val withChair = WorkoutPlanPreviewEditor.start(
+            source, 10, 0, WorkoutConstraintProfile(), 0, chair
+        )!!
+        val replacement = WorkoutPlanPreviewEditor.alternatives(withChair, 0).single()
+        val updated = WorkoutPlanPreviewEditor.replace(withChair, 0, replacement)!!
+
+        assertTrue(WorkoutPlanPreviewEditor.isValid(updated))
+        val encoded = WorkoutPlanPreviewEditor.encodeSubstitutions(updated)
+        assertEquals(
+            mapOf(0 to replacement),
+            WorkoutMoveSubstitution.decode(
+                encoded, source, WorkoutConstraintProfile(), chair
+            )
+        )
+        assertTrue(
+            WorkoutMoveSubstitution.decode(
+                encoded, source, WorkoutConstraintProfile(), emptySet()
+            ).isEmpty()
+        )
+    }
+
 }

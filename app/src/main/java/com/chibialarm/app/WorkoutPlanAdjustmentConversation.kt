@@ -151,8 +151,9 @@ object WorkoutPlanAdjustmentConversation {
 
             val availableEquipment =
                 TrainingEquipmentAvailability.fromPreference(effectiveEquipment) + extras
-            val alternatives = WorkoutMoveSubstitution.alternativesFor(sourceMove, effectiveProfile)
-                .filter { TrainingEquipmentAvailability.allows(it, availableEquipment) }
+            val alternatives = WorkoutMoveSubstitution.alternativesFor(
+                sourceMove, effectiveProfile, availableEquipment
+            ).filter { TrainingEquipmentAvailability.allows(it, availableEquipment) }
                 .distinctBy { it.name }
                 .take(3)
             if (alternatives.isEmpty()) {

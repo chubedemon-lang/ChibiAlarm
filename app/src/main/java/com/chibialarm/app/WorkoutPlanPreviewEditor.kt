@@ -65,7 +65,7 @@ internal object WorkoutPlanPreviewEditor {
         if (!isValid(draft) || index !in draft.originalMoves.indices) return emptyList()
         val available = availableEquipment(draft.equipmentSelection, draft.additionalEquipment)
         return WorkoutMoveSubstitution.alternativesFor(
-            draft.originalMoves[index], draft.constraints
+            draft.originalMoves[index], draft.constraints, available
         ).filter { TrainingEquipmentAvailability.allows(it, available) }
             .distinctBy { it.name }
     }
@@ -90,7 +90,10 @@ internal object WorkoutPlanPreviewEditor {
     fun encodeSubstitutions(draft: Draft): String =
         if (isValid(draft)) {
             WorkoutMoveSubstitution.encode(
-                draft.substitutions, draft.originalMoves, draft.constraints
+                draft.substitutions,
+                draft.originalMoves,
+                draft.constraints,
+                availableEquipment(draft.equipmentSelection, draft.additionalEquipment)
             )
         } else ""
 
@@ -110,7 +113,7 @@ internal object WorkoutPlanPreviewEditor {
         if (draft.substitutions.keys.any { it !in draft.originalMoves.indices }) return false
         for ((index, replacement) in draft.substitutions) {
             val approved = WorkoutMoveSubstitution.alternativesFor(
-                draft.originalMoves[index], draft.constraints
+                draft.originalMoves[index], draft.constraints, available
             ).firstOrNull { it.name == replacement.name } ?: return false
             if (!TrainingEquipmentAvailability.allows(approved, available) ||
                 draft.moves[index] != approved

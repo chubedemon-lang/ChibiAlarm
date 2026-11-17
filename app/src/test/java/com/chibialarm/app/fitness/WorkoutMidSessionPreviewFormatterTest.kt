@@ -2,6 +2,7 @@ package com.chibialarm.app.fitness
 
 import com.chibialarm.app.TrainingCatalog
 import com.chibialarm.app.TrainingMove
+import com.chibialarm.app.TrainingEquipment
 import com.chibialarm.app.WorkoutConstraintProfile
 import com.chibialarm.app.WorkoutExtensionPreferences
 import org.junit.Assert.assertFalse
@@ -15,7 +16,8 @@ class WorkoutMidSessionPreviewFormatterTest {
     private fun preview(
         moves: List<TrainingMove>,
         currentIndex: Int,
-        request: WorkoutMidSessionRequest.Request
+        request: WorkoutMidSessionRequest.Request,
+        availableEquipment: Set<TrainingEquipment> = emptySet()
     ): WorkoutMidSessionPlanner.Preview {
         val result = WorkoutMidSessionPlanner.preview(
             currentMoves = moves,
@@ -26,7 +28,10 @@ class WorkoutMidSessionPreviewFormatterTest {
             request = request,
             remainingCurrentSeconds = 75,
             extensionMoveNames = emptySet(),
-            level = 0
+            level = 0,
+            extensionPreferences = WorkoutExtensionPreferences(
+                additionalEquipment = availableEquipment
+            )
         )
         check(result is WorkoutMidSessionPlanner.Result.Proposed)
         return result.preview
@@ -41,7 +46,8 @@ class WorkoutMidSessionPreviewFormatterTest {
                 move("Thả lỏng")
             ),
             currentIndex = 1,
-            request = WorkoutMidSessionRequest.Request(preferEasier = true)
+            request = WorkoutMidSessionRequest.Request(preferEasier = true),
+            availableEquipment = setOf(TrainingEquipment.STABLE_CHAIR)
         )
 
         val text = WorkoutMidSessionPreviewFormatter.format(result)

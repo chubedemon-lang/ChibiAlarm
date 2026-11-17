@@ -16,5 +16,8 @@ object WorkoutSpeechRate {
     fun slower(current: Float): Float =
         (normalize(current) - STEP).coerceAtLeast(MIN_RATE)
 
+    fun faster(current: Float): Float =
+        (normalize(current) + STEP).coerceAtMost(MAX_RATE)
+
     fun normal(preferred: Float): Float = normalize(preferred)
 }

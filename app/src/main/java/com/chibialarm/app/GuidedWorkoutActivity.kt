@@ -2543,6 +2543,19 @@ class GuidedWorkoutActivity:Activity() {
                         lastCoachAnswer = answer
                         announceSpeechRate(answer)
                     }
+                    WorkoutStepVoiceCommand.Command.SPEECH_FASTER -> {
+                        val nextRate = WorkoutSpeechRate.faster(workoutSpeechRate)
+                        val changed = nextRate != workoutSpeechRate
+                        workoutSpeechRate = nextRate
+                        spoken?.setSpeechRate(workoutSpeechRate)
+                        val answer = if (changed) {
+                            "Tao sẽ đọc nhanh hơn. Mày có thể nói tốc độ bình thường để khôi phục tốc độ đã chọn."
+                        } else {
+                            "Tốc độ đọc đã ở mức nhanh nhất."
+                        }
+                        lastCoachAnswer = answer
+                        announceSpeechRate(answer)
+                    }
                     WorkoutStepVoiceCommand.Command.SPEECH_NORMAL -> {
                         workoutSpeechRate = WorkoutSpeechRate.normal(preferredWorkoutSpeechRate)
                         spoken?.setSpeechRate(workoutSpeechRate)

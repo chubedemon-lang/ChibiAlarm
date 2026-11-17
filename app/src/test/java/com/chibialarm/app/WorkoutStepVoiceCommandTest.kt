@@ -89,6 +89,23 @@ class WorkoutStepVoiceCommandTest {
             WorkoutStepVoiceCommand.parse("Bao nhiêu lần nhưng tôi khó thở"))
     }
 
+    @Test fun canIncreaseWorkoutSpeechRateByVoiceWithoutChangingWorkoutCommands() {
+        assertEquals(WorkoutStepVoiceCommand.Command.SPEECH_FASTER,
+            WorkoutStepVoiceCommand.parse("Nói nhanh hơn"))
+        assertEquals(WorkoutStepVoiceCommand.Command.SPEECH_FASTER,
+            WorkoutStepVoiceCommand.parse("doc nhanh hon"))
+        assertEquals(WorkoutStepVoiceCommand.Command.SPEECH_FASTER,
+            WorkoutStepVoiceCommand.parse("Tăng tốc độ đọc"))
+        assertEquals(WorkoutStepVoiceCommand.Command.SPEECH_FASTER,
+            WorkoutStepVoiceCommand.parse("Speak faster"))
+        assertEquals(WorkoutStepVoiceCommand.Command.UNKNOWN,
+            WorkoutStepVoiceCommand.parse("Không đọc nhanh hơn"))
+        assertEquals(WorkoutStepVoiceCommand.Command.UNKNOWN,
+            WorkoutStepVoiceCommand.parse("Đừng tăng tốc độ"))
+        assertEquals(WorkoutStepVoiceCommand.Command.SAFETY,
+            WorkoutStepVoiceCommand.parse("Nói nhanh hơn nhưng tôi đau cổ tay"))
+    }
+
     @Test fun canReplayTheLatestCoachAnswerWithoutRepeatingTheCurrentStep() {
         assertEquals(WorkoutStepVoiceCommand.Command.REPEAT_ANSWER,
             WorkoutStepVoiceCommand.parse("Đọc lại câu trả lời"))

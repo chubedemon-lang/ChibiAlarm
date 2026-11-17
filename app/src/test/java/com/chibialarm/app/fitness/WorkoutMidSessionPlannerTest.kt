@@ -1093,5 +1093,15 @@ class WorkoutMidSessionPlannerTest {
         assertTrue(request.avoidJumping)
         assertFalse(request.allowJumping)
     }
+ 
+    @Test fun negativeJumpPermissionNeverRelaxesTheNoJumpPreference() {
+        for (phrase in listOf("Không nhảy được", "Không được nhảy", "Không thể nhảy")) {
+            val parsed = WorkoutMidSessionRequest.parse(phrase)
+            assertTrue("Failed for $phrase", parsed is WorkoutMidSessionRequest.Result.Proposed)
+            val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+            assertTrue("Failed for $phrase", request.avoidJumping)
+            assertFalse("Failed for $phrase", request.allowJumping)
+        }
+    }
 
 }

@@ -19,6 +19,7 @@ object WorkoutPoseMotion {
         WorkoutPoseGuide.Pose.CAT_COW,
         WorkoutPoseGuide.Pose.WARM_UP,
         WorkoutPoseGuide.Pose.MARCH,
+        WorkoutPoseGuide.Pose.JUMPING_JACKS,
         WorkoutPoseGuide.Pose.MOUNTAIN_CLIMBER,
         WorkoutPoseGuide.Pose.SUPPORTED_MARCH,
         WorkoutPoseGuide.Pose.HIP_ABDUCTION,
@@ -60,6 +61,7 @@ object WorkoutPoseMotion {
         WorkoutPoseGuide.Pose.CAT_COW -> "Minh họa cat-cow. Chống tay và gối, chuyển lưng nhẹ nhàng theo nhịp thở, không ép biên độ."
         WorkoutPoseGuide.Pose.WARM_UP -> "Bắt đầu bước chậm tại chỗ, xoay vai và cổ chân nhẹ nhàng; nâng gối thấp nếu thoải mái. Tăng nhịp từ từ, không giật mạnh."
         WorkoutPoseGuide.Pose.MARCH -> "Minh họa bước tại chỗ. Nâng từng gối luân phiên, bước nhẹ và giữ nhịp thở đều."
+        WorkoutPoseGuide.Pose.JUMPING_JACKS -> "Minh họa bật nhảy dang tay chân. Mở chân sang hai bên và đưa tay lên, rồi khép chân và hạ tay có kiểm soát. Nếu muốn tránh nhảy, chọn bước ngang nhẹ thay thế."
         WorkoutPoseGuide.Pose.MOUNTAIN_CLIMBER -> "Bắt đầu ở tư thế chống tay cao, hai tay dưới vai và thân ổn định. Luân phiên đưa từng gối về phía ngực theo nhịp chậm; duỗi chân trở lại có kiểm soát. Dừng nếu đau cổ tay, vai hoặc lưng."
         WorkoutPoseGuide.Pose.SUPPORTED_MARCH -> "Đứng cạnh ghế vững và vịn nhẹ. Nâng từng gối thấp vừa sức, đổi bên và giữ thân thẳng."
         WorkoutPoseGuide.Pose.HIP_ABDUCTION -> "Đứng cạnh ghế vững, giữ nhẹ để thăng bằng. Đưa một chân sang bên trong biên độ nhỏ, hạ chậm rồi đổi bên."
@@ -102,6 +104,8 @@ object WorkoutPoseMotion {
             WorkoutPoseGuide.Pose.WARM_UP -> listOf("hạ gối", "hạ chân", "đưa chân xuống") to listOf("nâng gối", "nâng gối nhẹ", "bước tại chỗ")
             WorkoutPoseGuide.Pose.MARCH,
             WorkoutPoseGuide.Pose.SUPPORTED_MARCH -> listOf("hạ chân", "hạ gối", "đưa chân xuống") to listOf("nâng gối", "nhấc gối")
+            WorkoutPoseGuide.Pose.JUMPING_JACKS ->
+                listOf("khép chân", "hạ tay", "trở về") to listOf("mở chân", "bật hai chân ra", "đưa tay lên")
             WorkoutPoseGuide.Pose.MOUNTAIN_CLIMBER ->
                 listOf("duỗi chân ra sau", "đưa chân ra sau", "trở về tư thế chống tay") to
                     listOf("đưa từng gối về phía ngực", "luân phiên đưa từng gối về phía ngực", "đưa gối về phía ngực", "kéo từng gối về phía ngực", "kéo gối về trước", "nâng gối")
@@ -197,6 +201,7 @@ object WorkoutPoseMotion {
         WorkoutPoseGuide.Pose.CAT_COW -> if (lowered) "Cuộn lưng nhẹ" else "Thả lưng nhẹ"
         WorkoutPoseGuide.Pose.WARM_UP -> if (lowered) "Hạ chân nhẹ" else "Bước nhẹ, nâng gối thấp"
         WorkoutPoseGuide.Pose.MARCH -> if (lowered) "Đổi chân" else "Nâng gối"
+        WorkoutPoseGuide.Pose.JUMPING_JACKS -> if (lowered) "Khép chân và hạ tay" else "Mở chân, đưa tay lên"
         WorkoutPoseGuide.Pose.MOUNTAIN_CLIMBER ->
             if (lowered) "Đổi chân, duỗi chân còn lại ra sau" else "Đưa gối về phía ngực"
         WorkoutPoseGuide.Pose.SUPPORTED_MARCH -> if (lowered) "Đổi chân có điểm tựa" else "Nâng gối thấp"

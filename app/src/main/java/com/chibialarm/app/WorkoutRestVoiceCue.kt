@@ -19,11 +19,54 @@ internal object WorkoutRestVoiceCue {
         !microphoneActive &&
         remainingMs in 1L..WARNING_WINDOW_MS
 
-    fun message(remainingMs: Long): String? {
+    fun message(remainingMs: Long, upcomingPreview: String? = null): String? {
         if (remainingMs !in 1L..WARNING_WINDOW_MS) return null
         val seconds = ((remainingMs + 999L) / 1_000L).coerceIn(1L, 10L)
-        return "Còn $seconds giây nghỉ. Chuẩn bị cho động tác tiếp theo."
+        val upcoming = safeLabel(upcomingPreview, 180)
+        return if (upcoming.isBlank()) {
+            "Còn $seconds giây nghỉ. Chuẩn bị cho động tác tiếp theo."
+        } else {
+            "Còn $seconds giây nghỉ. $upcoming"
+        }
     }
+
+    /** A catalog-grounded preview of what follows rest; it never changes workout state. */
+    fun previewMessage(
+        moveName: String?,
+        completedSets: Int,
+        plan: WorkoutSetTracker.Plan?,
+        nextMoveName: String? = null,
+        nextMoveDose: String? = null,
+        currentRemainingLabel: String = ""
+    ): String {
+        val current = safeLabel(moveName, 80)
+        if (current.isBlank()) return "Sau nghỉ: tiếp tục khi bạn sẵn sàng."
+        if (plan != null) {
+            val done = completedSets.coerceIn(0, plan.maximumSets)
+            if (done < plan.maximumSets) {
+                val nextSet = done + 1
+                val target = if (plan.targetMin == plan.targetMax) "${plan.targetMin} ${plan.unit}"
+                    else "${plan.targetMin} đến ${plan.targetMax} ${plan.unit}"
+                val kind = if (nextSet <= plan.requiredSets) "hiệp" else "hiệp tùy chọn"
+                return "Sau nghỉ: $kind $nextSet/${plan.maximumSets} của $current; mục tiêu $target."
+            }
+            val next = safeLabel(nextMoveName, 80)
+            if (next.isNotBlank()) {
+                val dose = safeLabel(nextMoveDose, 80)
+                return if (dose.isBlank()) "Tiếp theo: $next." else "Tiếp theo: $next; mục tiêu $dose."
+            }
+            return "Sau nghỉ: đã đủ hiệp của $current; đây là bước cuối."
+        }
+        val remaining = safeLabel(currentRemainingLabel, 32)
+        return if (remaining.isBlank()) "Sau nghỉ: tiếp tục $current."
+        else "Sau nghỉ: tiếp tục $current; thời gian gợi ý còn $remaining."
+    }
+
+    private fun safeLabel(value: String?, limit: Int): String = value.orEmpty()
+        .replace(Regex("[\\r\\n\\p{Cc}]+"), " ")
+        .replace(Regex("\\s+"), " ")
+        .trim()
+        .take(limit)
 
     
     /**

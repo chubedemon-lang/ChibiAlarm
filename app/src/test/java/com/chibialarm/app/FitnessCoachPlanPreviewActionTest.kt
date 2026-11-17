@@ -119,7 +119,8 @@ class FitnessCoachPlanPreviewActionTest {
         assertNotNull("The explicit recommendation action must still show the injury stop", stopDialog)
         val message = stopDialog.findViewById<TextView>(android.R.id.message)
         assertNotNull(message)
-        assertTrue(message.text.toString().contains("Tạm dừng kế hoạch tập"))
+        assertTrue(message.text.toString().contains("Bạn báo đang đau hoặc có chấn thương"))
+        assertEquals("🐰 Tạm dừng kế hoạch tập", stopDialog.title.toString())
         assertEquals("Đã hiểu", stopDialog.getButton(android.content.DialogInterface.BUTTON_POSITIVE).text.toString())
         controller.pause().stop().destroy()
     }

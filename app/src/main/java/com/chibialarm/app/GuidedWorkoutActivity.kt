@@ -46,6 +46,7 @@ class GuidedWorkoutActivity:Activity() {
     private lateinit var restPreview:TextView
     private lateinit var restPosePreview:WorkoutPoseView
     private lateinit var restStepPreview:TextView
+    private lateinit var restStepSpeakButton:Button
     private lateinit var heading:TextView
     private lateinit var guide:TextView
     private lateinit var poseView:WorkoutPoseView
@@ -94,6 +95,8 @@ class GuidedWorkoutActivity:Activity() {
         (SystemClock.elapsedRealtime()-startedAt).coerceAtLeast(0L) else 0L
     private var spoken:TextToSpeech?=null
     private var ready=false
+    // The selected rest-step speech is transient and derived from the local exercise catalog.
+    private var restStepSpeechText:String?=null
     private var speechStatus:TextView?=null
     // Last selected step cue is kept in memory only so voice can repeat that exact step.
     private var lastGuideStepCue:WorkoutStepGuide.SelectedCue?=null
@@ -615,6 +618,26 @@ class GuidedWorkoutActivity:Activity() {
             visibility = android.view.View.GONE
         }
         root.addView(restStepPreview)
+        restStepSpeakButton = Button(this).apply {
+            tag = "workout-rest-step-speak"
+            text = "🔊 Nghe bước tiếp theo"
+            contentDescription = "Nghe hướng dẫn cho động tác tiếp theo trong lúc nghỉ"
+            visibility = android.view.View.GONE
+            setOnClickListener {
+                when {
+                    pausedForSafety -> Toast.makeText(this@GuidedWorkoutActivity,
+                        "Buổi tập đang dừng vì đau; không phát hướng dẫn vận động.", Toast.LENGTH_LONG).show()
+                    pendingRecognitionRequestCode != null -> Toast.makeText(this@GuidedWorkoutActivity,
+                        "Đang chờ quyền hoặc phiên nhận giọng nói; hãy nghe sau khi microphone đóng.", Toast.LENGTH_LONG).show()
+                    !resting -> Toast.makeText(this@GuidedWorkoutActivity,
+                        "Chỉ có hướng dẫn xem trước trong thời gian nghỉ.", Toast.LENGTH_SHORT).show()
+                    !ready -> Toast.makeText(this@GuidedWorkoutActivity,
+                        "Giọng đọc chưa sẵn sàng. Bạn vẫn có thể đọc hướng dẫn trên màn hình.", Toast.LENGTH_LONG).show()
+                    else -> restStepSpeechText?.let { speak(it) }
+                }
+            }
+        }
+        root.addView(restStepSpeakButton)
         setProgress=TextView(this).apply {
             textSize=15f
             gravity=Gravity.CENTER
@@ -738,6 +761,7 @@ class GuidedWorkoutActivity:Activity() {
             val engine=spoken
             if(state!=TextToSpeech.SUCCESS || engine==null) {
                 ready=false
+                updateRestStepSpeakButton()
                 speechStatus?.text="⚠️ Chưa khởi tạo được bộ đọc. Hướng dẫn chữ và bộ đếm vẫn dùng được."
                 speechStatus?.contentDescription=speechStatus?.text
                 return@TextToSpeech
@@ -754,6 +778,7 @@ class GuidedWorkoutActivity:Activity() {
                 available.map { voice -> CoachSpeechVoicePolicy.VoiceOption(voice.name,voice.locale.language) }
             )
             ready=selection.languageSupported
+            updateRestStepSpeakButton()
             engine.setSpeechRate(settings.getFloat("rate",1f))
             engine.setPitch(settings.getFloat("pitch",1f))
             if(ready && Build.VERSION.SDK_INT>=Build.VERSION_CODES.LOLLIPOP) {
@@ -881,6 +906,7 @@ class GuidedWorkoutActivity:Activity() {
             launchSpeechRecognition(requestCode)
         } else {
             pendingRecognitionRequestCode = requestCode
+            updateRestStepSpeakButton()
             requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), microphonePermissionRequest)
         }
     }
@@ -917,6 +943,7 @@ class GuidedWorkoutActivity:Activity() {
         if (requestCode != microphonePermissionRequest) return
         val target = pendingRecognitionRequestCode
         pendingRecognitionRequestCode = null
+        updateRestStepSpeakButton()
         if (target != null && grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) {
             launchSpeechRecognition(target)
         } else {
@@ -2573,8 +2600,22 @@ class GuidedWorkoutActivity:Activity() {
 
     private fun restCounterText(milliseconds:Long):String = "Nghỉ " + clockText(milliseconds)
 
+    private fun updateRestStepSpeakButton() {
+        if (!::restStepSpeakButton.isInitialized) return
+        val hasCue = resting && !pausedForSafety && !restStepSpeechText.isNullOrBlank()
+        restStepSpeakButton.visibility = if (hasCue) android.view.View.VISIBLE else android.view.View.GONE
+        restStepSpeakButton.isEnabled = hasCue && ready && pendingRecognitionRequestCode == null
+        restStepSpeakButton.contentDescription = when {
+            !hasCue -> "Không có hướng dẫn bước tiếp theo để đọc"
+            pendingRecognitionRequestCode != null -> "Tạm khóa đọc hướng dẫn khi đang chờ microphone"
+            !ready -> "Giọng đọc chưa sẵn sàng; hướng dẫn vẫn hiển thị bằng chữ"
+            else -> "Đọc một lần hướng dẫn bước tiếp theo; không thay đổi bộ đếm nghỉ"
+        }
+    }
+
     private fun renderRestPreview() {
-        if (!::restPreview.isInitialized || !::restPosePreview.isInitialized || !::restStepPreview.isInitialized) return
+        if (!::restPreview.isInitialized || !::restPosePreview.isInitialized ||
+            !::restStepPreview.isInitialized || !::restStepSpeakButton.isInitialized) return
         if (!resting || pausedForSafety || index !in moves.indices) {
             restPreview.text = ""
             restPreview.contentDescription = ""
@@ -2585,6 +2626,8 @@ class GuidedWorkoutActivity:Activity() {
             restStepPreview.text = ""
             restStepPreview.contentDescription = ""
             restStepPreview.visibility = android.view.View.GONE
+            restStepSpeechText = null
+            updateRestStepSpeakButton()
             if (::poseView.isInitialized) poseView.motionEnabled = !pausedForSafety
             return
         }
@@ -2619,7 +2662,13 @@ class GuidedWorkoutActivity:Activity() {
                 "Hướng dẫn bước tiếp theo của ${upcomingMove.name}: ${it.instruction}"
             }.orEmpty()
             restStepPreview.visibility = if (stepCue != null) android.view.View.VISIBLE else android.view.View.GONE
+            restStepSpeechText = WorkoutRestStepPreview.spokenMessage(upcomingMove)
 
+            // Visibility changes call WorkoutPoseView.refreshMotion(), which resets its
+            // phase and description. Make it visible first, then pin the selected still
+            // frame and write the move-specific accessibility description last.
+            restPosePreview.visibility = android.view.View.VISIBLE
+            restPosePreview.motionEnabled = false
             restPosePreview.pose = WorkoutPoseGuide.classify(upcomingMove.name)
             restPosePreview.showGuideFrame(alternate = stepCue?.alternate ?: false)
             restPosePreview.contentDescription = buildString {
@@ -2627,7 +2676,6 @@ class GuidedWorkoutActivity:Activity() {
                 stepCue?.let { append("Bước cần chú ý: ${it.instruction}. ") }
                 append("Hình vector tham khảo, không phân tích tư thế thực tế.")
             }
-            restPosePreview.visibility = android.view.View.VISIBLE
         } else {
             restPosePreview.contentDescription = ""
             restPosePreview.visibility = android.view.View.GONE
@@ -2635,7 +2683,9 @@ class GuidedWorkoutActivity:Activity() {
             restStepPreview.text = ""
             restStepPreview.contentDescription = ""
             restStepPreview.visibility = android.view.View.GONE
+            restStepSpeechText = null
         }
+        updateRestStepSpeakButton()
     }
 
     private fun renderSetControls() {

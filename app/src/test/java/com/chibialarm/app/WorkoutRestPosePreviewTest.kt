@@ -44,6 +44,10 @@ class WorkoutRestPosePreviewTest {
         val cue = WorkoutRestStepPreview.forMove(squat)
         assertEquals("hạ xuống theo khả năng", cue?.instruction)
         assertEquals(true, cue?.alternate)
+        assertEquals(true, cue?.hasExplicitPhase)
+        val speech = WorkoutRestStepPreview.spokenMessage(squat)
+        assertTrue(speech!!.contains("Hạ hông"))
+        assertTrue(speech.contains(cue!!.instruction))
     }
 
     @Test fun restStepCueFallsBackToSetupWithoutInventingAMovementPhase() {
@@ -51,6 +55,10 @@ class WorkoutRestPosePreviewTest {
         val cue = WorkoutRestStepPreview.forMove(plank)
         assertEquals("Giữ thân thành đường thẳng", cue?.instruction)
         assertEquals(false, cue?.alternate)
+        assertEquals(false, cue?.hasExplicitPhase)
+        val speech = WorkoutRestStepPreview.spokenMessage(plank)
+        assertTrue(speech!!.contains("Bước cần chú ý: Giữ thân thành đường thẳng"))
+        assertFalse("A setup fallback must not invent a squat/standing phase", speech.contains("Hạ hông"))
     }
 
     @Test fun restStepCueDoesNotCreateAnInstructionForBlankCatalogText() {

@@ -596,6 +596,12 @@ class GuidedWorkoutRestConfirmationTest {
         assertFalse("The active illustration must pause while the rest preview is shown", mainPose.motionEnabled)
         assertFalse("The rest preview is a static cue, not a second animator", preview.motionEnabled)
         assertEquals(index, WorkoutRestPosePreview.nextMoveIndex(index, moves.size, 1, plan))
+        val speakButton = GuidedWorkoutActivity::class.java.getDeclaredField("restStepSpeakButton")
+            .apply { isAccessible = true }.get(activity) as android.widget.Button
+        assertEquals(View.VISIBLE, speakButton.visibility)
+        assertEquals("🔊 Nghe bước tiếp theo", speakButton.text.toString())
+        assertTrue(speakButton.contentDescription.toString().contains("Đọc một lần"))
+        assertTrue(WorkoutRestStepPreview.spokenMessage(moves[index])!!.contains(expectedCue.instruction))
         activity.finish()
     }
 
@@ -636,10 +642,44 @@ class GuidedWorkoutRestConfirmationTest {
         resting.setBoolean(activity, false)
         render.invoke(activity)
         assertEquals(View.GONE, preview.visibility)
+        assertEquals(View.GONE, stepPreview.visibility)
+        val speakButton = GuidedWorkoutActivity::class.java.getDeclaredField("restStepSpeakButton")
+            .apply { isAccessible = true }.get(activity) as android.widget.Button
+        assertEquals(View.GONE, speakButton.visibility)
         assertTrue("The main exercise animation should resume outside rest", mainPose.motionEnabled)
         activity.finish()
     }
 
+
+    @Test fun restStepSpeechIsManualAndDisabledWhileMicrophoneIsPending() {
+        val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup().get()
+        selectSetBasedMove(activity, "lần")
+        fun field(name: String) = GuidedWorkoutActivity::class.java.getDeclaredField(name).apply {
+            isAccessible = true
+        }
+        field("resting").setBoolean(activity, true)
+        field("ready").setBoolean(activity, true)
+        val render = GuidedWorkoutActivity::class.java.getDeclaredMethod("renderRestPreview")
+            .apply { isAccessible = true }
+        render.invoke(activity)
+        val button = field("restStepSpeakButton").get(activity) as android.widget.Button
+        assertEquals(View.VISIBLE, button.visibility)
+        assertTrue(button.isEnabled)
+        val before = remaining(activity)
+        button.performClick()
+        assertEquals("Speaking a cue must not change exercise time", before, remaining(activity))
+
+        field("pendingRecognitionRequestCode").set(activity, 890)
+        render.invoke(activity)
+        assertEquals(View.VISIBLE, button.visibility)
+        assertFalse("TTS must yield while microphone recognition is pending", button.isEnabled)
+
+        field("pendingRecognitionRequestCode").set(activity, null)
+        field("pausedForSafety").setBoolean(activity, true)
+        render.invoke(activity)
+        assertEquals(View.GONE, button.visibility)
+        activity.finish()
+    }
 
     @Test fun safetyPauseHidesRestPreviewAndKeepsTheMainPoseFrozen() {
         val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup().get()
@@ -660,6 +700,9 @@ class GuidedWorkoutRestConfirmationTest {
             .apply { isAccessible = true }.get(activity) as android.widget.TextView
         assertEquals(View.GONE, preview.visibility)
         assertEquals(View.GONE, stepPreview.visibility)
+        val speakButton = GuidedWorkoutActivity::class.java.getDeclaredField("restStepSpeakButton")
+            .apply { isAccessible = true }.get(activity) as android.widget.Button
+        assertEquals(View.GONE, speakButton.visibility)
         assertFalse("A safety pause must not animate exercise cues", mainPose.motionEnabled)
         activity.finish()
     }

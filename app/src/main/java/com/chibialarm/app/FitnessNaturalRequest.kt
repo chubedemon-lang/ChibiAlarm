@@ -32,6 +32,9 @@ object FitnessNaturalRequest {
             .replace(Regex("đầu\\s+gối"), "kneecap")
             .replace(Regex("bắt\\s+đầu"), "beginning")
             .replace(Regex("đầu\\s+tiên"), "firstword")
+            // "bổ sung" means adding workout volume, not swelling. Protect the compound
+            // before accent removal so the standalone symptom token "sung" cannot match it.
+            .replace(Regex("bổ\\s+sung"), "supplementword")
             // "đầu" means head in overhead-movement phrases, while "đau" means pain.
             // Protect the standalone body-part word before removing Vietnamese diacritics.
             .replace(Regex("(?<![\\p{L}\\p{N}])đầu(?![\\p{L}\\p{N}])"), "headword")

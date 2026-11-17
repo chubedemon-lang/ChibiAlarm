@@ -113,6 +113,7 @@ object WorkoutTargetCommand {
         WorkoutVoiceCommands.Command.SHORTER_REMAINING,
         // Opening a walkthrough is a separate coach action, never a repetition edit.
         WorkoutVoiceCommands.Command.STEP_GUIDE,
+        WorkoutVoiceCommands.Command.EXPLAIN_CURRENT,
         // Set completion is a state-changing workout action, never a repetition edit.
         WorkoutVoiceCommands.Command.COMPLETE_SET,
         // Equipment changes and rest skipping are plan/session actions, never rep edits.

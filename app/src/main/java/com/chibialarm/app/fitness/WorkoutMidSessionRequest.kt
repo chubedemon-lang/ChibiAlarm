@@ -90,12 +90,12 @@ object WorkoutMidSessionRequest {
         // them before per-tool parsing so previously selected profile equipment
         // cannot leak into a mid-session replacement.
         return normalized
-            .replace(Regex("""\\bchi co moi\\b"""), "chi co")
-            .replace(Regex("""\\bchi mang theo moi\\b"""), "chi co")
-            .replace(Regex("""\\bmang theo moi\\b"""), "chi co")
-            .replace(Regex("""\\bchi mang theo\\b"""), "chi co")
-            .replace(Regex("""\\bco moi\\b"""), "chi co")
-            .replace(Regex("""\\bkhong mang theo\\b"""), "khong co")
+            .replace("khong mang theo", "khong co")
+            .replace("chi mang theo moi", "chi co")
+            .replace("mang theo moi", "chi co")
+            .replace("chi mang theo", "chi co")
+            .replace("chi co moi", "chi co")
+            .replace("co moi", "chi co")
     }
 
     fun parse(utterance: String): Result {

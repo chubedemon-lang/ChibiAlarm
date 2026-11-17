@@ -9,6 +9,12 @@ object WorkoutPlanAdjustmentConversation {
     private val warmupAndCooldown = setOf(
         "Khởi động tại chỗ", "Thả lỏng", "Giãn cơ và thở chậm"
     )
+    // Keep this aligned with FitnessPlanAdvisor's impact=1 recommendations.
+    // Only catalog programs explicitly chosen for low-impact sessions are eligible.
+    private val lowImpactProgramIds = setOf(
+        "quicklowcardio", "quickmobility", "lowcardio", "mobility",
+        "quickrecovery", "recovery"
+    )
 
     private data class Candidate(
         val order: Int,
@@ -28,14 +34,22 @@ object WorkoutPlanAdjustmentConversation {
         additionalEquipment: Set<TrainingEquipment> = emptySet(),
         programs: List<TrainingProgram> = TrainingCatalog.programs,
         level: Int = 0,
-        goal: Int? = null
+        goal: Int? = null,
+        impact: Int = 0
     ): String? {
         if (input.isBlank() || input.length > MAX_INPUT_CHARS) return null
+        require(impact in 0..2)
         val query = normalize(input)
         val naturalRequest = FitnessNaturalRequest.parse(input)
-        // A symptom report takes priority over time/equipment substitutions. Never turn
-        // "đau ... còn 5 phút" into another workout recommendation.
-        if (naturalRequest.impact == 2) return naturalRequest.reply
+        // Preserve the already selected session impact preference when the user asks a
+        // follow-up without repeating it. A fresh symptom report always wins.
+        val effectiveImpact = maxOf(impact, naturalRequest.impact ?: 0)
+        if (effectiveImpact == 2) return if (naturalRequest.impact == 2) {
+            naturalRequest.reply
+        } else {
+            "Mày đã chọn trạng thái đang đau hoặc có chấn thương. Chibi không đề xuất đổi bài hay khởi chạy buổi tập khi chưa được chuyên gia đánh giá. Hãy dừng nếu đang có triệu chứng."
+        }
+        val preferLowImpact = effectiveImpact == 1
         val remainingMinutes = naturalRequest.minutes.takeIf { hasRemainingTimeCue(query) }
         val effectiveLevel = (naturalRequest.level ?: level).coerceIn(0, 2)
         val effectiveGoal = (naturalRequest.goal ?: goal)?.coerceIn(0, 5)
@@ -65,7 +79,8 @@ object WorkoutPlanAdjustmentConversation {
             avoidFloor != profile.avoidFloorPositions ||
             avoidWrist != profile.avoidWristLoad ||
             avoidOverhead != profile.avoidOverheadReach ||
-            preferGentle || containsAny(query, "thay bai", "thay the", "doi bai", "bai thay the")
+            preferLowImpact || preferGentle ||
+            containsAny(query, "thay bai", "thay the", "doi bai", "bai thay the")
         if (!asksForChange) return null
 
         val effectiveProfile = profile.copy(
@@ -165,6 +180,9 @@ object WorkoutPlanAdjustmentConversation {
             "quickmobility", "desk", "recovery"
         )
         val candidates = programs.mapIndexedNotNull { index, program ->
+            if (preferLowImpact && program.id !in lowImpactProgramIds) {
+                return@mapIndexedNotNull null
+            }
             val constrained = WorkoutConstraintFilter.apply(program, effectiveProfile)
             val equipped = WorkoutEquipmentFilter.apply(
                 constrained.program, effectiveEquipment, extras
@@ -177,6 +195,7 @@ object WorkoutPlanAdjustmentConversation {
             val notes = buildList {
                 if (constrained.changed) add("đã lọc theo hạn chế vận động")
                 if (equipped.changed) add("đã bỏ bài cần dụng cụ chưa chọn")
+                if (preferLowImpact) add("đã giới hạn ở chương trình ít tác động, không nhảy")
             }.joinToString("; ")
 
             Candidate(
@@ -208,11 +227,18 @@ object WorkoutPlanAdjustmentConversation {
         ).take(3)
 
         if (candidates.isEmpty()) {
-            return "Chibi chưa tìm thấy chương trình còn động tác chính phù hợp với các điều kiện này. Chibi không tự bịa bài thay thế. Hãy nới một bộ lọc hoặc hỏi chuyên gia phù hợp trước khi thử động tác mới."
+            return if (preferLowImpact) {
+                "Chibi chưa tìm thấy chương trình đã duyệt ít tác động phù hợp với dụng cụ và hạn chế hiện tại. Chibi không tự chuyển sang bài cường độ cao hoặc tự bịa bài thay thế; giáo án chưa thay đổi."
+            } else {
+                "Chibi chưa tìm thấy chương trình còn động tác chính phù hợp với các điều kiện này. Chibi không tự bịa bài thay thế. Hãy nới một bộ lọc hoặc hỏi chuyên gia phù hợp trước khi thử động tác mới."
+            }
         }
 
         return buildString {
             append("Chibi đã lọc thử từ thư viện offline theo điều kiện mày vừa nói. ")
+            if (preferLowImpact) {
+                append("Chibi chỉ giữ các chương trình đã duyệt theo hướng ít tác động, không nhảy. ")
+            }
             append("Đây chỉ là bản xem trước; giáo án và buổi đang tập chưa bị thay đổi.")
             if (remainingMinutes != null) {
                 append("\nMày còn ").append(remainingMinutes).append(" phút. Chibi ưu tiên mục tiêu đã chọn và phương án nằm trong thời gian này nếu có.")

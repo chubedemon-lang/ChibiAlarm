@@ -127,7 +127,8 @@ object WorkoutMidSessionPlanner {
                 ?: return Result.Unsupported
             val approved = WorkoutMoveSubstitution.alternativesFor(
                 currentMoves[currentIndex],
-                effectiveProfile
+                effectiveProfile,
+                effectiveAvailableEquipment
             ).firstOrNull { it.name == requestedMove.name }
                 ?: return Result.Blocked(
                     "Bài bạn chọn chưa phải biến thể thay thế được tuyển chọn cho động tác hiện tại. Giáo án được giữ nguyên."
@@ -173,7 +174,7 @@ object WorkoutMidSessionPlanner {
 
             val mayChooseEasier = request.preferEasier && canReplace
             val candidates = if (canReplace && (mustChange || mayChooseEasier)) {
-                WorkoutMoveSubstitution.alternativesFor(move, effectiveProfile)
+                WorkoutMoveSubstitution.alternativesFor(move, effectiveProfile, effectiveAvailableEquipment)
             } else {
                 emptyList()
             }

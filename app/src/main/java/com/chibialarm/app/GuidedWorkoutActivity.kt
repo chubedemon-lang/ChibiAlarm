@@ -2559,6 +2559,7 @@ class GuidedWorkoutActivity:Activity() {
                         val nextRate = WorkoutSpeechRate.slower(workoutSpeechRate)
                         val changed = nextRate != workoutSpeechRate
                         workoutSpeechRate = nextRate
+                        workoutSpeechRateRestored = true
                         spoken?.setSpeechRate(workoutSpeechRate)
                         val answer = if (changed) {
                             "Tao sẽ đọc chậm hơn. Mày có thể nói tốc độ bình thường để khôi phục tốc độ đã chọn."
@@ -2572,6 +2573,7 @@ class GuidedWorkoutActivity:Activity() {
                         val nextRate = WorkoutSpeechRate.faster(workoutSpeechRate)
                         val changed = nextRate != workoutSpeechRate
                         workoutSpeechRate = nextRate
+                        workoutSpeechRateRestored = true
                         spoken?.setSpeechRate(workoutSpeechRate)
                         val answer = if (changed) {
                             "Tao sẽ đọc nhanh hơn. Mày có thể nói tốc độ bình thường để khôi phục tốc độ đã chọn."
@@ -2583,6 +2585,7 @@ class GuidedWorkoutActivity:Activity() {
                     }
                     WorkoutStepVoiceCommand.Command.SPEECH_NORMAL -> {
                         workoutSpeechRate = WorkoutSpeechRate.normal(preferredWorkoutSpeechRate)
+                        workoutSpeechRateRestored = true
                         spoken?.setSpeechRate(workoutSpeechRate)
                         val answer = "Đã khôi phục tốc độ đọc mày chọn trong cài đặt."
                         lastCoachAnswer = answer

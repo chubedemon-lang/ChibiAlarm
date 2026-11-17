@@ -83,6 +83,9 @@ class GuidedWorkoutActivity:Activity() {
     private var workoutLevel = 0
     // Guest-local equipment context; only enum names are checkpointed, never raw speech.
     private var extensionPreferences = WorkoutExtensionPreferences()
+    private fun availableWorkoutEquipment(): Set<TrainingEquipment> =
+        TrainingEquipmentAvailability.fromPreference(extensionPreferences.equipment) +
+            extensionPreferences.additionalEquipment
     // Names only: these are optional catalog extensions, not user transcripts.
     private val optionalExtensionNames = mutableSetOf<String>()
     // One spoken cue per exercise; never speak while paused or during microphone input.
@@ -170,7 +173,7 @@ class GuidedWorkoutActivity:Activity() {
             .putBoolean("tenSecondCueGiven",tenSecondCueGiven)
             .putInt("shorterFrom",shorterFromIndex)
             .putString("repTargets",repTargets.entries.joinToString(",") { "${it.key}:${it.value}" })
-            .putString("substitutions",WorkoutMoveSubstitution.encode(substitutions,originalMoves,workoutConstraints))
+            .putString("substitutions",WorkoutMoveSubstitution.encode(substitutions,originalMoves,workoutConstraints,availableWorkoutEquipment()))
             .putString("completedMoves",WorkoutCompletionTracker.encode(completedMoveIndices,moves.size))
             .putString("completedSets",WorkoutSetTracker.encode(completedSetsByMove,moves))
             .putString("setValues",WorkoutSetRepetitionLog.encode(actualSetValuesByMove,moves))
@@ -276,8 +279,8 @@ class GuidedWorkoutActivity:Activity() {
                 index=checkpoint.getInt("index",0).coerceIn(0,moves.lastIndex)
                 val savedSubstitutions=checkpoint.getString("substitutions",null)
                 substitutions.clear()
-                substitutions.putAll(WorkoutMoveSubstitution.decode(savedSubstitutions,originalMoves,workoutConstraints))
-                moves=WorkoutMoveSubstitution.apply(originalMoves,savedSubstitutions,workoutConstraints)
+                substitutions.putAll(WorkoutMoveSubstitution.decode(savedSubstitutions,originalMoves,workoutConstraints,availableWorkoutEquipment()))
+                moves=WorkoutMoveSubstitution.apply(originalMoves,savedSubstitutions,workoutConstraints,availableWorkoutEquipment())
                 shorterFromIndex=checkpoint.getInt("shorterFrom",Int.MAX_VALUE).coerceIn(0, moves.size)
                 repTargets.clear()
                 repTargets.putAll(WorkoutRepTargets.decode(checkpoint.getString("repTargets",null),moves.size,index))
@@ -480,18 +483,17 @@ class GuidedWorkoutActivity:Activity() {
         val initialSubstitutionRaw = intent.getStringExtra("initial_substitutions")
         if (savedInstanceState == null && !initialSubstitutionRaw.isNullOrBlank()) {
             val decoded = WorkoutMoveSubstitution.decode(
-                initialSubstitutionRaw, originalMoves, workoutConstraints
+                initialSubstitutionRaw, originalMoves, workoutConstraints, availableWorkoutEquipment()
             )
-            val available = TrainingEquipmentAvailability.fromPreference(extensionPreferences.equipment) +
-                extensionPreferences.additionalEquipment
+            val available = availableWorkoutEquipment()
             val approved = decoded.filter { (_, replacement) ->
                 TrainingEquipmentAvailability.allows(replacement, available)
             }
             substitutions.putAll(approved)
             val safeCheckpoint = WorkoutMoveSubstitution.encode(
-                approved, originalMoves, workoutConstraints
+                approved, originalMoves, workoutConstraints, availableWorkoutEquipment()
             )
-            moves = WorkoutMoveSubstitution.apply(originalMoves, safeCheckpoint, workoutConstraints)
+            moves = WorkoutMoveSubstitution.apply(originalMoves, safeCheckpoint, workoutConstraints, availableWorkoutEquipment())
             approved.forEach { (position, replacement) ->
                 if (originalMoves[position].name in optionalExtensionNames) {
                     optionalExtensionNames.remove(originalMoves[position].name)
@@ -803,8 +805,8 @@ class GuidedWorkoutActivity:Activity() {
             sessionId=validSessionId(savedInstanceState.getString("workout_session_id")) ?: sessionId
             val savedSubstitutions=savedInstanceState.getString("workout_substitutions")
             substitutions.clear()
-            substitutions.putAll(WorkoutMoveSubstitution.decode(savedSubstitutions,originalMoves,workoutConstraints))
-            moves=WorkoutMoveSubstitution.apply(originalMoves,savedSubstitutions,workoutConstraints)
+            substitutions.putAll(WorkoutMoveSubstitution.decode(savedSubstitutions,originalMoves,workoutConstraints,availableWorkoutEquipment()))
+            moves=WorkoutMoveSubstitution.apply(originalMoves,savedSubstitutions,workoutConstraints,availableWorkoutEquipment())
             index=savedInstanceState.getInt("workout_index",0).coerceIn(0,moves.lastIndex)
             repTargets.clear()
             repTargets.putAll(WorkoutRepTargets.decode(savedInstanceState.getString("workout_rep_targets"),moves.size,index))
@@ -877,7 +879,7 @@ class GuidedWorkoutActivity:Activity() {
         outState.putString("workout_plan_fingerprint",currentPlanFingerprint())
         outState.putString("workout_session_id",sessionId)
         outState.putString("workout_rep_targets",repTargets.entries.joinToString(",") { "${it.key}:${it.value}" })
-        outState.putString("workout_substitutions",WorkoutMoveSubstitution.encode(substitutions,originalMoves,workoutConstraints))
+        outState.putString("workout_substitutions",WorkoutMoveSubstitution.encode(substitutions,originalMoves,workoutConstraints,availableWorkoutEquipment()))
         outState.putString("workout_completed_moves",WorkoutCompletionTracker.encode(completedMoveIndices,moves.size))
         outState.putString("workout_completed_sets",WorkoutSetTracker.encode(completedSetsByMove,moves))
         outState.putString("workout_set_values",WorkoutSetRepetitionLog.encode(actualSetValuesByMove,moves))
@@ -2032,7 +2034,7 @@ class GuidedWorkoutActivity:Activity() {
             Toast.makeText(this, "Động tác này đã được thay thế trong phiên. Giữ thay đổi hiện tại để bảo toàn tiến độ.", Toast.LENGTH_LONG).show()
             return
         }
-        val options = WorkoutMoveSubstitution.alternativesFor(moves[index],workoutConstraints)
+        val options = WorkoutMoveSubstitution.alternativesFor(moves[index],workoutConstraints,availableWorkoutEquipment())
         if (options.isEmpty()) {
             Toast.makeText(this, "Chưa có phương án thay thế được kiểm duyệt cho động tác này.", Toast.LENGTH_LONG).show()
             return
@@ -2055,7 +2057,7 @@ class GuidedWorkoutActivity:Activity() {
                             Toast.makeText(this, "Buổi tập đã thay đổi. Hãy mở lại phần điều chỉnh.", Toast.LENGTH_LONG).show()
                             return@setPositiveButton
                         }
-                        val updated = WorkoutMoveSubstitution.replace(moves, selectedIndex, replacement, workoutConstraints)
+                        val updated = WorkoutMoveSubstitution.replace(moves, selectedIndex, replacement, workoutConstraints, availableWorkoutEquipment())
                         if (updated == null) {
                             Toast.makeText(this, "Phương án không còn hợp lệ. Giữ nguyên động tác.", Toast.LENGTH_LONG).show()
                             return@setPositiveButton

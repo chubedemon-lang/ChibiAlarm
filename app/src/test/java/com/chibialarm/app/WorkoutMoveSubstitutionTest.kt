@@ -229,4 +229,44 @@ class WorkoutMoveSubstitutionTest {
         assertTrue(WorkoutMoveSubstitution.decode("x:bad;0:%ZZ", base).isEmpty())
         assertTrue(WorkoutMoveSubstitution.decode("a".repeat(4_097), base).isEmpty())
     }
+    
+    @Test fun everyCuratedAlternativeHasAPlainLanguageNonMedicalExplanation() {
+        val allEquipment = TrainingEquipment.values().toSet()
+        val originals = listOf(
+            "Squat không tạ", "Squat chậm 3 giây", "Bước lùi – lunge",
+            "Chống đẩy sàn", "Chống đẩy tường", "Cat-cow nhẹ", "Chống đẩy gối",
+            "Chống đẩy trên bề mặt cao", "Mountain climber chậm",
+            "Bật nhảy dang tay chân", "Bird-dog", "Plank khuỷu hoặc plank gối",
+            "Side plank gối", "Kéo tạ đơn hoặc dây kháng lực",
+            "Gập hông với tạ đơn hoặc dây", "Đẩy vai với tạ đơn hoặc dây"
+        )
+
+        originals.forEach { originalName ->
+            val original = catalogMove(originalName)
+            val alternatives = WorkoutMoveSubstitution.alternativesFor(
+                original,
+                availableEquipment = allEquipment
+            )
+            assertTrue(originalName + " should have curated alternatives", alternatives.isNotEmpty())
+            alternatives.forEach { replacement ->
+                val explanation = WorkoutMoveSubstitution.explanationFor(original, replacement)
+                assertNotNull(originalName + " -> " + replacement.name, explanation)
+                assertTrue(explanation!!.length in 30..260)
+                val lower = explanation.lowercase()
+                assertFalse(lower.contains("chữa trị"))
+                assertFalse(lower.contains("điều trị"))
+                assertFalse(lower.contains("bảo đảm an toàn"))
+                assertFalse(lower.contains("an toàn tuyệt đối"))
+            }
+        }
+    }
+
+    @Test fun unapprovedExercisePairsNeverReceiveAnInventedExplanation() {
+        assertNull(
+            WorkoutMoveSubstitution.explanationFor(
+                catalogMove("Squat không tạ"),
+                catalogMove("Chống đẩy tường")
+            )
+        )
+    }
 }

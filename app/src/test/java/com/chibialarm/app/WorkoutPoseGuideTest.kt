@@ -90,6 +90,14 @@ class WorkoutPoseGuideTest {
         assertEquals(WorkoutPoseGuide.Pose.SIDE_PLANK, WorkoutPoseGuide.classify("Side plank"))
     }
 
+    @Test fun jumpingJacksHaveTheirOwnAnimatedIllustrationAndSaferAlternativeCue() {
+        val pose = WorkoutPoseGuide.classify("Bật nhảy dang tay chân")
+        assertEquals(WorkoutPoseGuide.Pose.JUMPING_JACKS, pose)
+        assertTrue(WorkoutPoseGuide.label(pose).contains("mở chân"))
+        assertTrue(WorkoutPoseMotion.hasMotion(pose))
+        assertTrue(WorkoutPoseMotion.spokenWalkthrough(pose).contains("bước ngang nhẹ"))
+    }
+
     @Test fun everyCatalogMoveHasDedicatedIllustrationAndSpokenGuidance() {
         for (move in TrainingCatalog.allMoves) {
             val pose = WorkoutPoseGuide.classify(move.name)

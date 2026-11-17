@@ -5,7 +5,7 @@ import java.util.Locale
 
 /** Small offline command grammar for the step-by-step guide; no transcript is retained. */
 object WorkoutStepVoiceCommand {
-    enum class Command { NEXT, PREVIOUS, REPEAT, REPEAT_ANSWER, SUMMARY, EASIER, SAFETY_NOTE, REST, ASK_EXERCISE, CLOSE, SAFETY, UNKNOWN }
+    enum class Command { NEXT, PREVIOUS, REPEAT, REPEAT_ANSWER, SUMMARY, EASIER, SAFETY_NOTE, SPEECH_SLOWER, SPEECH_NORMAL, REST, ASK_EXERCISE, CLOSE, SAFETY, UNKNOWN }
 
     private fun containsPhrase(text: String, phrase: String): Boolean =
         Regex("(^|\\s)" + Regex.escape(phrase) + "(\\s|$)").containsMatchIn(text)
@@ -34,8 +34,18 @@ object WorkoutStepVoiceCommand {
         if (listOf(
                 "khong doc muc tieu", "dung doc muc tieu", "khong doc so hiep",
                 "khong doc cach tap de hon", "dung doc cach tap de hon",
-                "khong doc luu y", "dung doc luu y", "khong nhac luu y"
+                "khong doc luu y", "dung doc luu y", "khong nhac luu y",
+                "khong doc cham hon", "dung doc cham hon",
+                "khong noi cham lai", "dung noi cham lai", "giu toc do hien tai"
             ).any { normalized.contains(it) }) return Command.UNKNOWN
+        if (listOf(
+                "noi cham lai", "doc cham hon", "noi cham hon", "cham hon nua",
+                "slow down", "speak slower"
+            ).any { normalized.contains(it) }) return Command.SPEECH_SLOWER
+        if (listOf(
+                "toc do binh thuong", "doc binh thuong", "noi nhu cu",
+                "toc do mac dinh", "reset speech speed"
+            ).any { normalized.contains(it) }) return Command.SPEECH_NORMAL
         if (listOf(
                 "doc lai cau tra loi", "nhac lai cau tra loi", "nghe lai cau tra loi",
                 "lap lai cau tra loi", "doc lai phan tra loi"

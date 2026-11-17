@@ -135,4 +135,24 @@ class WorkoutStepVoiceCommandTest {
             )
         }
     }
+
+    @Test fun canAdjustWorkoutSpeechRateByVoiceWithoutChangingWorkoutCommands() {
+        assertEquals(WorkoutStepVoiceCommand.Command.SPEECH_SLOWER,
+            WorkoutStepVoiceCommand.parse("Nói chậm lại"))
+        assertEquals(WorkoutStepVoiceCommand.Command.SPEECH_SLOWER,
+            WorkoutStepVoiceCommand.parse("doc cham hon"))
+        assertEquals(WorkoutStepVoiceCommand.Command.SPEECH_SLOWER,
+            WorkoutStepVoiceCommand.parse("Speak slower"))
+        assertEquals(WorkoutStepVoiceCommand.Command.SPEECH_NORMAL,
+            WorkoutStepVoiceCommand.parse("Tốc độ bình thường"))
+        assertEquals(WorkoutStepVoiceCommand.Command.SPEECH_NORMAL,
+            WorkoutStepVoiceCommand.parse("noi nhu cu"))
+        assertEquals(WorkoutStepVoiceCommand.Command.UNKNOWN,
+            WorkoutStepVoiceCommand.parse("Không nói chậm lại"))
+        assertEquals(WorkoutStepVoiceCommand.Command.UNKNOWN,
+            WorkoutStepVoiceCommand.parse("Giữ tốc độ hiện tại"))
+        assertEquals(WorkoutStepVoiceCommand.Command.SAFETY,
+            WorkoutStepVoiceCommand.parse("Nói chậm lại, tôi đau cổ tay"))
+    }
+
 }

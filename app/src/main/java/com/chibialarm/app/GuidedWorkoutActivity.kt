@@ -98,6 +98,9 @@ class GuidedWorkoutActivity:Activity() {
         (SystemClock.elapsedRealtime()-startedAt).coerceAtLeast(0L) else 0L
     private var spoken:TextToSpeech?=null
     private var ready=false
+    // Workout-only speech rate; the user's global voice preference is never overwritten.
+    private var preferredWorkoutSpeechRate=WorkoutSpeechRate.DEFAULT_RATE
+    private var workoutSpeechRate=WorkoutSpeechRate.DEFAULT_RATE
     // The selected rest-step speech is transient and derived from the local exercise catalog.
     private var restStepSpeechText:String?=null
     private var speechStatus:TextView?=null
@@ -781,7 +784,9 @@ class GuidedWorkoutActivity:Activity() {
             )
             ready=selection.languageSupported
             updateRestStepSpeakButton()
-            engine.setSpeechRate(settings.getFloat("rate",1f))
+            preferredWorkoutSpeechRate=WorkoutSpeechRate.normalize(settings.getFloat("rate",1f))
+            workoutSpeechRate=preferredWorkoutSpeechRate
+            engine.setSpeechRate(workoutSpeechRate)
             engine.setPitch(settings.getFloat("pitch",1f))
             if(ready && Build.VERSION.SDK_INT>=Build.VERSION_CODES.LOLLIPOP) {
                 available.firstOrNull { it.name==selection.voiceName }?.let { engine.voice=it }
@@ -2525,6 +2530,26 @@ class GuidedWorkoutActivity:Activity() {
                         lastCoachAnswer = answer
                         speak(answer)
                     }
+                    WorkoutStepVoiceCommand.Command.SPEECH_SLOWER -> {
+                        val nextRate = WorkoutSpeechRate.slower(workoutSpeechRate)
+                        val changed = nextRate != workoutSpeechRate
+                        workoutSpeechRate = nextRate
+                        spoken?.setSpeechRate(workoutSpeechRate)
+                        val answer = if (changed) {
+                            "Tao sẽ đọc chậm hơn. Mày có thể nói tốc độ bình thường để khôi phục tốc độ đã chọn."
+                        } else {
+                            "Tốc độ đọc đã ở mức chậm nhất."
+                        }
+                        lastCoachAnswer = answer
+                        announceSpeechRate(answer)
+                    }
+                    WorkoutStepVoiceCommand.Command.SPEECH_NORMAL -> {
+                        workoutSpeechRate = WorkoutSpeechRate.normal(preferredWorkoutSpeechRate)
+                        spoken?.setSpeechRate(workoutSpeechRate)
+                        val answer = "Đã khôi phục tốc độ đọc mày chọn trong cài đặt."
+                        lastCoachAnswer = answer
+                        announceSpeechRate(answer)
+                    }
                     WorkoutStepVoiceCommand.Command.ASK_EXERCISE -> {
                         val answer = WorkoutExerciseConversation.answerForCurrentMove(
                             input = phrase,
@@ -2549,7 +2574,7 @@ class GuidedWorkoutActivity:Activity() {
                     }
                     WorkoutStepVoiceCommand.Command.UNKNOWN -> {
                         AlertDialog.Builder(this).setTitle("Chibi chưa hiểu lệnh")
-                            .setMessage("Bạn có thể nói: bước tiếp, bước trước, đọc lại bước, đọc lại câu trả lời, hỏi cách tập bài này, hỏi nhóm cơ chính, hỏi bao nhiêu lần, nghỉ bao lâu, đọc cách dễ hơn, đọc lưu ý an toàn, nghỉ thêm 30 giây hoặc đóng hướng dẫn. Nếu đau, khó thở hay khó chịu, Chibi sẽ dừng buổi tập.")
+                            .setMessage("Bạn có thể nói: bước tiếp, bước trước, đọc lại bước, đọc lại câu trả lời, hỏi cách tập bài này, hỏi nhóm cơ chính, hỏi bao nhiêu lần, nghỉ bao lâu, đọc cách dễ hơn, đọc lưu ý an toàn, nói chậm lại, tốc độ bình thường, nghỉ thêm 30 giây hoặc đóng hướng dẫn. Nếu đau, khó thở hay khó chịu, Chibi sẽ dừng buổi tập.")
                             .setPositiveButton("Đã hiểu",null).show()
                     }
                 }
@@ -3185,8 +3210,16 @@ class GuidedWorkoutActivity:Activity() {
             .setNegativeButton("Đóng",null).show()
     }
 
+    private fun announceSpeechRate(message:String) {
+        if (ready) speak(message)
+        else Toast.makeText(this,message,Toast.LENGTH_SHORT).show()
+    }
+
     private fun speak(message:String) {
-        if(ready)spoken?.speak(message.take(350),TextToSpeech.QUEUE_FLUSH,null,"fitness-${index}")
+        if(ready) {
+            spoken?.setSpeechRate(workoutSpeechRate)
+            spoken?.speak(message.take(350),TextToSpeech.QUEUE_FLUSH,null,"fitness-${index}")
+        }
     }
     private fun resume() {
         if(pausedForSafety) {

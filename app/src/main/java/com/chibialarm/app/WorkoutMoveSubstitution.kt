@@ -57,7 +57,7 @@ object WorkoutMoveSubstitution {
         ("Chống đẩy gối" to "Chống đẩy tường") to
             "Chuyển từ chống tay trên sàn sang chống tường đứng để dễ điều chỉnh độ nghiêng.",
         ("Chống đẩy gối" to "Ép ngực tường bằng cẳng tay") to
-            "Chuyển điểm tựa sang cẳng tay trên tường; không xem đây là phương án điều trị cổ tay.",
+            "Chuyển điểm tựa sang cẳng tay trên tường; bỏ qua nếu tư thế này gây khó chịu ở cổ tay.",
         ("Chống đẩy trên bề mặt cao" to "Chống đẩy tường") to
             "Dùng tường làm điểm tựa cố định thay cho bề mặt kê cao, với độ nghiêng điều chỉnh bằng vị trí đứng.",
         ("Chống đẩy trên bề mặt cao" to "Ép ngực tường bằng cẳng tay") to

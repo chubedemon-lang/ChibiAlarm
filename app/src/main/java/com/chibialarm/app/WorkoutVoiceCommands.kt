@@ -6,7 +6,7 @@ import java.util.Locale
 /** Small, offline command interpreter. Unrecognized speech never controls a workout. */
 object WorkoutVoiceCommands {
     enum class Command {
-        PAIN, PAUSE, STATUS, STEP_GUIDE, RESUME, NEXT, PREVIOUS, REPEAT, REPEAT_STEP, EASIER, SWAP_EASIER,
+        PAIN, PAUSE, STATUS, STEP_GUIDE, EXPLAIN_CURRENT, RESUME, NEXT, PREVIOUS, REPEAT, REPEAT_STEP, EASIER, SWAP_EASIER,
         EASIER_AND_REST, SHORTER, SHORTER_REMAINING, REST, SKIP_REST, COMPLETE_SET, NO_EQUIPMENT, UNKNOWN
     }
 
@@ -18,6 +18,7 @@ object WorkoutVoiceCommands {
             Command.PAUSE -> "Tạm dừng buổi tập"
             Command.STATUS -> "Đọc tiến độ, số hiệp và thời gian còn lại"
             Command.STEP_GUIDE -> "Mở hướng dẫn từng bước cho động tác hiện tại"
+            Command.EXPLAIN_CURRENT -> "Giải thích vì sao động tác hiện tại được thay thế"
             Command.COMPLETE_SET -> "Xác nhận hoàn thành hiệp hiện tại"
             Command.RESUME -> "Tiếp tục buổi tập"
             Command.NEXT -> "Chuyển sang động tác tiếp theo"
@@ -71,6 +72,12 @@ object WorkoutVoiceCommands {
             normalized.contains("tam dung") || normalized.contains("dung lai") ||
                 normalized.contains("dung tap") || normalized.contains("khong tap noi") ||
                 normalized.contains("het suc") || "pause" in words -> Command.PAUSE
+            listOf(
+                "vi sao bai nay de hon", "tai sao bai nay de hon",
+                "vi sao lai doi bai", "tai sao lai doi bai",
+                "giai thich bai thay the", "giai thich vi sao bai nay",
+                "ly do thay the", "ly do doi bai", "vi sao chibi goi y"
+            ).any(normalized::contains) -> Command.EXPLAIN_CURRENT
             normalized.contains("bo qua nghi") || normalized.contains("bo qua thoi gian nghi") ||
                 normalized.contains("ket thuc nghi") || "skip rest" in normalized -> Command.SKIP_REST
             listOf(

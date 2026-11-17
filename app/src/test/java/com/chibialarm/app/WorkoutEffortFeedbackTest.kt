@@ -90,6 +90,18 @@ class WorkoutEffortFeedbackTest {
         assertTrue(advice.message.contains("tạm dừng"))
     }
 
+    @Test fun veryHardNeverShortensALongerPrescribedRest() {
+        val advice = WorkoutEffortFeedback.recommend(
+            WorkoutEffortFeedback.Level.VERY_HARD,
+            180,
+            listOf(WorkoutEffortFeedback.Level.HARD)
+        )
+
+        assertEquals(180, advice.restSeconds)
+        assertTrue(advice.holdBeforeNextSet)
+        assertTrue(advice.message.contains("tạm dừng"))
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun rejectsRestBelowCatalogBounds() {
         WorkoutEffortFeedback.recommend(WorkoutEffortFeedback.Level.HARD, 14)

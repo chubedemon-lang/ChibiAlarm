@@ -101,15 +101,18 @@ object WorkoutMidSessionRequest {
         // If the same utterance also says "no jumping"/"low impact", restriction wins.
         val impactRelaxations = listOf(
             "bo han che nhay", "bo tranh nhay", "khong can tranh nhay",
-            "khong con can tranh nhay", "co the nhay", "nhay duoc", "co the tap nhay"
+            "khong con can tranh nhay", "co the nhay", "co the tap nhay", "duoc phep nhay"
         )
         val impactRestrictionText = impactRelaxations.fold(text) { remaining, phrase ->
             remaining.replace(phrase, " ")
         }
-        val avoidJumping = listOf(
+        val cannotJump = has("khong nhay duoc", "khong duoc nhay", "khong the nhay")
+        val avoidJumping = cannotJump || listOf(
             "khong nhay", "dung nhay", "it tac dong", "nhe nhang", "tranh nhay"
         ).any(impactRestrictionText::contains)
-        val allowJumping = !avoidJumping && impactRelaxations.any(text::contains)
+        val saysJumpingIsOkay = impactRelaxations.any(text::contains) ||
+            (has("nhay duoc") && !cannotJump)
+        val allowJumping = !avoidJumping && saysJumpingIsOkay
 
         // Explicit mid-session replacement is deliberately strict: the user must name
         // a canonical catalog exercise, not provide arbitrary instructions.

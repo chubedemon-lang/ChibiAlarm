@@ -278,6 +278,19 @@ class WorkoutPoseView(context: Context) : View(context) {
                 line(120f, 71f, if (movementPhase) 154f else 88f, 86f)
                 line(if (movementPhase) 154f else 88f, 86f, if (movementPhase) 166f else 76f, 108f)
             }
+            WorkoutPoseGuide.Pose.JUMPING_JACKS -> {
+                // Open and closed phases are distinct; this is a cue, not a form assessment.
+                head(120f, 20f); line(120f, 31f, 120f, 72f)
+                if (movementPhase) {
+                    line(120f, 43f, 88f, 20f); line(88f, 20f, 78f, 7f)
+                    line(120f, 43f, 152f, 20f); line(152f, 20f, 162f, 7f)
+                    line(120f, 72f, 84f, 91f); line(84f, 91f, 72f, 108f)
+                    line(120f, 72f, 156f, 91f); line(156f, 91f, 168f, 108f)
+                } else {
+                    line(120f, 43f, 98f, 64f); line(120f, 43f, 142f, 64f)
+                    line(120f, 72f, 105f, 108f); line(120f, 72f, 135f, 108f)
+                }
+            }
             WorkoutPoseGuide.Pose.MOUNTAIN_CLIMBER -> {
                 // High-plank side view with one knee driving forward; phases alternate the lead leg.
                 head(43f, 37f)

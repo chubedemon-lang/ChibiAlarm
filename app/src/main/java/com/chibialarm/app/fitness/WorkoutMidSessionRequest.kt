@@ -272,7 +272,12 @@ object WorkoutMidSessionRequest {
         val removeOptionalExercises = has(
             "bo bai phu", "bo bai bo sung", "bo dong tac tuy chon",
             "xoa bai phu", "xoa bai bo sung", "khong can bai phu nua",
-            "khong can bai bo sung nua"
+            "khong can bai bo sung nua",
+            // Common spoken shortcuts for removing only unstarted optional volume.
+            "bo het bai phu", "bo bot bai phu", "bo may bai phu",
+            "bo phan bai bo sung", "khong can tap bai phu",
+            "khong can tap phan bo sung", "skip bai phu", "cat bai phu",
+            "bo bai tuy chon"
         )
         if (addOptionalExercise && removeOptionalExercises) return Result.Unsupported
 
@@ -285,8 +290,9 @@ object WorkoutMidSessionRequest {
             !avoidOverheadReach && !allowOverheadReach &&
             !avoidJumping && !allowJumping &&
             !preferEasier && restSeconds == null && !avoidExternalLoad &&
-            !addOptionalExercise && !removeOptionalExercises && availableEquipment.isEmpty() &&
-            unavailableEquipment.isEmpty() && replacementExercise == null
+            !addOptionalExercise && availableEquipment.isEmpty() &&
+            unavailableEquipment.isEmpty() && replacementExercise == null &&
+            !removeOptionalExercises
         ) return Result.Unsupported
 
         return Result.Proposed(

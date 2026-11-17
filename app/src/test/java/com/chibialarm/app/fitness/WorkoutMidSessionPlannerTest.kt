@@ -807,6 +807,30 @@ class WorkoutMidSessionPlannerTest {
         assertFalse(request.isRestOnly)
     }
 
+    @Test fun colloquialOptionalRemovalCommandsAreRecognizedWithoutBroadlyMatchingExerciseRemoval() {
+        val phrases = listOf(
+            "Bỏ hết bài phụ",
+            "Bỏ bớt bài phụ",
+            "Bỏ mấy bài phụ",
+            "Không cần tập phần bổ sung nữa",
+            "Skip bài phụ",
+            "Cắt bài phụ",
+            "Bỏ bài tùy chọn"
+        )
+        phrases.forEach { phrase ->
+            val parsed = WorkoutMidSessionRequest.parse(phrase)
+            assertTrue("$phrase should be understood", parsed is WorkoutMidSessionRequest.Result.Proposed)
+            val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+            assertTrue("$phrase should remove optional moves", request.removeOptionalExercises)
+            assertFalse("$phrase must not add a move", request.addOptionalExercise)
+            assertFalse("$phrase is a plan change, not a rest-only request", request.isRestOnly)
+        }
+        assertSame(
+            WorkoutMidSessionRequest.Result.Unsupported,
+            WorkoutMidSessionRequest.parse("Bỏ bài Squat")
+        )
+    }
+
     @Test fun removingOptionalExercisesKeepsCompletedPrefixAndActiveRequiredWork() {
         val moves = listOf(
             move("Khởi động tại chỗ"),

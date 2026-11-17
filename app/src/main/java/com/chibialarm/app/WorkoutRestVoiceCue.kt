@@ -12,9 +12,11 @@ internal object WorkoutRestVoiceCue {
     fun shouldAnnounce(
         remainingMs: Long,
         alreadyAnnounced: Boolean,
-        pausedForSafety: Boolean
+        pausedForSafety: Boolean,
+        microphoneActive: Boolean = false
     ): Boolean = !alreadyAnnounced &&
         !pausedForSafety &&
+        !microphoneActive &&
         remainingMs in 1L..WARNING_WINDOW_MS
 
     fun message(remainingMs: Long): String? {

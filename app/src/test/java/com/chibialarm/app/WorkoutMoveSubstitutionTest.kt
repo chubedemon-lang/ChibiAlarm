@@ -1,5 +1,7 @@
 package com.chibialarm.app
 
+import com.chibialarm.app.fitness.WorkoutMidSessionPlanner
+import com.chibialarm.app.fitness.WorkoutMidSessionRequest
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -19,6 +21,52 @@ class WorkoutMoveSubstitutionTest {
             WorkoutMoveSubstitution.alternativesFor(push).map { it.name }
         )
         assertTrue(WorkoutMoveSubstitution.alternativesFor(catalogMove("Khởi động tại chỗ")).isEmpty())
+    }
+
+    @Test fun legAndTempoMovesOfferCuratedRegressionsFromTheCatalog() {
+        val expected = listOf("Squat không tạ", "Đứng lên – ngồi xuống")
+        assertEquals(
+            expected,
+            WorkoutMoveSubstitution.alternativesFor(catalogMove("Bước lùi – lunge")).map { it.name }
+        )
+        assertEquals(
+            expected,
+            WorkoutMoveSubstitution.alternativesFor(catalogMove("Squat chậm 3 giây")).map { it.name }
+        )
+    }
+
+    @Test fun automaticEasierReplacementRespectsTheReportedChairInventory() {
+        val squat = catalogMove("Squat không tạ")
+        val cooldown = catalogMove("Thả lỏng")
+
+        fun preview(available: Set<TrainingEquipment>): WorkoutMidSessionPlanner.Result =
+            WorkoutMidSessionPlanner.preview(
+                currentMoves = listOf(squat, cooldown),
+                currentIndex = 0,
+                completedCurrentSets = 0,
+                currentStepLocked = false,
+                constraints = WorkoutConstraintProfile(),
+                request = WorkoutMidSessionRequest.Request(
+                    preferEasier = true,
+                    availableEquipment = available
+                ),
+                remainingCurrentSeconds = 60,
+                extensionMoveNames = emptySet(),
+                level = 0
+            )
+
+        val withoutChair = preview(emptySet())
+        assertTrue(withoutChair is WorkoutMidSessionPlanner.Result.Proposed)
+        val unchanged = (withoutChair as WorkoutMidSessionPlanner.Result.Proposed).preview
+        assertEquals("Squat không tạ", unchanged.after.first().name)
+        assertFalse(unchanged.currentMoveChanged)
+        assertTrue(unchanged.replacements.isEmpty())
+
+        val withChair = preview(setOf(TrainingEquipment.STABLE_CHAIR))
+        assertTrue(withChair is WorkoutMidSessionPlanner.Result.Proposed)
+        val changed = (withChair as WorkoutMidSessionPlanner.Result.Proposed).preview
+        assertEquals("Đứng lên – ngồi xuống", changed.after.first().name)
+        assertTrue(changed.currentMoveChanged)
     }
 
     @Test fun replacementChangesOnlyTheSelectedStep() {

@@ -101,6 +101,8 @@ class GuidedWorkoutActivity:Activity() {
     // Workout-only speech rate; the user's global voice preference is never overwritten.
     private var preferredWorkoutSpeechRate=WorkoutSpeechRate.DEFAULT_RATE
     private var workoutSpeechRate=WorkoutSpeechRate.DEFAULT_RATE
+    // A restored in-session rate must win over the asynchronous TTS initialization callback.
+    private var workoutSpeechRateRestored=false
     // The selected rest-step speech is transient and derived from the local exercise catalog.
     private var restStepSpeechText:String?=null
     private var speechStatus:TextView?=null
@@ -187,6 +189,7 @@ class GuidedWorkoutActivity:Activity() {
             .putBoolean("setTimerExpired",setTimerExpired)
             .putBoolean("started",activeElapsedMs()>0L)
             .putLong("elapsed",activeElapsedMs())
+            .putFloat("speechRate",WorkoutSpeechRate.normalize(workoutSpeechRate))
             // Commit synchronously: Android may kill this process immediately after onPause.
             .putLong("savedAt",System.currentTimeMillis()).commit()
     }
@@ -261,6 +264,11 @@ class GuidedWorkoutActivity:Activity() {
             .setMessage("Đã lưu bước và thời gian còn lại trên máy. Khôi phục luôn ở trạng thái tạm dừng.")
             .setPositiveButton("Khôi phục") { _,_ ->
                 checkpointDecisionPending=false
+                val savedSpeechRate = checkpoint.getFloat("speechRate", Float.NaN)
+                    .takeIf { checkpoint.contains("speechRate") }
+                workoutSpeechRate = WorkoutSpeechRate.restore(preferredWorkoutSpeechRate, savedSpeechRate)
+                workoutSpeechRateRestored = savedSpeechRate != null
+                spoken?.setSpeechRate(workoutSpeechRate)
                 // Apply the checkpoint snapshot only after the user explicitly chooses Restore.
                 restoredPlan?.let { savedPlan ->
                     originalMoves = savedPlan
@@ -327,6 +335,12 @@ class GuidedWorkoutActivity:Activity() {
                 // Starting over must not silently erase a previously reported pain lock.
                 val keepSafetyLock=checkpoint.getBoolean("safety",false)
                 checkpointDecisionPending=false
+                preferredWorkoutSpeechRate = WorkoutSpeechRate.normalize(
+                    getSharedPreferences("settings",0).getFloat("rate",1f)
+                )
+                workoutSpeechRate = preferredWorkoutSpeechRate
+                workoutSpeechRateRestored = true
+                spoken?.setSpeechRate(workoutSpeechRate)
                 sessionId=UUID.randomUUID().toString()
                 completedMoveIndices.clear()
                 completedSetsByMove.clear()
@@ -762,6 +776,16 @@ class GuidedWorkoutActivity:Activity() {
             }
             root.requestApplyInsets()
         }
+        preferredWorkoutSpeechRate = WorkoutSpeechRate.normalize(
+            getSharedPreferences("settings",0).getFloat("rate",1f)
+        )
+        val savedWorkoutSpeechRate = savedInstanceState
+            ?.takeIf { it.getString("workout_program") == program.id && it.containsKey("workout_speech_rate") }
+            ?.getFloat("workout_speech_rate")
+        if (savedWorkoutSpeechRate != null) {
+            workoutSpeechRate = WorkoutSpeechRate.restore(preferredWorkoutSpeechRate, savedWorkoutSpeechRate)
+            workoutSpeechRateRestored = true
+        }
         spoken=TextToSpeech(this){ state ->
             val engine=spoken
             if(state!=TextToSpeech.SUCCESS || engine==null) {
@@ -785,7 +809,7 @@ class GuidedWorkoutActivity:Activity() {
             ready=selection.languageSupported
             updateRestStepSpeakButton()
             preferredWorkoutSpeechRate=WorkoutSpeechRate.normalize(settings.getFloat("rate",1f))
-            workoutSpeechRate=preferredWorkoutSpeechRate
+            if (!workoutSpeechRateRestored) workoutSpeechRate=preferredWorkoutSpeechRate
             engine.setSpeechRate(workoutSpeechRate)
             engine.setPitch(settings.getFloat("pitch",1f))
             if(ready && Build.VERSION.SDK_INT>=Build.VERSION_CODES.LOLLIPOP) {
@@ -900,6 +924,7 @@ class GuidedWorkoutActivity:Activity() {
         outState.putInt("workout_shorter_from",shorterFromIndex)
         outState.putBoolean("workout_started",activeElapsedMs()>0L)
         outState.putLong("workout_elapsed",activeElapsedMs())
+        outState.putFloat("workout_speech_rate",WorkoutSpeechRate.normalize(workoutSpeechRate))
         super.onSaveInstanceState(outState)
     }
     /**

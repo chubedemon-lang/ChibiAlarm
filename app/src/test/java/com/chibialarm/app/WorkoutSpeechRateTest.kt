@@ -24,6 +24,18 @@ class WorkoutSpeechRateTest {
         assertEquals(WorkoutSpeechRate.MAX_RATE, WorkoutSpeechRate.normal(3.0f), 0.001f)
     }
 
+    @Test fun restoreKeepsTheWorkoutRateWithinPlatformBounds() {
+        assertEquals(1.6f, WorkoutSpeechRate.restore(1.2f, 1.6f), 0.001f)
+        assertEquals(WorkoutSpeechRate.MAX_RATE, WorkoutSpeechRate.restore(1.2f, 3.5f), 0.001f)
+        assertEquals(WorkoutSpeechRate.MIN_RATE, WorkoutSpeechRate.restore(1.2f, 0.1f), 0.001f)
+    }
+
+    @Test fun missingOrMalformedWorkoutRateFallsBackToGlobalPreference() {
+        assertEquals(1.25f, WorkoutSpeechRate.restore(1.25f, null), 0.001f)
+        assertEquals(1.25f, WorkoutSpeechRate.restore(1.25f, Float.NaN), 0.001f)
+        assertEquals(1.25f, WorkoutSpeechRate.restore(1.25f, Float.POSITIVE_INFINITY), 0.001f)
+    }
+
     @Test fun invalidStoredRatesFallBackToDefault() {
         assertEquals(WorkoutSpeechRate.DEFAULT_RATE, WorkoutSpeechRate.normalize(Float.NaN), 0.001f)
         assertEquals(WorkoutSpeechRate.DEFAULT_RATE, WorkoutSpeechRate.normalize(Float.POSITIVE_INFINITY), 0.001f)

@@ -95,4 +95,38 @@ class WorkoutRestVoiceCueTest {
             WorkoutRestVoiceCue.completionMessage("  ", 0, null)
         )
     }
+    @Test fun countdownNamesTheNextRequiredSetAndTarget() {
+        val preview = WorkoutRestVoiceCue.previewMessage("Squat không tạ", 1, setPlan)
+        assertEquals("Sau nghỉ: hiệp 2/3 của Squat không tạ; mục tiêu 8 đến 12 lần.", preview)
+        assertEquals("Còn 10 giây nghỉ. $preview", WorkoutRestVoiceCue.message(10_000L, preview))
+    }
+
+    @Test fun restPreviewMarksAdditionalSetsAsOptional() {
+        assertEquals(
+            "Sau nghỉ: hiệp tùy chọn 3/3 của Squat không tạ; mục tiêu 8 đến 12 lần.",
+            WorkoutRestVoiceCue.previewMessage("Squat không tạ", 2, setPlan)
+        )
+    }
+
+    @Test fun restPreviewMovesToTheNextExerciseAfterTheMaximumSet() {
+        assertEquals(
+            "Tiếp theo: Đi bộ tại chỗ; mục tiêu 2 phút.",
+            WorkoutRestVoiceCue.previewMessage("Squat không tạ", 3, setPlan, "Đi bộ tại chỗ", "2 phút")
+        )
+    }
+
+    @Test fun timedMovePreviewKeepsTheCurrentExerciseAndRemainingTime() {
+        assertEquals(
+            "Sau nghỉ: tiếp tục Đi bộ tại chỗ; thời gian gợi ý còn 01:30.",
+            WorkoutRestVoiceCue.previewMessage("Đi bộ tại chỗ", 0, null, currentRemainingLabel = "01:30")
+        )
+    }
+
+    @Test fun countdownPreviewSanitizesControlCharactersAndBoundsLength() {
+        assertEquals(
+            "Còn 5 giây nghỉ. Sau nghỉ: hiệp 2 của Squat.",
+            WorkoutRestVoiceCue.message(5_000L, "Sau nghỉ:\nhiệp 2\\u0000 của Squat.")
+        )
+        assertTrue(WorkoutRestVoiceCue.message(5_000L, "x".repeat(300))!!.length <= 202)
+    }
 }

@@ -46,3 +46,8 @@ def test_multi_equipment_choices_reach_the_coach_and_guided_session():
     assert "additionalEquipment = currentAdditionalEquipment()" in FITNESS
     assert "parsed.additionalEquipment?.let { setAdditionalEquipmentSelection(it) }" in FITNESS
     assert "additionalEquipment = additionalEquipment" in GUIDED
+
+
+def test_manual_substitution_offer_and_apply_use_current_session_equipment():
+    assert "WorkoutMoveSubstitution.alternativesFor(moves[index],workoutConstraints,availableWorkoutEquipment())" in GUIDED
+    assert "WorkoutMoveSubstitution.replace(moves, selectedIndex, replacement, workoutConstraints, availableWorkoutEquipment())" in GUIDED

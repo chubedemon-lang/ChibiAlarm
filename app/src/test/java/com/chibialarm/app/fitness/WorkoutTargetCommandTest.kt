@@ -210,6 +210,26 @@ class WorkoutTargetCommandTest {
                 .preview.after.sets[0].restSeconds
         )
 
+        val oneHundredFive = WorkoutTargetCommand.propose(
+            "Nghỉ một trăm linh năm giây", "squat", session, 0
+        )
+        assertTrue(oneHundredFive is WorkoutTargetCommand.Result.Proposed)
+        assertEquals(
+            105,
+            (oneHundredFive as WorkoutTargetCommand.Result.Proposed)
+                .preview.after.sets[0].restSeconds
+        )
+
+        val oneHundredFifteen = WorkoutTargetCommand.propose(
+            "Nghỉ một trăm mười lăm giây", "squat", session, 0
+        )
+        assertTrue(oneHundredFifteen is WorkoutTargetCommand.Result.Proposed)
+        assertEquals(
+            115,
+            (oneHundredFifteen as WorkoutTargetCommand.Result.Proposed)
+                .preview.after.sets[0].restSeconds
+        )
+
         val mixedUnits = WorkoutTargetCommand.propose(
             "Nghỉ một phút ba mươi giây", "squat", session, 0
         )

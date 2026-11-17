@@ -33,7 +33,9 @@ object WorkoutMidSessionRequest {
         val addOptionalExercise: Boolean = false,
         val availableEquipment: Set<TrainingEquipment> = emptySet(),
         // Exact catalog name only; free-form exercise instructions are never accepted.
-        val replaceCurrentWith: String? = null
+        val replaceCurrentWith: String? = null,
+        val avoidJumping: Boolean = false,
+        val allowJumping: Boolean = false
     ) {
         init {
             require(remainingMinutes == null || remainingMinutes in 5..120)
@@ -41,6 +43,7 @@ object WorkoutMidSessionRequest {
             require(!(avoidWristLoad && allowWristLoad))
             require(!(avoidFloorPositions && allowFloorPositions))
             require(!(avoidOverheadReach && allowOverheadReach))
+            require(!(avoidJumping && allowJumping))
             require(replaceCurrentWith == null || replaceCurrentWith.length in 1..90)
         }
 
@@ -57,6 +60,8 @@ object WorkoutMidSessionRequest {
                 !allowFloorPositions &&
                 !avoidOverheadReach &&
                 !allowOverheadReach &&
+                !avoidJumping &&
+                !allowJumping &&
                 !addOptionalExercise &&
                 availableEquipment.isEmpty() &&
                 unavailableEquipment.isEmpty() &&
@@ -92,6 +97,19 @@ object WorkoutMidSessionRequest {
 
         val text = normalize(input)
         fun has(vararg phrases: String): Boolean = phrases.any(text::contains)
+        // Explicitly relax only when the user clearly says jumping is acceptable.
+        // If the same utterance also says "no jumping"/"low impact", restriction wins.
+        val impactRelaxations = listOf(
+            "bo han che nhay", "bo tranh nhay", "khong can tranh nhay",
+            "khong con can tranh nhay", "co the nhay", "nhay duoc", "co the tap nhay"
+        )
+        val impactRestrictionText = impactRelaxations.fold(text) { remaining, phrase ->
+            remaining.replace(phrase, " ")
+        }
+        val avoidJumping = listOf(
+            "khong nhay", "dung nhay", "it tac dong", "nhe nhang", "tranh nhay"
+        ).any(impactRestrictionText::contains)
+        val allowJumping = !avoidJumping && impactRelaxations.any(text::contains)
 
         // Explicit mid-session replacement is deliberately strict: the user must name
         // a canonical catalog exercise, not provide arbitrary instructions.
@@ -234,6 +252,7 @@ object WorkoutMidSessionRequest {
         if (remainingMinutes == null && !lowEnergy && !avoidWristLoad && !avoidFloorPositions &&
             !allowWristLoad && !allowFloorPositions &&
             !avoidOverheadReach && !allowOverheadReach &&
+            !avoidJumping && !allowJumping &&
             !preferEasier && restSeconds == null && !avoidExternalLoad &&
             !addOptionalExercise && availableEquipment.isEmpty() &&
             unavailableEquipment.isEmpty() && replacementExercise == null
@@ -255,7 +274,9 @@ object WorkoutMidSessionRequest {
                 unavailableEquipment = unavailableEquipment,
                 addOptionalExercise = addOptionalExercise,
                 availableEquipment = availableEquipment,
-                replaceCurrentWith = replacementExercise
+                replaceCurrentWith = replacementExercise,
+                avoidJumping = avoidJumping,
+                allowJumping = allowJumping
             )
         )
     }

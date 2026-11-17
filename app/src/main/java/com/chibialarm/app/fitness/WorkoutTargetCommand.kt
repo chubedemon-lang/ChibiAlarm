@@ -20,30 +20,78 @@ object WorkoutTargetCommand {
     private val painWords = Regex("""\b(đau|nhức|chấn thương|choáng|chóng mặt|khó thở)\b""")
     // Recognize common STT forms, including compound numbers ("hai mươi lăm")
     // and mixed units ("một phút ba mươi giây"), without a network dependency.
-    private val numeral = """(?:\d{1,3}|một|hai|ba|bốn|tư|năm|lăm|sáu|bảy|tám|chín|mười|mươi|linh|lẻ|trăm)(?:\s+(?:\d{1,3}|một|hai|ba|bốn|tư|năm|lăm|sáu|bảy|tám|chín|mười|mươi|linh|lẻ|trăm))*"""
+    private val numeral = """(?:\d{1,3}|một|hai|ba|bốn|tư|năm|lăm|mốt|sáu|bảy|tám|chín|mười|mươi|linh|lẻ|trăm)(?:\s+(?:\d{1,3}|một|hai|ba|bốn|tư|năm|lăm|mốt|sáu|bảy|tám|chín|mười|mươi|linh|lẻ|trăm))*"""
     private val repsPattern = Regex("""(?:\b(?:còn|xuống|thành|giảm xuống|tăng lên|đổi thành)\s*)?($numeral)\s*(?:lần|cái|reps?)\b""")
     private val spokenTargetPattern = Regex(
         """(?:(còn|xuống|thành|giảm xuống|tăng lên|đổi thành)\s*)?($numeral)\s*(lần|cái|reps?|nhịp|giây)\b"""
     )
     private val restPattern = Regex("""(?:nghỉ|thời gian nghỉ)\s*(?:thêm|lên|thành|còn)?\s*($numeral)\s*(giây|phút)\b""")
     private val secondsAfterMinutes = Regex("""^\s*($numeral)\s*giây\b""")
-    private val units = mapOf("một" to 1, "hai" to 2, "ba" to 3, "bốn" to 4,
-        "tư" to 4, "năm" to 5, "lăm" to 5, "sáu" to 6, "bảy" to 7,
-        "tám" to 8, "chín" to 9)
+    private val units = mapOf(
+        "một" to 1, "hai" to 2, "ba" to 3, "bốn" to 4, "tư" to 4,
+        "năm" to 5, "lăm" to 5, "mốt" to 1, "sáu" to 6, "bảy" to 7,
+        "tám" to 8, "chín" to 9
+    )
+
+    /** Parse a conventional Vietnamese tens-and-units tail (10–99). */
+    private fun parseTens(words: List<String>): Int? {
+        if (words.isEmpty()) return 0
+        if (words[0] == "mười") {
+            if (words.size > 2) return null
+            val unit = if (words.size == 1) 0 else units[words[1]] ?: return null
+            return 10 + unit
+        }
+        if (words.size !in 2..3 || words[1] != "mươi") return null
+        val tens = units[words[0]]?.takeIf { it in 2..9 } ?: return null
+        val unit = if (words.size == 2) 0 else units[words[2]] ?: return null
+        return tens * 10 + unit
+    }
+
+    /**
+     * Parse digits or spoken Vietnamese integers up to 999.
+     *
+     * Hundreds require an explicit "linh/lẻ" before a single-digit remainder
+     * ("một trăm linh năm"), avoiding guesses for ambiguous phrases such as
+     * "một trăm năm". Callers still enforce exercise-specific limits.
+     */
     private fun number(value: String?): Int? {
         if (value == null) return null
-        value.toIntOrNull()?.let { return it }
-        val words = value.trim().split(Regex("""\s+"""))
-        if (words.size == 1) return if (words[0] == "mười") 10 else units[words[0]]
-        // Supported speech numbers: 11–99. Reject ambiguous/partial phrases.
-        val tens = when (words[0]) {
-            "mười" -> 10
-            else -> units[words[0]]?.times(10)?.takeIf { words.getOrNull(1) == "mươi" }
-        } ?: return null
-        val remainder = if (words[0] == "mười") words.drop(1) else words.drop(2)
-        if (remainder.size > 1) return null
-        val unit = if (remainder.isEmpty()) 0 else units[remainder[0]] ?: return null
-        return tens + unit
+        value.trim().toIntOrNull()?.let { return it }
+        val words = value.trim().lowercase(Locale.ROOT).split(Regex("""\s+"""))
+        if (words.isEmpty() || words.any { it.isBlank() }) return null
+
+        val hundredIndex = words.indexOf("trăm")
+        if (hundredIndex >= 0) {
+            if (hundredIndex != 1) return null
+            val hundreds = when (words[0]) {
+                "một" -> 1
+                "hai" -> 2
+                "ba" -> 3
+                "bốn" -> 4
+                "năm" -> 5
+                "sáu" -> 6
+                "bảy" -> 7
+                "tám" -> 8
+                "chín" -> 9
+                else -> return null
+            }
+            val remainderWords = words.drop(2)
+            val remainder = when (remainderWords.firstOrNull()) {
+                null -> 0
+                "linh", "lẻ" -> {
+                    if (remainderWords.size != 2) return null
+                    units[remainderWords[1]] ?: return null
+                }
+                else -> parseTens(remainderWords) ?: return null
+            }
+            return hundreds * 100 + remainder
+        }
+
+        if (words.size == 1) {
+            if (words[0] == "mười") return 10
+            return units[words[0]]
+        }
+        return parseTens(words)
     }
 
     /** Navigation, pause and safety intents must never be hidden by a target edit. */

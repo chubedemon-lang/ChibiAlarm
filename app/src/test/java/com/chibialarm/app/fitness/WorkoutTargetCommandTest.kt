@@ -77,6 +77,7 @@ class WorkoutTargetCommandTest {
         assertNull(WorkoutTargetEdit.accept(proposal, session, 1))
         assertNull(WorkoutTargetEdit.accept(proposal, session.copy(pausedForSafety = true), 0))
     }
+
     @Test fun spokenVietnameseNumbersWorkOffline() {
         val result = WorkoutTargetCommand.propose(
             "Giảm xuống sáu lần và nghỉ hai phút", "squat", session, 1)
@@ -172,7 +173,6 @@ class WorkoutTargetCommandTest {
         assertEquals(90, after.sets[0].restSeconds)
     }
 
-
     @Test fun skipRestCommandsCannotBeMisroutedIntoRepetitionEditor() {
         for (utterance in listOf("Bỏ qua nghỉ và giảm còn 6 lần", "Kết thúc nghỉ rồi đổi thành 8 lần")) {
             assertEquals(WorkoutVoiceCommands.Command.SKIP_REST, WorkoutVoiceCommands.parse(utterance))
@@ -194,5 +194,45 @@ class WorkoutTargetCommandTest {
             assertSame(WorkoutTargetCommand.Result.Unsupported,
                 WorkoutTargetCommand.propose(utterance, "squat", session, 0))
         }
+    }
+
+    @Test fun parsesVietnameseHundredsAndNaturalSpokenRestDurations() {
+        assertEquals(21, WorkoutTargetCommand.spokenReps("Giảm còn hai mươi mốt lần"))
+        assertEquals(100, WorkoutTargetCommand.spokenReps("Đổi thành một trăm lần"))
+
+        val sixHundredSeconds = WorkoutTargetCommand.propose(
+            "Nghỉ sáu trăm giây", "squat", session, 0
+        )
+        assertTrue(sixHundredSeconds is WorkoutTargetCommand.Result.Proposed)
+        assertEquals(
+            600,
+            (sixHundredSeconds as WorkoutTargetCommand.Result.Proposed)
+                .preview.after.sets[0].restSeconds
+        )
+
+        val mixedUnits = WorkoutTargetCommand.propose(
+            "Nghỉ một phút ba mươi giây", "squat", session, 0
+        )
+        assertTrue(mixedUnits is WorkoutTargetCommand.Result.Proposed)
+        assertEquals(
+            90,
+            (mixedUnits as WorkoutTargetCommand.Result.Proposed)
+                .preview.after.sets[0].restSeconds
+        )
+    }
+
+    @Test fun ambiguousAndOutOfRangeSpokenHundredsAreRejected() {
+        assertSame(
+            WorkoutTargetCommand.Result.Unsupported,
+            WorkoutTargetCommand.propose("Nghỉ một trăm năm giây", "squat", session, 0)
+        )
+        assertSame(
+            WorkoutTargetCommand.Result.Unsupported,
+            WorkoutTargetCommand.propose("Nghỉ sáu trăm linh một giây", "squat", session, 0)
+        )
+        assertSame(
+            WorkoutTargetCommand.Result.Unsupported,
+            WorkoutTargetCommand.propose("Đổi thành một trăm linh một lần", "squat", session, 0)
+        )
     }
 }

@@ -82,7 +82,8 @@ object WorkoutEffortFeedback {
                 )
             }
             Level.VERY_HARD -> Recommendation(
-                restSeconds = 120,
+                restSeconds = maxOf(prescribedRestSeconds, 120)
+                    .coerceAtMost(MAX_RECOMMENDED_REST_SECONDS),
                 holdBeforeNextSet = true,
                 message = "Bạn thấy quá sức. Hãy tạm dừng trước hiệp tiếp theo và chỉ tiếp tục khi đã hồi phục, thấy an toàn."
             )

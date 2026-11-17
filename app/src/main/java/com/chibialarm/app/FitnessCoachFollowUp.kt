@@ -22,6 +22,61 @@ object FitnessCoachFollowUp {
         COMPLETE
     }
 
+    data class QuickReply(val label: String, val utterance: String)
+
+    /**
+     * Short, optional answers for the current question. These only prefill the input;
+     * the user must review and submit them. A safety stop deliberately has no bypass chip.
+     */
+    fun quickReplies(parsed: FitnessNaturalRequest.Result): List<QuickReply> =
+        when (nextQuestionType(parsed)) {
+            Question.GOAL -> listOf(
+                QuickReply("Sức mạnh", "sức mạnh"),
+                QuickReply("Tim mạch", "tim mạch"),
+                QuickReply("Giãn cơ", "giãn cơ")
+            )
+            Question.LEVEL -> listOf(
+                QuickReply("Mới bắt đầu", "mới bắt đầu"),
+                QuickReply("Đang tập đều", "đang tập đều"),
+                QuickReply("Có kinh nghiệm", "có kinh nghiệm")
+            )
+            Question.DURATION -> listOf(
+                QuickReply("10 phút", "10 phút"),
+                QuickReply("15 phút", "15 phút"),
+                QuickReply("20 phút", "20 phút"),
+                QuickReply("30 phút", "30 phút")
+            )
+            Question.EQUIPMENT -> listOf(
+                QuickReply("Không dụng cụ", "tay không"),
+                QuickReply("Thảm tập", "thảm tập"),
+                QuickReply("Tạ đơn", "tạ đơn"),
+                QuickReply("Dây kháng lực", "dây kháng lực"),
+                QuickReply("Ghế vững", "ghế vững chắc")
+            )
+            Question.MOVEMENT_LIMITS -> listOf(
+                QuickReply("Tránh nhảy", "tránh nhảy"),
+                QuickReply("Không hạn chế nhảy", "không có hạn chế vận động")
+            )
+            Question.WRIST_LOAD -> listOf(
+                QuickReply("Cần tránh", "có"),
+                QuickReply("Không cần tránh", "không")
+            )
+            Question.FLOOR_POSITIONS -> listOf(
+                QuickReply("Tránh nằm/quỳ sàn", "có"),
+                QuickReply("Có thể nằm/quỳ sàn", "không")
+            )
+            Question.OVERHEAD_REACH -> listOf(
+                QuickReply("Tránh đưa tay quá đầu", "có"),
+                QuickReply("Có thể đưa tay quá đầu", "không")
+            )
+            Question.ENERGY -> listOf(
+                QuickReply("Hơi mệt", "hơi mệt"),
+                QuickReply("Bình thường", "bình thường"),
+                QuickReply("Nhiều năng lượng", "nhiều năng lượng")
+            )
+            Question.SAFETY_STOP, Question.COMPLETE -> emptyList()
+        }
+
     fun nextQuestionType(parsed: FitnessNaturalRequest.Result): Question = when {
         parsed.impact == 2 -> Question.SAFETY_STOP
         parsed.goal == null -> Question.GOAL

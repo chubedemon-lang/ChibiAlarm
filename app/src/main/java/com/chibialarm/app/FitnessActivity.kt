@@ -19,6 +19,7 @@ class FitnessActivity:Activity() {
     private val coachTranscript = FitnessCoachChatTranscript()
     private var coachTranscriptView: TextView? = null
     private var coachTranscriptClearButton: Button? = null
+    private var coachQuickRepliesContainer: LinearLayout? = null
     private var speechInput: EditText? = null
     private var speechOutput: TextToSpeech? = null
     private var speechReady = false
@@ -79,6 +80,7 @@ class FitnessActivity:Activity() {
         speechStopButton = null
         coachTranscriptView = null
         coachTranscriptClearButton = null
+        coachQuickRepliesContainer = null
         coachRequestInput = null
         recommendationAction = null
         historyEffortInsightView = null
@@ -116,6 +118,55 @@ class FitnessActivity:Activity() {
         panel.visibility = if (rendered.isBlank()) android.view.View.GONE else android.view.View.VISIBLE
         coachTranscriptClearButton?.visibility =
             if (rendered.isBlank()) android.view.View.GONE else android.view.View.VISIBLE
+    }
+
+    /**
+     * Render contextual answer chips for the one question Chibi is currently asking.
+     * Tapping a chip only fills the editable field; it never sends or applies a plan.
+     */
+    private fun renderCoachQuickReplies() {
+        val container = coachQuickRepliesContainer ?: return
+        container.removeAllViews()
+        val replies = conversation?.let(FitnessCoachFollowUp::quickReplies).orEmpty()
+        if (replies.isEmpty()) {
+            container.visibility = android.view.View.GONE
+            return
+        }
+
+        container.visibility = android.view.View.VISIBLE
+        container.addView(txt("Gợi ý trả lời nhanh • chạm để điền, chưa gửi", 13f))
+        val scroller = HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = false
+            contentDescription = "Các câu trả lời gợi ý cho câu hỏi hiện tại của Chibi"
+        }
+        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        val spacing = (6 * resources.displayMetrics.density).toInt()
+        replies.forEachIndexed { index, reply ->
+            val chip = Button(this).apply {
+                text = reply.label
+                isAllCaps = false
+                contentDescription = "Điền câu trả lời ${reply.label}; chưa gửi cho Chibi"
+                setOnClickListener {
+                    val input = speechInput ?: return@setOnClickListener
+                    input.setText(reply.utterance)
+                    input.setSelection(input.text.length)
+                    input.requestFocus()
+                    Toast.makeText(
+                        this@FitnessActivity,
+                        "Đã điền câu trả lời. Kiểm tra rồi nhấn Chibi hiểu yêu cầu.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+            val params = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            if (index > 0) params.setMargins(spacing, 0, 0, 0)
+            row.addView(chip, params)
+        }
+        scroller.addView(row)
+        container.addView(scroller)
     }
 
     private lateinit var root:LinearLayout
@@ -280,6 +331,12 @@ class FitnessActivity:Activity() {
         root.addView(naturalRequest)
         speechInput = naturalRequest
         coachRequestInput = naturalRequest
+        val quickReplies = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            visibility = android.view.View.GONE
+        }
+        coachQuickRepliesContainer = quickReplies
+        root.addView(quickReplies)
         val transcriptPanel = txt("", 14f).apply {
             visibility = android.view.View.GONE
             maxHeight = (190 * resources.displayMetrics.density).toInt()
@@ -480,6 +537,7 @@ class FitnessActivity:Activity() {
                         avoidWristLoad = true
                     ) else null
                 } else previous.copy(avoidWristLoad = checked)
+                renderCoachQuickReplies()
                 if (::filter.isInitialized) {
                     programContainer?.let { drawPrograms(it, categories[filter.selectedItemPosition]) }
                 }
@@ -499,6 +557,7 @@ class FitnessActivity:Activity() {
                         avoidFloorPositions = true
                     ) else null
                 } else previous.copy(avoidFloorPositions = checked)
+                renderCoachQuickReplies()
                 if (::filter.isInitialized) {
                     programContainer?.let { drawPrograms(it, categories[filter.selectedItemPosition]) }
                 }
@@ -518,6 +577,7 @@ class FitnessActivity:Activity() {
                         avoidOverheadReach = checked
                     )
                 } else previous.copy(avoidOverheadReach = checked)
+                renderCoachQuickReplies()
                 if (::filter.isInitialized) {
                     programContainer?.let { drawPrograms(it, categories[filter.selectedItemPosition]) }
                 }
@@ -605,6 +665,7 @@ class FitnessActivity:Activity() {
             naturalRequest.hint = FitnessCoachFollowUp.nextQuestion(restored)
             root.addView(txt("🐰 Đã giữ lựa chọn trong phiên hiện tại sau khi xoay màn hình. Kiểm tra lại trước khi xem giáo án.",14f))
         }
+        renderCoachQuickReplies()
         root.addView(Button(this).apply {
             text="💬 Chibi hiểu yêu cầu của tôi"
             setOnClickListener {
@@ -655,6 +716,7 @@ class FitnessActivity:Activity() {
                     }
                     val parsed=FitnessCoachConversation.merge(conversation, FitnessCoachConversation.parseReply(conversation, request))
                     conversation=parsed
+                    renderCoachQuickReplies()
                     val nextQuestion = FitnessCoachFollowUp.nextQuestion(parsed)
                     val coachMessage = parsed.reply + "\n\n🐰 Chibi hỏi tiếp: " + nextQuestion
                     coachTranscript.addUser(request)

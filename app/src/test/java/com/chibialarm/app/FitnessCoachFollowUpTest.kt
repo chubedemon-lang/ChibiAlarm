@@ -157,4 +157,75 @@ class FitnessCoachFollowUpTest {
         assertEquals(2, laterNo.impact)
         assertEquals(FitnessCoachFollowUp.Question.SAFETY_STOP, FitnessCoachFollowUp.nextQuestionType(laterNo))
     }
+    @Test fun quickRepliesFollowTheCurrentQuestionAndNeverOfferASafetyBypass() {
+        val goal = FitnessNaturalRequest.parse("xin chào")
+        assertEquals(
+            listOf("Sức mạnh", "Tim mạch", "Giãn cơ"),
+            FitnessCoachFollowUp.quickReplies(goal).map { it.label }
+        )
+
+        val injured = FitnessNaturalRequest.parse("đau ngực, giãn cơ 15 phút")
+        assertEquals(FitnessCoachFollowUp.Question.SAFETY_STOP, FitnessCoachFollowUp.nextQuestionType(injured))
+        assertTrue(FitnessCoachFollowUp.quickReplies(injured).isEmpty())
+    }
+
+    @Test fun quickReplyDurationIsParsedOnlyForTheDurationQuestion() {
+        val previous = FitnessNaturalRequest.parse("giãn cơ, đang tập đều")
+        val reply = FitnessCoachFollowUp.quickReplies(previous).single { it.utterance == "15 phút" }
+        val merged = FitnessCoachConversation.merge(
+            previous,
+            FitnessCoachConversation.parseReply(previous, reply.utterance)
+        )
+
+        assertEquals(15, merged.minutes)
+        assertEquals(2, merged.goal)
+        assertEquals(1, merged.level)
+        assertEquals(FitnessCoachFollowUp.Question.EQUIPMENT, FitnessCoachFollowUp.nextQuestionType(merged))
+    }
+
+    @Test fun equipmentQuickReplyDoesNotAssumeAnyOtherTool() {
+        val previous = FitnessNaturalRequest.parse("giãn cơ 15 phút, đang tập đều")
+        val reply = FitnessCoachFollowUp.quickReplies(previous).single { it.label == "Tạ đơn" }
+        val merged = FitnessCoachConversation.merge(
+            previous,
+            FitnessCoachConversation.parseReply(previous, reply.utterance)
+        )
+
+        assertEquals(4, merged.equipment)
+        assertEquals(emptySet<TrainingEquipment>(), merged.additionalEquipment)
+        assertEquals(2, merged.goal)
+        assertEquals(1, merged.level)
+    }
+
+    @Test fun quickReplyForMovementLimitAdvancesToTheSpecificWristQuestion() {
+        val previous = FitnessNaturalRequest.parse("giãn cơ 15 phút, đang tập đều, không dụng cụ")
+        val reply = FitnessCoachFollowUp.quickReplies(previous).single { it.label == "Tránh nhảy" }
+        val merged = FitnessCoachConversation.merge(
+            previous,
+            FitnessCoachConversation.parseReply(previous, reply.utterance)
+        )
+
+        assertEquals(1, merged.impact)
+        assertEquals(FitnessCoachFollowUp.Question.WRIST_LOAD, FitnessCoachFollowUp.nextQuestionType(merged))
+    }
+
+    @Test fun quickReplyWristAnswerChangesOnlyTheAskedRestriction() {
+        val start = FitnessNaturalRequest.parse("giãn cơ 15 phút, đang tập đều, không dụng cụ")
+        val noJump = FitnessCoachConversation.merge(
+            start,
+            FitnessCoachConversation.parseReply(start, "không")
+        )
+        val reply = FitnessCoachFollowUp.quickReplies(noJump).single { it.label == "Cần tránh" }
+        val merged = FitnessCoachConversation.merge(
+            noJump,
+            FitnessCoachConversation.parseReply(noJump, reply.utterance)
+        )
+
+        assertEquals(true, merged.avoidWristLoad)
+        assertEquals(2, merged.goal)
+        assertEquals(15, merged.minutes)
+        assertEquals(0, merged.equipment)
+        assertEquals(FitnessCoachFollowUp.Question.FLOOR_POSITIONS, FitnessCoachFollowUp.nextQuestionType(merged))
+    }
+
 }

@@ -5,7 +5,7 @@ import java.util.Locale
 
 /** Small offline command grammar for the step-by-step guide; no transcript is retained. */
 object WorkoutStepVoiceCommand {
-    enum class Command { NEXT, PREVIOUS, PAUSE, RESUME, REPEAT, REPEAT_ANSWER, SUMMARY, EASIER, SAFETY_NOTE, SPEECH_SLOWER, SPEECH_FASTER, SPEECH_NORMAL, REST, ASK_EXERCISE, CLOSE, SAFETY, UNKNOWN }
+    enum class Command { NEXT, PREVIOUS, PAUSE, RESUME, AUTO_SPEAK_ON, AUTO_SPEAK_OFF, REPEAT, REPEAT_ANSWER, SUMMARY, EASIER, SAFETY_NOTE, SPEECH_SLOWER, SPEECH_FASTER, SPEECH_NORMAL, REST, ASK_EXERCISE, CLOSE, SAFETY, UNKNOWN }
 
     private fun containsPhrase(text: String, phrase: String): Boolean =
         Regex("(^|\\s)" + Regex.escape(phrase) + "(\\s|$)").containsMatchIn(text)
@@ -44,12 +44,25 @@ object WorkoutStepVoiceCommand {
                 "khong tam dung buoi tap", "dung tam dung buoi tap",
                 "khong tiep tuc buoi tap", "dung tiep tuc buoi tap",
                 "khong pause workout", "do not pause workout", "don t pause workout",
-                "khong resume workout", "do not resume workout", "don t resume workout"
+                "khong resume workout", "do not resume workout", "don t resume workout",
+                "khong tu doc", "dung tu doc", "khong doc tu dong", "dung doc tu dong",
+                "khong bat tu doc", "dung bat tu doc", "khong tat tu doc", "dung tat tu doc",
+                "do not turn on auto speak", "don t turn on auto speak",
+                "do not turn off auto speak", "don t turn off auto speak"
             ).any { normalized.contains(it) }) return Command.UNKNOWN
         if (listOf("tam dung buoi tap", "pause workout", "pause the workout")
                 .any { normalized.contains(it) }) return Command.PAUSE
         if (listOf("tiep tuc buoi tap", "resume workout", "resume the workout")
                 .any { normalized.contains(it) }) return Command.RESUME
+        if (listOf(
+                "tat tu doc", "tat doc tu dong", "ngung tu doc",
+                "auto speak off", "turn off auto speak", "disable auto narration",
+                "stop automatic narration"
+            ).any { normalized.contains(it) }) return Command.AUTO_SPEAK_OFF
+        if (listOf(
+                "bat tu doc", "bat doc tu dong", "tu doc buoc", "doc buoc tu dong",
+                "doc tu dong", "auto speak on", "turn on auto speak", "enable auto narration"
+            ).any { normalized.contains(it) }) return Command.AUTO_SPEAK_ON
         if (listOf(
                 "noi cham lai", "doc cham hon", "noi cham hon", "cham hon nua",
                 "slow down", "speak slower"

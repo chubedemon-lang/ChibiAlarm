@@ -43,6 +43,8 @@ object WorkoutStepVoiceCommand {
         if (listOf(
                 "khong doc muc tieu", "dung doc muc tieu", "khong doc so hiep",
                 "khong doc tien do", "dung doc tien do", "khong can doc tien do",
+                "khong doc thoi gian nghi", "dung doc thoi gian nghi",
+                "khong hoi thoi gian nghi", "dung hoi thoi gian nghi",
                 "khong doc cach tap de hon", "dung doc cach tap de hon",
                 "khong doc luu y", "dung doc luu y", "khong nhac luu y",
                 "khong doc cham hon", "dung doc cham hon",
@@ -96,6 +98,11 @@ object WorkoutStepVoiceCommand {
                 "doc tien do", "tien do buoi tap", "xem tien do", "tien do hien tai",
                 "con bao nhieu bai", "con may bai", "con may hiep", "hiep con lai",
                 "thoi gian con lai", "bao lau nua xong", "may phut nua", "khi nao xong",
+                // These ask for the live rest countdown, not the exercise's prescribed rest.
+                "con bao nhieu giay nghi", "con may giay nghi", "nghi con bao lau",
+                "nghi con may giay", "con bao lau nua nghi", "thoi gian nghi con lai",
+                "con bao nhieu phut nghi", "con bao nhieu giay nua het nghi",
+                "con may giay nua het nghi",
                 "status", "progress"
             ).any { normalized.contains(it) }) return Command.STATUS
         if (listOf(

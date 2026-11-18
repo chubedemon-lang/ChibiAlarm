@@ -188,7 +188,7 @@ object WorkoutEffortPlanAdvisor {
             if (matches.isEmpty() || matches.size > MAX_SETS) return null
             val remainder = StringBuilder(payload)
             matches.asReversed().forEach { match ->
-                remainder.deleteRange(match.range.first, match.range.last + 1)
+                remainder.delete(match.range.first, match.range.last + 1)
             }
             if (remainder.toString().replace(Regex("[,\\s]+"), "").isNotEmpty()) return null
 

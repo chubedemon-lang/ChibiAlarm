@@ -105,6 +105,7 @@ object WorkoutVoiceCommands {
                 normalized.contains("xac nhan hiep") -> Command.COMPLETE_SET
             (asksForEasier || normalized.contains("de hon") || normalized.contains("giam do kho") || normalized.contains("nhe hon")) &&
                 (normalized.contains("nghi") || normalized.contains("can nghi")) -> Command.EASIER_AND_REST
+            WorkoutRestRequest.hasRecognizedDuration(utterance) -> Command.REST
             normalized.contains("nghi them") || normalized.contains("nghi mot chut") || normalized.contains("met roi") ||
                 normalized.contains("hoi met") || normalized.contains("met qua") ||
                 normalized.contains("met lam") || Regex("""\bnghi(?: them)?\s+[0-9]{1,3}\s*(?:giay|gi|s|phut)\b""").containsMatchIn(normalized) ||

@@ -51,11 +51,21 @@ object WorkoutRestRequest {
         return null
     }
 
-    fun seconds(utterance: String): Int {
+    /**
+     * Returns a duration only when speech contains an unambiguous, supported rest
+     * duration. This lets the command router distinguish a spoken number from the
+     * conservative 30-second fallback used for display.
+     */
+    fun hasRecognizedDuration(utterance: String): Boolean =
+        parseRecognizedSeconds(utterance) != null
+
+    fun seconds(utterance: String): Int = parseRecognizedSeconds(utterance) ?: 30
+
+    private fun parseRecognizedSeconds(utterance: String): Int? {
         val text = Normalizer.normalize(utterance.lowercase(Locale.ROOT), Normalizer.Form.NFD)
             .replace(Regex("\\p{M}+"), "").replace('đ', 'd')
             .replace(Regex("[^a-z0-9 ]"), " ").replace(Regex("\\s+"), " ").trim()
-        if (text.length > 160 || !Regex("\\b(nghi|rest)\\b").containsMatchIn(text)) return 30
+        if (text.length > 160 || !Regex("\\b(nghi|rest)\\b").containsMatchIn(text)) return null
         val tokens = text.split(' ')
 
         // Prefer a complete minute+second expression. This also accepts mixed
@@ -70,9 +80,9 @@ object WorkoutRestRequest {
             val seconds = parseNumberPhrase(secondPhrase)
             if (minutes != null && seconds != null && seconds in 0..59) {
                 val total = minutes.toLong() * 60L + seconds.toLong()
-                return total.takeIf { it in 15L..120L }?.toInt() ?: 30
+                return total.takeIf { it in 15L..120L }?.toInt()
             }
-            return 30
+            return null
         }
 
         // "Một phút rưỡi" and "một trăm hai mươi giây" are common speech forms.
@@ -82,12 +92,12 @@ object WorkoutRestRequest {
         val unitIndex = tokens.indexOfFirst {
             it in setOf("giay", "gi", "s", "second", "seconds", "phut", "minute", "minutes")
         }
-        if (unitIndex < 0) return 30
-        val count = parseNumberEndingAt(tokens, unitIndex) ?: return 30
+        if (unitIndex < 0) return null
+        val count = parseNumberEndingAt(tokens, unitIndex) ?: return null
         val unit = tokens[unitIndex]
         val total = if (unit in setOf("phut", "minute", "minutes")) count.toLong() * 60L else count.toLong()
         // Prevent implausible recognition results from silently adding a huge rest.
-        return total.takeIf { it in 15L..120L }?.toInt() ?: 30
+        return total.takeIf { it in 15L..120L }?.toInt()
     }
 
     private inline fun <T> List<T>.indexOfFirstFrom(startIndex: Int, predicate: (T) -> Boolean): Int {

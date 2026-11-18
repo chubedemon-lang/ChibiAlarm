@@ -1,6 +1,8 @@
 package com.chibialarm.app
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class WorkoutRestRequestTest {
@@ -36,6 +38,28 @@ class WorkoutRestRequestTest {
         assertEquals(85, WorkoutRestRequest.seconds("nghỉ thêm một phút hai mươi lăm giây"))
         assertEquals(85, WorkoutRestRequest.seconds("nghỉ thêm 1 phút hai mươi lăm giây"))
         assertEquals(95, WorkoutRestRequest.seconds("nghỉ thêm một phút ba mươi lăm giây"))
+    }
+
+    @Test fun identifiesOnlyUnambiguousSupportedSpokenRestDurations() {
+        for (phrase in listOf(
+            "nghỉ hai mươi lăm giây",
+            "nghỉ ba mươi lăm giây",
+            "nghỉ bốn mươi lăm giây",
+            "nghỉ năm mươi lăm giây",
+            "nghỉ một phút hai mươi lăm giây",
+            "rest twenty five seconds"
+        )) {
+            assertTrue(phrase, WorkoutRestRequest.hasRecognizedDuration(phrase))
+        }
+        for (phrase in listOf(
+            "bài 60 giây",
+            "nghỉ ba phút",
+            "nghỉ 5 giây",
+            "nghỉ thêm 60 lần",
+            "mệt quá, cần nghỉ"
+        )) {
+            assertFalse(phrase, WorkoutRestRequest.hasRecognizedDuration(phrase))
+        }
     }
 
     @Test fun rejectsSpokenDurationsOutsideTheSafeRange() {

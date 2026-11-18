@@ -236,6 +236,27 @@ class WorkoutVoiceCommandsTest {
             WorkoutVoiceCommands.describe(C.EASIER_AND_REST, "nhẹ hơn và nghỉ một phút rưỡi"))
     }
 
+    @Test fun routesNaturalSpokenRestDurationsWithoutTheWordThem() {
+        val examples = listOf(
+            "Nghỉ hai mươi lăm giây" to 25,
+            "Nghỉ ba mươi lăm giây" to 35,
+            "Nghỉ bốn mươi lăm giây" to 45,
+            "Nghỉ năm mươi lăm giây" to 55,
+            "Nghỉ một phút hai mươi lăm giây" to 85,
+            "Rest twenty five seconds" to 25
+        )
+        for ((phrase, seconds) in examples) {
+            assertEquals(phrase, C.REST, WorkoutVoiceCommands.parse(phrase))
+            assertEquals("Bắt đầu nghỉ riêng $seconds giây",
+                WorkoutVoiceCommands.describe(C.REST, phrase))
+        }
+        assertEquals(C.EASIER_AND_REST,
+            WorkoutVoiceCommands.parse("Bài này khó quá, nghỉ hai mươi lăm giây"))
+        assertEquals(C.PAIN,
+            WorkoutVoiceCommands.parse("Đau gối, nghỉ hai mươi lăm giây"))
+        assertEquals(C.UNKNOWN, WorkoutVoiceCommands.parse("Bài hai mươi lăm giây"))
+    }
+
     @Test fun skipRestIsExplicitAndDoesNotConfuseSkippingAnExercise() {
         for (phrase in listOf("Bỏ qua nghỉ", "Bỏ qua thời gian nghỉ", "Kết thúc nghỉ", "skip rest")) {
             assertEquals(phrase, C.SKIP_REST, WorkoutVoiceCommands.parse(phrase))

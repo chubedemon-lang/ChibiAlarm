@@ -333,6 +333,9 @@ object WorkoutEffortHistoryConversation {
         text.contains("so sanh") || text.contains("hai buoi") ||
             (text.contains("lan truoc") && text.contains("lan nay"))
 
+    private fun has(text: String, vararg phrases: String): Boolean =
+        phrases.any { text.contains(it) }
+
     private fun normalize(input: String): String {
         val withoutDiacritics = Normalizer.normalize(
             input.lowercase(Locale.ROOT).replace('đ', 'd'),

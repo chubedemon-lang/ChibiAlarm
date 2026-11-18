@@ -39,6 +39,16 @@ object WorkoutSetHistoryConversation {
         val moves: List<MoveLog>
     )
     private data class MoveChoice(val name: String?, val ambiguous: List<String> = emptyList())
+    private data class RepProgress(
+        val name: String,
+        val previousDate: LocalDate,
+        val latestDate: LocalDate,
+        val previousTotal: Int,
+        val latestTotal: Int,
+        val matchedSets: Int
+    ) {
+        val increase: Int get() = latestTotal - previousTotal
+    }
 
     fun answer(
         input: String,
@@ -78,6 +88,9 @@ object WorkoutSetHistoryConversation {
         }
         if (isLatestSessionMoveListQuestion(query)) {
             return latestSessionMoveList(sessions)
+        }
+        if (isLargestRepIncreaseQuestion(query)) {
+            return largestRepIncreaseAnswer(sessions)
         }
 
         val knownNames = sessions.flatMap { it.moves }
@@ -208,9 +221,94 @@ object WorkoutSetHistoryConversation {
         val asksExerciseComparison = !mentionsWeekComparison && listOf(
             "so sanh", "so voi", "tien bo", "lan truoc", "lan nay", "hai buoi", "2 buoi"
         ).any { text.contains(it) }
-        return asksSetValues || asksExerciseComparison ||
+        return asksSetValues || asksExerciseComparison || isLargestRepIncreaseQuestion(text) ||
             isLatestSetQuestion(text) || isLatestExerciseQuestion(text) ||
             isLatestSessionMoveListQuestion(text)
+    }
+
+    /** Recognizes a request to rank exercises by logged rep increase, not perceived fitness. */
+    private fun isLargestRepIncreaseQuestion(text: String): Boolean {
+        val asksForExercise = listOf("bai nao", "bai tap nao", "dong tac nao").any { text.contains(it) }
+        val asksForIncrease = listOf(
+            "tang so lan nhieu nhat", "tang rep nhieu nhat", "tang nhieu nhat",
+            "tang duoc nhieu nhat", "tien bo nhat", "tien bo nhieu nhat"
+        ).any { text.contains(it) }
+        return asksForExercise && asksForIncrease
+    }
+
+    /**
+     * Ranks only exercises with two recent logged sessions, identical set indexes,
+     * and repetition units on every matched set. Timed/beat-based sets are excluded.
+     */
+    private fun largestRepIncreaseAnswer(sessions: List<Session>): String {
+        if (sessions.isEmpty()) {
+            return "Chưa có buổi Guided Workout hợp lệ trong nhật ký trên máy để so sánh số lần."
+        }
+        val names = sessions.flatMap { it.moves }.map { it.name }.distinctBy { normalize(it) }
+        var comparableExercises = 0
+        val increases = names.mapNotNull { name ->
+            val normalizedName = normalize(name)
+            // Duplicate normalized names in one session are ambiguous; do not silently pick one.
+            if (sessions.any { session ->
+                    session.moves.count { normalize(it.name) == normalizedName } > 1
+                }) return@mapNotNull null
+
+            val observations = sessions.mapNotNull { session ->
+                session.moves.firstOrNull { normalize(it.name) == normalizedName }
+                    ?.let { session to it }
+            }.take(2)
+            if (observations.size < 2) return@mapNotNull null
+
+            val latest = observations[0]
+            val previous = observations[1]
+            val latestSets = latest.second.sets.associateBy { it.index }
+            val previousSets = previous.second.sets.associateBy { it.index }
+            if (latestSets.isEmpty() || latestSets.keys != previousSets.keys) return@mapNotNull null
+
+            val pairs = latestSets.keys.map { index ->
+                latestSets.getValue(index) to previousSets.getValue(index)
+            }
+            if (pairs.any { (current, prior) -> current.unit != "lần" || prior.unit != "lần" }) {
+                return@mapNotNull null
+            }
+            comparableExercises++
+            val latestTotal = pairs.sumOf { it.first.value }
+            val previousTotal = pairs.sumOf { it.second.value }
+            val progress = RepProgress(
+                name = latest.second.name,
+                previousDate = previous.first.date,
+                latestDate = latest.first.date,
+                previousTotal = previousTotal,
+                latestTotal = latestTotal,
+                matchedSets = pairs.size
+            )
+            progress.takeIf { it.increase > 0 }
+        }
+
+        if (comparableExercises == 0) {
+            return "Chưa đủ hai buổi có cùng động tác, cùng số hiệp và tất cả giá trị đều ghi bằng đơn vị lần để so sánh. Chibi không quy đổi giây hoặc nhịp thành số lần; hãy ghi thêm dữ liệu tương ứng nhé."
+        }
+        if (increases.isEmpty()) {
+            return "Trong $comparableExercises động tác đủ điều kiện so sánh, nhật ký chưa ghi nhận động tác nào tăng tổng số lần ở các hiệp tương ứng. Điều này không có nghĩa thể lực giảm; chỉ phản ánh các số liệu bạn đã lưu."
+        }
+
+        val highest = increases.maxOf { it.increase }
+        val leaders = increases.filter { it.increase == highest }
+            .sortedBy { normalize(it.name) }
+        val visible = leaders.take(MAX_DISPLAY_MOVES)
+        val lines = visible.map { progress ->
+            "• ${progress.name}: ${progress.latestTotal} so với ${progress.previousTotal} lần " +
+                "(+${progress.increase} lần qua ${progress.matchedSets} hiệp; " +
+                "${progress.latestDate.format(dateFormat)} so với ${progress.previousDate.format(dateFormat)})"
+        }
+        return buildString {
+            append("Động tác có mức tăng số lần ghi nhận lớn nhất giữa hai buổi gần nhất có ghi bài đó:")
+            append("\n")
+            append(lines.joinToString("\n"))
+            if (leaders.size > visible.size) append("\n• Còn ${leaders.size - visible.size} động tác đồng hạng.")
+            append("\nChỉ so sánh các hiệp cùng chỉ số, cùng số lượng hiệp và đơn vị lần; số liệu do bạn tự khai báo. ")
+            append("Kết quả không đánh giá kỹ thuật, biên độ, tải tập hay mức độ hồi phục.")
+        }
     }
 
     /** A short follow-up may refer to the last confirmed set without repeating the exercise name. */

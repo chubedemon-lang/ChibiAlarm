@@ -13,6 +13,8 @@ import java.util.Locale
 object WorkoutEffortVoiceCommand {
     sealed class Result {
         data class Report(val level: WorkoutEffortFeedback.Level) : Result()
+        object Confirm : Result()
+        object Revise : Result()
         object SafetyStop : Result()
     }
 
@@ -42,6 +44,19 @@ object WorkoutEffortVoiceCommand {
             "met den muc khong the tiep tuc", "qua suc khong the tiep tuc",
             "qua suc roi khong the tiep tuc", "duoi khong the tiep tuc"
         )
+    )
+
+    // Confirmation is a separate turn after Chibi reads the recognized effort back.
+    // Keep the vocabulary exact so an ambiguous "ừ" or a mixed sentence cannot save a report.
+    private val confirmationPhrases = setOf(
+        "xac nhan", "dung roi", "chinh xac", "chuan roi",
+        "dung nhu vay", "toi dong y", "minh dong y", "dong y", "ok", "oke"
+    )
+
+    private val correctionPhrases = setOf(
+        "khong dung", "chua dung", "sai roi", "nghe nham",
+        "chon lai", "khong chon lai", "de toi noi lai",
+        "toi noi lai", "minh noi lai", "noi lai", "khong phai"
     )
 
     // Strip only a small set of conversational introductions. The remaining answer
@@ -102,6 +117,8 @@ object WorkoutEffortVoiceCommand {
         val normalized = normalize(utterance)
         if (normalized.isBlank()) return null
         val variants = exactAnswerVariants(normalized)
+        if (variants.any(confirmationPhrases::contains)) return Result.Confirm
+        if (variants.any(correctionPhrases::contains)) return Result.Revise
         val matches = phrases.filter { (_, accepted) -> variants.any(accepted::contains) }
         if (matches.size != 1) return null
         return Result.Report(matches.single().first)

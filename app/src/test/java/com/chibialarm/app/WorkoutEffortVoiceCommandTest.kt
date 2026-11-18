@@ -99,6 +99,36 @@ class WorkoutEffortVoiceCommandTest {
         )
     }
 
+    @Test fun acceptsAnExplicitSecondTurnConfirmationOnly() {
+        for (phrase in listOf("Đúng rồi", "Chính xác", "Xác nhận", "Chuẩn rồi", "OK")) {
+            assertEquals(
+                phrase,
+                WorkoutEffortVoiceCommand.Result.Confirm,
+                WorkoutEffortVoiceCommand.parse(phrase)
+            )
+        }
+    }
+
+    @Test fun correctionDiscardsThePendingRecognitionInsteadOfSavingIt() {
+        for (phrase in listOf("Chưa đúng", "Sai rồi", "Nghe nhầm", "Chọn lại", "Để tôi nói lại")) {
+            assertEquals(
+                phrase,
+                WorkoutEffortVoiceCommand.Result.Revise,
+                WorkoutEffortVoiceCommand.parse(phrase)
+            )
+        }
+    }
+
+    @Test fun confirmationAndCorrectionNeverOverrideSafetySymptoms() {
+        for (phrase in listOf("Đau gối, đúng rồi", "Khó thở, xác nhận", "Chóng mặt, chọn lại")) {
+            assertEquals(
+                phrase,
+                WorkoutEffortVoiceCommand.Result.SafetyStop,
+                WorkoutEffortVoiceCommand.parse(phrase)
+            )
+        }
+    }
+
     @Test fun safetySymptomsOverrideNaturalEffortPhrases() {
         for (phrase in listOf(
             "Đau gối",

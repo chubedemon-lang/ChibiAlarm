@@ -91,8 +91,8 @@ class GuidedWorkoutSpeechRatePersistenceTest {
             val dialog = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
             assertTrue(dialog.isShowing)
             assertEquals(
-                "Tiếp tục buổi tập đã lưu?",
-                dialog.findViewById<android.widget.TextView>(android.R.id.alertTitle)?.text?.toString()
+                "Khôi phục",
+                dialog.getButton(AlertDialog.BUTTON_POSITIVE).text.toString()
             )
             assertEquals(1.25f, settings.getFloat("rate", 1f), 0.001f)
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
@@ -116,8 +116,8 @@ class GuidedWorkoutSpeechRatePersistenceTest {
         try {
             val dialog = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
             assertEquals(
-                "Tiếp tục buổi tập đã lưu?",
-                dialog.findViewById<android.widget.TextView>(android.R.id.alertTitle)?.text?.toString()
+                "Bắt đầu lại",
+                dialog.getButton(AlertDialog.BUTTON_NEGATIVE).text.toString()
             )
             dialog.getButton(AlertDialog.BUTTON_NEGATIVE).performClick()
             assertFalse(dialog.isShowing)

@@ -3066,6 +3066,40 @@ class GuidedWorkoutActivity:Activity() {
                 checkInDialog.dismiss()
                 stopForSafety()
             }
+            WorkoutEffortVoiceCommand.Result.Confirm -> {
+                val selected = pendingEffortLevel
+                if (selected == null) {
+                    checkInDialog.setMessage(
+                        "Chibi chưa có mức cảm nhận để xác nhận. Hãy nói nhẹ, vừa sức, khó hoặc quá sức trước."
+                    )
+                    speak("Chibi chưa có mức cảm nhận để xác nhận. Hãy nói mức độ trước.")
+                    return
+                }
+                if (!isSameEffortContext(selectedIndex, selectedSessionId, completedSets, plan)) {
+                    pendingEffortLevel = null
+                    checkInDialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = false
+                    checkInDialog.setMessage(
+                        "Buổi tập đã thay đổi. Chibi chưa lưu cảm nhận; hãy kiểm tra lại buổi tập."
+                    )
+                    Toast.makeText(this, "Buổi tập đã thay đổi; không áp dụng cảm nhận cũ.", Toast.LENGTH_LONG).show()
+                    return
+                }
+                activeEffortDialog = null
+                pendingEffortLevel = null
+                checkInDialog.dismiss()
+                speak("Đã xác nhận ${selected.label}.")
+                applyEffortCheckIn(
+                    selectedIndex, selectedSessionId, completedSets, plan, hasNextSet, selected
+                )
+            }
+            WorkoutEffortVoiceCommand.Result.Revise -> {
+                pendingEffortLevel = null
+                checkInDialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = false
+                checkInDialog.setMessage(
+                    "Đã bỏ mức vừa nghe; Chibi chưa lưu cảm nhận. Hãy nói lại nhẹ, vừa sức, khó hoặc quá sức."
+                )
+                speak("Được, Chibi chưa lưu mức vừa rồi. Hãy nói lại cảm nhận của bạn.")
+            }
             is WorkoutEffortVoiceCommand.Result.Report -> {
                 if (!isSameEffortContext(selectedIndex, selectedSessionId, completedSets, plan)) {
                     pendingEffortLevel = null
@@ -3079,8 +3113,8 @@ class GuidedWorkoutActivity:Activity() {
                 checkInDialog.setMessage(
                     "🐰 Chibi nghe được: ${parsed.level.label}.\n\n" +
                         "Đây là tự đánh giá của bạn, không phải phép đo thể lực. " +
-                        "Chibi chưa lưu câu trả lời. Nếu đúng, nhấn “Xác nhận giọng nói”; " +
-                        "nếu chưa đúng, hãy chọn lại một mức trong danh sách."
+                        "Chibi chưa lưu câu trả lời. Nếu đúng, nói “đúng rồi” hoặc nhấn xác nhận; " +
+                        "nếu chưa đúng, nói “chưa đúng, chọn lại” hoặc chọn mức khác."
                 )
                 speak("Chibi nghe được ${parsed.level.label}. Hãy kiểm tra rồi xác nhận.")
             }

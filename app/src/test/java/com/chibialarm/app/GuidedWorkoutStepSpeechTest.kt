@@ -37,6 +37,38 @@ class GuidedWorkoutStepSpeechTest {
         return null
     }
 
+    @Test fun progressReplyUsesTheActiveSessionAndSelfConfirmedSetCounts() {
+        val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup().get()
+        try {
+            fun field(name: String) = GuidedWorkoutActivity::class.java.getDeclaredField(name).apply {
+                isAccessible = true
+            }
+            @Suppress("UNCHECKED_CAST")
+            val moves = field("moves").get(activity) as List<TrainingMove>
+            val selected = moves.indices.firstOrNull { position ->
+                val plan = WorkoutSetTracker.parse(moves[position].dose, moves[position].restSeconds)
+                plan != null && plan.requiredSets >= 2
+            } ?: throw AssertionError("Starter plan needs a set-based move with at least two required sets")
+            val plan = WorkoutSetTracker.parse(moves[selected].dose, moves[selected].restSeconds)!!
+            field("index").setInt(activity, selected)
+            @Suppress("UNCHECKED_CAST")
+            val completed = field("completedSetsByMove").get(activity) as MutableMap<Int, Int>
+            completed[selected] = 1
+
+            val method = GuidedWorkoutActivity::class.java.getDeclaredMethod("currentWorkoutProgressReply")
+                .apply { isAccessible = true }
+            val reply = method.invoke(activity) as String
+
+            assertTrue(reply.contains("Tiến độ buổi tập"))
+            assertTrue(reply.contains("Đang ở bước " + (selected + 1) + ": " + moves[selected].name))
+            assertTrue(reply.contains("Bạn đã tự xác nhận 1 trên " + plan.maximumSets + " hiệp"))
+            assertTrue(reply.contains("Còn " + (plan.requiredSets - 1) + " hiệp bắt buộc"))
+            assertTrue(reply.contains("không phải cảm biến tự đếm"))
+        } finally {
+            activity.finish()
+        }
+    }
+
     @Test fun automaticStepNarrationIsOptInAndCanBeTurnedOff() {
         val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup().get()
         try {
@@ -61,6 +93,8 @@ class GuidedWorkoutStepSpeechTest {
             assertTrue(voiceButton.contentDescription.toString().contains("hỏi cách tập"))
             assertTrue(voiceButton.contentDescription.toString().contains("hỏi dụng cụ"))
             assertTrue(voiceButton.contentDescription.toString().contains("nghỉ bao lâu"))
+            assertTrue(voiceButton.contentDescription.toString().contains("đọc tiến độ buổi tập"))
+            assertTrue(voiceButton.text.toString().contains("đọc tiến độ buổi tập"))
             assertTrue(voiceButton.contentDescription.toString().contains("đọc lại câu trả lời"))
             assertTrue(voiceButton.contentDescription.toString().contains("bật hoặc tắt tự đọc"))
             assertTrue(voiceButton.text.toString().contains("đọc lại câu trả lời"))

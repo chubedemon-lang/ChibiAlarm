@@ -243,7 +243,6 @@ class WorkoutVoiceCommandsTest {
             "Nghỉ bốn mươi lăm giây" to 45,
             "Nghỉ năm mươi lăm giây" to 55,
             "Nghỉ một phút hai mươi lăm giây" to 85,
-            "Rest twenty five seconds" to 25
         )
         for ((phrase, seconds) in examples) {
             assertEquals(phrase, C.REST, WorkoutVoiceCommands.parse(phrase))

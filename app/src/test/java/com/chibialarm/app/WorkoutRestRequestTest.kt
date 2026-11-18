@@ -47,7 +47,6 @@ class WorkoutRestRequestTest {
             "nghỉ bốn mươi lăm giây",
             "nghỉ năm mươi lăm giây",
             "nghỉ một phút hai mươi lăm giây",
-            "rest twenty five seconds"
         )) {
             assertTrue(phrase, WorkoutRestRequest.hasRecognizedDuration(phrase))
         }

@@ -409,7 +409,9 @@ class GuidedWorkoutActivity:Activity() {
                             WorkoutRestVoiceCue.completionMessage(
                                 moveName = moves.getOrNull(index)?.name,
                                 completedSets = completedSetsByMove[index] ?: 0,
-                                plan = currentSetPlan()
+                                plan = currentSetPlan(),
+                                nextMoveName = moves.getOrNull(index + 1)?.name,
+                                nextMoveDose = moves.getOrNull(index + 1)?.dose
                             )
                         )
                     }

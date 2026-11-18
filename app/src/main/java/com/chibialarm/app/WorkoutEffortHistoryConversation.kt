@@ -67,6 +67,10 @@ object WorkoutEffortHistoryConversation {
             return "Chưa có check-in cảm nhận hợp lệ trong nhật ký trên máy. Hãy hoàn thành và lưu một buổi Guided Workout có chọn mức độ gắng sức trước nhé."
         }
 
+        if (isHardestSetQuestion(query)) {
+            return hardestSetAnswer(query, sessions)
+        }
+
         if (isHardestQuestion(query)) {
             return hardestEffortAnswer(sessions)
         }
@@ -244,6 +248,69 @@ object WorkoutEffortHistoryConversation {
         return "Trong ${recent.size} buổi có check-in gần nhất, các bài bạn tự đánh dấu khó nhất là:\n" +
             lines.joinToString("\n") +
             "\nĐây là cảm nhận tự khai báo, không phải phép đo kỹ thuật, thể lực hay chẩn đoán y tế. Nếu có đau hoặc triệu chứng bất thường, hãy dừng bài tập thay vì dựa vào bảng xếp hạng này."
+    }
+
+    /**
+     * Answers which set felt most demanding in the latest valid check-in session.
+     * A named exercise is restricted to that session; older records are never substituted.
+     */
+    private fun isHardestSetQuestion(text: String): Boolean {
+        val asksWhichSet = has(text, "hiep nao", "set nao")
+        val asksForPeak = has(text, "kho nhat", "met nhat", "vat va nhat", "nang nhat", "qua suc nhat")
+        return asksWhichSet && asksForPeak
+    }
+
+    private fun hardestSetAnswer(query: String, sessions: List<Session>): String {
+        val latest = sessions.first()
+        val choice = chooseMove(query, latest.moves.map { it.name })
+        if (choice.ambiguous.isNotEmpty()) {
+            return "Chibi tìm thấy vài động tác gần giống: " +
+                choice.ambiguous.joinToString(", ") +
+                ". Hãy nhắc đầy đủ tên bài để tránh đọc nhầm hiệp."
+        }
+
+        val selectedName = choice.name
+        val moves = if (selectedName == null) {
+            latest.moves
+        } else {
+            latest.moves.filter { normalize(it.name) == normalize(selectedName) }
+        }
+        if (moves.isEmpty()) {
+            return "Buổi có check-in gần nhất (" + latest.date.format(dateFormat) +
+                ") không có dữ liệu cho " + selectedName +
+                ". Chibi không lấy buổi cũ thay thế để tránh đọc nhầm lịch sử."
+        }
+
+        val candidates = moves.flatMap { move -> move.sets.map { move to it } }
+        if (candidates.isEmpty()) {
+            return "Buổi có check-in gần nhất chưa có hiệp hợp lệ để đối chiếu."
+        }
+
+        fun severity(level: WorkoutEffortFeedback.Level): Int = when (level) {
+            WorkoutEffortFeedback.Level.EASY -> 0
+            WorkoutEffortFeedback.Level.MODERATE -> 1
+            WorkoutEffortFeedback.Level.HARD -> 2
+            WorkoutEffortFeedback.Level.VERY_HARD -> 3
+        }
+
+        val highest = candidates.maxOf { severity(it.second.level) }
+        val mostDemanding = candidates.filter { severity(it.second.level) == highest }.take(5)
+        val lines = mostDemanding.map { (move, set) ->
+            "• " + move.name + " — hiệp " + set.index + ": " + set.level.label
+        }
+        val scope = selectedName?.let { " cho " + it } ?: ""
+        return if (highest >= 2) {
+            "Trong buổi có check-in gần nhất (" + latest.date.format(dateFormat) +
+                "), các hiệp được bạn tự đánh dấu nặng nhất" + scope + " là:\n" +
+                lines.joinToString("\n") +
+                "\nĐây là cảm nhận tự khai báo tại từng hiệp, không phải phép đo kỹ thuật, thể lực hay chẩn đoán. Nếu có đau hoặc triệu chứng bất thường, hãy dừng tập."
+        } else {
+            "Trong buổi có check-in gần nhất (" + latest.date.format(dateFormat) +
+                "), chưa có hiệp nào" + scope +
+                " được bạn tự đánh dấu “Khó, cần nghỉ thêm” hoặc “Quá sức, tạm dừng”. Mức cao nhất đã ghi là:\n" +
+                lines.joinToString("\n") +
+                "\nĐiều này chỉ phản ánh các nhãn bạn đã chọn, không chứng minh buổi tập nhẹ hay an toàn."
+        }
     }
 
     private fun isHardestQuestion(text: String): Boolean = listOf(

@@ -17,12 +17,13 @@ class WorkoutMidSessionPreviewFormatterTest {
         moves: List<TrainingMove>,
         currentIndex: Int,
         request: WorkoutMidSessionRequest.Request,
-        availableEquipment: Set<TrainingEquipment> = emptySet()
+        availableEquipment: Set<TrainingEquipment> = emptySet(),
+        completedCurrentSets: Int = 0
     ): WorkoutMidSessionPlanner.Preview {
         val result = WorkoutMidSessionPlanner.preview(
             currentMoves = moves,
             currentIndex = currentIndex,
-            completedCurrentSets = 0,
+            completedCurrentSets = completedCurrentSets,
             currentStepLocked = false,
             constraints = WorkoutConstraintProfile(),
             request = request,
@@ -148,4 +149,41 @@ class WorkoutMidSessionPreviewFormatterTest {
         assertTrue(text.contains("Động tác bổ sung không thay thế hiệp bắt buộc"))
         assertTrue(text.contains("Thời gian còn lại ước tính"))
     }
+    @Test fun currentMovePreviewShowsConfirmedAndRemainingRequiredAndOptionalSets() {
+        val result = preview(
+            listOf(
+                move("Khởi động tại chỗ"),
+                move("Squat không tạ"),
+                move("Thả lỏng")
+            ),
+            currentIndex = 1,
+            request = WorkoutMidSessionRequest.Request(restSeconds = 30),
+            completedCurrentSets = 1
+        )
+
+        val text = WorkoutMidSessionPreviewFormatter.format(result)
+        assertTrue(text.contains("2–3 hiệp × 8–12 lần"))
+        assertTrue(text.contains("đã tự xác nhận 1/2 hiệp bắt buộc"))
+        assertTrue(text.contains("còn 1 hiệp bắt buộc"))
+        assertTrue(text.contains("còn tối đa 1 hiệp tùy chọn"))
+    }
+
+    @Test fun meetingTheRequiredMinimumDoesNotShowRequiredSetsAsRemaining() {
+        val result = preview(
+            listOf(
+                move("Khởi động tại chỗ"),
+                move("Squat không tạ"),
+                move("Thả lỏng")
+            ),
+            currentIndex = 1,
+            request = WorkoutMidSessionRequest.Request(restSeconds = 30),
+            completedCurrentSets = 2
+        )
+
+        val text = WorkoutMidSessionPreviewFormatter.format(result)
+        assertTrue(text.contains("đã tự xác nhận 2/3 hiệp; đã đủ 2 hiệp bắt buộc"))
+        assertTrue(text.contains("còn tối đa 1 hiệp tùy chọn"))
+        assertFalse(text.contains("còn 0 hiệp bắt buộc"))
+    }
+
 }

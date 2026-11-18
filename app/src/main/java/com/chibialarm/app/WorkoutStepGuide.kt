@@ -162,6 +162,10 @@ object WorkoutStepGuide {
         fun next(): Walkthrough =
             if (canGoNext) Walkthrough(steps, index + 1) else this
 
+        /** Return to the first instruction without touching workout progress or timing. */
+        fun first(): Walkthrough =
+            if (index == 0) this else Walkthrough(steps, 0)
+
         companion object {
             fun start(instructions: String): Walkthrough =
                 Walkthrough(WorkoutStepGuide.split(instructions), 0)

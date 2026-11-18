@@ -2439,8 +2439,8 @@ class GuidedWorkoutActivity:Activity() {
         }
         val voiceButton = Button(this).apply {
             tag = "workout-step-voice-control"
-            text = "🎤 Nói: bước tiếp, hỏi cách tập, hỏi nhóm cơ, hỏi dụng cụ, đọc lại câu trả lời, bật tự đọc, tắt tự đọc, đọc cách dễ hơn, số lần, nghỉ bao lâu, lưu ý an toàn"
-            contentDescription = "Mở nhận dạng giọng nói sau khi xác nhận quyền micro để chuyển bước, hỏi cách tập, hỏi nhóm cơ hoặc hỏi dụng cụ cần thiết cho động tác hiện tại, đọc lại câu trả lời gần nhất, bật hoặc tắt tự đọc các bước, đọc cách tập dễ hơn, đọc lưu ý an toàn, hỏi số lần hoặc thời gian nghỉ, nghỉ bao lâu"
+            text = "🎤 Nói: bước tiếp, bước đầu, hỏi cách tập, hỏi nhóm cơ, hỏi dụng cụ, đọc lại câu trả lời, bật tự đọc, tắt tự đọc, đọc cách dễ hơn, số lần, nghỉ bao lâu, lưu ý an toàn"
+            contentDescription = "Mở nhận dạng giọng nói sau khi xác nhận quyền micro để chuyển bước hoặc quay về bước đầu, hỏi cách tập, hỏi nhóm cơ hoặc hỏi dụng cụ cần thiết cho động tác hiện tại, đọc lại câu trả lời gần nhất, bật hoặc tắt tự đọc các bước, đọc cách tập dễ hơn, đọc lưu ý an toàn, hỏi số lần hoặc thời gian nghỉ, nghỉ bao lâu"
         }
         container.addView(illustration, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
@@ -2523,6 +2523,16 @@ class GuidedWorkoutActivity:Activity() {
                             walkthrough = walkthrough.previous()
                             renderStep()
                         } else Toast.makeText(this,"Đã ở bước đầu của hướng dẫn.",Toast.LENGTH_SHORT).show()
+                    }
+                    WorkoutStepVoiceCommand.Command.FIRST -> {
+                        spoken?.stop()
+                        walkthrough = walkthrough.first()
+                        renderStep()
+                        Toast.makeText(
+                            this,
+                            "Đã về bước đầu của hướng dẫn; tiến độ buổi tập được giữ nguyên.",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                     WorkoutStepVoiceCommand.Command.PAUSE -> {
                         // The guide deliberately pauses the timer before microphone capture.
@@ -2659,7 +2669,7 @@ class GuidedWorkoutActivity:Activity() {
                     }
                     WorkoutStepVoiceCommand.Command.UNKNOWN -> {
                         AlertDialog.Builder(this).setTitle("Chibi chưa hiểu lệnh")
-                            .setMessage("Bạn có thể nói: bước tiếp, bước trước, đọc lại bước, đọc lại câu trả lời, bật tự đọc, tắt tự đọc, hỏi cách tập bài này, hỏi nhóm cơ chính, hỏi bao nhiêu lần, nghỉ bao lâu, đọc cách dễ hơn, đọc lưu ý an toàn, nói chậm lại, tốc độ bình thường, tạm dừng buổi tập, tiếp tục buổi tập, nghỉ thêm 30 giây hoặc đóng hướng dẫn. Nếu đau, khó thở hay khó chịu, Chibi sẽ dừng buổi tập.")
+                            .setMessage("Bạn có thể nói: bước tiếp, bước trước, về bước đầu, đọc lại bước, đọc lại câu trả lời, bật tự đọc, tắt tự đọc, hỏi cách tập bài này, hỏi nhóm cơ chính, hỏi bao nhiêu lần, nghỉ bao lâu, đọc cách dễ hơn, đọc lưu ý an toàn, nói chậm lại, tốc độ bình thường, tạm dừng buổi tập, tiếp tục buổi tập, nghỉ thêm 30 giây hoặc đóng hướng dẫn. Nếu đau, khó thở hay khó chịu, Chibi sẽ dừng buổi tập.")
                             .setPositiveButton("Đã hiểu",null).show()
                     }
                 }

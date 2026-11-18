@@ -1007,6 +1007,7 @@ class FitnessActivity:Activity() {
             Toast.makeText(this, "Chưa có động tác phù hợp để xem trước.", Toast.LENGTH_LONG).show()
             return
         }
+        var stepPreview = WorkoutLibraryStepPreview.start(preview.currentMove)
 
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -1027,7 +1028,39 @@ class FitnessActivity:Activity() {
         }
         val dose = txt("", 16f)
         val rest = txt("", 14f)
-        val steps = txt("", 14f)
+        val stepPosition = txt("", 13f)
+        val stepInstruction = txt("", 16f)
+        val stepPrevious = Button(this).apply {
+            text = "← Bước trước"
+            isAllCaps = false
+            contentDescription = "Đọc bước hướng dẫn trước"
+        }
+        val stepNext = Button(this).apply {
+            text = "Bước tiếp →"
+            isAllCaps = false
+            contentDescription = "Đọc bước hướng dẫn tiếp theo"
+        }
+        val stepNavigation = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            addView(stepPrevious, LinearLayout.LayoutParams(0, -2, 1f))
+            addView(stepNext, LinearLayout.LayoutParams(0, -2, 1f))
+        }
+        val stepSpeak = Button(this).apply {
+            text = "🔊 Nghe bước này"
+            isAllCaps = false
+            contentDescription = "Đọc thành tiếng bước hướng dẫn đang chọn"
+            setOnClickListener {
+                if (speechReady) {
+                    sayFollowUp(stepPreview.spokenCue())
+                } else {
+                    Toast.makeText(
+                        this@FitnessActivity,
+                        "Bật giọng Chibi trước để nghe bước hướng dẫn.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
         val easier = txt("", 14f)
         val caution = txt("", 14f)
         val durationSummary = txt("", 13f)
@@ -1043,7 +1076,8 @@ class FitnessActivity:Activity() {
             addView(next, LinearLayout.LayoutParams(0, -2, 1f))
         }
         val speak = Button(this).apply {
-            text = "🔊 Nghe hướng dẫn"
+            text = "🔊 Nghe toàn bộ hướng dẫn"
+            isAllCaps = false
             setOnClickListener {
                 if (speechReady) {
                     sayFollowUp(WorkoutContextCoach.script(preview.currentMove))
@@ -1068,7 +1102,10 @@ class FitnessActivity:Activity() {
         ))
         content.addView(dose)
         content.addView(rest)
-        content.addView(steps)
+        content.addView(stepPosition)
+        content.addView(stepInstruction)
+        content.addView(stepNavigation)
+        content.addView(stepSpeak)
         content.addView(easier)
         content.addView(caution)
         content.addView(speak)
@@ -1079,6 +1116,26 @@ class FitnessActivity:Activity() {
             "Bài thay thế chỉ được đưa vào bản xem trước sau khi chọn. Chibi không sửa nhật ký cũ, không tự bắt đầu và không tự cộng EXP.",
             12f
         ))
+
+        fun renderStepPreview() {
+            val selected = stepPreview
+            stepPosition.text = "📖 Bước ${selected.position}/${selected.size}"
+            stepInstruction.text = selected.currentStep
+            stepInstruction.contentDescription =
+                "Bước ${selected.position} trên ${selected.size}: ${selected.currentStep}"
+            stepPrevious.isEnabled = selected.canGoPrevious
+            stepNext.isEnabled = selected.canGoNext
+
+            // Pin the original vector illustration to the phase named by this exact
+            // instruction. Ambiguous setup/hold steps stay neutral rather than guessing.
+            val phase = selected.illustrationPhase()
+            pose.showGuideFrame(phase ?: false)
+            phaseCaption.text = if (phase == null) {
+                "↔ Tư thế minh họa chung cho bước này"
+            } else {
+                "↔ " + WorkoutPoseMotion.phaseCue(pose.pose, phase)
+            }
+        }
 
         fun renderPreview() {
             val move = preview.currentMove
@@ -1091,20 +1148,25 @@ class FitnessActivity:Activity() {
             substitute.text = if (substitute.isEnabled) "🔁 Thay động tác đang xem" else "Không có biến thể đã duyệt phù hợp"
             heading.text = move.name
             pose.pose = WorkoutPoseGuide.classify(move.name)
-            phaseCaption.text = "↔ " + WorkoutPoseMotion.phaseCue(pose.pose, pose.isInAlternatePose)
+            stepPreview = WorkoutLibraryStepPreview.start(move)
+            renderStepPreview()
             dose.text = "🎯 Mục tiêu: ${move.dose}"
             rest.text = WorkoutSetTracker.restGuidance(move.dose, move.restSeconds)
                 ?: "⏱ Nghỉ thêm khi cần; động tác này không có cấu trúc hiệp lặp."
-            steps.text = "📖 Hướng dẫn từng bước\n" +
-                WorkoutStepGuide.split(move.steps).mapIndexed { index, step ->
-                    "${index + 1}. $step"
-                }.joinToString("\n")
             easier.text = "🌿 Dễ hơn: ${move.easier}"
             caution.text = "⚠️ Lưu ý: ${move.avoid}"
             previous.isEnabled = preview.canGoPrevious
             next.isEnabled = preview.canGoNext
         }
 
+        stepPrevious.setOnClickListener {
+            stepPreview = stepPreview.previous()
+            renderStepPreview()
+        }
+        stepNext.setOnClickListener {
+            stepPreview = stepPreview.next()
+            renderStepPreview()
+        }
         previous.setOnClickListener {
             preview = preview.previous()
             renderPreview()
@@ -1130,6 +1192,7 @@ class FitnessActivity:Activity() {
                             planDraft = updated
                             preview = WorkoutLibraryPreview.start(planDraft.moves, preview.index)
                                 ?: return@setItems
+                            stepPreview = WorkoutLibraryStepPreview.start(preview.currentMove)
                             renderPreview()
                             sayFollowUp(
                                 "Đã thêm ${chosen.name} vào bản xem trước. Thời lượng ước tính ${WorkoutPlanPreviewEditor.durationLabel(planDraft.estimatedSeconds)}. Chưa bắt đầu buổi tập."

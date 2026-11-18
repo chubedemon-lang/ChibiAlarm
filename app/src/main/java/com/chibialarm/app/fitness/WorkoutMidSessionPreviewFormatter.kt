@@ -1,5 +1,8 @@
 package com.chibialarm.app.fitness
 
+import com.chibialarm.app.TrainingMove
+import com.chibialarm.app.WorkoutSetTracker
+
 /**
  * User-facing, deterministic preview of the exact remaining workout sequence.
  * This formatter is read-only: it never mutates the active session or awards XP.
@@ -51,6 +54,9 @@ object WorkoutMidSessionPreviewFormatter {
             if (move.dose.isNotBlank()) {
                 append(" · ").append(move.dose)
             }
+            if (position == preview.currentIndex) {
+                appendCurrentSetProgress(move, preview.completedCurrentSets, this)
+            }
             append('\n')
         }
         val remainingCount = preview.after.size - startIndex - visible.size
@@ -72,6 +78,37 @@ object WorkoutMidSessionPreviewFormatter {
             append("\nSau khi áp dụng sẽ nghỉ riêng ")
                 .append(preview.restSeconds)
                 .append(" giây; thời gian nghỉ không tính là vận động.")
+        }
+    }
+
+    private fun appendCurrentSetProgress(
+        move: TrainingMove,
+        completedSets: Int,
+        output: StringBuilder
+    ) {
+        if (completedSets <= 0) return
+        val plan = WorkoutSetTracker.parse(move.dose, move.restSeconds) ?: return
+        if (completedSets > plan.maximumSets) return
+
+        val requiredRemaining = (plan.requiredSets - completedSets).coerceAtLeast(0)
+        val optionalRemaining = (plan.maximumSets - maxOf(plan.requiredSets, completedSets))
+            .coerceAtLeast(0)
+
+        output.append(" · ")
+        if (requiredRemaining > 0) {
+            output.append("đã tự xác nhận ")
+                .append(completedSets).append('/').append(plan.requiredSets)
+                .append(" hiệp bắt buộc; còn ")
+                .append(requiredRemaining).append(" hiệp bắt buộc")
+        } else {
+            output.append("đã tự xác nhận ")
+                .append(completedSets).append('/').append(plan.maximumSets)
+                .append(" hiệp; đã đủ ")
+                .append(plan.requiredSets).append(" hiệp bắt buộc")
+        }
+        if (optionalRemaining > 0) {
+            output.append("; còn tối đa ")
+                .append(optionalRemaining).append(" hiệp tùy chọn")
         }
     }
 

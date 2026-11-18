@@ -60,7 +60,10 @@ class GuidedWorkoutStepSpeechTest {
             assertTrue(voiceButton.contentDescription.toString().contains("hỏi dụng cụ"))
             assertTrue(voiceButton.contentDescription.toString().contains("nghỉ bao lâu"))
             assertTrue(voiceButton.contentDescription.toString().contains("đọc lại câu trả lời"))
+            assertTrue(voiceButton.contentDescription.toString().contains("bật hoặc tắt tự đọc"))
             assertTrue(voiceButton.text.toString().contains("đọc lại câu trả lời"))
+            assertTrue(voiceButton.text.toString().contains("bật tự đọc"))
+            assertTrue(voiceButton.text.toString().contains("tắt tự đọc"))
 
             voiceButton.performClick()
             val consent = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog

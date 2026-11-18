@@ -520,6 +520,9 @@ class GuidedWorkoutRestConfirmationTest {
             field("restTenSecondCueGiven").getBoolean(activity))
 
         field("pendingRecognitionRequestCode").set(activity, null)
+        // The one-shot cue is also gated on a ready TTS engine; model that state
+        // explicitly so this test isolates microphone deferral rather than init timing.
+        field("ready").setBoolean(activity, true)
         tick.run()
         assertTrue("The one-shot cue remains available after speech input ends",
             field("restTenSecondCueGiven").getBoolean(activity))

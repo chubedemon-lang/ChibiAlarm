@@ -107,6 +107,17 @@ object WorkoutMidSessionRequest {
             .replace("co moi", "chi co")
     }
 
+    private val remainingTimeCue = Regex(
+        """(?:^| )(?:chi )?con(?: lai)?(?: (?:khoang|tam|chung|dung|la))? (?:[0-9]{1,3}|[a-z]+(?:\\s+[a-z]+){0,3}) (?:phut|minute|min)\\b"""
+    )
+    private val negatedRemainingTimePrefix = Regex("""(?:^| )(?:khong|het)$""")
+
+    private fun hasRemainingTimeCue(text: String): Boolean =
+        remainingTimeCue.findAll(text).any { match ->
+            val prefix = text.substring(0, match.range.first).trimEnd()
+            !negatedRemainingTimePrefix.containsMatchIn(prefix)
+        }
+
     fun parse(utterance: String): Result {
         val input = utterance.trim()
         if (input.isEmpty() || input.length > 1_000) return Result.Unsupported
@@ -148,10 +159,10 @@ object WorkoutMidSessionRequest {
         }
         if (replacementMatch != null && replacementExercise == null) return Result.Unsupported
 
-        val hasRemainingTime = Regex(
-            """\bcon\s+(?:[0-9]{1,3}|[a-z]+(?:\s+[a-z]+){0,3})\s+(?:phut|minute|min)\b"""
-        ).containsMatchIn(text)
-        val remainingMinutes = if (hasRemainingTime) fitness.minutes else null
+        // A negative statement ("không còn 5 phút") is not a deadline.
+        // Accept common spoken qualifiers while preserving the distinction between
+        // remaining time and a duration mentioned elsewhere in the sentence.
+        val remainingMinutes = fitness.minutes.takeIf { hasRemainingTimeCue(text) }
 
         val explicitlyNotTired = has("khong met", "khong hoi met", "khong thay met")
         val explicitlyNotDifficult = has("khong kho", "khong qua suc")

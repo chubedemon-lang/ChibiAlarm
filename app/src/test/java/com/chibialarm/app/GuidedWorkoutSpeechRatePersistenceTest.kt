@@ -4,6 +4,7 @@ import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.os.Looper
 import android.speech.tts.TextToSpeech
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -13,6 +14,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RuntimeEnvironment
+import org.robolectric.Shadows
 import org.robolectric.shadows.ShadowAlertDialog
 import org.robolectric.RobolectricTestRunner
 
@@ -96,6 +98,7 @@ class GuidedWorkoutSpeechRatePersistenceTest {
             )
             assertEquals(1.25f, settings.getFloat("rate", 1f), 0.001f)
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+            Shadows.shadowOf(Looper.getMainLooper()).idle()
 
             assertFalse(dialog.isShowing)
             assertEquals(1.6f, rate(restored), 0.001f)
@@ -120,6 +123,7 @@ class GuidedWorkoutSpeechRatePersistenceTest {
                 dialog.getButton(AlertDialog.BUTTON_NEGATIVE).text.toString()
             )
             dialog.getButton(AlertDialog.BUTTON_NEGATIVE).performClick()
+            Shadows.shadowOf(Looper.getMainLooper()).idle()
             assertFalse(dialog.isShowing)
             assertEquals(1.25f, rate(restarted), 0.001f)
         } finally {

@@ -71,7 +71,7 @@ class WorkoutHistoryAdvisorTest {
         minutes = 20,
         note = note,
         sessionId = java.util.UUID.randomUUID().toString(),
-        completedMoves = 1,
+        completedMoves = 2,
         selfReportedSets = 1,
         effortLog = "Squat: hiệp 1: $effort"
     )

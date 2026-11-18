@@ -26,6 +26,31 @@ class WorkoutMidSessionPlannerTest {
         assertEquals(60, request.restSeconds)
     }
 
+    @Test fun approximateRemainingTimePhrasesAreRecognizedInMidSession() {
+        val phrases = listOf(
+            "Tao còn khoảng mười phút, đổi bài nhẹ hơn",
+            "Tao chỉ còn lại tầm 10 phút, đổi bài nhẹ hơn"
+        )
+        phrases.forEach { phrase ->
+            val parsed = WorkoutMidSessionRequest.parse(phrase)
+            assertTrue("$phrase should be understood", parsed is WorkoutMidSessionRequest.Result.Proposed)
+            val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+            assertEquals(10, request.remainingMinutes)
+            assertTrue(request.preferEasier)
+        }
+    }
+
+    @Test fun negatedRemainingTimeIsNotAppliedAsASessionDeadline() {
+        val parsed = WorkoutMidSessionRequest.parse(
+            "Tao không còn khoảng năm phút, nghỉ thêm 30 giây"
+        )
+        assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
+        val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+        assertNull(request.remainingMinutes)
+        assertEquals(30, request.restSeconds)
+        assertTrue(request.isRestOnly)
+    }
+
     @Test fun spokenOverheadRestrictionUsesCuratedAlternativeOnlyForUnstartedMove() {
         val moves = listOf(
             move("Khởi động tại chỗ"),

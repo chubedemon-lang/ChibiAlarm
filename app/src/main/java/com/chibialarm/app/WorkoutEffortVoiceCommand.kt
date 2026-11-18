@@ -28,7 +28,7 @@ object WorkoutEffortVoiceCommand {
             "met nhung van on", "hoi met nhung van on", "hoi duoi nhung van on"
         ),
         WorkoutEffortFeedback.Level.HARD to setOf(
-            "kho", "kho qua", "hoi kho", "kha kho", "kho can nghi them",
+            "kho", "kho qua", "kho qua can nghi them", "hoi kho", "kha kho", "kho can nghi them",
             "can nghi them", "met", "hoi met", "met roi", "met qua",
             "kha met", "met lam", "met nhung van lam duoc",
             "hoi met nhung van lam duoc", "met nhung can nghi them",

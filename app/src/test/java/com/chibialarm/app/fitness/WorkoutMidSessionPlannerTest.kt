@@ -1252,4 +1252,20 @@ class WorkoutMidSessionPlannerTest {
         }
     }
 
+    @Test fun completedSetCountCannotExceedTheCurrentCatalogPrescription() {
+        val result = WorkoutMidSessionPlanner.preview(
+            currentMoves = listOf(move("Squat không tạ"), move("Thả lỏng")),
+            currentIndex = 0,
+            completedCurrentSets = 4,
+            currentStepLocked = false,
+            constraints = WorkoutConstraintProfile(),
+            request = WorkoutMidSessionRequest.Request(restSeconds = 30),
+            remainingCurrentSeconds = 45,
+            extensionMoveNames = emptySet(),
+            level = 0
+        )
+
+        assertSame(WorkoutMidSessionPlanner.Result.Unsupported, result)
+    }
+
 }

@@ -38,7 +38,9 @@ object WorkoutMidSessionPlanner {
         val restSeconds: Int,
         val extensionMoveNames: Set<String>,
         val addedMoves: List<String> = emptyList(),
-        val availableEquipment: Set<TrainingEquipment> = emptySet()
+        val availableEquipment: Set<TrainingEquipment> = emptySet(),
+        // Self-confirmed progress for the active set-based move; never inferred from elapsed time.
+        val completedCurrentSets: Int = 0
     ) {
         val changed: Boolean get() = before != after
     }
@@ -90,6 +92,13 @@ object WorkoutMidSessionPlanner {
             currentIndex !in currentMoves.indices || completedCurrentSets !in 0..20 ||
             remainingCurrentSeconds !in 0..3_600 || level !in 0..2
         ) return Result.Unsupported
+        val currentSetPlan = WorkoutSetTracker.parse(
+            currentMoves[currentIndex].dose,
+            currentMoves[currentIndex].restSeconds
+        )
+        if (currentSetPlan != null && completedCurrentSets > currentSetPlan.maximumSets) {
+            return Result.Unsupported
+        }
 
         val effectiveProfile = effectiveConstraints(constraints, request)
         val unavailableTools = request.unavailableEquipment +
@@ -322,7 +331,8 @@ object WorkoutMidSessionPlanner {
                 restSeconds = extraRest,
                 extensionMoveNames = extensions,
                 addedMoves = addedMoves,
-                availableEquipment = effectiveAvailableEquipment
+                availableEquipment = effectiveAvailableEquipment,
+                completedCurrentSets = completedCurrentSets
             )
         )
     }

@@ -37,6 +37,17 @@ class GuidedWorkoutSpeechRatePersistenceTest {
     private fun setRate(activity: GuidedWorkoutActivity, value: Float) {
         GuidedWorkoutActivity::class.java.getDeclaredField("workoutSpeechRate")
             .apply { isAccessible = true }.setFloat(activity, value)
+        // Mirror a real user-selected rate: asynchronous TTS initialization must not
+        // replace it with the global preference while this workout is active.
+        GuidedWorkoutActivity::class.java.getDeclaredField("workoutSpeechRateRestored")
+            .apply { isAccessible = true }.setBoolean(activity, true)
+        GuidedWorkoutActivity::class.java.getDeclaredField("spoken")
+            .apply { isAccessible = true }
+            .get(activity)
+            ?.let { engine ->
+                engine.javaClass.getMethod("setSpeechRate", Float::class.javaPrimitiveType)
+                    .invoke(engine, value)
+            }
     }
 
     private fun saveCheckpoint(activity: GuidedWorkoutActivity) {
@@ -79,9 +90,11 @@ class GuidedWorkoutSpeechRatePersistenceTest {
         try {
             val dialog = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
             assertTrue(dialog.isShowing)
+            assertEquals("Tiếp tục buổi tập đã lưu?", dialog.title.toString())
             assertEquals(1.25f, settings.getFloat("rate", 1f), 0.001f)
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
 
+            assertFalse(dialog.isShowing)
             assertEquals(1.6f, rate(restored), 0.001f)
             assertEquals(1.25f, settings.getFloat("rate", 1f), 0.001f)
         } finally {
@@ -99,7 +112,9 @@ class GuidedWorkoutSpeechRatePersistenceTest {
         val restarted = Robolectric.buildActivity(GuidedWorkoutActivity::class.java, intent()).setup().get()
         try {
             val dialog = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
+            assertEquals("Tiếp tục buổi tập đã lưu?", dialog.title.toString())
             dialog.getButton(AlertDialog.BUTTON_NEGATIVE).performClick()
+            assertFalse(dialog.isShowing)
             assertEquals(1.25f, rate(restarted), 0.001f)
         } finally {
             restarted.finish()

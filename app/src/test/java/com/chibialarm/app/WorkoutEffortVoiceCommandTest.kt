@@ -74,6 +74,20 @@ class WorkoutEffortVoiceCommandTest {
         )
     }
 
+    @Test fun understandsMoreNaturalContextualIntroductionsWithoutBroadFuzzyMatching() {
+        report(
+            WorkoutEffortFeedback.Level.HARD,
+            "Em thấy khá nặng nhưng vẫn kiểm soát được",
+            "Bài này tôi thấy hơi mệt nhưng vẫn làm được",
+            "Mức độ của tôi là khó quá, cần nghỉ thêm"
+        )
+        report(
+            WorkoutEffortFeedback.Level.MODERATE,
+            "Hôm nay mình thấy hơi đuối nhưng vẫn ổn",
+            "Mức độ của mình là vừa sức"
+        )
+    }
+
     @Test fun conversationalVariantsAlsoWorkWithoutVietnameseDiacritics() {
         assertEquals(
             WorkoutEffortVoiceCommand.Result.Report(WorkoutEffortFeedback.Level.MODERATE),

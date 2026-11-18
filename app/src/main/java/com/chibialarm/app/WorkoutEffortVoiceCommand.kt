@@ -47,6 +47,16 @@ object WorkoutEffortVoiceCommand {
     // Strip only a small set of conversational introductions. The remaining answer
     // must still match a complete phrase; arbitrary long sentences stay unclassified.
     private val conversationalPrefixes = listOf(
+        "muc do cua toi la ",
+        "muc do cua minh la ",
+        "hom nay toi cam thay ",
+        "hom nay minh cam thay ",
+        "hom nay toi thay ",
+        "hom nay minh thay ",
+        "bai nay toi thay ",
+        "bai nay minh thay ",
+        "em cam thay ",
+        "em thay ",
         "toi cam thay ",
         "minh cam thay ",
         "toi thay ",

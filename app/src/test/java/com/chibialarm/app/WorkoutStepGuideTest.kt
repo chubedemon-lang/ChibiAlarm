@@ -86,6 +86,19 @@ class WorkoutStepGuideTest {
         assertEquals("Hạ người.", third.previous().currentStep)
     }
 
+    @Test fun walkthroughCanReturnToTheFirstStepWithoutChangingItsSnapshot() {
+        val last = WorkoutStepGuide.Walkthrough.start("Bước một.\\nBước hai.\\nBước ba.")
+            .next().next()
+        assertEquals(3, last.position)
+        val first = last.first()
+        assertEquals(1, first.position)
+        assertEquals("Bước một.", first.currentStep)
+        assertFalse(first.canGoPrevious)
+        assertTrue(first.canGoNext)
+        assertEquals(3, last.position)
+        assertEquals(1, last.first().position)
+    }
+
     @Test fun walkthroughAlwaysHasAReadableFallbackStep() {
         val walkthrough = WorkoutStepGuide.Walkthrough.start("  ")
         assertEquals(1, walkthrough.steps.size)

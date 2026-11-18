@@ -70,6 +70,12 @@ object WorkoutSetHistoryConversation {
             }
             .sortedWith(compareByDescending<Session> { it.date }.thenByDescending { it.originalIndex })
 
+        if (isLatestSetQuestion(query)) {
+            return latestSetAnswer(sessions)
+        }
+        if (isLatestExerciseQuestion(query)) {
+            return latestExerciseAnswer(sessions)
+        }
         if (isLatestSessionMoveListQuestion(query)) {
             return latestSessionMoveList(sessions)
         }
@@ -193,7 +199,8 @@ object WorkoutSetHistoryConversation {
 
     private fun isSetQuestion(text: String): Boolean {
         val asksSetValues = listOf(
-            "bao nhieu lan", "may lan", "bao nhieu rep", "so rep", "so hiep", "may hiep"
+            "bao nhieu lan", "may lan", "bao nhieu rep", "so rep", "so hiep", "may hiep",
+            "may cai", "so lan", "lam duoc may"
         ).any { text.contains(it) }
         val mentionsWeekComparison = listOf(
             "tuan nay", "tuan truoc", "tuan vua roi", "tuan truoc do"
@@ -202,6 +209,47 @@ object WorkoutSetHistoryConversation {
             "so sanh", "so voi", "tien bo", "lan truoc", "lan nay", "hai buoi", "2 buoi"
         ).any { text.contains(it) }
         return asksSetValues || asksExerciseComparison || isLatestSessionMoveListQuestion(text)
+    }
+
+    /** A short follow-up may refer to the last confirmed set without repeating the exercise name. */
+    private fun isLatestSetQuestion(text: String): Boolean {
+        val refersToSet = listOf(
+            "hiep vua roi", "set vua roi", "hiep cuoi", "set cuoi"
+        ).any { text.contains(it) }
+        val asksValue = listOf(
+            "bao nhieu", "may lan", "may cai", "so lan", "lam duoc may"
+        ).any { text.contains(it) }
+        return refersToSet && asksValue
+    }
+
+    /** Resolves "bài vừa rồi" only inside the latest saved guided session. */
+    private fun isLatestExerciseQuestion(text: String): Boolean {
+        val refersToExercise = listOf(
+            "bai vua roi", "dong tac vua roi", "bai cuoi", "dong tac cuoi"
+        ).any { text.contains(it) }
+        val asksValue = listOf(
+            "bao nhieu", "may lan", "may cai", "so lan", "may hiep", "so hiep",
+            "lam duoc may"
+        ).any { text.contains(it) }
+        return refersToExercise && asksValue
+    }
+
+    private fun latestSetAnswer(sessions: List<Session>): String {
+        val latest = sessions.firstOrNull()
+            ?: return "Chưa tìm thấy buổi Guided Workout hợp lệ trong nhật ký trên máy."
+        val move = latest.moves.lastOrNull()
+            ?: return "Buổi Guided Workout gần nhất (${latest.date.format(dateFormat)}) chưa có chi tiết hiệp tự khai báo. Chibi không lấy số liệu từ buổi cũ thay thế."
+        val set = move.sets.lastOrNull()
+            ?: return "Chưa tìm thấy hiệp đã xác nhận trong buổi Guided Workout gần nhất."
+        return "Trong buổi Guided Workout gần nhất (${latest.date.format(dateFormat)}), động tác cuối cùng có ghi hiệp là ${move.name}: Hiệp ${set.index}: ${set.value} ${set.unit}. Đây là số liệu bạn tự khai báo, không phải cảm biến xác minh."
+    }
+
+    private fun latestExerciseAnswer(sessions: List<Session>): String {
+        val latest = sessions.firstOrNull()
+            ?: return "Chưa tìm thấy buổi Guided Workout hợp lệ trong nhật ký trên máy."
+        val move = latest.moves.lastOrNull()
+            ?: return "Buổi Guided Workout gần nhất (${latest.date.format(dateFormat)}) chưa có chi tiết hiệp tự khai báo. Chibi không lấy số liệu từ buổi cũ thay thế."
+        return "Trong buổi Guided Workout gần nhất (${latest.date.format(dateFormat)}), động tác cuối cùng có ghi hiệp là ${move.name}: ${formatSets(move.sets)}. Đây là số liệu bạn tự khai báo, không phải cảm biến xác minh."
     }
 
     private fun isLatestSessionMoveListQuestion(text: String): Boolean {

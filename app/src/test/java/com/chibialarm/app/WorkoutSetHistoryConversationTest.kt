@@ -72,6 +72,91 @@ class WorkoutSetHistoryConversationTest {
         assertTrue(answer.contains("Chưa đủ hai buổi"))
     }
 
+    @Test fun answersLastConfirmedSetAsAContextualVoiceFollowUpWithoutExerciseName() {
+        val latest = guided(
+            today,
+            "Squat không tạ: hiệp 1: 10 lần, hiệp 2: 9 lần; Plank: hiệp 1: 25 giây, hiệp 2: 30 giây",
+            "550e8400-e29b-41d4-a716-446655440040",
+            "private note must stay hidden"
+        )
+
+        val answer = WorkoutHistoryConversation.answer(
+            "Hiệp vừa rồi tao làm được bao nhiêu?",
+            listOf(latest),
+            today
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("Plank"))
+        assertTrue(answer.contains("Hiệp 2: 30 giây"))
+        assertTrue(answer.contains("12/11/2026"))
+        assertTrue(answer.contains("tự khai báo"))
+        assertFalse(answer.contains("private"))
+        assertFalse(answer.contains("Squat"))
+    }
+
+    @Test fun latestSetFollowUpDoesNotFallBackPastANewerTimedOnlySession() {
+        val older = guided(
+            today.minusDays(1),
+            "Squat không tạ: hiệp 1: 8 lần",
+            "550e8400-e29b-41d4-a716-446655440041"
+        )
+        val latestTimedOnly = guided(
+            today,
+            "",
+            "550e8400-e29b-41d4-a716-446655440042"
+        )
+
+        val answer = WorkoutHistoryConversation.answer(
+            "Set vừa rồi được bao nhiêu lần?",
+            listOf(older, latestTimedOnly),
+            today
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("chưa có chi tiết hiệp"))
+        assertFalse(answer.contains("Squat"))
+        assertFalse(answer.contains("8 lần"))
+    }
+
+    @Test fun answersHowManyRepetitionsForTheLastExerciseInTheLatestSession() {
+        val latest = guided(
+            today,
+            "Squat không tạ: hiệp 1: 10 lần; Chống đẩy tường: hiệp 1: 8 lần, hiệp 2: 7 lần",
+            "550e8400-e29b-41d4-a716-446655440043"
+        )
+
+        val answer = WorkoutHistoryConversation.answer(
+            "Bài vừa rồi tao làm được mấy cái?",
+            listOf(latest),
+            today
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("Chống đẩy tường"))
+        assertTrue(answer.contains("Hiệp 1: 8 lần"))
+        assertTrue(answer.contains("Hiệp 2: 7 lần"))
+        assertFalse(answer.contains("Squat"))
+    }
+
+    @Test fun recognizesNamedExerciseQuestionUsingEverydayMayCaiWording() {
+        val latest = guided(
+            today,
+            "Squat không tạ: hiệp 1: 10 lần, hiệp 2: 9 lần",
+            "550e8400-e29b-41d4-a716-446655440044"
+        )
+
+        val answer = WorkoutHistoryConversation.answer(
+            "Squat hôm nay tao làm được mấy cái?",
+            listOf(latest),
+            today
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("Hiệp 1: 10 lần"))
+        assertTrue(answer.contains("Hiệp 2: 9 lần"))
+    }
+
     @Test fun ambiguousExerciseNameAsksForTheFullNameInsteadOfGuessing() {
         val wall = guided(
             today,

@@ -24,7 +24,8 @@ object WorkoutEffortPlanAdvisor {
 
     private data class MoveEffort(
         val name: String,
-        val levels: List<WorkoutEffortFeedback.Level>
+        /** Only explicitly rated, unique set indexes are retained. */
+        val levels: Map<Int, WorkoutEffortFeedback.Level>
     )
 
     private data class Session(
@@ -74,13 +75,21 @@ object WorkoutEffortPlanAdvisor {
                     UUID.fromString(workout.sessionId).toString() == workout.sessionId
                 }.getOrDefault(false)
                 if (!validId || date.isBefore(firstDay) || date.isAfter(today) ||
-                    workout.minutes !in 1..600 || workout.effortLog.isBlank() ||
-                    workout.effortLog.length > MAX_LOG_CHARS
+                    workout.minutes !in 1..600 || workout.completedMoves !in 2..MAX_MOVES ||
+                    workout.selfReportedSets !in 1..(MAX_MOVES * MAX_SETS) ||
+                    workout.effortLog.isBlank() || workout.effortLog.length > MAX_LOG_CHARS
                 ) return@mapIndexedNotNull null
 
-                val moves = parseLog(workout.effortLog)
-                    .distinctBy { normalize(it.name) }
-                if (moves.isEmpty()) return@mapIndexedNotNull null
+                val moves = parseLog(workout.effortLog) ?: return@mapIndexedNotNull null
+                val uniqueMoveNames = moves.map { normalize(it.name) }.distinct()
+                val ratedSetCount = moves.sumOf { it.levels.size }
+                // Effort check-ins are valid only for a session that actually recorded
+                // enough completed moves/sets. Rep values remain optional, so setLog is
+                // deliberately not required for an otherwise confirmed set.
+                if (moves.isEmpty() || uniqueMoveNames.size != moves.size ||
+                    moves.size > workout.completedMoves || ratedSetCount > workout.selfReportedSets ||
+                    moves.any { move -> move.levels.keys.any { it > workout.selfReportedSets } }
+                ) return@mapIndexedNotNull null
                 Session(workout.sessionId, date, index, moves)
             }
             .toList()
@@ -98,7 +107,7 @@ object WorkoutEffortPlanAdvisor {
                 val bySession = observations.groupBy { it.first.id }
                 val hardSessions = bySession.count { (_, entries) ->
                     entries.any { (_, move) ->
-                        move.levels.any {
+                        move.levels.values.any {
                             it == WorkoutEffortFeedback.Level.HARD ||
                                 it == WorkoutEffortFeedback.Level.VERY_HARD
                         }
@@ -106,13 +115,13 @@ object WorkoutEffortPlanAdvisor {
                 }
                 if (hardSessions < 2) return@mapNotNull null
 
-                val highLevels = observations.flatMap { it.second.levels }.filter {
+                val highLevels = observations.flatMap { it.second.levels.values }.filter {
                     it == WorkoutEffortFeedback.Level.HARD ||
                         it == WorkoutEffortFeedback.Level.VERY_HARD
                 }
                 val veryHardSessions = bySession.count { (_, entries) ->
                     entries.any { (_, move) ->
-                        WorkoutEffortFeedback.Level.VERY_HARD in move.levels
+                        WorkoutEffortFeedback.Level.VERY_HARD in move.levels.values
                     }
                 }
                 Candidate(
@@ -122,7 +131,7 @@ object WorkoutEffortPlanAdvisor {
                     hardSets = highLevels.count { it == WorkoutEffortFeedback.Level.HARD },
                     veryHardSets = highLevels.count { it == WorkoutEffortFeedback.Level.VERY_HARD },
                     latestDate = observations
-                        .filter { (_, move) -> move.levels.any {
+                        .filter { (_, move) -> move.levels.values.any {
                             it == WorkoutEffortFeedback.Level.HARD ||
                                 it == WorkoutEffortFeedback.Level.VERY_HARD
                         } }
@@ -162,29 +171,40 @@ object WorkoutEffortPlanAdvisor {
         )
     }
 
-    private fun parseLog(raw: String): List<MoveEffort> {
-        if (raw.isBlank() || raw.length > MAX_LOG_CHARS) return emptyList()
-        return raw.split(';').take(MAX_MOVES).mapNotNull { segment ->
-            val separator = segment.indexOf(':')
-            if (separator !in 1..90) return@mapNotNull null
-            val name = segment.substring(0, separator).trim().take(90)
-            if (name.isBlank()) return@mapNotNull null
+    private fun parseLog(raw: String): List<MoveEffort>? {
+        if (raw.isBlank() || raw.length > MAX_LOG_CHARS) return null
+        val segments = raw.split(';')
+        if (segments.isEmpty() || segments.size > MAX_MOVES) return null
+        val result = mutableListOf<MoveEffort>()
 
-            val seenSets = mutableSetOf<Int>()
-            val levels = effortPattern.findAll(segment.substring(separator + 1))
-                .take(MAX_SETS)
-                .mapNotNull { match ->
-                    val setIndex = match.groupValues[1].toIntOrNull()
-                        ?: return@mapNotNull null
-                    if (setIndex !in 1..MAX_SETS || !seenSets.add(setIndex)) return@mapNotNull null
-                    val label = match.groupValues[2].replace(Regex("\\s+"), " ").trim()
-                    WorkoutEffortFeedback.Level.values().firstOrNull {
-                        it.label.equals(label, ignoreCase = true)
-                    }
-                }
-                .toList()
-            if (levels.isEmpty()) null else MoveEffort(name, levels)
+        for (segment in segments) {
+            val separator = segment.indexOf(':')
+            if (separator !in 1..90) return null
+            val name = segment.substring(0, separator).trim().take(90)
+            if (name.isBlank()) return null
+
+            val payload = segment.substring(separator + 1)
+            val matches = effortPattern.findAll(payload).toList()
+            if (matches.isEmpty() || matches.size > MAX_SETS) return null
+            val remainder = StringBuilder(payload)
+            matches.asReversed().forEach { match ->
+                remainder.deleteRange(match.range.first, match.range.last + 1)
+            }
+            if (remainder.toString().replace(Regex("[,\\s]+"), "").isNotEmpty()) return null
+
+            val levels = linkedMapOf<Int, WorkoutEffortFeedback.Level>()
+            for (match in matches) {
+                val setIndex = match.groupValues[1].toIntOrNull() ?: return null
+                if (setIndex !in 1..MAX_SETS || setIndex in levels) return null
+                val label = match.groupValues[2].replace(Regex("\\s+"), " ").trim()
+                val level = WorkoutEffortFeedback.Level.values().firstOrNull {
+                    it.label.equals(label, ignoreCase = true)
+                } ?: return null
+                levels[setIndex] = level
+            }
+            result += MoveEffort(name, levels)
         }
+        return result
     }
 
     private fun normalize(value: String): String {

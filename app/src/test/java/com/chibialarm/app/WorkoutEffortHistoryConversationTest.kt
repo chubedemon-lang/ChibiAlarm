@@ -195,4 +195,108 @@ class WorkoutEffortHistoryConversationTest {
             )
         )
     }
+    @Test fun findsTheHardestSetForANamedExerciseInTheLatestSessionOnly() {
+        val older = guided(
+            today.minusDays(2),
+            "Squat: hiệp 1: Quá sức, tạm dừng",
+            "550e8400-e29b-41d4-a716-446655440071"
+        )
+        val latest = guided(
+            today,
+            "Squat không tạ: hiệp 1: Vừa sức, hiệp 2: Khó, cần nghỉ thêm, hiệp 3: Quá sức, tạm dừng; Plank: hiệp 1: Quá sức, tạm dừng",
+            "550e8400-e29b-41d4-a716-446655440072"
+        )
+
+        val answer = WorkoutHistoryConversation.answer(
+            "Hiệp nào khó nhất của Squat hôm nay?",
+            listOf(older, latest),
+            today
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("Squat không tạ — hiệp 3: Quá sức, tạm dừng"))
+        assertFalse(answer.contains("Plank"))
+        assertTrue(answer.contains("cảm nhận tự khai báo"))
+    }
+
+    @Test fun unqualifiedHardestSetQuestionReportsTiesAcrossExercises() {
+        val latest = guided(
+            today,
+            "Squat: hiệp 1: Khó, cần nghỉ thêm; Plank: hiệp 2: Khó, cần nghỉ thêm",
+            "550e8400-e29b-41d4-a716-446655440073"
+        )
+
+        val answer = WorkoutHistoryConversation.answer(
+            "Hiệp nào khó nhất trong buổi gần nhất?",
+            listOf(latest),
+            today
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("Squat — hiệp 1: Khó, cần nghỉ thêm"))
+        assertTrue(answer.contains("Plank — hiệp 2: Khó, cần nghỉ thêm"))
+    }
+
+    @Test fun hardestSetAnswerDoesNotCallEasyOrModerateSetsHard() {
+        val latest = guided(
+            today,
+            "Squat: hiệp 1: Nhẹ, còn dư sức, hiệp 2: Vừa sức",
+            "550e8400-e29b-41d4-a716-446655440074"
+        )
+
+        val answer = WorkoutHistoryConversation.answer(
+            "Hiệp nào khó nhất của Squat?",
+            listOf(latest),
+            today
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("chưa có hiệp nào"))
+        assertTrue(answer.contains("Mức cao nhất đã ghi là"))
+        assertTrue(answer.contains("hiệp 2: Vừa sức"))
+        assertFalse(answer.contains("Khó, cần nghỉ thêm"))
+    }
+
+    @Test fun hardestSetAnswerNeverFallsBackToAnOlderSessionForAMissingExercise() {
+        val older = guided(
+            today.minusDays(1),
+            "Squat: hiệp 1: Quá sức, tạm dừng",
+            "550e8400-e29b-41d4-a716-446655440075"
+        )
+        val latest = guided(
+            today,
+            "Plank: hiệp 1: Vừa sức",
+            "550e8400-e29b-41d4-a716-446655440076"
+        )
+
+        val answer = WorkoutHistoryConversation.answer(
+            "Hiệp nào khó nhất của Squat?",
+            listOf(older, latest),
+            today
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("không có dữ liệu cho Squat"))
+        assertFalse(answer.contains("Quá sức"))
+    }
+
+    @Test fun ambiguousExerciseNamesRequireClarificationBeforeRankingSets() {
+        val latest = guided(
+            today,
+            "Squat: hiệp 1: Khó, cần nghỉ thêm; Squat jump: hiệp 1: Quá sức, tạm dừng",
+            "550e8400-e29b-41d4-a716-446655440077"
+        )
+
+        val answer = WorkoutHistoryConversation.answer(
+            "Hiệp nào khó nhất của Squat?",
+            listOf(latest),
+            today
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("vài động tác gần giống"))
+        assertFalse(answer.contains("hiệp 1: Quá sức"))
+    }
+
+
 }

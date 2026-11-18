@@ -2445,8 +2445,8 @@ class GuidedWorkoutActivity:Activity() {
         }
         val voiceButton = Button(this).apply {
             tag = "workout-step-voice-control"
-            text = "🎤 Nói: bước tiếp, bước đầu, hỏi cách tập, hỏi nhóm cơ, hỏi dụng cụ, đọc tiến độ, đổi bài nhẹ hơn, điều chỉnh giáo án, đọc lại câu trả lời, bật/tắt tự đọc, nghỉ thêm, lưu ý an toàn"
-            contentDescription = "Mở nhận dạng giọng nói sau khi xác nhận quyền micro để chuyển bước, hỏi về động tác hoặc tiến độ, yêu cầu điều chỉnh phần còn lại của giáo án như đổi bài nhẹ hơn, giảm tải, thay đổi dụng cụ hoặc thời gian; Chibi sẽ xem trước và chờ xác nhận, không tự áp dụng"
+            text = "🎤 Nói: bước tiếp, bước trước, quay về bước đầu, hỏi cách tập, hỏi dụng cụ, hỏi nhóm cơ, nghỉ bao lâu, nghỉ thêm, đọc cách tập dễ hơn, lưu ý an toàn, đọc tiến độ buổi tập, đọc lại câu trả lời, bật tự đọc, tắt tự đọc, điều chỉnh giáo án"
+            contentDescription = "Mở nhận dạng giọng nói sau khi xác nhận quyền micro. Lệnh hỗ trợ: bước tiếp, bước trước, quay về bước đầu, hỏi cách tập, hỏi dụng cụ, hỏi nhóm cơ, nghỉ bao lâu, nghỉ thêm, đọc cách tập dễ hơn, đọc lưu ý an toàn, đọc tiến độ buổi tập, đọc lại câu trả lời, bật hoặc tắt tự đọc, yêu cầu đổi bài nhẹ hơn hoặc điều chỉnh phần còn lại của giáo án. Chibi sẽ xem trước và chờ xác nhận, không tự áp dụng. Nếu đau, khó thở hoặc chóng mặt, hãy nói rõ để dừng buổi tập."
         }
         container.addView(illustration, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,

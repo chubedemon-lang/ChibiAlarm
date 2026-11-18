@@ -77,13 +77,11 @@ internal object WorkoutRestVoiceCue {
     fun completionMessage(
         moveName: String?,
         completedSets: Int,
-        plan: WorkoutSetTracker.Plan?
+        plan: WorkoutSetTracker.Plan?,
+        nextMoveName: String? = null,
+        nextMoveDose: String? = null
     ): String {
-        val safeName = moveName.orEmpty()
-            .replace(Regex("[\\r\\n\\p{Cc}]+"), " ")
-            .replace(Regex("\\s+"), " ")
-            .trim()
-            .take(80)
+        val safeName = safeLabel(moveName, 80)
         if (safeName.isBlank()) return "Đã hết giờ nghỉ. Tiếp tục khi bạn sẵn sàng."
         if (plan == null) {
             return "Đã hết giờ nghỉ. Khi bạn sẵn sàng, tiếp tục: $safeName."
@@ -91,6 +89,16 @@ internal object WorkoutRestVoiceCue {
 
         val done = completedSets.coerceIn(0, plan.maximumSets)
         if (done >= plan.maximumSets) {
+            val next = safeLabel(nextMoveName, 80)
+            if (next.isNotBlank()) {
+                val dose = safeLabel(nextMoveDose, 80)
+                val nextDescription = if (dose.isBlank()) {
+                    "Tiếp theo: $next."
+                } else {
+                    "Tiếp theo: $next; mục tiêu $dose."
+                }
+                return "Đã hết giờ nghỉ. Các hiệp của $safeName đã được ghi nhận đủ. $nextDescription Khi sẵn sàng, bạn có thể chuyển sang động tác tiếp theo."
+            }
             return "Đã hết giờ nghỉ. Các hiệp của $safeName đã được ghi nhận đủ; không cần tập thêm."
         }
 

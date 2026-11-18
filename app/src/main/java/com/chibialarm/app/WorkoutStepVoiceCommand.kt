@@ -5,7 +5,7 @@ import java.util.Locale
 
 /** Small offline command grammar for the step-by-step guide; no transcript is retained. */
 object WorkoutStepVoiceCommand {
-    enum class Command { NEXT, PREVIOUS, PAUSE, RESUME, AUTO_SPEAK_ON, AUTO_SPEAK_OFF, REPEAT, REPEAT_ANSWER, SUMMARY, EASIER, SAFETY_NOTE, SPEECH_SLOWER, SPEECH_FASTER, SPEECH_NORMAL, REST, ASK_EXERCISE, CLOSE, SAFETY, UNKNOWN }
+    enum class Command { FIRST, NEXT, PREVIOUS, PAUSE, RESUME, AUTO_SPEAK_ON, AUTO_SPEAK_OFF, REPEAT, REPEAT_ANSWER, SUMMARY, EASIER, SAFETY_NOTE, SPEECH_SLOWER, SPEECH_FASTER, SPEECH_NORMAL, REST, ASK_EXERCISE, CLOSE, SAFETY, UNKNOWN }
 
     private fun containsPhrase(text: String, phrase: String): Boolean =
         Regex("(^|\\s)" + Regex.escape(phrase) + "(\\s|$)").containsMatchIn(text)
@@ -18,8 +18,17 @@ object WorkoutStepVoiceCommand {
             .replace(Regex("\\s+"), " ")
 
         // Check the accented and plain-ASCII forms before removing diacritics so
-        // "đầu gối" is not mistaken for "đau" (pain).
-        if (containsPhrase(raw, "đau") || containsPhrase(raw, "dau")) return Command.SAFETY
+        // "đầu gối" is not mistaken for "đau" (pain). A small exact allowlist keeps
+        // the unaccented navigation phrase "buoc dau tien" from looking like pain;
+        // longer utterances that also mention pain still fail closed.
+        val unaccentedFirstStepOnly = raw in setOf(
+            "buoc dau", "buoc dau tien", "ve buoc dau", "quay ve buoc dau",
+            "tro ve buoc dau", "bat dau lai huong dan",
+            "khong ve buoc dau", "dung ve buoc dau",
+            "khong quay ve buoc dau", "dung quay ve buoc dau"
+        )
+        if (containsPhrase(raw, "đau") ||
+            (containsPhrase(raw, "dau") && !unaccentedFirstStepOnly)) return Command.SAFETY
 
         val normalized = Normalizer.normalize(raw, Normalizer.Form.NFD)
             .replace(Regex("\\p{Mn}+"), "")
@@ -41,6 +50,9 @@ object WorkoutStepVoiceCommand {
                 "khong noi nhanh hon", "dung noi nhanh hon",
                 "khong tang toc do", "dung tang toc do",
                 "khong can doc nhanh hon", "giu toc do hien tai",
+                "khong ve buoc dau", "dung ve buoc dau",
+                "khong quay ve buoc dau", "dung quay ve buoc dau",
+                "do not restart guide", "don t restart guide",
                 "khong tam dung buoi tap", "dung tam dung buoi tap",
                 "khong tiep tuc buoi tap", "dung tiep tuc buoi tap",
                 "khong pause workout", "do not pause workout", "don t pause workout",
@@ -108,6 +120,11 @@ object WorkoutStepVoiceCommand {
                 "co can tham khong", "how do i do this", "how many reps",
                 "how many sets", "how long rest"
             ).any { normalized.contains(it) }) return Command.ASK_EXERCISE
+        if (listOf(
+                "ve buoc dau", "quay ve buoc dau", "tro ve buoc dau",
+                "buoc dau tien", "bat dau lai huong dan",
+                "restart guide", "start guide over", "return to first step"
+            ).any { normalized.contains(it) }) return Command.FIRST
         if (listOf("buoc tiep", "tiep theo", "buoc sau", "sang buoc", "next step")
                 .any { normalized.contains(it) }) return Command.NEXT
         if (listOf("buoc truoc", "quay lai", "lui lai", "previous step")

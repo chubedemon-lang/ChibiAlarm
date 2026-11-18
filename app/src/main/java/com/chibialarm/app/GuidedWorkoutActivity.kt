@@ -2445,8 +2445,8 @@ class GuidedWorkoutActivity:Activity() {
         }
         val voiceButton = Button(this).apply {
             tag = "workout-step-voice-control"
-            text = "🎤 Nói: bước tiếp, bước đầu, hỏi cách tập, hỏi nhóm cơ, hỏi dụng cụ, đọc tiến độ buổi tập, đọc lại câu trả lời, bật tự đọc, tắt tự đọc, đọc cách dễ hơn, số lần, nghỉ bao lâu, lưu ý an toàn"
-            contentDescription = "Mở nhận dạng giọng nói sau khi xác nhận quyền micro để chuyển bước hoặc quay về bước đầu, hỏi cách tập, hỏi nhóm cơ hoặc hỏi dụng cụ cần thiết cho động tác hiện tại, đọc tiến độ buổi tập, đọc lại câu trả lời gần nhất, bật hoặc tắt tự đọc các bước, đọc cách tập dễ hơn, đọc lưu ý an toàn, hỏi số lần hoặc thời gian nghỉ, nghỉ bao lâu"
+            text = "🎤 Nói: bước tiếp, bước đầu, hỏi cách tập, hỏi nhóm cơ, hỏi dụng cụ, đọc tiến độ, đổi bài nhẹ hơn, điều chỉnh giáo án, đọc lại câu trả lời, bật/tắt tự đọc, nghỉ thêm, lưu ý an toàn"
+            contentDescription = "Mở nhận dạng giọng nói sau khi xác nhận quyền micro để chuyển bước, hỏi về động tác hoặc tiến độ, yêu cầu điều chỉnh phần còn lại của giáo án như đổi bài nhẹ hơn, giảm tải, thay đổi dụng cụ hoặc thời gian; Chibi sẽ xem trước và chờ xác nhận, không tự áp dụng"
         }
         container.addView(illustration, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
@@ -2680,9 +2680,24 @@ class GuidedWorkoutActivity:Activity() {
                         stopForSafety()
                     }
                     WorkoutStepVoiceCommand.Command.UNKNOWN -> {
-                        AlertDialog.Builder(this).setTitle("Chibi chưa hiểu lệnh")
-                            .setMessage("Bạn có thể nói: bước tiếp, bước trước, về bước đầu, đọc lại bước, đọc tiến độ buổi tập, đọc lại câu trả lời, bật tự đọc, tắt tự đọc, hỏi cách tập bài này, hỏi nhóm cơ chính, hỏi bao nhiêu lần, nghỉ bao lâu, đọc cách dễ hơn, đọc lưu ý an toàn, nói chậm lại, tốc độ bình thường, tạm dừng buổi tập, tiếp tục buổi tập, nghỉ thêm 30 giây hoặc đóng hướng dẫn. Nếu đau, khó thở hay khó chịu, Chibi sẽ dừng buổi tập.")
-                            .setPositiveButton("Đã hiểu",null).show()
+                        when (WorkoutStepPlanHandoff.decide(phrase)) {
+                            WorkoutStepPlanHandoff.Decision.PREVIEW_CHANGE -> {
+                                // Leave the modal guide and reuse the main, guarded preview flow.
+                                // Completed sets stay immutable; no plan change is applied from speech alone.
+                                spoken?.stop()
+                                dialog.dismiss()
+                                handleCoachCommand(phrase)
+                            }
+                            WorkoutStepPlanHandoff.Decision.SAFETY_STOP -> {
+                                dialog.dismiss()
+                                stopForSafety()
+                            }
+                            WorkoutStepPlanHandoff.Decision.NOT_A_CHANGE -> {
+                                AlertDialog.Builder(this).setTitle("Chibi chưa hiểu lệnh")
+                                    .setMessage("Bạn có thể nói: bước tiếp, bước trước, đọc tiến độ, đổi bài nhẹ hơn, tao mệt rồi, còn 10 phút, không chống tay, không nằm sàn, hỏi cách tập, nghỉ thêm 30 giây hoặc đóng hướng dẫn. Yêu cầu đổi giáo án sẽ được xem trước và chỉ áp dụng khi mày xác nhận. Nếu đau, khó thở hay khó chịu, Chibi sẽ dừng buổi tập.")
+                                    .setPositiveButton("Đã hiểu",null).show()
+                            }
+                        }
                     }
                 }
             }

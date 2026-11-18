@@ -15,6 +15,25 @@ class WorkoutStepVoiceCommandTest {
         assertEquals(WorkoutStepVoiceCommand.Command.SUMMARY, WorkoutStepVoiceCommand.parse("Mục tiêu bài tập"))
     }
 
+    @Test fun canRestartOnlyTheGuideAtItsFirstStepAndKeepPainPriority() {
+        assertEquals(WorkoutStepVoiceCommand.Command.FIRST,
+            WorkoutStepVoiceCommand.parse("Quay về bước đầu"))
+        assertEquals(WorkoutStepVoiceCommand.Command.FIRST,
+            WorkoutStepVoiceCommand.parse("Bước đầu tiên"))
+        assertEquals(WorkoutStepVoiceCommand.Command.FIRST,
+            WorkoutStepVoiceCommand.parse("buoc dau tien"))
+        assertEquals(WorkoutStepVoiceCommand.Command.FIRST,
+            WorkoutStepVoiceCommand.parse("Start guide over"))
+        assertEquals(WorkoutStepVoiceCommand.Command.UNKNOWN,
+            WorkoutStepVoiceCommand.parse("Không quay về bước đầu"))
+        assertEquals(WorkoutStepVoiceCommand.Command.UNKNOWN,
+            WorkoutStepVoiceCommand.parse("khong quay ve buoc dau"))
+        assertEquals(WorkoutStepVoiceCommand.Command.SAFETY,
+            WorkoutStepVoiceCommand.parse("dau co tay"))
+        assertEquals(WorkoutStepVoiceCommand.Command.SAFETY,
+            WorkoutStepVoiceCommand.parse("buoc dau tien nhung dau co tay"))
+    }
+
     @Test fun guideCanReadEasierOptionsAndExerciseSafetyNotes() {
         assertEquals(WorkoutStepVoiceCommand.Command.EASIER,
             WorkoutStepVoiceCommand.parse("Đọc cách tập dễ hơn"))

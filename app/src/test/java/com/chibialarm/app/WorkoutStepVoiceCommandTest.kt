@@ -43,6 +43,37 @@ class WorkoutStepVoiceCommandTest {
         )
     }
 
+    @Test fun liveRestCountdownQuestionsUseStatusInsteadOfPrescribedExerciseRest() {
+        for (phrase in listOf(
+            "Còn bao nhiêu giây nghỉ?",
+            "Nghỉ còn mấy giây?",
+            "Nghỉ còn bao lâu?",
+            "Thời gian nghỉ còn lại?",
+            "Còn bao nhiêu phút nghỉ?",
+            "Còn bao nhiêu giây nữa hết nghỉ?"
+        )) {
+            assertEquals(
+                phrase,
+                WorkoutStepVoiceCommand.Command.STATUS,
+                WorkoutStepVoiceCommand.parse(phrase)
+            )
+        }
+
+        // Asking how long the exercise normally prescribes remains an exercise question.
+        assertEquals(
+            WorkoutStepVoiceCommand.Command.ASK_EXERCISE,
+            WorkoutStepVoiceCommand.parse("Nghỉ bao lâu?")
+        )
+        assertEquals(
+            WorkoutStepVoiceCommand.Command.UNKNOWN,
+            WorkoutStepVoiceCommand.parse("Không đọc thời gian nghỉ")
+        )
+        assertEquals(
+            WorkoutStepVoiceCommand.Command.SAFETY,
+            WorkoutStepVoiceCommand.parse("Còn bao nhiêu giây nghỉ nhưng tôi chóng mặt")
+        )
+    }
+
     @Test fun canRestartOnlyTheGuideAtItsFirstStepAndKeepPainPriority() {
         assertEquals(WorkoutStepVoiceCommand.Command.FIRST,
             WorkoutStepVoiceCommand.parse("Quay về bước đầu"))

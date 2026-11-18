@@ -208,7 +208,9 @@ object WorkoutSetHistoryConversation {
         val asksExerciseComparison = !mentionsWeekComparison && listOf(
             "so sanh", "so voi", "tien bo", "lan truoc", "lan nay", "hai buoi", "2 buoi"
         ).any { text.contains(it) }
-        return asksSetValues || asksExerciseComparison || isLatestSessionMoveListQuestion(text)
+        return asksSetValues || asksExerciseComparison ||
+            isLatestSetQuestion(text) || isLatestExerciseQuestion(text) ||
+            isLatestSessionMoveListQuestion(text)
     }
 
     /** A short follow-up may refer to the last confirmed set without repeating the exercise name. */

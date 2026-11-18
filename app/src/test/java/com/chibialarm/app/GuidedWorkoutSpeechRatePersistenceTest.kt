@@ -6,6 +6,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.speech.tts.TextToSpeech
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -89,7 +90,10 @@ class GuidedWorkoutSpeechRatePersistenceTest {
         try {
             val dialog = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
             assertTrue(dialog.isShowing)
-            assertEquals("Tiếp tục buổi tập đã lưu?", dialog.title.toString())
+            assertEquals(
+                "Tiếp tục buổi tập đã lưu?",
+                dialog.findViewById<android.widget.TextView>(android.R.id.alertTitle)?.text?.toString()
+            )
             assertEquals(1.25f, settings.getFloat("rate", 1f), 0.001f)
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
 
@@ -111,7 +115,10 @@ class GuidedWorkoutSpeechRatePersistenceTest {
         val restarted = Robolectric.buildActivity(GuidedWorkoutActivity::class.java, intent()).setup().get()
         try {
             val dialog = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
-            assertEquals("Tiếp tục buổi tập đã lưu?", dialog.title.toString())
+            assertEquals(
+                "Tiếp tục buổi tập đã lưu?",
+                dialog.findViewById<android.widget.TextView>(android.R.id.alertTitle)?.text?.toString()
+            )
             dialog.getButton(AlertDialog.BUTTON_NEGATIVE).performClick()
             assertFalse(dialog.isShowing)
             assertEquals(1.25f, rate(restarted), 0.001f)

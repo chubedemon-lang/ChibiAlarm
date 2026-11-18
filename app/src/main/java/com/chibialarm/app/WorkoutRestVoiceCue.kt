@@ -13,10 +13,12 @@ internal object WorkoutRestVoiceCue {
         remainingMs: Long,
         alreadyAnnounced: Boolean,
         pausedForSafety: Boolean,
-        microphoneActive: Boolean = false
+        microphoneActive: Boolean = false,
+        speechEngineReady: Boolean = true
     ): Boolean = !alreadyAnnounced &&
         !pausedForSafety &&
         !microphoneActive &&
+        speechEngineReady &&
         remainingMs in 1L..WARNING_WINDOW_MS
 
     fun message(remainingMs: Long, upcomingPreview: String? = null): String? {

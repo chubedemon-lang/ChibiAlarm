@@ -389,7 +389,8 @@ class GuidedWorkoutActivity:Activity() {
                         remainingMs = left,
                         alreadyAnnounced = restTenSecondCueGiven,
                         pausedForSafety = pausedForSafety,
-                        microphoneActive = pendingRecognitionRequestCode != null
+                        microphoneActive = pendingRecognitionRequestCode != null,
+                        speechEngineReady = ready && spoken != null
                     )) {
                     restTenSecondCueGiven = true
                     speak(WorkoutRestVoiceCue.message(left, restPreview.text.toString()).orEmpty())

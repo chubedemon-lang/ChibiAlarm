@@ -4,6 +4,7 @@ import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.speech.tts.TextToSpeech
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -41,13 +42,9 @@ class GuidedWorkoutSpeechRatePersistenceTest {
         // replace it with the global preference while this workout is active.
         GuidedWorkoutActivity::class.java.getDeclaredField("workoutSpeechRateRestored")
             .apply { isAccessible = true }.setBoolean(activity, true)
-        GuidedWorkoutActivity::class.java.getDeclaredField("spoken")
+        (GuidedWorkoutActivity::class.java.getDeclaredField("spoken")
             .apply { isAccessible = true }
-            .get(activity)
-            ?.let { engine ->
-                engine.javaClass.getMethod("setSpeechRate", Float::class.javaPrimitiveType)
-                    .invoke(engine, value)
-            }
+            .get(activity) as? TextToSpeech)?.setSpeechRate(value)
     }
 
     private fun saveCheckpoint(activity: GuidedWorkoutActivity) {
@@ -85,6 +82,8 @@ class GuidedWorkoutSpeechRatePersistenceTest {
         saveCheckpoint(first)
         assertEquals(1.6f, checkpoint.getFloat("speechRate", 1f), 0.001f)
         first.finish()
+        assertEquals("onPause must preserve the user's selected workout rate",
+            1.6f, checkpoint.getFloat("speechRate", 1f), 0.001f)
 
         val restored = Robolectric.buildActivity(GuidedWorkoutActivity::class.java, intent()).setup().get()
         try {

@@ -46,14 +46,23 @@ object FitnessPlanAdvisor {
         }
         val id = when {
             p.energy == 0 && p.minutes <= 10 -> "quickrecovery"
+            p.energy == 0 && p.minutes <= 15 -> "quick15recovery"
             p.energy == 0 -> "recovery"
             p.impact == 1 && p.minutes <= 10 && p.goal == 1 -> "quicklowcardio"
             p.impact == 1 && p.minutes <= 10 -> "quickmobility"
+            p.impact == 1 && p.minutes <= 15 && p.goal == 1 -> "quick15lowcardio"
+            p.impact == 1 && p.minutes <= 15 -> "quick15mobility"
             p.impact == 1 && p.goal == 1 -> "lowcardio"
             p.impact == 1 -> "mobility"
             p.minutes <= 10 && p.goal == 1 -> "quicklowcardio"
             p.minutes <= 10 && p.goal == 2 -> "quickmobility"
             p.minutes <= 10 -> "quick"
+            p.minutes <= 15 && p.goal == 1 -> "quick15lowcardio"
+            p.minutes <= 15 && p.goal == 2 -> "quick15mobility"
+            p.minutes <= 15 && p.goal == 0 && p.level >= 1 && hasResistanceEquipment -> "quick15weighted"
+            p.minutes <= 15 && p.goal == 0 && hasStableChair -> "quick15chair"
+            p.minutes <= 15 && p.goal == 3 -> "desk"
+            p.minutes <= 15 -> "quick15"
             p.goal == 0 && p.level >= 1 && hasResistanceEquipment -> "weighted"
             p.goal == 0 && hasStableChair -> "chair"
             p.goal == 0 && p.level == 2 && hasMat -> "advanced"
@@ -69,11 +78,17 @@ object FitnessPlanAdvisor {
         val why = when {
             p.energy == 0 && p.minutes <= 10 ->
                 "Hôm nay bạn ít năng lượng; Chibi chọn chuỗi phục hồi ngắn và không tự thêm bài để lấp thời gian."
+            p.energy == 0 && p.minutes <= 15 ->
+                "Hôm nay bạn ít năng lượng; Chibi chọn chuỗi phục hồi 11–15 phút, không tự thêm động tác để lấp thời gian."
             p.energy == 0 -> "Hôm nay bạn ít năng lượng nên ưu tiên vận động nhẹ."
             p.impact == 1 && p.minutes <= 10 && p.goal == 1 ->
                 "Bạn muốn vận động tim mạch nhẹ trong thời gian ngắn; ưu tiên bước đều, không nhảy."
             p.impact == 1 && p.minutes <= 10 ->
                 "Bạn muốn tránh tác động mạnh và có ít thời gian; ưu tiên chuỗi linh hoạt nhẹ, không cần xuống sàn."
+            p.impact == 1 && p.minutes <= 15 && p.goal == 1 ->
+                "Bạn muốn cardio ít tác động trong 11–15 phút; chuỗi dùng bước tại chỗ và bước ngang, không bật nhảy."
+            p.impact == 1 && p.minutes <= 15 ->
+                "Bạn muốn tránh tác động mạnh trong 11–15 phút; chuỗi linh hoạt dùng các động tác đứng nhẹ, không cần xuống sàn."
             p.impact == 1 -> "Bạn muốn tránh tác động mạnh nên ưu tiên bài nhẹ, không nhảy."
             p.minutes <= 10 && p.goal == 1 ->
                 "Bạn ưu tiên cardio nhưng chỉ có ít thời gian; Chibi chọn chuỗi bước ngắn và không nhảy."
@@ -81,6 +96,18 @@ object FitnessPlanAdvisor {
                 "Bạn ưu tiên linh hoạt; Chibi chọn chuỗi chuyển động ngắn, có khởi động và thả lỏng."
             p.minutes <= 10 ->
                 "Bạn chỉ có ít thời gian; Chibi chọn chuỗi toàn thân ngắn, giữ khởi động và thả lỏng thay vì cắt ngẫu nhiên hiệp."
+            p.minutes <= 15 && p.goal == 1 ->
+                "Bạn ưu tiên cardio và có 11–15 phút; Chibi chọn chuỗi bước có kiểm soát, không bật nhảy."
+            p.minutes <= 15 && p.goal == 2 ->
+                "Bạn ưu tiên linh hoạt và có 11–15 phút; Chibi chọn chuỗi đứng nhẹ, có khởi động và thả lỏng."
+            p.minutes <= 15 && p.goal == 0 && p.level >= 1 && hasResistanceEquipment ->
+                "Bạn có $resistanceDescription và đã có nền tảng; Chibi chọn chuỗi sức mạnh ngắn với một hiệp mỗi động tác."
+            p.minutes <= 15 && p.goal == 0 && hasStableChair ->
+                "Bạn có ghế vững chắc; Chibi chọn chuỗi toàn thân ngắn có điểm tựa và một hiệp mỗi động tác."
+            p.minutes <= 15 && p.goal == 3 ->
+                "Bạn muốn vận động giữa giờ; Chibi chọn chuỗi tại bàn phù hợp với khoảng 11–15 phút."
+            p.minutes <= 15 ->
+                "Bạn có 11–15 phút; Chibi chọn chuỗi ngắn, giữ khởi động và thả lỏng thay vì cắt ngẫu nhiên hiệp."
             p.goal == 0 && p.level >= 1 && hasResistanceEquipment ->
                 "Bạn có $resistanceDescription và đã có nền tảng; ưu tiên bài sức mạnh với tải nhẹ, có kiểm soát."
             p.goal == 0 && hasStableChair ->

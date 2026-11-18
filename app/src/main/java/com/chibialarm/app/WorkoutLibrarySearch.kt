@@ -1,0 +1,87 @@
+package com.chibialarm.app
+
+import java.text.Normalizer
+import java.util.Locale
+
+/**
+ * Bounded, offline search across program names and the reviewed exercise catalog.
+ * Search results only locate content; normal equipment and movement filters still run
+ * before a program can be previewed or started.
+ */
+internal object WorkoutLibrarySearch {
+    const val MAX_QUERY_CHARS = 80
+    private const val MAX_PROGRAMS = 200
+    private const val MAX_RESULTS = 100
+
+    data class Match(
+        val program: TrainingProgram,
+        val matchingMoves: List<TrainingMove>
+    )
+
+    fun filter(
+        programs: List<TrainingProgram>,
+        category: String,
+        query: String
+    ): List<Match> {
+        val safePrograms = programs.take(MAX_PROGRAMS)
+        val terms = normalize(query.take(MAX_QUERY_CHARS))
+            .split(' ')
+            .filter { it.isNotBlank() }
+            .distinct()
+        return safePrograms.asSequence()
+            .filter { category == "Tất cả" || it.category == category }
+            .mapNotNull { program ->
+                if (terms.isEmpty()) return@mapNotNull Match(program, emptyList())
+                val matchingMoves = program.moves.filter { move ->
+                    matches(moveSearchText(move), terms)
+                }
+                val programMatches = matches(
+                    listOf(program.name, program.subtitle, program.category).joinToString(" "),
+                    terms
+                )
+                if (programMatches || matchingMoves.isNotEmpty()) {
+                    Match(program, matchingMoves)
+                } else {
+                    null
+                }
+            }
+            .take(MAX_RESULTS)
+            .toList()
+    }
+
+    private fun moveSearchText(move: TrainingMove): String = buildString {
+        append(move.name).append(' ')
+        append(move.dose).append(' ')
+        append(move.steps).append(' ')
+        append(move.easier).append(' ')
+        append(move.avoid).append(' ')
+        move.equipmentOptions.forEach { equipment ->
+            append(
+                when (equipment) {
+                    TrainingEquipment.DUMBBELL -> "tạ đơn "
+                    TrainingEquipment.RESISTANCE_BAND -> "dây kháng lực "
+                    TrainingEquipment.STABLE_CHAIR -> "ghế vững chắc "
+                    TrainingEquipment.MAT -> "thảm tập "
+                }
+            )
+        }
+        if (move.requiresJumping) append("bật nhảy ")
+        if (move.requiresOverheadReach) append("đưa tay quá đầu ")
+    }
+
+    private fun matches(value: String, terms: List<String>): Boolean {
+        if (terms.isEmpty()) return true
+        val tokens = normalize(value).split(' ').filter { it.isNotBlank() }.toSet()
+        return terms.all { it in tokens }
+    }
+
+    private fun normalize(value: String): String {
+        val latinD = value.replace('đ', 'd').replace('Đ', 'D')
+        return Normalizer.normalize(latinD, Normalizer.Form.NFD)
+            .replace(Regex("\\p{M}+"), "")
+            .lowercase(Locale.ROOT)
+            .replace(Regex("[^\\p{L}\\p{N}]+"), " ")
+            .trim()
+            .replace(Regex("\\s+"), " ")
+    }
+}

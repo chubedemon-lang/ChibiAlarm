@@ -178,6 +178,7 @@ class FitnessActivity:Activity() {
     private var floorPositionCheckBox: CheckBox? = null
     private var overheadReachCheckBox: CheckBox? = null
     private var programContainer: LinearLayout? = null
+    private var librarySearchInput: EditText? = null
     private var historySummaryView: TextView? = null
     private var historySuggestionView: TextView? = null
     private var historyRecoveryButton: Button? = null
@@ -930,6 +931,28 @@ class FitnessActivity:Activity() {
         root.addView(actions)
         root.addView(txt("📚 Bộ môn & chương trình",23f))
         root.addView(txt("Chọn chương trình, xem từng động tác và dùng huấn luyện bằng giọng nói.",14f))
+        val librarySearch = EditText(this).apply {
+            hint = "Tìm squat, plank, chống đẩy, giãn cơ…"
+            maxLines = 1
+            inputType = android.text.InputType.TYPE_CLASS_TEXT
+            imeOptions = android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH
+            filters = arrayOf(android.text.InputFilter.LengthFilter(WorkoutLibrarySearch.MAX_QUERY_CHARS))
+            contentDescription = "Tìm chương trình và động tác trong thư viện bài tập offline"
+        }
+        librarySearchInput = librarySearch
+        librarySearch.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                val selectedCategory = if (::filter.isInitialized) {
+                    categories.getOrElse(filter.selectedItemPosition) { "Tất cả" }
+                } else {
+                    "Tất cả"
+                }
+                programContainer?.let { drawPrograms(it, selectedCategory, s?.toString().orEmpty()) }
+            }
+            override fun afterTextChanged(s: android.text.Editable?) = Unit
+        })
+        root.addView(librarySearch)
         filter=Spinner(this).apply {
             adapter=ArrayAdapter(this@FitnessActivity,android.R.layout.simple_spinner_dropdown_item,categories)
             setSelection(prefs.getInt("fitCategory",0).coerceIn(0,categories.lastIndex))
@@ -1138,9 +1161,26 @@ class FitnessActivity:Activity() {
         dialog.show()
     }
 
-    private fun drawPrograms(container:LinearLayout,category:String) {
+    private fun drawPrograms(
+        container: LinearLayout,
+        category: String,
+        query: String = librarySearchInput?.text?.toString().orEmpty()
+    ) {
         container.removeAllViews()
-        TrainingCatalog.programs.filter { category=="Tất cả" || it.category==category }.forEach { program ->
+        val matches = WorkoutLibrarySearch.filter(TrainingCatalog.programs, category, query)
+        if (query.isNotBlank()) {
+            container.addView(txt("Tìm thấy ${matches.size} chương trình phù hợp", 12f))
+        }
+        if (matches.isEmpty()) {
+            container.addView(txt(
+                if (query.isBlank()) "Danh mục này chưa có chương trình."
+                else "Chưa tìm thấy chương trình hoặc động tác phù hợp. Thử từ khóa khác hoặc chọn “Tất cả”.",
+                14f
+            ))
+            return
+        }
+        matches.forEach { match ->
+            val program = match.program
             val card=LinearLayout(this).apply {
                 orientation=1;setPadding(17,14,17,14);background=panel(Color.WHITE)
                 elevation=2f
@@ -1160,6 +1200,17 @@ class FitnessActivity:Activity() {
                 currentExtensionPreferences(constraints)
             )
             card.addView(txt(program.subtitle+" • "+planned.moves.size+" động tác phù hợp • khoảng "+planned.estimatedMinutes+" phút",13f))
+            if (query.isNotBlank() && match.matchingMoves.isNotEmpty()) {
+                val availableNames = equipped.program.moves.map { it.name }.toSet()
+                val visibleMatches = match.matchingMoves.filter { it.name in availableNames }
+                if (visibleMatches.isNotEmpty()) {
+                    val labels = visibleMatches.take(3).joinToString(" • ") { "${it.name} (${it.dose})" }
+                    val more = if (visibleMatches.size > 3) " • +${visibleMatches.size - 3} động tác" else ""
+                    card.addView(txt("Động tác khớp: $labels$more",12f))
+                } else {
+                    card.addView(txt("Động tác khớp từ khóa hiện bị lọc bởi dụng cụ hoặc hạn chế đã chọn.",12f))
+                }
+            }
             if (constrained.notice.isNotBlank()) card.addView(txt(constrained.notice,12f))
             if (equipped.notice.isNotBlank()) card.addView(txt(equipped.notice,12f))
             if (!equipped.canStart) card.addView(txt("Không còn động tác chính phù hợp với dụng cụ đã chọn.",12f))

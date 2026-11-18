@@ -2941,7 +2941,8 @@ class GuidedWorkoutActivity:Activity() {
         selectedSessionId: String,
         completedSets: Int,
         plan: WorkoutSetTracker.Plan,
-        hasNextSet: Boolean
+        hasNextSet: Boolean,
+        resultFeedback: String? = null
     ) {
         fun startPrescribedRest() {
             if (isSameEffortContext(selectedIndex, selectedSessionId, completedSets, plan)) {
@@ -2961,10 +2962,13 @@ class GuidedWorkoutActivity:Activity() {
         pendingEffortLevel = null
         val dialog = AlertDialog.Builder(this)
             .setTitle("💬 Hiệp vừa rồi thế nào?")
-            .setMessage(
-                optionalNotice +
-                    "Chọn cảm nhận của bạn. Đây là tự đánh giá để điều chỉnh nghỉ, không phải phép đo thể lực."
-            )
+            .setMessage(buildString {
+                resultFeedback?.takeIf { it.isNotBlank() }?.let {
+                    append(it).append("\n\n")
+                }
+                append(optionalNotice)
+                append("Chọn cảm nhận của bạn. Đây là tự đánh giá để điều chỉnh nghỉ, không phải phép đo thể lực.")
+            })
             .setItems(levels.map { it.label }.toTypedArray()) { owner, choice ->
                 val level = levels.getOrNull(choice) ?: return@setItems
                 val active = owner as? AlertDialog ?: return@setItems
@@ -2999,7 +3003,14 @@ class GuidedWorkoutActivity:Activity() {
             }
         }
         dialog.setOnShowListener {
-            speak("Hiệp vừa rồi thế nào? Chọn nhẹ, vừa sức, khó hoặc quá sức.")
+            val spokenFeedback = resultFeedback?.takeIf { it.isNotBlank() }
+            val prompt = if (spokenFeedback == null) {
+                "Hiệp vừa rồi thế nào? Chọn nhẹ, vừa sức, khó hoặc quá sức."
+            } else {
+                "$spokenFeedback Hiệp vừa rồi thế nào? Chọn nhẹ, vừa sức, khó hoặc quá sức."
+            }
+            // One utterance prevents QUEUE_FLUSH from cutting off the result summary.
+            speak(prompt)
         }
         dialog.show()
 
@@ -3268,19 +3279,26 @@ class GuidedWorkoutActivity:Activity() {
         renderSetControls()
         saveCheckpoint()
         val valueText="$actualValue ${plan.unit} tự khai báo"
-        if(after<plan.maximumSets) {
-            val message=if(after>=plan.requiredSets)
-                "Đã ghi hiệp $after: $valueText. Đã đủ hiệp tối thiểu; hiệp tiếp theo là tùy chọn nếu còn sức."
-                else "Đã ghi hiệp $after/${plan.requiredSets}: $valueText. Hãy cho Chibi biết mức độ gắng sức."
-            Toast.makeText(this,message,Toast.LENGTH_LONG).show()
-            speak(message)
-            showSetEffortCheckIn(selectedIndex, selectedSessionId, after, plan, hasNextSet = true)
-        } else {
-            val message="Đã ghi đủ $after hiệp cho ${moves[selectedIndex].name}; $valueText."
-            Toast.makeText(this,message,Toast.LENGTH_LONG).show()
-            speak(message)
-            showSetEffortCheckIn(selectedIndex, selectedSessionId, after, plan, hasNextSet = false)
-        }
+        val feedback = WorkoutSetResultCoach.feedback(
+            moveName = moves[selectedIndex].name,
+            setNumber = after,
+            actualValue = actualValue,
+            plan = plan,
+            completedSetsAfter = after
+        )?.message
+        Toast.makeText(
+            this,
+            "Đã ghi nhận hiệp $after: $valueText.",
+            Toast.LENGTH_LONG
+        ).show()
+        showSetEffortCheckIn(
+            selectedIndex = selectedIndex,
+            selectedSessionId = selectedSessionId,
+            completedSets = after,
+            plan = plan,
+            hasNextSet = after < plan.maximumSets,
+            resultFeedback = feedback
+        )
     }
 
     /** Rest is a separate countdown and is excluded from active-exercise time. */

@@ -87,7 +87,7 @@ class WorkoutStepGuideTest {
     }
 
     @Test fun walkthroughCanReturnToTheFirstStepWithoutChangingItsSnapshot() {
-        val last = WorkoutStepGuide.Walkthrough.start("Bước một.\\nBước hai.\\nBước ba.")
+        val last = WorkoutStepGuide.Walkthrough.start("Bước một.\nBước hai.\nBước ba.")
             .next().next()
         assertEquals(3, last.position)
         val first = last.first()

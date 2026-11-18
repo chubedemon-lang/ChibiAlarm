@@ -37,7 +37,7 @@ object WorkoutSetResultCoach {
             .replace(Regex("[\\r\\n\\p{Cc}]+"), " ")
             .replace(Regex("\\s+"), " ")
             .trim()
-            .take(80)
+            .take(60)
         if (safeName.isBlank()) return null
 
         val comparison = when {
@@ -53,9 +53,9 @@ object WorkoutSetResultCoach {
         val valueUnit = if (plan.unit == "giây") "giây giữ" else plan.unit
         val progress = when {
             completedSetsAfter >= plan.maximumSets ->
-                "Đã đủ số hiệp tối đa; không cần tập thêm động tác này."
+                "Đã đủ hiệp tối đa; không cần tập thêm."
             completedSetsAfter >= plan.requiredSets ->
-                "Đã đủ hiệp bắt buộc; hiệp tiếp theo chỉ là tùy chọn nếu còn sức."
+                "Đã đủ hiệp bắt buộc; hiệp tiếp theo tùy chọn nếu còn sức."
             else -> {
                 val remaining = plan.requiredSets - completedSetsAfter
                 "Còn $remaining hiệp bắt buộc theo giáo án."
@@ -63,15 +63,15 @@ object WorkoutSetResultCoach {
         }
         val assessment = when (comparison) {
             Comparison.BELOW_TARGET ->
-                "Kết quả tự báo thấp hơn khoảng mục tiêu $target ${plan.unit}; không cần cố bù ngay. Hãy chọn cảm nhận của bạn để Chibi cân nhắc thời gian nghỉ hoặc cho xem trước điều chỉnh."
+                "Thấp hơn mục tiêu $target ${plan.unit}; không cần bù ngay. Nếu thấy khó, hãy chọn cảm nhận để Chibi gợi ý nghỉ hoặc xem trước giảm mục tiêu."
             Comparison.IN_TARGET ->
-                "Kết quả tự báo nằm trong khoảng mục tiêu $target ${plan.unit}. Không cần tăng mục tiêu; giữ nhịp thoải mái."
+                "Trong mục tiêu $target ${plan.unit}; không cần tăng thêm. Giữ nhịp thoải mái."
             Comparison.ABOVE_TARGET ->
-                "Kết quả tự báo cao hơn khoảng mục tiêu $target ${plan.unit}. Chibi chỉ ghi nhận điều bạn báo, không tự nâng mục tiêu hoặc khuyến khích lặp lại mức cao hơn."
+                "Cao hơn mục tiêu $target ${plan.unit}; Chibi không tự nâng mục tiêu hoặc khuyến khích lặp lại mức cao hơn."
         }
         return Feedback(
             comparison = comparison,
-            message = "Đã ghi nhận hiệp $setNumber/${plan.maximumSets} của $safeName: $actualValue $valueUnit (tự khai báo). $assessment $progress"
+            message = "Hiệp $setNumber/${plan.maximumSets} $safeName: $actualValue $valueUnit, tự khai báo. $assessment $progress"
         )
     }
 }

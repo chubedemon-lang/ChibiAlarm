@@ -62,6 +62,24 @@ object WorkoutContextCoach {
         }
     }
 
+    private fun equipmentCue(move: TrainingMove): String {
+        val labels = move.equipmentOptions
+            .sortedBy { it.ordinal }
+            .map { equipment ->
+                when (equipment) {
+                    TrainingEquipment.DUMBBELL -> "tạ đơn"
+                    TrainingEquipment.RESISTANCE_BAND -> "dây kháng lực"
+                    TrainingEquipment.STABLE_CHAIR -> "ghế vững chắc"
+                    TrainingEquipment.MAT -> "thảm tập"
+                }
+            }
+        return when (labels.size) {
+            0 -> "Không cần dụng cụ tập chuyên dụng."
+            1 -> "Dụng cụ cần có: ${labels.single()}."
+            else -> "Dụng cụ: chọn một trong các lựa chọn ${labels.joinToString(" hoặc ")}."
+        }
+    }
+
     fun script(move: TrainingMove, preferEasier: Boolean = false): String {
         val name = move.name.trim().take(90).ifBlank { "Động tác hiện tại" }
         val dose = move.dose.trim().take(120)
@@ -71,6 +89,7 @@ object WorkoutContextCoach {
         return buildString {
             append(name).append(". ")
             if (dose.isNotBlank()) append("Mục tiêu tham khảo: ").append(dose).append(". ")
+            append(equipmentCue(move)).append(" ")
             if (preferEasier && easier.isNotBlank()) {
                 append("Cách tập nhẹ hơn: ").append(easier).append(". ")
             } else if (steps.isNotBlank()) {

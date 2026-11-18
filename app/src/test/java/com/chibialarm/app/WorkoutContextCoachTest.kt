@@ -30,6 +30,35 @@ class WorkoutContextCoachTest {
         assertTrue(text.contains("Hãy dừng nếu đau"))
     }
 
+    @Test fun exerciseQuestionExplainsWhenNoSpecialEquipmentIsNeeded() {
+        val text = WorkoutContextCoach.script(move)
+        assertTrue(text.contains("Không cần dụng cụ tập chuyên dụng"))
+    }
+
+    @Test fun exerciseQuestionNamesTheSingleRequiredTool() {
+        val chairMove = move.copy(equipmentOptions = setOf(TrainingEquipment.STABLE_CHAIR))
+        val text = WorkoutContextCoach.script(chairMove)
+        assertTrue(text.contains("Dụng cụ cần có: ghế vững chắc"))
+    }
+
+    @Test fun alternativeToolsArePresentedAsChoicesRatherThanSimultaneousRequirements() {
+        val flexibleMove = move.copy(
+            equipmentOptions = setOf(
+                TrainingEquipment.DUMBBELL,
+                TrainingEquipment.RESISTANCE_BAND
+            )
+        )
+        val text = WorkoutContextCoach.script(flexibleMove)
+        assertTrue(text.contains("chọn một trong các lựa chọn tạ đơn hoặc dây kháng lực"))
+        assertFalse(text.contains("tạ đơn và dây kháng lực"))
+    }
+
+    @Test fun exerciseQuestionCanNameMatAsTheRequiredTool() {
+        val matMove = move.copy(equipmentOptions = setOf(TrainingEquipment.MAT))
+        val text = WorkoutContextCoach.script(matMove)
+        assertTrue(text.contains("Dụng cụ cần có: thảm tập"))
+    }
+
     @Test fun progressCueReportsSelfConfirmedSetsAndNextMove() {
         val text = WorkoutContextCoach.progressScript(
             WorkoutContextCoach.Progress(

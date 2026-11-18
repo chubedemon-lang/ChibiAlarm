@@ -78,6 +78,45 @@ class WorkoutRestVoiceCueTest {
         )
     }
 
+    @Test fun restCompletionAnnouncesNextCatalogMoveAfterMaximumSetsWithoutStartingIt() {
+        assertEquals(
+            "Đã hết giờ nghỉ. Các hiệp của Squat không tạ đã được ghi nhận đủ. Tiếp theo: Đi bộ tại chỗ; mục tiêu 2 phút. Khi sẵn sàng, bạn có thể chuyển sang động tác tiếp theo.",
+            WorkoutRestVoiceCue.completionMessage(
+                moveName = "Squat không tạ",
+                completedSets = 3,
+                plan = setPlan,
+                nextMoveName = "Đi bộ tại chỗ",
+                nextMoveDose = "2 phút"
+            )
+        )
+    }
+
+    @Test fun restCompletionSanitizesTheNextMoveAndDoseBeforeSpeaking() {
+        assertEquals(
+            "Đã hết giờ nghỉ. Các hiệp của Squat không tạ đã được ghi nhận đủ. Tiếp theo: Đi bộ tại chỗ; mục tiêu 2 phút. Khi sẵn sàng, bạn có thể chuyển sang động tác tiếp theo.",
+            WorkoutRestVoiceCue.completionMessage(
+                moveName = "Squat không tạ",
+                completedSets = 3,
+                plan = setPlan,
+                nextMoveName = "Đi bộ\\n tại chỗ",
+                nextMoveDose = "2 phút\\n"
+            )
+        )
+    }
+
+    @Test fun restCompletionKeepsOptionalSetPromptWhenMaximumHasNotBeenReached() {
+        assertEquals(
+            "Đã hết giờ nghỉ. Hiệp tiếp theo của Squat không tạ là tùy chọn (3/3), mục tiêu 8 đến 12 lần. Chỉ thực hiện nếu bạn còn sức; có thể bỏ qua.",
+            WorkoutRestVoiceCue.completionMessage(
+                moveName = "Squat không tạ",
+                completedSets = 2,
+                plan = setPlan,
+                nextMoveName = "Đi bộ tại chỗ",
+                nextMoveDose = "2 phút"
+            )
+        )
+    }
+
     @Test fun timedMoveRestCompletionNamesTheMoveWithoutInventingSets() {
         assertEquals(
             "Đã hết giờ nghỉ. Khi bạn sẵn sàng, tiếp tục: Đi bộ tại chỗ.",

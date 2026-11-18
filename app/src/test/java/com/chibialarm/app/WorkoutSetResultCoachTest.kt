@@ -52,7 +52,7 @@ class WorkoutSetResultCoachTest {
         assertEquals(WorkoutSetResultCoach.Comparison.ABOVE_TARGET, result.comparison)
         assertTrue(result.message.contains("Cao hơn mục tiêu"))
         assertTrue(result.message.contains("không tự nâng mục tiêu"))
-        assertTrue(result.message.contains("hiệp tiếp theo chỉ là tùy chọn"))
+        assertTrue(result.message.contains("hiệp tiếp theo tùy chọn"))
     }
 
     @Test fun finalOptionalSetIsClearlyOptionalAndDoesNotInviteMoreSets() {

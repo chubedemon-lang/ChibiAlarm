@@ -120,6 +120,24 @@ class WorkoutMidSessionPreviewFormatterTest {
         assertTrue(text.contains("bài thay thế có thể khác nhóm cơ hoặc cường độ"))
         assertTrue(text.contains("xác nhận trước khi áp dụng"))
     }
+    @Test fun previewExplainsWhyACuratedReplacementWasChosen() {
+        val result = preview(
+            listOf(
+                move("Khởi động tại chỗ"),
+                move("Squat không tạ"),
+                move("Thả lỏng")
+            ),
+            currentIndex = 1,
+            request = WorkoutMidSessionRequest.Request(preferEasier = true),
+            availableEquipment = setOf(TrainingEquipment.STABLE_CHAIR)
+        )
+
+        val text = WorkoutMidSessionPreviewFormatter.format(result)
+        assertTrue(text.contains("Squat không tạ → Đứng lên – ngồi xuống"))
+        assertTrue(text.contains("Lý do: Có ghế vững làm mốc"))
+        assertTrue(text.contains("chỉ dùng ghế không bánh xe"))
+    }
+
     @Test fun previewNamesAnAddedOptionalMoveBeforeTheCooldown() {
         val moves = listOf(
             move("Khởi động tại chỗ"),

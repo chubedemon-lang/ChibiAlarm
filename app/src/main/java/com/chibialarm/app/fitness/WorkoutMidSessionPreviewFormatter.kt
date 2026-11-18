@@ -1,6 +1,8 @@
 package com.chibialarm.app.fitness
 
+import com.chibialarm.app.TrainingCatalog
 import com.chibialarm.app.TrainingMove
+import com.chibialarm.app.WorkoutMoveSubstitution
 import com.chibialarm.app.WorkoutSetTracker
 
 /**
@@ -23,6 +25,7 @@ object WorkoutMidSessionPreviewFormatter {
             append("Thay đổi đề xuất:\n")
             preview.replacements.forEach { replacement ->
                 append("• ").append(replacement).append('\n')
+                appendReplacementExplanation(replacement, this)
             }
             if (preview.replacements.isNotEmpty()) {
                 append("Lưu ý: bài thay thế có thể khác nhóm cơ hoặc cường độ; hãy đọc hướng dẫn và xác nhận trước khi áp dụng.\n")
@@ -79,6 +82,19 @@ object WorkoutMidSessionPreviewFormatter {
                 .append(preview.restSeconds)
                 .append(" giây; thời gian nghỉ không tính là vận động.")
         }
+    }
+
+    /**
+     * Explain a replacement only when both names resolve to canonical catalog moves
+     * and the pair has a reviewed explanation. Unknown pairs never receive invented reasons.
+     */
+    private fun appendReplacementExplanation(replacement: String, output: StringBuilder) {
+        val names = replacement.split(" → ", limit = 2)
+        if (names.size != 2) return
+        val original = TrainingCatalog.allMoves.singleOrNull { it.name == names[0] } ?: return
+        val selected = TrainingCatalog.allMoves.singleOrNull { it.name == names[1] } ?: return
+        val explanation = WorkoutMoveSubstitution.explanationFor(original, selected) ?: return
+        output.append("  Lý do: ").append(explanation).append('\n')
     }
 
     private fun appendCurrentSetProgress(

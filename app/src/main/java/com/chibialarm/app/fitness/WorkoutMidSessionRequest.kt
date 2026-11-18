@@ -108,7 +108,7 @@ object WorkoutMidSessionRequest {
     }
 
     private val remainingTimeCue = Regex(
-        """(?:^| )(?:chi )?con(?: lai)?(?: (?:khoang|tam|chung|dung|la))? (?:[0-9]{1,3}|[a-z]+(?:\\s+[a-z]+){0,3}) (?:phut|minute|min)\\b"""
+        """(?:^| )(?:chi )?con(?: lai)?(?: (?:khoang|tam|chung|dung|la))? (?:[0-9]{1,3}|[a-z]+(?:\s+[a-z]+){0,3}) (?:phut|minute|min)\b"""
     )
     private val negatedRemainingTimePrefix = Regex("""(?:^| )(?:khong|het)$""")
 

@@ -99,6 +99,50 @@ class WorkoutEffortVoiceCommandTest {
         )
     }
 
+    @Test fun distinguishesCommonQuaKhoPhrasingFromVeryHardAndSafety() {
+        assertEquals(
+            WorkoutEffortVoiceCommand.Result.Report(WorkoutEffortFeedback.Level.HARD),
+            WorkoutEffortVoiceCommand.parse("Quá khó")
+        )
+        assertEquals(
+            WorkoutEffortVoiceCommand.Result.Report(WorkoutEffortFeedback.Level.HARD),
+            WorkoutEffortVoiceCommand.parse("Quá khó nhưng vẫn làm được")
+        )
+        assertEquals(
+            WorkoutEffortVoiceCommand.Result.Report(WorkoutEffortFeedback.Level.HARD),
+            WorkoutEffortVoiceCommand.parse("Khá vất vả nhưng vẫn kiểm soát được")
+        )
+        assertEquals(
+            WorkoutEffortVoiceCommand.Result.Report(WorkoutEffortFeedback.Level.VERY_HARD),
+            WorkoutEffortVoiceCommand.parse("Không còn sức để tiếp tục")
+        )
+        assertEquals(
+            WorkoutEffortVoiceCommand.Result.Report(WorkoutEffortFeedback.Level.VERY_HARD),
+            WorkoutEffortVoiceCommand.parse("Không thể làm tiếp nữa")
+        )
+        assertEquals(
+            WorkoutEffortVoiceCommand.Result.SafetyStop,
+            WorkoutEffortVoiceCommand.parse("Quá khó nhưng khó thở")
+        )
+        assertNull(WorkoutEffortVoiceCommand.parse("Không quá khó"))
+        assertNull(WorkoutEffortVoiceCommand.parse("Quá khó nhưng vừa sức"))
+    }
+
+    @Test fun understandsSetSpecificNaturalIntroductions() {
+        assertEquals(
+            WorkoutEffortVoiceCommand.Result.Report(WorkoutEffortFeedback.Level.HARD),
+            WorkoutEffortVoiceCommand.parse("Hiệp vừa rồi tôi cảm thấy quá khó")
+        )
+        assertEquals(
+            WorkoutEffortVoiceCommand.Result.Report(WorkoutEffortFeedback.Level.HARD),
+            WorkoutEffortVoiceCommand.parse("Hiệp này mình thấy khá vất vả nhưng vẫn kiểm soát được")
+        )
+        assertEquals(
+            WorkoutEffortVoiceCommand.Result.Report(WorkoutEffortFeedback.Level.VERY_HARD),
+            WorkoutEffortVoiceCommand.parse("Mức độ hiệp này là quá sức")
+        )
+    }
+
     @Test fun acceptsAnExplicitSecondTurnConfirmationOnly() {
         for (phrase in listOf("Đúng rồi", "Chính xác", "Xác nhận", "Chuẩn rồi", "OK")) {
             assertEquals(

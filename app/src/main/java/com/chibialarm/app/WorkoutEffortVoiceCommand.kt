@@ -28,7 +28,11 @@ object WorkoutEffortVoiceCommand {
             "met nhung van on", "hoi met nhung van on", "hoi duoi nhung van on"
         ),
         WorkoutEffortFeedback.Level.HARD to setOf(
-            "kho", "kho qua", "kho qua can nghi them", "hoi kho", "kha kho", "kho can nghi them",
+            "kho", "kho qua", "qua kho", "qua kho nhung van lam duoc",
+            "rat kho nhung van lam duoc", "kho nhung con kiem soat duoc",
+            "kha vat va nhung van kiem soat duoc", "vat va nhung van lam duoc",
+            "hoi duoi nhung van lam duoc", "kha ton suc nhung van lam duoc",
+            "nang nhung van kiem soat duoc", "kho qua can nghi them", "hoi kho", "kha kho", "kho can nghi them",
             "can nghi them", "met", "hoi met", "met roi", "met qua",
             "kha met", "met lam", "met nhung van lam duoc",
             "hoi met nhung van lam duoc", "met nhung can nghi them",
@@ -39,6 +43,10 @@ object WorkoutEffortVoiceCommand {
         ),
         WorkoutEffortFeedback.Level.VERY_HARD to setOf(
             "qua suc", "qua suc roi", "het suc", "het suc roi",
+            "khong con suc de tiep tuc", "khong the lam tiep nua",
+            "qua kho khong the tiep tuc", "met den muc khong lam tiep duoc",
+            "qua suc khong lam tiep duoc", "khong du suc de tiep tuc",
+            "duoi qua khong the tiep tuc",
             "tam dung", "khong the tiep tuc", "khong the tiep tuc nua",
             "khong chiu noi", "duoi qua", "qua met khong the tiep tuc",
             "met den muc khong the tiep tuc", "qua suc khong the tiep tuc",
@@ -78,6 +86,16 @@ object WorkoutEffortVoiceCommand {
         "minh thay ",
         "cam thay ",
         "cam giac ",
+        "hiep vua roi toi cam thay ",
+        "hiep vua roi minh cam thay ",
+        "hiep vua roi em thay ",
+        "hiep nay toi cam thay ",
+        "hiep nay minh cam thay ",
+        "hiep nay em thay ",
+        "muc do hiep nay la ",
+        "muc do hiep vua roi la ",
+        "sau hiep vua roi toi thay ",
+        "sau hiep nay toi thay ",
         "hiep vua roi ",
         "hiep nay "
     )

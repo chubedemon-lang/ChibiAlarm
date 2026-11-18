@@ -118,6 +118,7 @@ class GuidedWorkoutEffortVoiceTest {
                 ?.text?.toString().orEmpty()
             assertTrue(message.contains("có thể xử lý âm thanh trực tuyến"))
             assertTrue(message.contains("không lưu bản ghi"))
+            assertTrue(message.contains("hiệp vừa rồi tôi cảm thấy quá khó"))
             disclosure.getButton(AlertDialog.BUTTON_NEGATIVE).performClick()
 
             assertTrue("Cancelling microphone disclosure must keep the effort choices open", checkIn.dialog.isShowing)
@@ -160,6 +161,28 @@ class GuidedWorkoutEffortVoiceTest {
             assertTrue(
                 planPreview.findViewById<android.widget.TextView>(android.R.id.message)
                     ?.text?.toString().orEmpty().contains("Các hiệp đã xác nhận không bị sửa")
+            )
+        } finally {
+            checkIn.activity.finish()
+        }
+    }
+
+    @Test fun naturalConversationalEffortPhraseStaysPendingUntilConfirmed() {
+        val checkIn = openCheckIn()
+        try {
+            sendVoice(checkIn, "Hiệp vừa rồi tôi cảm thấy quá khó")
+            assertTrue(checkIn.dialog.isShowing)
+            val message = checkIn.dialog.findViewById<android.widget.TextView>(android.R.id.message)
+                ?.text?.toString().orEmpty()
+            assertTrue(message.contains("Khó, cần nghỉ thêm"))
+            assertTrue(message.contains("Chibi chưa lưu"))
+            assertTrue(effortLevels(checkIn).isEmpty())
+
+            checkIn.dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+
+            assertEquals(
+                WorkoutEffortFeedback.Level.HARD,
+                effortLevels(checkIn)[checkIn.moveIndex]?.single()
             )
         } finally {
             checkIn.activity.finish()

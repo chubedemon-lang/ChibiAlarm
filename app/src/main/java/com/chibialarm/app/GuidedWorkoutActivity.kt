@@ -1025,7 +1025,8 @@ class GuidedWorkoutActivity:Activity() {
                 "Chỉ mở micro sau khi bạn nhấn Bắt đầu nghe và cấp quyền Android nếu được hỏi. " +
                     "Dịch vụ nhận dạng của máy có thể xử lý âm thanh trực tuyến tùy nhà cung cấp. " +
                     "Chibi chỉ dùng câu nhận dạng để chọn mức cảm nhận sau khi bạn xác nhận; " +
-                    "ứng dụng không ghi âm nền và không lưu bản ghi hay bản chép lời. " +
+                    "ví dụ: “hiệp vừa rồi tôi cảm thấy quá khó” hoặc “không còn sức để tiếp tục”. " +
+                    "Ứng dụng không ghi âm nền và không lưu bản ghi hay bản chép lời. " +
                     "Bạn vẫn có thể chọn bằng nút."
             )
             .setPositiveButton("Bắt đầu nghe") { _, _ ->
@@ -3042,7 +3043,7 @@ class GuidedWorkoutActivity:Activity() {
         dialog.setOnShowListener {
             val spokenFeedback = resultFeedback?.takeIf { it.isNotBlank() }
             val prompt = if (spokenFeedback == null) {
-                "Hiệp vừa rồi thế nào? Chọn nhẹ, vừa sức, khó hoặc quá sức."
+                "Hiệp vừa rồi thế nào? Nói nhẹ, vừa sức, quá khó nhưng vẫn làm được, hoặc quá sức."
             } else {
                 "$spokenFeedback Hiệp vừa rồi thế nào? Chọn nhẹ, vừa sức, khó hoặc quá sức."
             }
@@ -3170,8 +3171,9 @@ class GuidedWorkoutActivity:Activity() {
                 pendingEffortLevel = null
                 checkInDialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = false
                 checkInDialog.setMessage(
-                    "Chibi chưa hiểu cảm nhận. Hãy nói ngắn gọn “nhẹ”, “vừa sức”, “khó quá” " +
-                        "hoặc “quá sức”, rồi thử lại; hoặc chọn trực tiếp trong danh sách. " +
+                    "Chibi chưa hiểu cảm nhận. Hãy nói “nhẹ”, “vừa sức”, “quá khó nhưng vẫn làm được”, " +
+                        "“khá vất vả nhưng vẫn kiểm soát được” hoặc “quá sức”, rồi thử lại; " +
+                        "hoặc chọn trực tiếp trong danh sách. " +
                         "Câu chưa rõ sẽ không được ghi nhận."
                 )
             }

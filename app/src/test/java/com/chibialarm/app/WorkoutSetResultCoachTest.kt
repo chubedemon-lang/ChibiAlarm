@@ -29,8 +29,8 @@ class WorkoutSetResultCoachTest {
         assertEquals(WorkoutSetResultCoach.Comparison.BELOW_TARGET, result!!.comparison)
         assertTrue(result.message.contains("6 lần"))
         assertTrue(result.message.contains("8 đến 12 lần"))
-        assertTrue(result.message.contains("không cần cố bù ngay"))
-        assertTrue(result.message.contains("còn 1 hiệp bắt buộc"))
+        assertTrue(result.message.contains("không cần bù ngay"))
+        assertTrue(result.message.contains("Còn 1 hiệp bắt buộc"))
     }
 
     @Test fun valueInsideTargetUsesNeutralFeedbackAndKeepsThePrescription() {
@@ -39,8 +39,8 @@ class WorkoutSetResultCoachTest {
         )!!
 
         assertEquals(WorkoutSetResultCoach.Comparison.IN_TARGET, result.comparison)
-        assertTrue(result.message.contains("nằm trong khoảng mục tiêu"))
-        assertTrue(result.message.contains("Không cần tăng mục tiêu"))
+        assertTrue(result.message.contains("Trong mục tiêu"))
+        assertTrue(result.message.contains("không cần tăng thêm"))
         assertFalse(result.message.contains("tập thêm động tác này"))
     }
 
@@ -50,7 +50,7 @@ class WorkoutSetResultCoachTest {
         )!!
 
         assertEquals(WorkoutSetResultCoach.Comparison.ABOVE_TARGET, result.comparison)
-        assertTrue(result.message.contains("cao hơn khoảng mục tiêu"))
+        assertTrue(result.message.contains("Cao hơn mục tiêu"))
         assertTrue(result.message.contains("không tự nâng mục tiêu"))
         assertTrue(result.message.contains("hiệp tiếp theo chỉ là tùy chọn"))
     }
@@ -61,8 +61,8 @@ class WorkoutSetResultCoachTest {
         )!!
 
         assertTrue(result.message.contains("hiệp 3/3"))
-        assertTrue(result.message.contains("Đã đủ số hiệp tối đa"))
-        assertTrue(result.message.contains("không cần tập thêm động tác này"))
+        assertTrue(result.message.contains("Đã đủ hiệp tối đa"))
+        assertTrue(result.message.contains("không cần tập thêm"))
     }
 
     @Test fun timedHoldsAreDescribedAsSecondsHeldRatherThanRepetitions() {

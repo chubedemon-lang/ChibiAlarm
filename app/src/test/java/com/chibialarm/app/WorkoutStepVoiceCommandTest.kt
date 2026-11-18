@@ -196,4 +196,29 @@ class WorkoutStepVoiceCommandTest {
             WorkoutStepVoiceCommand.parse("Nói chậm lại, tôi đau cổ tay"))
     }
 
+    @Test fun canEnableAndDisableAutomaticStepNarrationByVoice() {
+        assertEquals(WorkoutStepVoiceCommand.Command.AUTO_SPEAK_ON,
+            WorkoutStepVoiceCommand.parse("Bật tự đọc"))
+        assertEquals(WorkoutStepVoiceCommand.Command.AUTO_SPEAK_ON,
+            WorkoutStepVoiceCommand.parse("Tự đọc bước khi chuyển"))
+        assertEquals(WorkoutStepVoiceCommand.Command.AUTO_SPEAK_ON,
+            WorkoutStepVoiceCommand.parse("Turn on auto speak"))
+        assertEquals(WorkoutStepVoiceCommand.Command.AUTO_SPEAK_OFF,
+            WorkoutStepVoiceCommand.parse("Tắt tự đọc"))
+        assertEquals(WorkoutStepVoiceCommand.Command.AUTO_SPEAK_OFF,
+            WorkoutStepVoiceCommand.parse("Tắt đọc tự động"))
+        assertEquals(WorkoutStepVoiceCommand.Command.AUTO_SPEAK_OFF,
+            WorkoutStepVoiceCommand.parse("Disable auto narration"))
+    }
+
+    @Test fun autoNarrationNegationAndSafetyTakePriority() {
+        assertEquals(WorkoutStepVoiceCommand.Command.UNKNOWN,
+            WorkoutStepVoiceCommand.parse("Không tự đọc"))
+        assertEquals(WorkoutStepVoiceCommand.Command.UNKNOWN,
+            WorkoutStepVoiceCommand.parse("Đừng bật tự đọc"))
+        assertEquals(WorkoutStepVoiceCommand.Command.SAFETY,
+            WorkoutStepVoiceCommand.parse("Bật tự đọc nhưng tôi đau cổ tay"))
+        assertEquals(WorkoutStepVoiceCommand.Command.SAFETY,
+            WorkoutStepVoiceCommand.parse("Tắt tự đọc, tôi khó thở"))
+    }
 }

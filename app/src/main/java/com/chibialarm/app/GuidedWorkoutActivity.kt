@@ -1489,6 +1489,69 @@ class GuidedWorkoutActivity:Activity() {
         }
     }
 
+    /** One local progress snapshot shared by the main coach and the step-guide conversation. */
+    private fun currentWorkoutProgressReply(): String? {
+        if (moves.isEmpty() || index !in moves.indices) return null
+        val secondsLeft = { millis: Long ->
+            ((millis.coerceAtLeast(0L) + 999L) / 1_000L).coerceIn(0L, 600L).toInt()
+        }
+        val plan = currentSetPlan()
+        val setProgress = plan?.let {
+            WorkoutContextCoach.SetProgress(
+                completed = (completedSetsByMove[index] ?: 0).coerceIn(0, it.maximumSets),
+                required = it.requiredSets,
+                maximum = it.maximumSets,
+                targetMin = it.targetMin,
+                targetMax = it.targetMax,
+                unit = it.unit
+            )
+        }
+        val sessionSetPlans = moves.mapIndexedNotNull { moveIndex, move ->
+            val movePlan = WorkoutSetTracker.parse(move.dose, move.restSeconds)
+                ?: return@mapIndexedNotNull null
+            val confirmed = (completedSetsByMove[moveIndex] ?: 0)
+                .coerceIn(0, movePlan.maximumSets)
+            movePlan to confirmed
+        }
+        val sessionSetProgress = if (sessionSetPlans.isEmpty()) null else {
+            WorkoutContextCoach.SessionSetProgress(
+                completedRequired = sessionSetPlans.sumOf { (movePlan, confirmed) ->
+                    minOf(movePlan.requiredSets, confirmed)
+                },
+                totalRequired = sessionSetPlans.sumOf { (movePlan, _) -> movePlan.requiredSets },
+                optionalRemaining = sessionSetPlans.sumOf { (movePlan, confirmed) ->
+                    (movePlan.maximumSets - maxOf(movePlan.requiredSets, confirmed)).coerceAtLeast(0)
+                }
+            )
+        }
+        return WorkoutContextCoach.progressScript(
+            WorkoutContextCoach.Progress(
+                completedMoves = completedMoveIndices.count { it in moves.indices },
+                totalMoves = moves.size,
+                currentMoveIndex = index,
+                currentMoveName = moves[index].name,
+                sets = setProgress,
+                sessionSets = sessionSetProgress,
+                resting = resting,
+                restSecondsRemaining = if (resting) secondsLeft(restRemainingMs) else 0,
+                exerciseSecondsRemaining = if (resting) 0 else secondsLeft(remainingMs),
+                pausedForSafety = pausedForSafety,
+                nextMoveName = moves.getOrNull(index + 1)?.name,
+                estimatedSessionSecondsRemaining = if (pausedForSafety) null else
+                    WorkoutSessionTimeEstimate.seconds(
+                        moves = moves,
+                        currentIndex = index,
+                        completedMoves = completedMoveIndices,
+                        completedSets = completedSetsByMove,
+                        currentExerciseRemainingSeconds = secondsLeft(remainingMs),
+                        resting = resting,
+                        restSecondsRemaining = if (resting) secondsLeft(restRemainingMs) else 0,
+                        level = workoutLevel
+                    )
+            )
+        )
+    }
+
     private fun handleCoachCommand(utterance:String) {
         // Route safety and pause intents before the broader plan parser, which also recognizes
         // the word "nghỉ". A compound "dừng tập rồi bỏ qua nghỉ" must pause, not alter rest.
@@ -1558,64 +1621,7 @@ class GuidedWorkoutActivity:Activity() {
             WorkoutVoiceCommands.Command.PAIN -> stopForSafety()
             WorkoutVoiceCommands.Command.PAUSE -> { pause();speak("Đã tạm dừng.") }
             WorkoutVoiceCommands.Command.STATUS -> {
-                val plan = currentSetPlan()
-                val secondsLeft = { millis: Long ->
-                    ((millis.coerceAtLeast(0L) + 999L) / 1000L).coerceIn(0L, 600L).toInt()
-                }
-                val setProgress = plan?.let {
-                    WorkoutContextCoach.SetProgress(
-                        completed = (completedSetsByMove[index] ?: 0).coerceIn(0, it.maximumSets),
-                        required = it.requiredSets,
-                        maximum = it.maximumSets,
-                        targetMin = it.targetMin,
-                        targetMax = it.targetMax,
-                        unit = it.unit
-                    )
-                }
-                val sessionSetPlans = moves.mapIndexedNotNull { moveIndex, move ->
-                    val plan = WorkoutSetTracker.parse(move.dose, move.restSeconds)
-                        ?: return@mapIndexedNotNull null
-                    val confirmed = (completedSetsByMove[moveIndex] ?: 0)
-                        .coerceIn(0, plan.maximumSets)
-                    plan to confirmed
-                }
-                val sessionSetProgress = if (sessionSetPlans.isEmpty()) null else {
-                    WorkoutContextCoach.SessionSetProgress(
-                        completedRequired = sessionSetPlans.sumOf { (plan, confirmed) ->
-                            minOf(plan.requiredSets, confirmed)
-                        },
-                        totalRequired = sessionSetPlans.sumOf { (plan, _) -> plan.requiredSets },
-                        optionalRemaining = sessionSetPlans.sumOf { (plan, confirmed) ->
-                            (plan.maximumSets - maxOf(plan.requiredSets, confirmed)).coerceAtLeast(0)
-                        }
-                    )
-                }
-                speak(WorkoutContextCoach.progressScript(
-                    WorkoutContextCoach.Progress(
-                        completedMoves = completedMoveIndices.count { it in moves.indices },
-                        totalMoves = moves.size,
-                        currentMoveIndex = index,
-                        currentMoveName = moves[index].name,
-                        sets = setProgress,
-                        sessionSets = sessionSetProgress,
-                        resting = resting,
-                        restSecondsRemaining = if (resting) secondsLeft(restRemainingMs) else 0,
-                        exerciseSecondsRemaining = if (resting) 0 else secondsLeft(remainingMs),
-                        pausedForSafety = pausedForSafety,
-                        nextMoveName = moves.getOrNull(index + 1)?.name,
-                        estimatedSessionSecondsRemaining = if (pausedForSafety) null else
-                            WorkoutSessionTimeEstimate.seconds(
-                                moves = moves,
-                                currentIndex = index,
-                                completedMoves = completedMoveIndices,
-                                completedSets = completedSetsByMove,
-                                currentExerciseRemainingSeconds = secondsLeft(remainingMs),
-                                resting = resting,
-                                restSecondsRemaining = if (resting) secondsLeft(restRemainingMs) else 0,
-                                level = workoutLevel
-                            )
-                    )
-                ))
+                currentWorkoutProgressReply()?.let(::speak)
             }
             WorkoutVoiceCommands.Command.STEP_GUIDE -> showStepByStepGuide()
             WorkoutVoiceCommands.Command.EXPLAIN_CURRENT -> {
@@ -2439,7 +2445,7 @@ class GuidedWorkoutActivity:Activity() {
         }
         val voiceButton = Button(this).apply {
             tag = "workout-step-voice-control"
-            text = "🎤 Nói: bước tiếp, bước đầu, hỏi cách tập, hỏi nhóm cơ, hỏi dụng cụ, đọc lại câu trả lời, bật tự đọc, tắt tự đọc, đọc cách dễ hơn, số lần, nghỉ bao lâu, lưu ý an toàn"
+            text = "🎤 Nói: bước tiếp, bước đầu, hỏi cách tập, hỏi nhóm cơ, hỏi dụng cụ, đọc tiến độ buổi tập, đọc lại câu trả lời, bật tự đọc, tắt tự đọc, đọc cách dễ hơn, số lần, nghỉ bao lâu, lưu ý an toàn"
             contentDescription = "Mở nhận dạng giọng nói sau khi xác nhận quyền micro để chuyển bước hoặc quay về bước đầu, hỏi cách tập, hỏi nhóm cơ hoặc hỏi dụng cụ cần thiết cho động tác hiện tại, đọc lại câu trả lời gần nhất, bật hoặc tắt tự đọc các bước, đọc cách tập dễ hơn, đọc lưu ý an toàn, hỏi số lần hoặc thời gian nghỉ, nghỉ bao lâu"
         }
         container.addView(illustration, LinearLayout.LayoutParams(
@@ -2570,6 +2576,12 @@ class GuidedWorkoutActivity:Activity() {
                             ?: WorkoutStepGuide.spokenCue(move.name,move.steps,walkthrough.position)
                         speak(cue)
                     }
+                    WorkoutStepVoiceCommand.Command.STATUS -> {
+                        val reply = currentWorkoutProgressReply()
+                            ?: "Chibi chưa thể đọc tiến độ vì buổi tập chưa có động tác hợp lệ."
+                        lastCoachAnswer = reply.take(1_200)
+                        speak(reply)
+                    }
                     WorkoutStepVoiceCommand.Command.SUMMARY -> {
                         val summary = WorkoutStepGuide.workoutSummary(
                             dose = targetDose(index),
@@ -2669,7 +2681,7 @@ class GuidedWorkoutActivity:Activity() {
                     }
                     WorkoutStepVoiceCommand.Command.UNKNOWN -> {
                         AlertDialog.Builder(this).setTitle("Chibi chưa hiểu lệnh")
-                            .setMessage("Bạn có thể nói: bước tiếp, bước trước, về bước đầu, đọc lại bước, đọc lại câu trả lời, bật tự đọc, tắt tự đọc, hỏi cách tập bài này, hỏi nhóm cơ chính, hỏi bao nhiêu lần, nghỉ bao lâu, đọc cách dễ hơn, đọc lưu ý an toàn, nói chậm lại, tốc độ bình thường, tạm dừng buổi tập, tiếp tục buổi tập, nghỉ thêm 30 giây hoặc đóng hướng dẫn. Nếu đau, khó thở hay khó chịu, Chibi sẽ dừng buổi tập.")
+                            .setMessage("Bạn có thể nói: bước tiếp, bước trước, về bước đầu, đọc lại bước, đọc tiến độ buổi tập, đọc lại câu trả lời, bật tự đọc, tắt tự đọc, hỏi cách tập bài này, hỏi nhóm cơ chính, hỏi bao nhiêu lần, nghỉ bao lâu, đọc cách dễ hơn, đọc lưu ý an toàn, nói chậm lại, tốc độ bình thường, tạm dừng buổi tập, tiếp tục buổi tập, nghỉ thêm 30 giây hoặc đóng hướng dẫn. Nếu đau, khó thở hay khó chịu, Chibi sẽ dừng buổi tập.")
                             .setPositiveButton("Đã hiểu",null).show()
                     }
                 }

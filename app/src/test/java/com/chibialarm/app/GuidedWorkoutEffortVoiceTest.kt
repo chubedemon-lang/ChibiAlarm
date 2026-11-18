@@ -67,9 +67,10 @@ class GuidedWorkoutEffortVoiceTest {
             String::class.java,
             Int::class.javaPrimitiveType,
             WorkoutSetTracker.Plan::class.java,
-            Boolean::class.javaPrimitiveType
+            Boolean::class.javaPrimitiveType,
+            String::class.java
         ).apply { isAccessible = true }
-            .invoke(activity, moveIndex, sessionId, completedSetCount, plan, true)
+            .invoke(activity, moveIndex, sessionId, completedSetCount, plan, true, null)
 
         return CheckIn(
             activity,

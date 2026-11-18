@@ -49,6 +49,17 @@ internal object WorkoutLibrarySearch {
             .toList()
     }
 
+    /**
+     * Focus the library preview on the first searched exercise that survived the current
+     * duration/equipment/constraint plan. If the search match was filtered out, start safely
+     * at the first remaining move instead of opening an invalid index.
+     */
+    fun previewIndex(match: Match, plannedMoves: List<TrainingMove>): Int {
+        if (plannedMoves.isEmpty() || match.matchingMoves.isEmpty()) return 0
+        val matchedNames = match.matchingMoves.map { it.name }.toSet()
+        return plannedMoves.indexOfFirst { it.name in matchedNames }.coerceAtLeast(0)
+    }
+
     private fun moveSearchText(move: TrainingMove): String = buildString {
         append(move.name).append(' ')
         append(move.dose).append(' ')

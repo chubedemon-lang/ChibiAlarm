@@ -96,6 +96,29 @@ class WorkoutLibrarySearchTest {
         assertTrue(result.single().matchingMoves.isEmpty())
     }
 
+    @Test fun previewStartsAtTheFirstMatchedExerciseThatSurvivedThePlan() {
+        val match = WorkoutLibrarySearch.filter(
+            listOf(strength), "Tất cả", "squat khong ta"
+        ).single()
+        val planned = listOf(
+            move("Khởi động"),
+            move("Squat không tạ"),
+            move("Thả lỏng")
+        )
+
+        assertEquals(1, WorkoutLibrarySearch.previewIndex(match, planned))
+    }
+
+    @Test fun previewFallsBackToTheFirstAllowedMoveWhenTheMatchWasFilteredOut() {
+        val match = WorkoutLibrarySearch.filter(
+            listOf(strength), "Tất cả", "squat khong ta"
+        ).single()
+        val planned = listOf(move("Khởi động"), move("Chống đẩy tường"))
+
+        assertEquals(0, WorkoutLibrarySearch.previewIndex(match, planned))
+        assertEquals(0, WorkoutLibrarySearch.previewIndex(match.copy(matchingMoves = emptyList()), planned))
+    }
+
     @Test fun inputAndResultCountsAreBounded() {
         val tooLong = "squat " + "x".repeat(200)
         assertTrue(WorkoutLibrarySearch.filter(listOf(strength), "Tất cả", tooLong).isEmpty())

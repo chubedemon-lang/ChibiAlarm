@@ -416,9 +416,10 @@ class GuidedWorkoutRestConfirmationTest {
             String::class.java,
             Int::class.javaPrimitiveType,
             WorkoutSetTracker.Plan::class.java,
-            Boolean::class.javaPrimitiveType
+            Boolean::class.javaPrimitiveType,
+            String::class.java
         ).apply { isAccessible = true }
-        method.invoke(activity, moveIndex, id, plan.maximumSets, plan, false)
+        method.invoke(activity, moveIndex, id, plan.maximumSets, plan, false, null)
 
         val dialog = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
         assertTrue(dialog.isShowing)

@@ -986,7 +986,8 @@ class FitnessActivity:Activity() {
         planned: WorkoutDurationPlanner.Plan,
         constraints: WorkoutConstraintProfile,
         equipmentSelection: Int,
-        additionalEquipment: Set<TrainingEquipment>
+        additionalEquipment: Set<TrainingEquipment>,
+        initialMoveIndex: Int = 0
     ) {
         var planDraft = WorkoutPlanPreviewEditor.start(
             moves = planned.moves,
@@ -999,7 +1000,10 @@ class FitnessActivity:Activity() {
             Toast.makeText(this, "Giáo án không còn khớp dụng cụ hoặc hạn chế vận động. Hãy tạo bản xem trước mới.", Toast.LENGTH_LONG).show()
             return
         }
-        var preview = WorkoutLibraryPreview.start(planDraft.moves) ?: run {
+        var preview = WorkoutLibraryPreview.start(
+            planDraft.moves,
+            initialMoveIndex.coerceIn(0, planDraft.moves.lastIndex.coerceAtLeast(0))
+        ) ?: run {
             Toast.makeText(this, "Chưa có động tác phù hợp để xem trước.", Toast.LENGTH_LONG).show()
             return
         }
@@ -1199,31 +1203,38 @@ class FitnessActivity:Activity() {
                 mins[length.selectedItemPosition],
                 currentExtensionPreferences(constraints)
             )
+            val matchedNames = match.matchingMoves.map { it.name }.toSet()
+            val visibleMatches = planned.moves.filter { it.name in matchedNames }
+            val previewIndex = WorkoutLibrarySearch.previewIndex(match, planned.moves)
             card.addView(txt(program.subtitle+" • "+planned.moves.size+" động tác phù hợp • khoảng "+planned.estimatedMinutes+" phút",13f))
             if (query.isNotBlank() && match.matchingMoves.isNotEmpty()) {
-                val availableNames = equipped.program.moves.map { it.name }.toSet()
-                val visibleMatches = match.matchingMoves.filter { it.name in availableNames }
                 if (visibleMatches.isNotEmpty()) {
                     val labels = visibleMatches.take(3).joinToString(" • ") { "${it.name} (${it.dose})" }
                     val more = if (visibleMatches.size > 3) " • +${visibleMatches.size - 3} động tác" else ""
-                    card.addView(txt("Động tác khớp: $labels$more",12f))
+                    card.addView(txt("Động tác khớp trong giáo án hiện tại: $labels$more",12f))
                 } else {
-                    card.addView(txt("Động tác khớp từ khóa hiện bị lọc bởi dụng cụ hoặc hạn chế đã chọn.",12f))
+                    card.addView(txt("Động tác khớp từ khóa hiện không còn trong giáo án sau khi áp dụng thời lượng, dụng cụ và hạn chế.",12f))
                 }
             }
             if (constrained.notice.isNotBlank()) card.addView(txt(constrained.notice,12f))
             if (equipped.notice.isNotBlank()) card.addView(txt(equipped.notice,12f))
             if (!equipped.canStart) card.addView(txt("Không còn động tác chính phù hợp với dụng cụ đã chọn.",12f))
             val buttons=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
-            buttons.addView(Button(this).apply { text="📖 Xem bài";isAllCaps=false;isEnabled=equipped.canStart;setOnClickListener {
-                showProgramPreview(
-                    equipped.program,
-                    planned,
-                    constraints,
-                    recommendationEquipmentSpinner?.selectedItemPosition ?: 0,
-                    currentAdditionalEquipment()
-                )
-            } },LinearLayout.LayoutParams(0,-2,1f))
+            buttons.addView(Button(this).apply {
+                text = if (query.isNotBlank() && visibleMatches.isNotEmpty()) "📖 Xem bài khớp" else "📖 Xem bài"
+                isAllCaps = false
+                isEnabled = equipped.canStart
+                setOnClickListener {
+                    showProgramPreview(
+                        equipped.program,
+                        planned,
+                        constraints,
+                        recommendationEquipmentSpinner?.selectedItemPosition ?: 0,
+                        currentAdditionalEquipment(),
+                        initialMoveIndex = previewIndex
+                    )
+                }
+            }, LinearLayout.LayoutParams(0, -2, 1f))
             buttons.addView(Button(this).apply { text="▶ Tập ngay";isAllCaps=false;isEnabled=equipped.canStart;setOnClickListener {
                 startProgram(equipped.program, constraints)
             } },LinearLayout.LayoutParams(0,-2,1f))

@@ -60,7 +60,7 @@ class WorkoutSetResultCoachTest {
             "Squat không tạ", 3, 10, repetitions, 3
         )!!
 
-        assertTrue(result.message.contains("hiệp 3/3"))
+        assertTrue(result.message.contains("Hiệp 3/3"))
         assertTrue(result.message.contains("Đã đủ hiệp tối đa"))
         assertTrue(result.message.contains("không cần tập thêm"))
     }

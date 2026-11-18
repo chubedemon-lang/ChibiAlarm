@@ -169,6 +169,34 @@ object TrainingCatalog {
     private val quickStretch = stretch.copy(dose = "45 giây", seconds = 45)
     private val quickSupportedMarch = supportedMarch.copy(dose = "45 giây", seconds = 45)
 
+    // Curated 11–15 minute variants keep the same canonical exercise names so
+    // the existing step guide, pose illustrations and substitution rules still apply.
+    private val quick15Warm = warm.copy(dose = "90 giây", seconds = 90)
+    private val quick15Cool = cool.copy(dose = "90 giây", seconds = 90)
+    private val quick15Squat = squat.copy(dose = "1 hiệp × 8–10 lần", seconds = 45, restSeconds = 30)
+    private val quick15WallPush = wallPush.copy(dose = "1 hiệp × 6–8 lần", seconds = 45, restSeconds = 30)
+    private val quick15Bridge = bridge.copy(dose = "1 hiệp × 8–10 lần", seconds = 45, restSeconds = 30)
+    private val quick15Calf = calf.copy(dose = "1 hiệp × 8–10 lần", seconds = 30, restSeconds = 30)
+    private val quick15March = march.copy(dose = "2 phút", seconds = 120)
+    private val quick15SideStep = sideStep.copy(dose = "90 giây", seconds = 90)
+    private val quick15SupportedMarch = supportedMarch.copy(dose = "90 giây", seconds = 90)
+    private val quick15Shoulder = shoulder.copy(dose = "90 giây", seconds = 90)
+    private val quick15Stretch = stretch.copy(dose = "2 phút", seconds = 120)
+    private val quick15ChairSquat = chairSquat.copy(dose = "1 hiệp × 6–8 lần", seconds = 45, restSeconds = 30)
+    private val quick15HeelRaise = heelRaise.copy(dose = "1 hiệp × 8 lần mỗi chân", seconds = 45, restSeconds = 30)
+    private val quick15SeatedStretch = seatedHamstringStretch.copy(
+        dose = "1 hiệp × 20 giây mỗi bên", seconds = 60, restSeconds = 30
+    )
+    private val quick15ResistanceRow = resistanceRow.copy(
+        dose = "1 hiệp × 6–8 lần", seconds = 45, restSeconds = 30
+    )
+    private val quick15ResistanceHinge = resistanceHinge.copy(
+        dose = "1 hiệp × 6–8 lần", seconds = 45, restSeconds = 30
+    )
+    private val quick15ResistancePress = resistancePress.copy(
+        dose = "1 hiệp × 6–8 lần", seconds = 45, restSeconds = 30
+    )
+
     val programs=listOf(
         TrainingProgram("starter","🌱 Bắt đầu nhẹ nhàng","Mới tập hoặc quay lại sau thời gian nghỉ","Toàn thân",listOf(warm,chairSquat,wallPush,bridge,stretch)),
         TrainingProgram("chair","🪑 Toàn thân với ghế vững chắc","Bài cơ bản có điểm tựa • dùng ghế chắc chắn, không bánh xe","Sức mạnh",listOf(warm,chairSquat,wallPush,heelRaise,seatedHamstringStretch,cool)),
@@ -186,7 +214,13 @@ object TrainingCatalog {
         TrainingProgram("quickrecovery","🌙 Phục hồi nhẹ","Chuỗi ngắn cho ngày ít năng lượng; không tự thêm bài","Phục hồi nhẹ",listOf(quickWarm,quickShoulder,quickSupportedMarch,quickCool)),
         TrainingProgram("advanced","🚀 Thử thách nâng cao","Chỉ chọn khi đã quen kỹ thuật và hồi phục tốt","Thử thách",listOf(warm,tempoSquat,push,reverseLunge,mountain,jumpingJacks,sidePlank,cool)),
         TrainingProgram("weighted","🏋️ Sức mạnh với tạ hoặc dây","Cần tạ đơn nhẹ hoặc dây kháng lực • cho người đã quen động tác cơ bản","Sức mạnh",listOf(warm,resistanceRow,resistanceHinge,resistancePress,cool)),
-        TrainingProgram("recovery","🌙 Ngày phục hồi tích cực","Nhẹ nhàng, không thay thế điều trị chấn thương","Phục hồi nhẹ",listOf(march,shoulder,catCow,stretch))
+        TrainingProgram("recovery","🌙 Ngày phục hồi tích cực","Nhẹ nhàng, không thay thế điều trị chấn thương","Phục hồi nhẹ",listOf(march,shoulder,catCow,stretch)),
+        TrainingProgram("quick15","⚡ Toàn thân 11–15 phút","Buổi ngắn với một hiệp mỗi động tác chính; giữ khởi động và thả lỏng","Sức mạnh",listOf(quick15Warm,quick15Squat,quick15WallPush,quick15Bridge,quick15Calf,quick15Cool)),
+        TrainingProgram("quick15chair","🪑 Toàn thân với ghế 11–15 phút","Một hiệp mỗi động tác; dùng ghế chắc chắn không bánh xe","Sức mạnh",listOf(quick15Warm,quick15ChairSquat,quick15WallPush,quick15HeelRaise,quick15SeatedStretch,quick15Cool)),
+        TrainingProgram("quick15weighted","🏋️ Sức mạnh tải nhẹ 11–15 phút","Chỉ dùng đúng tạ đơn hoặc dây kháng lực đã chọn; một hiệp mỗi động tác","Sức mạnh",listOf(quick15Warm,quick15ResistanceRow,quick15ResistanceHinge,quick15ResistancePress,quick15Cool)),
+        TrainingProgram("quick15lowcardio","🚶 Cardio ít tác động 11–15 phút","Bước tại chỗ và bước ngang; không có động tác bật nhảy","Cardio nhẹ",listOf(quick15Warm,quick15March,quick15SideStep,quick15SupportedMarch,quick15Calf,quick15Cool)),
+        TrainingProgram("quick15mobility","🧘 Linh hoạt 11–15 phút","Chuỗi đứng nhẹ, không cần xuống sàn","Linh hoạt",listOf(quick15Warm,quick15Shoulder,quick15SideStep,quick15Stretch,quick15Cool)),
+        TrainingProgram("quick15recovery","🌙 Phục hồi nhẹ 11–15 phút","Ngày ít năng lượng; không tự thêm động tác để lấp thời gian","Phục hồi nhẹ",listOf(quick15Warm,quick15Shoulder,quick15SupportedMarch,quick15Calf,quick15Stretch,quick15Cool))
     )
     /**
      * Canonical substitution-only exercises remain available to the guided coach

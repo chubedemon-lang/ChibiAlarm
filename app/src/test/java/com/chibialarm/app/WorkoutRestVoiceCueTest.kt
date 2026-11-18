@@ -98,8 +98,8 @@ class WorkoutRestVoiceCueTest {
                 moveName = "Squat không tạ",
                 completedSets = 3,
                 plan = setPlan,
-                nextMoveName = "Đi bộ\\n tại chỗ",
-                nextMoveDose = "2 phút\\n"
+                nextMoveName = "Đi bộ\n tại chỗ",
+                nextMoveDose = "2 phút\n"
             )
         )
     }

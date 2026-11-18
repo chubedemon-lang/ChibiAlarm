@@ -15,6 +15,34 @@ class WorkoutStepVoiceCommandTest {
         assertEquals(WorkoutStepVoiceCommand.Command.SUMMARY, WorkoutStepVoiceCommand.parse("Mục tiêu bài tập"))
     }
 
+    @Test fun readsWholeWorkoutProgressFromTheStepGuideWithoutConfusingExerciseDose() {
+        for (phrase in listOf(
+            "Đọc tiến độ",
+            "Tiến độ buổi tập",
+            "Xem tiến độ hiện tại",
+            "Còn bao nhiêu bài",
+            "Còn mấy hiệp",
+            "Thời gian còn lại",
+            "Bao lâu nữa xong?",
+            "Khi nào xong?",
+            "progress",
+            "status"
+        )) {
+            assertEquals(phrase, WorkoutStepVoiceCommand.Command.STATUS, WorkoutStepVoiceCommand.parse(phrase))
+        }
+        for (phrase in listOf("Không đọc tiến độ", "Đừng đọc tiến độ", "khong doc tien do")) {
+            assertEquals(phrase, WorkoutStepVoiceCommand.Command.UNKNOWN, WorkoutStepVoiceCommand.parse(phrase))
+        }
+        assertEquals(
+            WorkoutStepVoiceCommand.Command.SAFETY,
+            WorkoutStepVoiceCommand.parse("Đọc tiến độ nhưng tôi đau gối")
+        )
+        assertEquals(
+            WorkoutStepVoiceCommand.Command.SUMMARY,
+            WorkoutStepVoiceCommand.parse("Đọc mục tiêu bài tập")
+        )
+    }
+
     @Test fun canRestartOnlyTheGuideAtItsFirstStepAndKeepPainPriority() {
         assertEquals(WorkoutStepVoiceCommand.Command.FIRST,
             WorkoutStepVoiceCommand.parse("Quay về bước đầu"))

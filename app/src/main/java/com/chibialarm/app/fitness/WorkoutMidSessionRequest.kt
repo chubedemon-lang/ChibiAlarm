@@ -161,7 +161,7 @@ object WorkoutMidSessionRequest {
         // Keep the replacement clause bounded before matching the exact curated catalog name.
         // The separator intentionally excludes "hoặc", which is part of some canonical names.
         fun firstReplacementClause(raw: String): String =
-            raw.split(Regex("""\\s+(?:va|nhung|roi|dong thoi)\\s+"""), limit = 2)
+            raw.split(Regex("""\s+(?:va|nhung|roi|dong thoi)\s+"""), limit = 2)
                 .first()
                 .trim()
 

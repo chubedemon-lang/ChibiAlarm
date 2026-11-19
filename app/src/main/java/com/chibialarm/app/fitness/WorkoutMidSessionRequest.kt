@@ -155,10 +155,21 @@ object WorkoutMidSessionRequest {
         val shorthandReplacementMatch = if (explicitReplacementMatch == null) {
             Regex("""\bdoi\s+sang\s+(?:(?:bai|dong tac)\s+)?(.+)$""").find(text)
         } else null
+        // A single spoken turn may contain a replacement followed by another intent:
+        // "đổi sang bài nhẹ hơn và đừng chống tay" or
+        // "đổi sang bài chống đẩy tường và nghỉ thêm 30 giây".
+        // Keep the replacement clause bounded before matching the exact curated catalog name.
+        // The separator intentionally excludes "hoặc", which is part of some canonical names.
+        fun firstReplacementClause(raw: String): String =
+            raw.split(Regex("""\\s+(?:va|nhung|roi|dong thoi)\\s+"""), limit = 2)
+                .first()
+                .trim()
+
         val replacementTarget = (
             explicitReplacementMatch?.groupValues?.get(1)
                 ?: shorthandReplacementMatch?.groupValues?.get(1)
             )
+            ?.let(::firstReplacementClause)
             ?.removePrefix("bai ")
             ?.trim()
         val replacementExercise = replacementTarget?.let { target ->

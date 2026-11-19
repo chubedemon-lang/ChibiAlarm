@@ -27,6 +27,10 @@ object FitnessNaturalRequest {
         // Keep "đầu" distinct from "đau". Removing Vietnamese diacritics first made
         // "đầu gối" indistinguishable from "đau gối", causing false injury warnings.
         val protected = input.lowercase(Locale.ROOT)
+            // Keep a numeric range explicit before punctuation normalization turns
+            // "15–20" into two unrelated numbers. The duration parser will ask for
+            // one exact target instead of silently selecting an endpoint.
+            .replace(Regex("(?<=\\d)\\s*[-–—]\\s*(?=\\d)"), " den ")
             // Preserve lexical compounds before stripping Vietnamese diacritics:
             // "đầu gối" is a body part; "bắt đầu" is a beginner phrase, not "đau".
             .replace(Regex("đầu\\s+gối"), "kneecap")
@@ -116,14 +120,48 @@ object FitnessNaturalRequest {
         return (total + tens + unit).takeIf { it in 1..120 }
     }
 
+    private const val DURATION_NUMBER =
+        "(?:[0-9]{1,3}|mot|hai|ba|bon|tu|nam|lam|sau|bay|tam|chin|muoi)(?:\\s+(?:tram|linh|le|muoi|mot|hai|ba|bon|tu|nam|lam|sau|bay|tam|chin))*"
+    private const val DURATION_UNIT = "(?:phut|minute|min|p|tieng|gio)"
+    private val durationMention = Regex("(?:^| )($DURATION_NUMBER)\\s*($DURATION_UNIT)(?: |$)")
+    private val halfHourMention = Regex("(?:^| )nua (?:tieng|gio)(?: |$)")
+    private val durationRange = Regex(
+        "(?:^| )(?:tu\\s+)?($DURATION_NUMBER)(?:\\s*$DURATION_UNIT)?\\s+(?:den|toi|hoac)\\s+($DURATION_NUMBER)(?:\\s*$DURATION_UNIT)?(?: |$)"
+    )
+    private val durationBound = Regex(
+        "(?:^| )(?:tu|toi da|it nhat|it hon|duoi|tren|tro len|hon|khong qua)\\s+$DURATION_NUMBER(?:\\s*$DURATION_UNIT)?(?: |$)"
+    )
+    private val durationTailBound = Regex(
+        "(?:^| )$DURATION_NUMBER\\s*$DURATION_UNIT\\s+(?:tro len|tro xuong|hon|hoac it nhat|hoac it hon)(?: |$)"
+    )
+
+    /**
+     * A duration range, bound ("at most/at least"), or fractional/multiple duration
+     * is deliberately left unresolved. A personalized plan needs one exact time;
+     * choosing the first number from speech recognition would silently change intent.
+     */
+    fun needsDurationClarification(input: String): Boolean =
+        hasAmbiguousDuration(normalize(input.take(1000)))
+
+    private fun hasAmbiguousDuration(text: String): Boolean {
+        val mentions = durationMention.findAll(text).toList()
+        val halfHours = halfHourMention.findAll(text).toList()
+        val fractional = (mentions + halfHours).any { match ->
+            text.substring(match.range.last + 1).trimStart().startsWith("ruoi")
+        }
+        return durationRange.containsMatchIn(text) ||
+            durationBound.containsMatchIn(text) ||
+            durationTailBound.containsMatchIn(text) ||
+            mentions.size > 1 ||
+            halfHours.size > 1 ||
+            (mentions.isNotEmpty() && halfHours.isNotEmpty()) ||
+            fractional
+    }
+
     private fun parseDuration(text: String): Int? {
-        if (Regex("(?:^| )nua tieng(?: |$)").containsMatchIn(text)) return 30
-        val number = "(?:[0-9]{1,3}|mot|hai|ba|bon|tu|nam|lam|sau|bay|tam|chin|muoi)(?:\\s+(?:tram|linh|le|muoi|mot|hai|ba|bon|tu|nam|lam|sau|bay|tam|chin))*"
-        val match = Regex("(?:^| )($number)\\s*(phut|minute|min|p|tieng|gio)(?: |$)")
-            .find(text) ?: return null
-        // Do not silently round fractional spoken durations such as "15 phút rưỡi".
-        val tail = text.substring(match.range.last + 1).trimStart()
-        if (tail.startsWith("ruoi")) return null
+        if (hasAmbiguousDuration(text)) return null
+        if (halfHourMention.containsMatchIn(text)) return 30
+        val match = durationMention.find(text) ?: return null
         val amount = spokenNumber(match.groupValues[1]) ?: return null
         val minutes = when (match.groupValues[2]) {
             "tieng", "gio" -> amount.toLong() * 60L

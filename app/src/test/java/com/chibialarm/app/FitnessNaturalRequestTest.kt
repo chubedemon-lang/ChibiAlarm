@@ -139,6 +139,31 @@ class FitnessNaturalRequestTest {
         assertNull(FitnessNaturalRequest.parse("mười lăm phút rưỡi").minutes)
     }
 
+    @Test fun durationRangesAndBoundsRequireOneExactChoice() {
+        val phrases = listOf(
+            "tập từ 15 đến 20 phút",
+            "tập 15-20 phút",
+            "tập 15 phút đến 20 phút",
+            "tập một tiếng 30 phút",
+            "tập tối đa 20 phút",
+            "tập dưới 20 phút",
+            "tập 15 phút rưỡi"
+        )
+        for (phrase in phrases) {
+            assertNull("Must not choose an endpoint for $phrase", FitnessNaturalRequest.parse(phrase).minutes)
+            assertTrue("Must ask for clarification: $phrase", FitnessNaturalRequest.needsDurationClarification(phrase))
+        }
+    }
+
+    @Test fun halfHourAndHourAliasesAreParsedWithoutGuessingFractions() {
+        assertEquals(30, FitnessNaturalRequest.parse("nửa tiếng").minutes)
+        assertEquals(30, FitnessNaturalRequest.parse("nửa giờ").minutes)
+        assertEquals(60, FitnessNaturalRequest.parse("một giờ").minutes)
+        assertFalse(FitnessNaturalRequest.needsDurationClarification("nửa giờ"))
+        assertNull(FitnessNaturalRequest.parse("nửa giờ rưỡi").minutes)
+        assertTrue(FitnessNaturalRequest.needsDurationClarification("nửa giờ rưỡi"))
+    }
+
     @Test fun localizedDiscomfortBlocksOnlyWhenABodyRegionIsNamed() {
         for (phrase in listOf(
             "cổ tay hơi khó chịu khi chống đẩy",

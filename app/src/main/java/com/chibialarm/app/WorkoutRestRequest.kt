@@ -93,6 +93,10 @@ object WorkoutRestRequest {
         if (text.length > 160 || !Regex("\\b(nghi|rest)\\b").containsMatchIn(text)) return null
         val tokens = text.split(' ')
 
+        // Vietnamese speakers commonly say “nửa phút” for an explicit 30-second rest.
+        // Keep this context-specific; it is accepted only in a recognized rest utterance.
+        if (Regex("""(?:^| )nua phut(?: nua)?(?: |$)""").containsMatchIn(text)) return 30
+
         // Prefer a complete minute+second expression. This also accepts mixed
         // digit/spoken forms such as "1 phút hai mươi lăm giây".
         val minuteIndex = tokens.indexOfFirst { it in setOf("phut", "minute", "minutes") }

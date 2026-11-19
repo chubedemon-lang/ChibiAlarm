@@ -3344,15 +3344,39 @@ class GuidedWorkoutActivity:Activity() {
                 }
             }
             WorkoutEffortFeedback.Level.VERY_HARD -> {
-                val confirm = AlertDialog.Builder(this)
-                    .setTitle("⚠️ Tạm dừng trước hiệp tiếp theo")
-                    .setMessage(
-                        recommendation.message +
+                // Stop the active timer before asking what to do next. A modal decision
+                // must not let the exercise countdown continue behind the dialog.
+                pause()
+                val reviewButton = Button(this).apply {
+                    text = "🌿 Xem phương án nhẹ hơn"
+                    contentDescription = "Xem trước giáo án nhẹ hơn khi buổi tập vẫn đang tạm dừng"
+                    isAllCaps = false
+                }
+                val dialogContent = LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    setPadding(24, 12, 24, 0)
+                    addView(TextView(this@GuidedWorkoutActivity).apply {
+                        text = recommendation.message +
                             "\n\nNghỉ theo giáo án: ${plan.defaultRestSeconds} giây. " +
-                            "Thời gian đề xuất: ${recommendation.restSeconds} giây; không ngắn hơn giáo án. " +
-                            "Chibi sẽ không tự bắt đầu hiệp tiếp theo. " +
-                            "Nếu bạn thấy đau, khó thở, chóng mặt hoặc buồn nôn, hãy kết thúc buổi tập."
+                            "Thời gian nghỉ gợi ý: ${recommendation.restSeconds} giây. " +
+                            "Chibi không tự bắt đầu hiệp hoặc động tác mới. " +
+                            "Đây là tự đánh giá, không phải phép đo thể lực hay chẩn đoán. " +
+                            "Nếu có đau, khó thở, chóng mặt hoặc buồn nôn, hãy kết thúc buổi tập."
+                        textSize = 16f
+                        setTextColor(Color.DKGRAY)
+                        setPadding(0, 0, 0, 12)
+                    })
+                    addView(
+                        reviewButton,
+                        LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT
+                        )
                     )
+                }
+                val confirm = AlertDialog.Builder(this)
+                    .setTitle("⚠️ Tạm dừng trước bước tiếp theo")
+                    .setView(dialogContent)
                     .setPositiveButton("Nghỉ ${recommendation.restSeconds} giây") { _, _ ->
                         if (isSameEffortContext(selectedIndex, selectedSessionId, completedSets, plan)) {
                             startSetRest(recommendation.restSeconds, recommendation.message)
@@ -3360,9 +3384,6 @@ class GuidedWorkoutActivity:Activity() {
                     }
                     .setNegativeButton("Giữ tạm dừng") { _, _ ->
                         if (isSameEffortContext(selectedIndex, selectedSessionId, completedSets, plan)) {
-                            paused = true
-                            control.text = "▶ Tiếp tục khi sẵn sàng"
-                            counter.text = clockText(remainingMs)
                             saveCheckpoint()
                             speak("Đã giữ buổi tập ở trạng thái tạm dừng. Chỉ tiếp tục khi bạn thấy an toàn.")
                         }
@@ -3371,11 +3392,27 @@ class GuidedWorkoutActivity:Activity() {
                         if (isSameEffortContext(selectedIndex, selectedSessionId, completedSets, plan)) finishWorkout()
                     }
                     .create()
+                reviewButton.setOnClickListener {
+                    val contextStillMatches = isSameEffortContext(
+                        selectedIndex, selectedSessionId, completedSets, plan
+                    )
+                    confirm.dismiss()
+                    if (contextStillMatches) {
+                        // This opens the existing catalog-grounded preview. Applying it
+                        // changes only unfinished work and leaves the session paused.
+                        applyMidSessionRequest(
+                            WorkoutEffortPlanChange.pausedAlternativePreviewRequest()
+                        )
+                    } else {
+                        Toast.makeText(
+                            this,
+                            "Buổi tập đã thay đổi; Chibi chưa mở phương án cũ.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
                 confirm.setOnCancelListener {
                     if (isSameEffortContext(selectedIndex, selectedSessionId, completedSets, plan)) {
-                        paused = true
-                        control.text = "▶ Tiếp tục khi sẵn sàng"
-                        counter.text = clockText(remainingMs)
                         saveCheckpoint()
                     }
                 }

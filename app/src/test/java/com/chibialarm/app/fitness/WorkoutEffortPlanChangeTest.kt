@@ -26,6 +26,19 @@ class WorkoutEffortPlanChangeTest {
         assertNull(WorkoutEffortPlanChange.requestFor(WorkoutEffortFeedback.Level.MODERATE))
     }
 
+    @Test fun veryHardFeedbackCanPreviewAnEasierPlanWithoutResumingOrAddingVolume() {
+        val preview = WorkoutEffortPlanChange.pausedAlternativePreviewRequest()
+
+        assertEquals(
+            WorkoutMidSessionRequest.Request(lowEnergy = true, preferEasier = true),
+            preview
+        )
+        assertNull(preview.restSeconds)
+        assertFalse(preview.addOptionalExercise)
+        // The ordinary automatic request path still cannot turn VERY_HARD into continuation.
+        assertNull(WorkoutEffortPlanChange.requestFor(WorkoutEffortFeedback.Level.VERY_HARD))
+    }
+
     @Test fun veryHardFeedbackMustUseTheStopOrHoldFlowNotAnEasierContinuation() {
         assertNull(WorkoutEffortPlanChange.requestFor(WorkoutEffortFeedback.Level.VERY_HARD))
     }

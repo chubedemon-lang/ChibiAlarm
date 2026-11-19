@@ -85,7 +85,7 @@ object WorkoutEffortFeedback {
                 restSeconds = maxOf(prescribedRestSeconds, 120)
                     .coerceAtMost(MAX_RECOMMENDED_REST_SECONDS),
                 holdBeforeNextSet = true,
-                message = "Bạn thấy quá sức. Hãy tạm dừng trước hiệp tiếp theo và chỉ tiếp tục khi đã hồi phục, thấy an toàn."
+                message = "Bạn tự đánh giá hiệp này quá sức. Hãy giữ buổi tập tạm dừng trước bước tiếp theo; chỉ tiếp tục khi đã hồi phục và thấy an toàn."
             )
         }
     }

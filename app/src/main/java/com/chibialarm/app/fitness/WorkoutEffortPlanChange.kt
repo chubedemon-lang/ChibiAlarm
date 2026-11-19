@@ -9,6 +9,13 @@ import com.chibialarm.app.WorkoutEffortFeedback
  * This object never applies a plan or increases workload by itself.
  */
 object WorkoutEffortPlanChange {
+    /**
+     * A very-hard check-in may inspect a lighter catalog plan while paused.
+     * This is preview input only: it does not resume, add volume, or apply a plan.
+     */
+    fun pausedAlternativePreviewRequest(): WorkoutMidSessionRequest.Request =
+        WorkoutMidSessionRequest.Request(lowEnergy = true, preferEasier = true)
+
     fun requestFor(level: WorkoutEffortFeedback.Level): WorkoutMidSessionRequest.Request? =
         when (level) {
             WorkoutEffortFeedback.Level.HARD -> WorkoutMidSessionRequest.Request(

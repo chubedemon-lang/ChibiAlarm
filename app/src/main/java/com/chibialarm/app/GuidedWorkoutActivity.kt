@@ -1325,6 +1325,7 @@ class GuidedWorkoutActivity:Activity() {
         val beforeMoves = moves.toList()
         val beforeFingerprint = currentPlanFingerprint()
         val beforeIndex = index
+        val beforeSessionId = sessionId
         val beforeRemaining = remainingMs
         val beforeCompletedSets = completedSetsByMove[index] ?: 0
         val result = WorkoutMidSessionPlanner.preview(
@@ -1416,11 +1417,12 @@ class GuidedWorkoutActivity:Activity() {
                     append(WorkoutMidSessionPreviewFormatter.format(preview))
                     append("\n\nCác hiệp đã xác nhận không bị sửa. Đây là gợi ý offline từ thư viện, không phải chẩn đoán hay đánh giá tư thế.")
                 }
-                AlertDialog.Builder(this).setTitle("🐰 Xem trước điều chỉnh giữa buổi")
+                val previewDialog = AlertDialog.Builder(this).setTitle("🐰 Xem trước điều chỉnh giữa buổi")
                     .setMessage(summary)
                     .setPositiveButton("Áp dụng") { _, _ ->
                         if (pausedForSafety || completed || resting || index != beforeIndex ||
-                            moves != beforeMoves || currentPlanFingerprint() != beforeFingerprint ||
+                            sessionId != beforeSessionId || moves != beforeMoves ||
+                            currentPlanFingerprint() != beforeFingerprint ||
                             remainingMs != beforeRemaining ||
                             (completedSetsByMove[index] ?: 0) != beforeCompletedSets
                         ) {
@@ -1485,7 +1487,30 @@ class GuidedWorkoutActivity:Activity() {
                         else speak(cue)
                     }
                     .setNegativeButton("Giữ nguyên",null)
-                    .show()
+                    .setNeutralButton("🔊 Nghe phương án",null)
+                    .create()
+                previewDialog.show()
+                previewDialog.getButton(AlertDialog.BUTTON_NEUTRAL).apply {
+                    contentDescription = "Nghe bằng giọng nói bản xem trước điều chỉnh; chưa áp dụng giáo án"
+                    setOnClickListener {
+                        val contextStillMatches = !pausedForSafety && !completed && !resting &&
+                            index == beforeIndex && sessionId == beforeSessionId &&
+                            moves == beforeMoves && currentPlanFingerprint() == beforeFingerprint &&
+                            remainingMs == beforeRemaining &&
+                            (completedSetsByMove[index] ?: 0) == beforeCompletedSets
+                        if (!contextStillMatches) {
+                            previewDialog.dismiss()
+                            Toast.makeText(this@GuidedWorkoutActivity,
+                                "Buổi tập đã thay đổi. Hãy xem trước lại.",Toast.LENGTH_LONG).show()
+                        } else if (ready) {
+                            speak(WorkoutMidSessionPreviewFormatter.spokenSummary(preview))
+                        } else {
+                            Toast.makeText(this@GuidedWorkoutActivity,
+                                "Giọng đọc chưa sẵn sàng. Mày vẫn có thể đọc bản xem trước trên màn hình.",
+                                Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }
             }
         }
     }

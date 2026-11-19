@@ -128,6 +128,51 @@ object WorkoutMidSessionPreviewFormatter {
         }
     }
 
+    /**
+     * Short, plain-language version for the in-session TTS button.
+     * Keep it within the Activity's 350-character speech limit and state clearly that
+     * the proposal has not been applied yet.
+     */
+    fun spokenSummary(preview: WorkoutMidSessionPlanner.Preview): String {
+        val parts = mutableListOf<String>()
+        parts += "Bản xem trước điều chỉnh."
+        val currentBefore = preview.before.getOrNull(preview.currentIndex)?.name
+        val currentAfter = preview.after.getOrNull(preview.currentIndex)?.name
+        if (preview.currentMoveChanged && currentBefore != null && currentAfter != null) {
+            parts += "Động tác đang tập: " + currentBefore + " đổi sang " + currentAfter + "."
+        } else if (preview.currentMoveChanged) {
+            parts += "Động tác đang tập được đề xuất thay thế."
+        }
+        if (preview.replacements.isNotEmpty()) {
+            val other = preview.replacements
+                .filterNot { currentBefore != null && it.startsWith(currentBefore + " → ") }
+                .take(2)
+            if (other.isNotEmpty()) {
+                parts += "Thay thêm: " + other.joinToString("; ") { it.replace(" → ", " sang ") } + "."
+            }
+        }
+        if (preview.removedMoves.isNotEmpty()) {
+            parts += "Bỏ bài chưa bắt đầu: " +
+                preview.removedMoves.take(2).joinToString(", ") + "."
+        }
+        if (preview.addedMoves.isNotEmpty()) {
+            parts += "Thêm bài tùy chọn: " +
+                preview.addedMoves.take(2).joinToString(", ") + "."
+        }
+        if (!preview.changed && preview.restSeconds == 0) {
+            parts += "Không có thay đổi nào được đề xuất."
+        }
+        parts += "Thời gian còn lại ước tính " + durationLabel(preview.estimatedRemainingSeconds) + "."
+        if (preview.targetExceeded) {
+            parts += "Mục tiêu thời gian chưa đạt; hiệp bắt buộc vẫn được giữ."
+        }
+        if (preview.restSeconds > 0) {
+            parts += "Sau khi áp dụng sẽ nghỉ riêng " + preview.restSeconds + " giây."
+        }
+        val details = parts.joinToString(" ").take(270)
+        return (details + " Các hiệp đã xác nhận được giữ nguyên. Chưa áp dụng.").take(350)
+    }
+
     private fun durationLabel(totalSeconds: Int): String {
         val safe = totalSeconds.coerceAtLeast(0)
         val minutes = safe / 60

@@ -204,4 +204,32 @@ class WorkoutMidSessionPreviewFormatterTest {
         assertFalse(text.contains("còn 0 hiệp bắt buộc"))
     }
 
+    @Test fun spokenPreviewSummarizesTheProposalWithoutApplyingIt() {
+        val result = preview(
+            listOf(
+                move("Khởi động tại chỗ"),
+                move("Squat không tạ"),
+                move("Thả lỏng")
+            ),
+            currentIndex = 1,
+            request = WorkoutMidSessionRequest.Request(preferEasier = true, restSeconds = 30),
+            availableEquipment = setOf(TrainingEquipment.STABLE_CHAIR)
+        )
+        val spoken = WorkoutMidSessionPreviewFormatter.spokenSummary(
+            result.copy(
+                addedMoves = listOf("Nâng gối ngồi ghế"),
+                removedMoves = listOf("Bài bổ sung chưa bắt đầu")
+            )
+        )
+
+        assertTrue(spoken.contains("Squat không tạ"))
+        assertTrue(spoken.contains("Đứng lên – ngồi xuống"))
+        assertTrue(spoken.contains("Bỏ bài chưa bắt đầu"))
+        assertTrue(spoken.contains("Thêm bài tùy chọn"))
+        assertTrue(spoken.contains("30 giây"))
+        assertTrue(spoken.contains("Các hiệp đã xác nhận được giữ nguyên"))
+        assertTrue(spoken.contains("Chưa áp dụng"))
+        assertTrue(spoken.length <= 350)
+    }
+
 }

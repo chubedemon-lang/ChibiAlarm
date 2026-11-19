@@ -145,6 +145,20 @@ class WorkoutLibrarySearchTest {
         })
     }
 
+    @Test fun muscleFocusSearchIgnoresGenericPrefixesAndUsesOnlyCuratedFocusText() {
+        val results = WorkoutLibrarySearch.filter(
+            TrainingCatalog.programs,
+            "Tất cả",
+            "bài tập đùi trước"
+        )
+        val matchedMoves = results.flatMap { it.matchingMoves }
+
+        assertTrue(matchedMoves.isNotEmpty())
+        assertTrue(matchedMoves.all {
+            WorkoutExerciseFocus.descriptionFor(it.name)?.contains("đùi trước") == true
+        })
+    }
+
     @Test fun muscleFocusSearchFindsUpperBodyMovesAndStillHonorsCategory() {
         val results = WorkoutLibrarySearch.filter(
             TrainingCatalog.programs,

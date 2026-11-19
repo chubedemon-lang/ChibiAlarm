@@ -1629,7 +1629,7 @@ class GuidedWorkoutActivity:Activity() {
                 val spokenSetReport = WorkoutSetReportCommand.parse(utterance)
                 val spokenTarget = if (parsed.request.isRestOnly && spokenSetReport == null &&
                     voiceIntent in setOf(WorkoutVoiceCommands.Command.REST, WorkoutVoiceCommands.Command.UNKNOWN)
-                ) com.chibialarm.app.fitness.WorkoutTargetCommand.spokenTarget(utterance) else null
+                ) com.chibialarm.app.fitness.WorkoutTargetCommand.spokenTarget(utterance, expectedUnit = currentSetPlan()?.unit) else null
                 if (spokenTarget != null) {
                     confirmSpokenTarget(spokenTarget.value, spokenTarget.unit, parsed.request.restSeconds)
                 } else {
@@ -1657,7 +1657,7 @@ class GuidedWorkoutActivity:Activity() {
         }
 
         // Safety words always take precedence over any numeric exercise request.
-        val spokenTarget = com.chibialarm.app.fitness.WorkoutTargetCommand.spokenTarget(utterance)
+        val spokenTarget = com.chibialarm.app.fitness.WorkoutTargetCommand.spokenTarget(utterance, expectedUnit = currentSetPlan()?.unit)
         if (spokenTarget != null && WorkoutVoiceCommands.mayEditReps(utterance)) {
             confirmSpokenTarget(spokenTarget.value, spokenTarget.unit)
             return

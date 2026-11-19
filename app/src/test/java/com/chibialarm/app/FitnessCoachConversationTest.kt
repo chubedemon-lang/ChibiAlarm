@@ -29,6 +29,30 @@ class FitnessCoachConversationTest {
         val reply = FitnessCoachConversation.parseReply(previous, "15")
         assertEquals(15, FitnessCoachConversation.merge(previous, reply).minutes)
     }
+
+    @Test fun ambiguousDurationReplyAsksForOneExactTimeInsteadOfChoosingAnEndpoint() {
+        val previous = FitnessCoachConversation.merge(
+            null,
+            FitnessNaturalRequest.parse("giãn cơ, đang tập đều")
+        )
+        val phrases = listOf(
+            "15 đến 20 phút",
+            "15-20 phút",
+            "một tiếng 30 phút",
+            "tối đa 20 phút",
+            "15 phút rưỡi"
+        )
+        for (phrase in phrases) {
+            val reply = FitnessCoachConversation.parseReply(previous, phrase)
+            val merged = FitnessCoachConversation.merge(previous, reply)
+            assertNull("Must not silently choose a duration for $phrase", merged.minutes)
+            assertTrue("Must explain the clarification for $phrase", reply.reply.contains("một thời lượng cụ thể"))
+            assertEquals(
+                FitnessCoachFollowUp.Question.DURATION,
+                FitnessCoachFollowUp.nextQuestionType(merged)
+            )
+        }
+    }
     @Test fun bareNoOnlyMeansNoEquipmentWhenAskedAboutEquipment() {
         val previous = FitnessCoachConversation.merge(null, FitnessNaturalRequest.parse("giãn cơ 15 phút, đang tập đều"))
         val reply = FitnessCoachConversation.parseReply(previous, "không")

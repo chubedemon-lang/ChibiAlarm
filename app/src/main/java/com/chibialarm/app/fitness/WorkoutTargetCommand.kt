@@ -25,6 +25,11 @@ object WorkoutTargetCommand {
     private val spokenTargetPattern = Regex(
         """(?:(còn|xuống|thành|giảm xuống|tăng lên|đổi thành)\s*)?($numeral)\s*(lần|cái|reps?|nhịp|giây)\b"""
     )
+    // Speech recognition often drops the unit. This fallback is safe only when
+    // the active exercise supplies its unit and the utterance contains an edit verb.
+    private val contextualTargetPattern = Regex(
+        """(?:^|\s)(?:giảm(?:\s+xuống)?(?:\s+còn)?|đổi(?:\s+thành)?|tăng(?:\s+lên)?|xuống(?:\s+còn)?)\s+($numeral)\s*$"""
+    )
     private val restPattern = Regex("""(?:nghỉ|thời gian nghỉ)\s*(?:thêm|lên|thành|còn)?\s*($numeral)\s*(giây|phút)\b""")
     private val secondsAfterMinutes = Regex("""^\s*($numeral)\s*giây\b""")
     private val units = mapOf(
@@ -127,25 +132,34 @@ object WorkoutTargetCommand {
      * Parse a spoken target using the selected exercise's unit. A bare rest duration
      * must never become a Plank target; time targets require an explicit change marker.
      */
-    fun spokenTarget(spokenText: String): SpokenTarget? {
+    fun spokenTarget(spokenText: String, expectedUnit: String? = null): SpokenTarget? {
         val normalized = spokenText.lowercase(Locale.ROOT).trim()
         if (painWords.containsMatchIn(normalized) || hasCompetingControlIntent(normalized)) return null
         val matches = spokenTargetPattern.findAll(normalized).toList()
         val match = matches.firstOrNull { it.groupValues[1].isNotBlank() }
             ?: matches.firstOrNull()
-            ?: return null
-        val rawUnit = match.groupValues[3]
-        val unit = when (rawUnit) {
-            "lần", "cái", "rep", "reps" -> "lần"
-            "nhịp" -> "nhịp"
-            "giây" -> "giây"
-            else -> return null
+        if (match != null) {
+            val rawUnit = match.groupValues[3]
+            val unit = when (rawUnit) {
+                "lần", "cái", "rep", "reps" -> "lần"
+                "nhịp" -> "nhịp"
+                "giây" -> "giây"
+                else -> null
+            }
+            val bareRestOrTime = match.groupValues[1].isBlank() &&
+                (unit == "giây" || WorkoutVoiceCommands.parse(normalized) == WorkoutVoiceCommands.Command.REST)
+            val value = number(match.groupValues[2])?.takeIf { it in 1..100 }
+            if (unit != null && value != null && !bareRestOrTime) {
+                return SpokenTarget(value, unit)
+            }
         }
-        if (match.groupValues[1].isBlank() &&
-            (unit == "giây" || WorkoutVoiceCommands.parse(normalized) == WorkoutVoiceCommands.Command.REST)
-        ) return null
-        val value = number(match.groupValues[2])?.takeIf { it in 1..100 } ?: return null
-        return SpokenTarget(value, unit)
+
+        // Never guess a missing unit in a standalone utterance. GuidedWorkoutActivity
+        // supplies the unit only from the currently selected catalogued exercise.
+        val contextualUnit = expectedUnit?.takeIf { it in setOf("lần", "nhịp", "giây") } ?: return null
+        val contextualMatch = contextualTargetPattern.find(normalized) ?: return null
+        val contextualValue = number(contextualMatch.groupValues[1])?.takeIf { it in 1..100 } ?: return null
+        return SpokenTarget(contextualValue, contextualUnit)
     }
 
     /** Backwards-compatible rep-only parser for callers that explicitly need repetitions. */

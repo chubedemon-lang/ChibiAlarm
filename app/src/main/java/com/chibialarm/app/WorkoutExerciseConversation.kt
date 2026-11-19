@@ -61,7 +61,7 @@ object WorkoutExerciseConversation {
 
         val move = match.selected ?: return (
             "Chibi chưa nhận ra tên động tác trong thư viện. " +
-                "Mày hãy nêu rõ tên bài, ví dụ: “cách tập Squat không tạ” hoặc “hướng dẫn Plank”."
+                "Mày hãy nêu rõ tên bài theo đúng tên trong thư viện để Chibi tránh hướng dẫn nhầm."
             )
         return format(move)
     }
@@ -148,7 +148,7 @@ object WorkoutExerciseConversation {
                     "$name không có khoảng nghỉ giữa hiệp cố định trong thư viện. " +
                         "Mày có thể nghỉ thêm nếu cần, không phải vội."
                 } else {
-                    "$rest. Đây là thời gian đề xuất; có thể nghỉ lâu hơn nếu chưa sẵn sàng."
+                    "$name. $rest. Đây là thời gian đề xuất; có thể nghỉ lâu hơn nếu chưa sẵn sàng."
                 }
             }
             asks("can dung cu gi", "bai nay can gi", "dung cu nao", "can ta hay day",

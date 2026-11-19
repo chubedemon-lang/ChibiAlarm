@@ -59,6 +59,8 @@ class WorkoutExerciseConversationTest {
 
         assertNotNull(answer)
         assertTrue(answer!!.contains("nêu rõ tên bài"))
+        assertFalse(answer.contains("Squat không tạ"))
+        assertFalse(answer.contains("Plank"))
     }
 
     @Test fun contextualQuestionUsesTheCurrentlySelectedMoveAndAdjustedDose() {
@@ -89,7 +91,8 @@ class WorkoutExerciseConversationTest {
         assertTrue(technique!!.contains("đẩy hông nhẹ về sau"))
         assertTrue(technique.contains("Hình minh họa không đánh giá tư thế"))
         assertNotNull(rest)
-        assertTrue(rest!!.contains("60 giây"))
+        assertTrue(rest!!.contains("Squat không tạ"))
+        assertTrue(rest.contains("60 giây"))
         assertTrue(rest.contains("nghỉ lâu hơn"))
     }
 

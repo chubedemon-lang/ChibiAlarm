@@ -47,6 +47,16 @@ class FitnessCoachPlanPreviewActionTest {
         return null
     }
 
+    private fun collectText(view: View): List<String> {
+        val own = if (view is TextView) listOf(view.text.toString()) else emptyList()
+        val children = if (view is ViewGroup) {
+            (0 until view.childCount).flatMap { collectText(view.getChildAt(it)) }
+        } else {
+            emptyList()
+        }
+        return own + children
+    }
+
     @Test fun completedConversationOpensTheExistingCuratedRecommendationPreview() {
         val intent = Intent()
         CoachFitnessHandoff.addToFitnessIntent(completeContext(), intent)
@@ -69,9 +79,11 @@ class FitnessCoachPlanPreviewActionTest {
 
         val recommendation = ShadowAlertDialog.getLatestAlertDialog()
         assertNotNull("The curated recommendation dialog should open", recommendation)
-        val message = recommendation.findViewById<TextView>(android.R.id.message)
-        assertNotNull(message)
-        assertTrue(message.text.toString().contains("15 phút"))
+        val previewText = collectText(recommendation.window!!.decorView).joinToString("\n")
+        assertTrue(
+            "Plan preview did not show the selected 15-minute duration: $previewText",
+            previewText.contains("15 phút")
+        )
         controller.pause().stop().destroy()
     }
 

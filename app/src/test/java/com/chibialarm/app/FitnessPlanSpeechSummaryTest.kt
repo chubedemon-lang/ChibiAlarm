@@ -59,8 +59,37 @@ class FitnessPlanSpeechSummaryTest {
             "Giáo án"
         )
 
-        assertTrue(spoken.contains("đã báo đau/chấn thương; không tạo giáo án"))
+        assertTrue(spoken.contains("Bạn đã báo đau hoặc chấn thương"))
+        assertTrue(spoken.contains("không tạo hoặc bắt đầu giáo án"))
         assertTrue(spoken.contains("không phải tư vấn y khoa"))
+        assertFalse(spoken.contains("Chibi chọn"))
+    }
+
+    @Test fun spokenSummaryIncludesEstimatedDurationAndAggregateRestTime() {
+        val spoken = FitnessPlanSpeechSummary.fromProfile(
+            profile(),
+            "Toàn thân",
+            estimatedMinutes = 22,
+            prescribedRestSeconds = 90
+        )
+
+        assertTrue(spoken.contains("Ước tính 22 phút"))
+        assertTrue(spoken.contains("Tổng thời gian nghỉ theo giáo án: 1 phút 30 giây"))
+        assertTrue(spoken.length <= FitnessPlanSpeechSummary.MAX_CHARACTERS)
+    }
+
+    @Test fun overTargetPlanIsSpokenAsAnOverrun() {
+        val spoken = FitnessPlanSpeechSummary.fromProfile(
+            profile(),
+            "Toàn thân",
+            estimatedMinutes = 32,
+            exceedsTarget = true,
+            prescribedRestSeconds = 150
+        )
+
+        assertTrue(spoken.contains("Ước tính 32 phút, vượt mục tiêu"))
+        assertTrue(spoken.contains("Tổng thời gian nghỉ theo giáo án: 2 phút 30 giây"))
+        assertTrue(spoken.length <= FitnessPlanSpeechSummary.MAX_CHARACTERS)
     }
 
     @Test fun longUiLabelsRemainBoundedAndKeepAllSafetyFilters() {

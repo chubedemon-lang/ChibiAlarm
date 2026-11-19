@@ -7,9 +7,17 @@ package com.chibialarm.app
 internal object FitnessPlanSpeechSummary {
     const val MAX_CHARACTERS = 350
 
-    fun fromProfile(profileSummary: String, programName: String): String {
+    fun fromProfile(
+        profileSummary: String,
+        programName: String,
+        estimatedMinutes: Int? = null,
+        exceedsTarget: Boolean = false,
+        prescribedRestSeconds: Int? = null
+    ): String {
         require(profileSummary.isNotBlank() && profileSummary.length <= 5_000)
         require(programName.isNotBlank() && programName.length <= 120)
+        require(estimatedMinutes == null || estimatedMinutes in 1..240)
+        require(prescribedRestSeconds == null || prescribedRestSeconds in 0..3_600)
 
         fun field(label: String): String = profileSummary.lineSequence()
             .firstOrNull { it.startsWith("$label:") }
@@ -23,32 +31,66 @@ internal object FitnessPlanSpeechSummary {
         val minutes = field("Thời lượng mục tiêu").removeSuffix(" phút").trim().toIntOrNull()
             ?: throw IllegalArgumentException("Missing plan duration")
         val equipment = compactEquipment(field("Dụng cụ"))
-        val impact = compactImpact(field("Ưu tiên vận động"))
+        val impactValue = field("Ưu tiên vận động")
+        val impact = compactImpact(impactValue)
         val filters = compactFilters(field("Bộ lọc động tác"))
 
         require(goal.isNotBlank() && level.isNotBlank() && minutes in 5..120)
         require(equipment.isNotBlank() && impact.isNotBlank() && filters.isNotBlank())
 
+        // A reported pain/injury is a stop state, not a plan to read back.
+        // Never say that a program was selected or invite the user to start it.
+        val reportedPain = impactValue.contains("đau", ignoreCase = true) ||
+            impactValue.contains("chấn thương", ignoreCase = true)
+        if (reportedPain) {
+            return "Bạn đã báo đau hoặc chấn thương. Chibi không tạo hoặc bắt đầu giáo án. " +
+                "Hãy hỏi chuyên gia y tế trước khi vận động; đây không phải tư vấn y khoa."
+        }
+
         val required = listOf(
-            "Chibi chọn ${clip(programName, 40)}.",
-            "Mục tiêu ${clip(goal, 30)}.",
-            "Trình độ ${clip(level, 25)}.",
+            "Chibi chọn ${clip(programName, 24)}.",
+            "Mục tiêu ${clip(goal, 20)}.",
+            "Trình độ ${clip(level, 18)}.",
             "${minutes} phút.",
-            "Dụng cụ ${clip(equipment, 40)}.",
-            "Ưu tiên ${clip(impact, 28)}.",
+            "Dụng cụ ${clip(equipment, 24)}.",
+            "Ưu tiên ${clip(impact, 20)}.",
             "Bộ lọc ${clip(filters, 65)}.",
             "Gợi ý offline, không phải tư vấn y khoa."
         )
-        val withEnergy = required.toMutableList().apply {
-            add(3, "Năng lượng ${clip(energy, 18)}.")
-        }
-        val spoken = withEnergy.joinToString(" ")
-        return if (spoken.length <= MAX_CHARACTERS) {
-            spoken
-        } else {
-            required.joinToString(" ").also {
-                check(it.length <= MAX_CHARACTERS) { "Required plan summary exceeded the speech limit" }
+        val selected = required.toMutableList()
+
+        val optional = buildList {
+            estimatedMinutes?.let {
+                add(
+                    if (exceedsTarget) "Ước tính ${it} phút, vượt mục tiêu."
+                    else "Ước tính ${it} phút."
+                )
             }
+            prescribedRestSeconds?.takeIf { it > 0 }?.let {
+                add("Tổng thời gian nghỉ theo giáo án: ${formatDuration(it)}.")
+            }
+            if (energy.isNotBlank()) add("Năng lượng ${clip(energy, 14)}.")
+        }
+
+        optional.forEach { sentence ->
+            val candidate = (selected + sentence).joinToString(" ")
+            if (candidate.length <= MAX_CHARACTERS) selected.add(sentence)
+        }
+
+        return selected.joinToString(" ").also {
+            check(it.length <= MAX_CHARACTERS) {
+                "Required plan summary exceeded the speech limit"
+            }
+        }
+    }
+
+    private fun formatDuration(totalSeconds: Int): String {
+        val minutes = totalSeconds / 60
+        val seconds = totalSeconds % 60
+        return when {
+            minutes > 0 && seconds > 0 -> "${minutes} phút ${seconds} giây"
+            minutes > 0 -> "${minutes} phút"
+            else -> "${totalSeconds} giây"
         }
     }
 
@@ -64,7 +106,7 @@ internal object FitnessPlanSpeechSummary {
     private fun compactImpact(value: String): String = when {
         value.startsWith("Chưa khai báo") -> "theo lựa chọn hiện tại"
         value.contains("Ưu tiên bài ít tác động") -> "ít tác động, không nhảy"
-        value.contains("Đã báo đau hoặc chấn thương") -> "đã báo đau/chấn thương; không tạo giáo án"
+        value.contains("Đã báo đau hoặc chấn thương") -> "đã báo đau/chấn thương"
         else -> value
     }
 

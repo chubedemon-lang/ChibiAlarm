@@ -909,7 +909,13 @@ class FitnessActivity:Activity() {
                     recommendation.explanation +
                     (historySuggestion?.let { "\n\n📚 " + it.reason } ?: "") +
                     "\n\nGợi ý offline theo quy tắc trên máy, không phải AI chẩn đoán hay tư vấn y khoa."
-                val spokenProfileSummary = FitnessPlanSpeechSummary.fromProfile(profileSummary, p.name)
+                val spokenProfileSummary = FitnessPlanSpeechSummary.fromProfile(
+                    profileSummary = profileSummary,
+                    programName = p.name,
+                    estimatedMinutes = planned.estimatedMinutes,
+                    exceedsTarget = planned.exceedsTarget,
+                    prescribedRestSeconds = planned.prescribedRestSeconds
+                )
                 val dialogContent = LinearLayout(this@FitnessActivity).apply {
                     orientation = LinearLayout.VERTICAL
                     val summaryText = TextView(this@FitnessActivity).apply {

@@ -59,6 +59,12 @@ internal object WorkoutRestVoiceCue {
             }
             return "Sau nghỉ: đã đủ hiệp của $current; đây là bước cuối."
         }
+        val next = safeLabel(nextMoveName, 80)
+        if (next.isNotBlank()) {
+            val dose = safeLabel(nextMoveDose, 80)
+            return if (dose.isBlank()) "Tiếp theo: $next."
+            else "Tiếp theo: $next; mục tiêu $dose."
+        }
         val remaining = safeLabel(currentRemainingLabel, 32)
         return if (remaining.isBlank()) "Sau nghỉ: tiếp tục $current."
         else "Sau nghỉ: tiếp tục $current; thời gian gợi ý còn $remaining."
@@ -86,6 +92,16 @@ internal object WorkoutRestVoiceCue {
         val safeName = safeLabel(moveName, 80)
         if (safeName.isBlank()) return "Đã hết giờ nghỉ. Tiếp tục khi bạn sẵn sàng."
         if (plan == null) {
+            val next = safeLabel(nextMoveName, 80)
+            if (next.isNotBlank()) {
+                val dose = safeLabel(nextMoveDose, 80)
+                val nextDescription = if (dose.isBlank()) {
+                    "Tiếp theo: $next."
+                } else {
+                    "Tiếp theo: $next; mục tiêu $dose."
+                }
+                return "Đã hết giờ nghỉ. $nextDescription Khi sẵn sàng, bạn có thể chuyển sang động tác tiếp theo."
+            }
             return "Đã hết giờ nghỉ. Khi bạn sẵn sàng, tiếp tục: $safeName."
         }
 

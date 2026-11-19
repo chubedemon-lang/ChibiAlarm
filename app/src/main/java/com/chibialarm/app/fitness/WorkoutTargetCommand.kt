@@ -134,11 +134,29 @@ object WorkoutTargetCommand {
      * Parse a spoken target using the selected exercise's unit. A bare rest duration
      * must never become a Plank target; time targets require an explicit change marker.
      */
-    fun spokenTarget(spokenText: String, expectedUnit: String? = null): SpokenTarget? {
+    fun spokenTarget(
+        spokenText: String,
+        expectedUnit: String? = null,
+        currentTarget: Int? = null
+    ): SpokenTarget? {
         val normalized = spokenText.lowercase(Locale.ROOT).trim()
         if (painWords.containsMatchIn(normalized) || hasCompetingControlIntent(normalized)) return null
-        // Relative edits need the active session baseline; this method returns absolute targets only.
-        if (relativeRepsPattern.containsMatchIn(normalized)) return null
+        val relativeMatch = relativeRepsPattern.find(normalized)
+        if (relativeMatch != null) {
+            // Resolve relative wording only from an exact, active repetition target.
+            // A range or an unknown unit must be clarified instead of guessed.
+            if (expectedUnit != "lần") return null
+            val baseline = currentTarget?.takeIf { it in 1..100 } ?: return null
+            val repValues = Regex("""($numeral)\s*(?:lần|cái|reps?)\b""")
+                .findAll(normalized).toList()
+            if (repValues.size != 1) return null
+            val delta = number(relativeMatch.groupValues[2])?.takeIf { it in 1..100 } ?: return null
+            val decreases = relativeMatch.groupValues[1].startsWith("bớt") ||
+                relativeMatch.groupValues[1].startsWith("giảm")
+            val adjusted = if (decreases) baseline - delta else baseline + delta
+            if (adjusted !in 1..100) return null
+            return SpokenTarget(adjusted, "lần")
+        }
         val matches = spokenTargetPattern.findAll(normalized).toList()
         val match = matches.firstOrNull { it.groupValues[1].isNotBlank() }
             ?: matches.firstOrNull()

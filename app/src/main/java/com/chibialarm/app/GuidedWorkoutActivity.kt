@@ -1629,7 +1629,7 @@ class GuidedWorkoutActivity:Activity() {
                 val spokenSetReport = WorkoutSetReportCommand.parse(utterance)
                 val spokenTarget = if (parsed.request.isRestOnly && spokenSetReport == null &&
                     voiceIntent in setOf(WorkoutVoiceCommands.Command.REST, WorkoutVoiceCommands.Command.UNKNOWN)
-                ) com.chibialarm.app.fitness.WorkoutTargetCommand.spokenTarget(utterance, expectedUnit = currentSetPlan()?.unit) else null
+                ) contextualSpokenTarget(utterance) else null
                 if (spokenTarget != null) {
                     confirmSpokenTarget(spokenTarget.value, spokenTarget.unit, parsed.request.restSeconds)
                 } else {
@@ -1657,7 +1657,7 @@ class GuidedWorkoutActivity:Activity() {
         }
 
         // Safety words always take precedence over any numeric exercise request.
-        val spokenTarget = com.chibialarm.app.fitness.WorkoutTargetCommand.spokenTarget(utterance, expectedUnit = currentSetPlan()?.unit)
+        val spokenTarget = contextualSpokenTarget(utterance)
         if (spokenTarget != null && WorkoutVoiceCommands.mayEditReps(utterance)) {
             confirmSpokenTarget(spokenTarget.value, spokenTarget.unit)
             return
@@ -2818,6 +2818,17 @@ class GuidedWorkoutActivity:Activity() {
     }
 
     private fun currentSetPlan():WorkoutSetTracker.Plan? = setPlan(index)
+
+    /** Relative speech edits are allowed only when this move has one exact current target. */
+    private fun contextualSpokenTarget(utterance: String): com.chibialarm.app.fitness.WorkoutTargetCommand.SpokenTarget? {
+        val plan = currentSetPlan() ?: return null
+        val exactTarget = plan.takeIf { it.targetMin == it.targetMax }?.targetMin
+        return com.chibialarm.app.fitness.WorkoutTargetCommand.spokenTarget(
+            utterance,
+            expectedUnit = plan.unit,
+            currentTarget = exactTarget
+        )
+    }
 
     private fun clockText(milliseconds:Long):String {
         val seconds=(milliseconds.coerceAtLeast(0L)/1000L).toInt()

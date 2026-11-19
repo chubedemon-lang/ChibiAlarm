@@ -57,6 +57,33 @@ class WorkoutTargetCommandTest {
         assertNull(WorkoutTargetCommand.spokenTarget("Dừng tập và giảm còn 6 lần"))
     }
 
+
+    @Test fun spokenRelativeTargetsResolveOnlyFromAnExactActiveRepBaseline() {
+        assertEquals(
+            WorkoutTargetCommand.SpokenTarget(10, "lần"),
+            WorkoutTargetCommand.spokenTarget(
+                "Giảm 2 lần", expectedUnit = "lần", currentTarget = 12
+            )
+        )
+        assertEquals(
+            WorkoutTargetCommand.SpokenTarget(14, "lần"),
+            WorkoutTargetCommand.spokenTarget(
+                "Thêm hai lần", expectedUnit = "lần", currentTarget = 12
+            )
+        )
+        assertEquals(
+            WorkoutTargetCommand.SpokenTarget(10, "lần"),
+            WorkoutTargetCommand.spokenTarget(
+                "Bớt hai lần và nghỉ 90 giây", expectedUnit = "lần", currentTarget = 12
+            )
+        )
+        assertNull(WorkoutTargetCommand.spokenTarget("Giảm 2 lần", expectedUnit = "nhịp", currentTarget = 12))
+        assertNull(WorkoutTargetCommand.spokenTarget("Giảm 2 lần", expectedUnit = "lần"))
+        assertNull(WorkoutTargetCommand.spokenTarget("Giảm 2 lần", expectedUnit = "lần", currentTarget = 0))
+        assertNull(WorkoutTargetCommand.spokenTarget("Giảm 13 lần", expectedUnit = "lần", currentTarget = 12))
+        assertNull(WorkoutTargetCommand.spokenTarget("Thêm 100 lần", expectedUnit = "lần", currentTarget = 12))
+    }
+
     private val session = CoachSessionPlanner.Session(listOf(
         CoachSessionPlanner.SetPlan("squat", 12, 45),
         CoachSessionPlanner.SetPlan("walk", 20, 30),

@@ -78,8 +78,11 @@ object WorkoutExerciseConversation {
             "bai dang tap", "dong tac dang tap"
         ).any(query::contains)
         if (refersToCurrentMove) return true
+        val contextualWords = questionWords + setOf(
+            "lau", "hay", "ta", "day", "how", "long", "many", "sets", "reps", "rest"
+        )
         val unresolvedNameTokens = query.split(' ')
-            .filter { it.length >= 2 && it !in questionWords }
+            .filter { it.length >= 2 && it !in contextualWords }
         return unresolvedNameTokens.isEmpty()
     }
 

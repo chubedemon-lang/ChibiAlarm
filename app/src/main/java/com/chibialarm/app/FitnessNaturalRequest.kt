@@ -123,16 +123,18 @@ object FitnessNaturalRequest {
     private const val DURATION_NUMBER =
         "(?:[0-9]{1,3}|mot|hai|ba|bon|tu|nam|lam|sau|bay|tam|chin|muoi)(?:\\s+(?:tram|linh|le|muoi|mot|hai|ba|bon|tu|nam|lam|sau|bay|tam|chin))*"
     private const val DURATION_UNIT = "(?:phut|minute|min|p|tieng|gio)"
-    private val durationMention = Regex("(?:^| )($DURATION_NUMBER)\\s*($DURATION_UNIT)(?: |$)")
-    private val halfHourMention = Regex("(?:^| )nua (?:tieng|gio)(?: |$)")
+    // Lookarounds keep the whitespace between adjacent mentions available to findAll().
+    // Consuming the boundary space made "1 tiếng 30 phút" look like only one duration.
+    private val durationMention = Regex("(?<![a-z0-9])($DURATION_NUMBER)\\s*($DURATION_UNIT)(?![a-z0-9])")
+    private val halfHourMention = Regex("(?<![a-z0-9])nua (?:tieng|gio)(?![a-z0-9])")
     private val durationRange = Regex(
-        "(?:^| )(?:tu\\s+)?($DURATION_NUMBER)(?:\\s*$DURATION_UNIT)?\\s+(?:den|toi|hoac)\\s+($DURATION_NUMBER)(?:\\s*$DURATION_UNIT)?(?: |$)"
+        "(?<![a-z0-9])(?:tu\\s+)?($DURATION_NUMBER)(?:\\s*$DURATION_UNIT)?\\s+(?:den|toi|hoac)\\s+($DURATION_NUMBER)(?:\\s*$DURATION_UNIT)?(?![a-z0-9])"
     )
     private val durationBound = Regex(
-        "(?:^| )(?:tu|toi da|it nhat|it hon|duoi|tren|tro len|hon|khong qua)\\s+$DURATION_NUMBER(?:\\s*$DURATION_UNIT)?(?: |$)"
+        "(?<![a-z0-9])(?:tu|toi da|it nhat|it hon|duoi|tren|tro len|hon|khong qua)\\s+$DURATION_NUMBER(?:\\s*$DURATION_UNIT)?(?![a-z0-9])"
     )
     private val durationTailBound = Regex(
-        "(?:^| )$DURATION_NUMBER\\s*$DURATION_UNIT\\s+(?:tro len|tro xuong|hon|hoac it nhat|hoac it hon)(?: |$)"
+        "(?<![a-z0-9])$DURATION_NUMBER\\s*$DURATION_UNIT\\s+(?:tro len|tro xuong|hon|hoac it nhat|hoac it hon)(?![a-z0-9])"
     )
 
     /**

@@ -285,4 +285,68 @@ class WorkoutTargetCommandTest {
             WorkoutTargetCommand.propose("Đổi thành một trăm linh một lần", "squat", session, 0)
         )
     }
+
+    private val uniformSquatSession = CoachSessionPlanner.Session(listOf(
+        CoachSessionPlanner.SetPlan("squat", 12, 45),
+        CoachSessionPlanner.SetPlan("walk", 20, 30),
+        CoachSessionPlanner.SetPlan("squat", 12, 60)
+    ))
+
+    @Test fun relativeDecreaseUsesOnlyTheActivePlanAndNeverRewritesCompletedSets() {
+        val result = WorkoutTargetCommand.propose(
+            "Giảm 2 lần", "squat", uniformSquatSession, completedSets = 1
+        )
+        assertTrue(result is WorkoutTargetCommand.Result.Proposed)
+        val preview = (result as WorkoutTargetCommand.Result.Proposed).preview
+        assertEquals(uniformSquatSession.sets[0], preview.after.sets[0])
+        assertEquals(uniformSquatSession.sets[1], preview.after.sets[1])
+        assertEquals(10, preview.after.sets[2].reps)
+        assertNull(WorkoutTargetCommand.spokenTarget("Giảm 2 lần", expectedUnit = "lần"))
+    }
+
+    @Test fun relativeIncreaseIsPreviewedAgainstTheCurrentUnfinishedTarget() {
+        val result = WorkoutTargetCommand.propose(
+            "Thêm hai lần", "squat", uniformSquatSession, completedSets = 0
+        )
+        assertTrue(result is WorkoutTargetCommand.Result.Proposed)
+        val after = (result as WorkoutTargetCommand.Result.Proposed).preview.after
+        assertEquals(14, after.sets[0].reps)
+        assertEquals(14, after.sets[2].reps)
+    }
+
+    @Test fun relativeEditsRejectMixedBaselinesAndOutOfRangeResults() {
+        assertSame(
+            WorkoutTargetCommand.Result.Unsupported,
+            WorkoutTargetCommand.propose("Bớt 2 lần", "squat", session, completedSets = 0)
+        )
+        assertSame(
+            WorkoutTargetCommand.Result.Unsupported,
+            WorkoutTargetCommand.propose("Bớt 13 lần", "squat", uniformSquatSession, completedSets = 0)
+        )
+        assertSame(
+            WorkoutTargetCommand.Result.Unsupported,
+            WorkoutTargetCommand.propose("Tăng thêm 100 lần", "squat", uniformSquatSession, completedSets = 0)
+        )
+    }
+
+    @Test fun relativeRepChangeCanIncludeRestButSafetyAndNavigationStillWin() {
+        val result = WorkoutTargetCommand.propose(
+            "Bớt hai lần và nghỉ 90 giây", "squat", uniformSquatSession, completedSets = 0
+        )
+        assertTrue(result is WorkoutTargetCommand.Result.Proposed)
+        val after = (result as WorkoutTargetCommand.Result.Proposed).preview.after
+        assertEquals(10, after.sets[0].reps)
+        assertEquals(90, after.sets[0].restSeconds)
+        assertEquals(10, after.sets[2].reps)
+        assertEquals(90, after.sets[2].restSeconds)
+        assertSame(
+            WorkoutTargetCommand.Result.SafetyStop,
+            WorkoutTargetCommand.propose("Đau gối, bớt hai lần", "squat", uniformSquatSession, 0)
+        )
+        assertSame(
+            WorkoutTargetCommand.Result.Unsupported,
+            WorkoutTargetCommand.propose("Dừng tập rồi bớt hai lần", "squat", uniformSquatSession, 0)
+        )
+    }
+
 }

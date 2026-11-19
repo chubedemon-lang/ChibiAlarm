@@ -254,7 +254,7 @@ class WorkoutEffortHistoryConversationTest {
         assertTrue(answer!!.contains("chưa có hiệp nào"))
         assertTrue(answer.contains("Mức cao nhất đã ghi là"))
         assertTrue(answer.contains("hiệp 2: Vừa sức"))
-        assertFalse(answer.contains("• Squat — hiệp 1:"))
+        assertFalse(answer.contains("Khó, cần nghỉ thêm"))
     }
 
     @Test fun hardestSetAnswerNeverFallsBackToAnOlderSessionForAMissingExercise() {
@@ -364,7 +364,7 @@ class WorkoutEffortHistoryConversationTest {
         assertNotNull(answer)
         assertTrue(answer!!.contains("chưa có hiệp nào"))
         assertTrue(answer.contains("không chứng minh buổi tập nhẹ hay an toàn"))
-        assertFalse(answer.contains("Khó, cần nghỉ thêm"))
+        assertFalse(answer.contains("• Squat — hiệp 1:"))
     }
 
 }

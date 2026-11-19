@@ -32,8 +32,14 @@ internal object WorkoutLibrarySearch {
             .filter { category == "Tất cả" || it.category == category }
             .mapNotNull { program ->
                 if (terms.isEmpty()) return@mapNotNull Match(program, emptyList())
+                val muscleFocusQuery = isMuscleFocusQuery(terms)
                 val matchingMoves = program.moves.filter { move ->
-                    matches(moveSearchText(move), terms)
+                    if (muscleFocusQuery) {
+                        val focus = WorkoutExerciseFocus.descriptionFor(move.name)
+                        focus != null && matches(focus, focusTerms(terms))
+                    } else {
+                        matches(moveSearchText(move), terms)
+                    }
                 }
                 val programMatches = matches(
                     listOf(program.name, program.subtitle, program.category).joinToString(" "),
@@ -80,6 +86,23 @@ internal object WorkoutLibrarySearch {
         if (move.requiresJumping) append("bật nhảy ")
         if (move.requiresOverheadReach) append("đưa tay quá đầu ")
     }
+
+    // Muscle intent is searched only inside reviewed focus notes. This prevents
+    // unrelated tokens from exercise steps (e.g. "cơ trung tâm" + "đầu gối")
+    // from being combined into a false muscle-group match.
+    private val muscleFocusMarkers = setOf(
+        "dui", "mong", "nguc", "vai", "lung", "tay", "chan", "bung", "hong"
+    )
+    private val focusQueryFillers = setOf(
+        "co", "bai", "tap", "nhom", "chinh", "thuong", "tham", "gia"
+    )
+
+    private fun isMuscleFocusQuery(terms: List<String>): Boolean =
+        terms.any { it in muscleFocusMarkers } ||
+            ("co" in terms && terms.any { it == "trung" || it == "dau" })
+
+    private fun focusTerms(terms: List<String>): List<String> =
+        terms.filterNot { it in focusQueryFillers }.ifEmpty { terms }
 
     private fun matches(value: String, terms: List<String>): Boolean {
         if (terms.isEmpty()) return true

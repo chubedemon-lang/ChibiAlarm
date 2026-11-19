@@ -32,7 +32,8 @@ object WorkoutExerciseConversation {
         "bao", "nhieu", "hiep", "lan", "giay", "giai", "thich", "bai",
         "dong", "tac", "nay", "la", "gi", "toi", "tao", "minh", "muon",
         "biet", "cho", "tung", "buoc", "theo", "voi", "nua", "phut", "dung",
-        "nhom", "co", "vao", "dau", "tac"
+        "nhom", "co", "vao", "dau", "tac", "can", "cu", "chinh",
+        "giua", "dang", "hien", "tai"
     )
 
     private data class Match(
@@ -61,6 +62,25 @@ object WorkoutExerciseConversation {
                 "Mày hãy nêu rõ tên bài, ví dụ: “cách tập Squat không tạ” hoặc “hướng dẫn Plank”."
             )
         return format(move)
+    }
+
+    /**
+     * Identifies a question that can safely inherit the currently open exercise context.
+     * An explicit exercise name is not treated as a generic follow-up; it must be resolved
+     * against the catalog instead of being answered for whichever move happens to be open.
+     */
+    fun isContextualQuestion(input: String): Boolean {
+        if (input.isBlank() || input.length > 160) return false
+        val query = normalize(input)
+        if (!isExerciseQuestion(query)) return false
+        val refersToCurrentMove = listOf(
+            "bai nay", "dong tac nay", "bai hien tai", "dong tac hien tai",
+            "bai dang tap", "dong tac dang tap"
+        ).any(query::contains)
+        if (refersToCurrentMove) return true
+        val unresolvedNameTokens = query.split(' ')
+            .filter { it.length >= 2 && it !in questionWords }
+        return unresolvedNameTokens.isEmpty()
     }
 
     /**

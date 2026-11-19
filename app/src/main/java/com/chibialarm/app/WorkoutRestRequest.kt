@@ -61,6 +61,26 @@ object WorkoutRestRequest {
 
     fun seconds(utterance: String): Int = parseRecognizedSeconds(utterance) ?: 30
 
+    /**
+     * Resolve a short follow-up such as "thêm 30 giây nữa" only while a rest
+     * countdown is already active. The amount and unit must be explicit; this
+     * never uses the generic 30-second fallback and never starts a new rest.
+     */
+    fun contextualExtensionSeconds(utterance: String, restIsActive: Boolean): Int? {
+        if (!restIsActive || utterance.isBlank() || utterance.length > 140) return null
+        val text = Normalizer.normalize(utterance.lowercase(Locale.ROOT), Normalizer.Form.NFD)
+            .replace(Regex("\\p{M}+"), "").replace('đ', 'd')
+            .replace(Regex("[^a-z0-9 ]"), " ").replace(Regex("\\s+"), " ").trim()
+        if (text.isEmpty()) return null
+        // A negation or symptom in the same utterance must never become a rest extension.
+        if (Regex("""(?:^| )(?:khong|dung|bo qua|huy|dau|nhuc|chan thuong|choang|chong mat|kho tho)(?: |$)""")
+                .containsMatchIn(text)
+        ) return null
+        val explicitIncrease = Regex("""(?:^| )(?:them|keo dai)(?: |$)""").containsMatchIn(text)
+        if (!explicitIncrease) return null
+        return parseRecognizedSeconds("nghỉ $utterance")
+    }
+
     private fun parseRecognizedSeconds(utterance: String): Int? {
         val text = Normalizer.normalize(utterance.lowercase(Locale.ROOT), Normalizer.Form.NFD)
             .replace(Regex("\\p{M}+"), "").replace('đ', 'd')

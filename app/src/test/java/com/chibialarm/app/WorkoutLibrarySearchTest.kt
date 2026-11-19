@@ -193,6 +193,20 @@ class WorkoutLibrarySearchTest {
         assertEquals("Kéo tạ bằng tay", results.single().matchingMoves.single().name)
     }
 
+    @Test fun coreMuscleSearchMatchesTheCuratedPhraseContiguously() {
+        val results = WorkoutLibrarySearch.filter(
+            TrainingCatalog.programs,
+            "Tất cả",
+            "cơ trung tâm"
+        )
+        val matchedMoves = results.flatMap { it.matchingMoves }
+
+        assertTrue(matchedMoves.any { it.name == "Squat không tạ" })
+        assertTrue(matchedMoves.all {
+            WorkoutExerciseFocus.descriptionFor(it.name)?.contains("cơ trung tâm") == true
+        })
+    }
+
     @Test fun uncuratedMuscleNamesDoNotCreateSpeculativeSearchResults() {
         val results = WorkoutLibrarySearch.filter(
             TrainingCatalog.programs,

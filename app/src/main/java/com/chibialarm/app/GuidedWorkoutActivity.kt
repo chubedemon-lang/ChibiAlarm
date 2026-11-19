@@ -1770,11 +1770,32 @@ class GuidedWorkoutActivity:Activity() {
                     // Keep the exercise/rest clock from advancing while the user reads or hears
                     // a catalog-grounded answer. The user explicitly resumes when ready.
                     if (!paused && !pausedForSafety) pause()
-                    AlertDialog.Builder(this).setTitle("🐰 Chibi Coach • trả lời bài tập")
+                    val answerDialog = AlertDialog.Builder(this)
+                        .setTitle("🐰 Chibi Coach • trả lời bài tập")
                         .setMessage(questionAnswer)
                         .setPositiveButton("Đã hiểu", null)
-                        .show()
-                    speak(questionAnswer)
+                        .setNeutralButton("🔊 Nghe lại", null)
+                        .create()
+                    answerDialog.show()
+                    answerDialog.getButton(AlertDialog.BUTTON_NEUTRAL).apply {
+                        contentDescription = "Nghe lại toàn bộ câu trả lời của Chibi"
+                        setOnClickListener {
+                            if (!speakCoachAnswer(questionAnswer)) {
+                                Toast.makeText(
+                                    this@GuidedWorkoutActivity,
+                                    "Giọng đọc chưa sẵn sàng. Mày vẫn có thể đọc câu trả lời trên màn hình.",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        }
+                    }
+                    if (!speakCoachAnswer(questionAnswer)) {
+                        Toast.makeText(
+                            this,
+                            "Giọng đọc chưa sẵn sàng. Mày vẫn có thể đọc câu trả lời trên màn hình.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
                 } else {
                     AlertDialog.Builder(this).setTitle("Chibi chưa hiểu yêu cầu")
                         .setMessage("Mày có thể hỏi cách tập bài đang mở, nhóm cơ, dụng cụ, số lần hoặc thời gian nghỉ; hoặc nói: tôi đã làm 10 lần, xong hiệp, đổi bài, nghỉ thêm, đọc tiến độ, tạm dừng hay tiếp tục. Các thay đổi giáo án vẫn cần xác nhận.")
@@ -3348,6 +3369,7 @@ class GuidedWorkoutActivity:Activity() {
                 // must not let the exercise countdown continue behind the dialog.
                 pause()
                 val reviewButton = Button(this).apply {
+                    tag = "workout-very-hard-preview"
                     text = "🌿 Xem phương án nhẹ hơn"
                     contentDescription = "Xem trước giáo án nhẹ hơn khi buổi tập vẫn đang tạm dừng"
                     isAllCaps = false
@@ -3356,6 +3378,7 @@ class GuidedWorkoutActivity:Activity() {
                     orientation = LinearLayout.VERTICAL
                     setPadding(24, 12, 24, 0)
                     addView(TextView(this@GuidedWorkoutActivity).apply {
+                        tag = "workout-very-hard-message"
                         text = recommendation.message +
                             "\n\nNghỉ theo giáo án: ${plan.defaultRestSeconds} giây. " +
                             "Thời gian nghỉ gợi ý: ${recommendation.restSeconds} giây. " +
@@ -3521,6 +3544,30 @@ class GuidedWorkoutActivity:Activity() {
         val engine = spoken ?: return false
         engine.setSpeechRate(workoutSpeechRate)
         return engine.speak(message.take(350), queueMode, null, "fitness-${index}") == TextToSpeech.SUCCESS
+    }
+
+    /** Speak the complete coach answer as bounded utterances instead of truncating it at 350 chars. */
+    private fun speakCoachAnswer(message: String): Boolean {
+        if (!ready || message.isBlank()) return false
+        val engine = spoken ?: return false
+        val chunks = WorkoutSpeechText.chunks(message)
+        if (chunks.isEmpty()) return false
+
+        engine.setSpeechRate(workoutSpeechRate)
+        for ((position, chunk) in chunks.withIndex()) {
+            val queueMode = if (position == 0) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
+            val result = engine.speak(
+                chunk,
+                queueMode,
+                null,
+                "fitness-coach-${UUID.randomUUID()}"
+            )
+            if (result != TextToSpeech.SUCCESS) {
+                engine.stop()
+                return false
+            }
+        }
+        return true
     }
     private fun resume() {
         if(pausedForSafety) {

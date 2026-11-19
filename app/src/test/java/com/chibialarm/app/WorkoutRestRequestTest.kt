@@ -2,6 +2,7 @@ package com.chibialarm.app
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -113,6 +114,14 @@ class WorkoutRestRequestTest {
         assertEquals(60, WorkoutRestRequest.contextualExtensionSeconds("Cộng thêm một phút", true))
         assertEquals(45, WorkoutRestRequest.contextualExtensionSeconds("Kéo dài thêm 45 giây", true))
         assertNull(WorkoutRestRequest.contextualExtensionSeconds("Thêm 30 giây nữa", false))
+    }
+
+    @Test fun understandsHalfMinuteAsAnExplicitVietnameseRestDuration() {
+        assertEquals(30, WorkoutRestRequest.seconds("nghỉ nửa phút"))
+        assertEquals(30, WorkoutRestRequest.seconds("nghỉ thêm nửa phút nữa"))
+        assertTrue(WorkoutRestRequest.hasRecognizedDuration("nghỉ nửa phút"))
+        assertEquals(30, WorkoutRestRequest.contextualExtensionSeconds("thêm nửa phút nữa", true))
+        assertNull(WorkoutRestRequest.contextualExtensionSeconds("thêm nửa phút nữa", false))
     }
 
     @Test fun contextualExtensionRejectsAmbiguousNegativeAndUnrelatedPhrases() {

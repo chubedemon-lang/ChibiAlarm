@@ -155,6 +155,19 @@ class FitnessNaturalRequestTest {
         }
     }
 
+    @Test fun adjacentDurationMentionsRemainAmbiguousInsteadOfUsingOnlyTheFirst() {
+        for (phrase in listOf(
+            "một tiếng 30 phút",
+            "1 tiếng 30 phút",
+            "15 phút và 5 phút"
+        )) {
+            assertTrue("Must detect every duration mention in: $phrase",
+                FitnessNaturalRequest.needsDurationClarification(phrase))
+            assertNull("Must not silently use the first duration in: $phrase",
+                FitnessNaturalRequest.parse(phrase).minutes)
+        }
+    }
+
     @Test fun halfHourAndHourAliasesAreParsedWithoutGuessingFractions() {
         assertEquals(30, FitnessNaturalRequest.parse("nửa tiếng").minutes)
         assertEquals(30, FitnessNaturalRequest.parse("nửa giờ").minutes)

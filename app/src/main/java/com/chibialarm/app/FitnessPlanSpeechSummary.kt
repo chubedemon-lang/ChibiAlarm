@@ -110,13 +110,17 @@ internal object FitnessPlanSpeechSummary {
         else -> value
     }
 
-    private fun compactFilters(value: String): String = when {
-        value.startsWith("Chưa bật bộ lọc") -> "không có bộ lọc bổ sung"
-        else -> value
-            .replace("tránh chống tay/tải qua cổ tay", "tránh tải cổ tay")
-            .replace("tránh tư thế nằm hoặc quỳ sàn", "tránh sàn")
-            .replace("tránh đưa tay hoặc tải lên quá đầu", "tránh với cao")
-            .trim()
+    private fun compactFilters(value: String): String {
+        if (value.startsWith("Chưa bật bộ lọc")) return "không có bộ lọc bổ sung"
+
+        // Keep every active safety filter in the spoken summary. Clipping the original
+        // semicolon-separated sentence dropped the final "avoid jumping" constraint.
+        return buildList {
+            if (value.contains("tránh chống tay/tải qua cổ tay")) add("tránh tải cổ tay")
+            if (value.contains("tránh tư thế nằm hoặc quỳ sàn")) add("tránh sàn")
+            if (value.contains("tránh đưa tay hoặc tải lên quá đầu")) add("tránh với cao")
+            if (value.contains("tránh bật nhảy")) add("tránh bật nhảy")
+        }.joinToString(", ").ifBlank { "không có bộ lọc bổ sung" }
     }
 
     private fun clip(value: String, max: Int): String {

@@ -1608,6 +1608,15 @@ class GuidedWorkoutActivity:Activity() {
             }
             else -> Unit
         }
+        // Short follow-ups inherit the active rest context only. "Thêm 30 giây nữa"
+        // must not start a rest when the workout is moving, and still requires an
+        // explicit duration before the existing confirmation dialog can apply it.
+        val contextualRestExtension =
+            WorkoutRestRequest.contextualExtensionSeconds(utterance, resting)
+        if (contextualRestExtension != null) {
+            confirmRestExtension(contextualRestExtension)
+            return
+        }
         when (val parsed = WorkoutMidSessionRequest.parse(utterance)) {
             WorkoutMidSessionRequest.Result.SafetyStop -> {
                 stopForSafety()

@@ -406,13 +406,24 @@ class GuidedWorkoutActivity:Activity() {
                     saveCheckpoint()
                     // Do not let TTS interrupt an active speech-recognition session.
                     if (pendingRecognitionRequestCode == null) {
+                        val completedSets = completedSetsByMove[index] ?: 0
+                        val plan = currentSetPlan()
+                        val nextIndex = WorkoutRestPosePreview.nextMoveIndex(
+                            currentIndex = index,
+                            moveCount = moves.size,
+                            completedSets = completedSets,
+                            plan = plan
+                        )
+                        val nextMove = nextIndex
+                            ?.takeIf { it != index }
+                            ?.let { moves.getOrNull(it) }
                         speak(
                             WorkoutRestVoiceCue.completionMessage(
                                 moveName = moves.getOrNull(index)?.name,
-                                completedSets = completedSetsByMove[index] ?: 0,
-                                plan = currentSetPlan(),
-                                nextMoveName = moves.getOrNull(index + 1)?.name,
-                                nextMoveDose = moves.getOrNull(index + 1)?.dose
+                                completedSets = completedSets,
+                                plan = plan,
+                                nextMoveName = nextMove?.name,
+                                nextMoveDose = nextMove?.dose
                             )
                         )
                     }
@@ -2850,12 +2861,13 @@ class GuidedWorkoutActivity:Activity() {
             plan = plan
         )
         val upcomingMove = nextIndex?.let { moves.getOrNull(it) }
+        val nextMoveAfterRest = upcomingMove?.takeIf { nextIndex != index }
         val preview = WorkoutRestVoiceCue.previewMessage(
             moveName = moves[index].name,
             completedSets = completedSets,
             plan = plan,
-            nextMoveName = moves.getOrNull(index + 1)?.name,
-            nextMoveDose = moves.getOrNull(index + 1)?.dose,
+            nextMoveName = nextMoveAfterRest?.name,
+            nextMoveDose = nextMoveAfterRest?.dose,
             currentRemainingLabel = clockText(remainingMs)
         )
         restPreview.text = preview

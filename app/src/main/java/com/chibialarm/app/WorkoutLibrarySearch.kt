@@ -36,12 +36,14 @@ internal object WorkoutLibrarySearch {
                 val matchingMoves = program.moves.filter { move ->
                     if (muscleFocusQuery) {
                         val focus = WorkoutExerciseFocus.descriptionFor(move.name)
-                        focus != null && matches(focus, focusTerms(terms))
+                        focus != null && matchesFocusPhrase(focus, focusTerms(terms))
                     } else {
                         matches(moveSearchText(move), terms)
                     }
                 }
-                val programMatches = matches(
+                // A muscle-intent query must not fall back to program titles/subtitles:
+                // those can contain unrelated anatomy words and create speculative matches.
+                val programMatches = !muscleFocusQuery && matches(
                     listOf(program.name, program.subtitle, program.category).joinToString(" "),
                     terms
                 )
@@ -104,6 +106,14 @@ internal object WorkoutLibrarySearch {
 
     private fun focusTerms(terms: List<String>): List<String> =
         terms.filterNot { it in focusQueryFillers }.ifEmpty { terms }
+
+    /** Muscle-focus terms must be a contiguous phrase in a curated note, not scattered tokens. */
+    private fun matchesFocusPhrase(value: String, terms: List<String>): Boolean {
+        val phrase = normalize(terms.joinToString(" "))
+        if (phrase.isBlank()) return false
+        val normalized = normalize(value)
+        return " $normalized ".contains(" $phrase ")
+    }
 
     private fun matches(value: String, terms: List<String>): Boolean {
         if (terms.isEmpty()) return true

@@ -16,6 +16,8 @@ object WorkoutExerciseConversation {
     private val questionPhrases = listOf(
         "cach tap", "huong dan", "lam sao tap", "lam sao de tap",
         "tap nhu the nao", "thuc hien nhu the nao", "ky thuat",
+        "bai do tap the nao", "dong tac do tap the nao",
+        "bai vua noi tap the nao", "dong tac vua noi tap the nao",
         "luu y khi tap", "luu y khi thuc hien", "nghi bao lau",
         "bao nhieu hiep", "bao nhieu lan", "bao nhieu giay",
         "muc tieu bai nay", "bai nay tap sao", "dong tac nay tap sao",
@@ -69,6 +71,15 @@ object WorkoutExerciseConversation {
      * An explicit exercise name is not treated as a generic follow-up; it must be resolved
      * against the catalog instead of being answered for whichever move happens to be open.
      */
+    fun refersToPreviousExercise(input: String): Boolean {
+        if (input.isBlank() || input.length > 160) return false
+        val query = normalize(input)
+        return listOf(
+            "bai do", "dong tac do", "bai vua noi", "dong tac vua noi",
+            "bai vua nhac", "dong tac vua nhac", "bai luc nay", "dong tac luc nay"
+        ).any(query::contains)
+    }
+
     fun isContextualQuestion(input: String): Boolean {
         if (input.isBlank() || input.length > 160) return false
         val query = normalize(input)
@@ -77,9 +88,10 @@ object WorkoutExerciseConversation {
             "bai nay", "dong tac nay", "bai hien tai", "dong tac hien tai",
             "bai dang tap", "dong tac dang tap"
         ).any(query::contains)
-        if (refersToCurrentMove) return true
+        if (refersToCurrentMove || refersToPreviousExercise(input)) return true
         val contextualWords = questionWords + setOf(
-            "lau", "hay", "ta", "day", "how", "long", "many", "sets", "reps", "rest"
+            "lau", "hay", "ta", "day", "how", "long", "many", "sets", "reps", "rest",
+            "do", "vua", "noi", "nhac", "luc"
         )
         val unresolvedNameTokens = query.split(' ')
             .filter { it.length >= 2 && it !in contextualWords }

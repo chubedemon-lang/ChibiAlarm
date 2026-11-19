@@ -299,4 +299,72 @@ class WorkoutEffortHistoryConversationTest {
     }
 
 
+    @Test fun restQuestionListsOnlyHardAndVeryHardSetsFromLatestCheckIn() {
+        val older = guided(
+            today.minusDays(1),
+            "Squat: hiệp 1: Quá sức, tạm dừng",
+            "550e8400-e29b-41d4-a716-446655440081"
+        )
+        val latest = guided(
+            today,
+            "Squat: hiệp 1: Vừa sức, hiệp 2: Khó, cần nghỉ thêm; Plank: hiệp 1: Quá sức, tạm dừng",
+            "550e8400-e29b-41d4-a716-446655440082"
+        )
+
+        val answer = WorkoutHistoryConversation.answer(
+            "Hiệp nào cần nghỉ thêm trong buổi gần nhất?",
+            listOf(older, latest),
+            today
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("Squat — hiệp 2: Khó, cần nghỉ thêm"))
+        assertTrue(answer.contains("Plank — hiệp 1: Quá sức, tạm dừng"))
+        assertFalse(answer.contains("Squat — hiệp 1: Quá sức"))
+        assertTrue(answer.contains("cảm nhận tự khai báo"))
+    }
+
+    @Test fun restQuestionForNamedMoveUsesLatestSessionVariantBeforeOlderName() {
+        val older = guided(
+            today.minusDays(1),
+            "Squat: hiệp 1: Quá sức, tạm dừng",
+            "550e8400-e29b-41d4-a716-446655440083"
+        )
+        val latest = guided(
+            today,
+            "Squat không tạ: hiệp 1: Khó, cần nghỉ thêm; Plank: hiệp 1: Vừa sức",
+            "550e8400-e29b-41d4-a716-446655440084"
+        )
+
+        val answer = WorkoutHistoryConversation.answer(
+            "Hiệp nào cần nghỉ thêm của Squat hôm nay?",
+            listOf(older, latest),
+            today
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("Squat không tạ — hiệp 1: Khó, cần nghỉ thêm"))
+        assertFalse(answer.contains("Quá sức"))
+        assertFalse(answer.contains("Plank"))
+    }
+
+    @Test fun restQuestionWithNoHardCheckInDoesNotClaimTheSessionWasSafe() {
+        val latest = guided(
+            today,
+            "Squat: hiệp 1: Nhẹ, còn dư sức; Plank: hiệp 1: Vừa sức",
+            "550e8400-e29b-41d4-a716-446655440085"
+        )
+
+        val answer = WorkoutHistoryConversation.answer(
+            "Hiệp nào cần nghỉ thêm?",
+            listOf(latest),
+            today
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("chưa có hiệp nào"))
+        assertTrue(answer.contains("không chứng minh buổi tập nhẹ hay an toàn"))
+        assertFalse(answer.contains("Khó, cần nghỉ thêm"))
+    }
+
 }

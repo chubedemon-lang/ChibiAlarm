@@ -70,6 +70,9 @@ object WorkoutEffortHistoryConversation {
         if (isHardestSetQuestion(query)) {
             return hardestSetAnswer(query, sessions)
         }
+        if (isRestRecommendedSetQuestion(query)) {
+            return restRecommendedSetAnswer(query, sessions)
+        }
 
         if (isHardestQuestion(query)) {
             return hardestEffortAnswer(sessions)
@@ -265,10 +268,7 @@ object WorkoutEffortHistoryConversation {
         // Resolve the requested exercise against recent history, then restrict the
         // actual answer to the latest session. This avoids silently answering for
         // every latest-session move when the named exercise is absent today.
-        val knownNames = sessions.flatMap { it.moves }
-            .map { it.name }
-            .distinctBy { normalize(it) }
-        val choice = chooseMove(query, knownNames)
+        val choice = chooseLatestMove(query, sessions)
         if (choice.ambiguous.isNotEmpty()) {
             return "Chibi tìm thấy vài động tác gần giống: " +
                 choice.ambiguous.joinToString(", ") +
@@ -317,6 +317,76 @@ object WorkoutEffortHistoryConversation {
                 lines.joinToString("\n") +
                 "\nĐiều này chỉ phản ánh các nhãn bạn đã chọn, không chứng minh buổi tập nhẹ hay an toàn."
         }
+    }
+
+    /** A conversational request for the sets the user explicitly rated as needing more rest. */
+    private fun isRestRecommendedSetQuestion(text: String): Boolean {
+        val asksWhichSet = has(text, "hiep nao", "set nao")
+        val asksForRest = has(
+            text, "can nghi them", "nen nghi them", "nghi them",
+            "can nghi lau hon", "nen nghi lau hon"
+        )
+        return asksWhichSet && asksForRest
+    }
+
+    private fun restRecommendedSetAnswer(query: String, sessions: List<Session>): String {
+        val latest = sessions.first()
+        val choice = chooseLatestMove(query, sessions)
+        if (choice.ambiguous.isNotEmpty()) {
+            return "Chibi tìm thấy vài động tác gần giống: " +
+                choice.ambiguous.joinToString(", ") +
+                ". Hãy nhắc đầy đủ tên bài để tránh đọc nhầm hiệp."
+        }
+
+        val selectedName = choice.name
+        val moves = if (selectedName == null) {
+            latest.moves
+        } else {
+            latest.moves.filter { normalize(it.name) == normalize(selectedName) }
+        }
+        if (moves.isEmpty()) {
+            return "Buổi có check-in gần nhất (" + latest.date.format(dateFormat) +
+                ") không có dữ liệu cho " + selectedName +
+                ". Chibi không lấy buổi cũ thay thế để tránh đọc nhầm lịch sử."
+        }
+
+        val needsMoreRest = moves.flatMap { move ->
+            move.sets.filter {
+                it.level == WorkoutEffortFeedback.Level.HARD ||
+                    it.level == WorkoutEffortFeedback.Level.VERY_HARD
+            }.map { move to it }
+        }.take(5)
+        val scope = selectedName?.let { " cho " + it } ?: ""
+        if (needsMoreRest.isEmpty()) {
+            return "Trong buổi có check-in gần nhất (" + latest.date.format(dateFormat) +
+                "), chưa có hiệp nào" + scope +
+                " được bạn tự đánh dấu “Khó, cần nghỉ thêm” hoặc “Quá sức, tạm dừng”. " +
+                "Điều này không chứng minh buổi tập nhẹ hay an toàn; chỉ phản ánh dữ liệu bạn đã chọn."
+        }
+
+        val lines = needsMoreRest.map { (move, set) ->
+            "• " + move.name + " — hiệp " + set.index + ": " + set.level.label
+        }
+        return "Trong buổi có check-in gần nhất (" + latest.date.format(dateFormat) +
+            "), các hiệp" + scope + " bạn tự đánh dấu cần nghỉ thêm là:\\n" +
+            lines.joinToString("\\n") +
+            "\\nĐây là cảm nhận tự khai báo, không phải phép đo hồi phục. Nghỉ theo cảm nhận của bạn; nếu đau, chóng mặt hoặc khó thở, hãy dừng tập."
+    }
+
+    /**
+     * Prefer an exercise name actually present in the latest check-in. If it is absent
+     * there, resolve against recent history only to explain that no latest-session data
+     * exists; never substitute an older result. Ambiguous latest names require clarification.
+     */
+    private fun chooseLatestMove(query: String, sessions: List<Session>): MoveChoice {
+        val latestNames = sessions.first().moves.map { it.name }.distinctBy { normalize(it) }
+        val latestChoice = chooseMove(query, latestNames)
+        if (latestChoice.name != null || latestChoice.ambiguous.isNotEmpty()) return latestChoice
+
+        val knownNames = sessions.flatMap { it.moves }
+            .map { it.name }
+            .distinctBy { normalize(it) }
+        return chooseMove(query, knownNames)
     }
 
     private fun isHardestQuestion(text: String): Boolean = listOf(

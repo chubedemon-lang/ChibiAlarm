@@ -40,6 +40,8 @@ import kotlinx.coroutines.withContext
 /** Entirely offline guided workout; spoken instructions depend on installed Vietnamese Android TTS. */
 class GuidedWorkoutActivity:Activity() {
     private val handler=Handler(Looper.getMainLooper())
+    // Short-lived conversational reference memory; never checkpointed or sent to a server.
+    private val coachConversation = WorkoutCoachConversationContext()
     // Reward work is asynchronous; the durable journal remains the retry source if this Activity is recreated.
     private val rewardScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private lateinit var counter:TextView
@@ -1753,10 +1755,10 @@ class GuidedWorkoutActivity:Activity() {
             }
             WorkoutVoiceCommands.Command.UNKNOWN -> {
                 val currentMove = moves.getOrNull(index)
-                val questionAnswer = WorkoutCoachQuestionRouter.answer(
+                val questionAnswer = coachConversation.answer(
                     input = utterance,
-                    currentMove = currentMove,
-                    currentDose = currentMove?.let { targetDose(index) },
+                    activeMove = currentMove,
+                    activeDose = currentMove?.let { targetDose(index) },
                     pausedForSafety = pausedForSafety
                 )
                 if (questionAnswer != null) {

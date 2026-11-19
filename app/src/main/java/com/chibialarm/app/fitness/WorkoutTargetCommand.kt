@@ -23,7 +23,7 @@ object WorkoutTargetCommand {
     private val numeral = """(?:\d{1,3}|một|hai|ba|bốn|tư|năm|lăm|mốt|sáu|bảy|tám|chín|mười|mươi|linh|lẻ|trăm)(?:\s+(?:\d{1,3}|một|hai|ba|bốn|tư|năm|lăm|mốt|sáu|bảy|tám|chín|mười|mươi|linh|lẻ|trăm))*"""
     private val repsPattern = Regex("""(?:\b(?:còn|xuống|thành|giảm xuống|tăng lên|đổi thành)\s*)?($numeral)\s*(?:lần|cái|reps?)\b""")
     // Relative edits differ from absolute targets: "giảm 2 lần" subtracts 2 from the active plan.
-    private val relativeRepsPattern = Regex("""(?:^|\\s)(bớt|giảm(?:\\s+đi)?|thêm|tăng(?:\\s+thêm)?)\\s+($numeral)\\s*(?:lần|cái|reps?)\\b""")
+    private val relativeRepsPattern = Regex("""(?:^|\s)(bớt|giảm(?:\s+đi)?|thêm|tăng(?:\s+thêm)?)\s+($numeral)\s*(?:lần|cái|reps?)\b""")
     private val spokenTargetPattern = Regex(
         """(?:(còn|xuống|thành|giảm xuống|tăng lên|đổi thành)\s*)?($numeral)\s*(lần|cái|reps?|nhịp|giây)\b"""
     )
@@ -188,7 +188,7 @@ object WorkoutTargetCommand {
             number(repsPattern.find(normalized)?.groupValues?.get(1))
         } else {
             // Do not combine two competing repetition values into one guessed edit.
-            val repValues = Regex("""($numeral)\\s*(?:lần|cái|reps?)\\b""")
+            val repValues = Regex("""($numeral)\s*(?:lần|cái|reps?)\b""")
                 .findAll(normalized).toList()
             if (repValues.size != 1) return Result.Unsupported
             val delta = number(relativeMatch.groupValues[2])

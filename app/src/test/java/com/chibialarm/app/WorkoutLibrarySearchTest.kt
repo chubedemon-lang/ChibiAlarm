@@ -125,8 +125,47 @@ class WorkoutLibrarySearchTest {
         assertEquals(
             1,
             WorkoutLibrarySearch.filter(
-                listOf(strength, mobility), "Tất cả", "squat", 
+                listOf(strength, mobility), "Tất cả", "squat",
             ).size
         )
+    }
+
+    @Test fun searchesCuratedMuscleFocusNotesWithoutInventingExerciseMatches() {
+        val results = WorkoutLibrarySearch.filter(
+            TrainingCatalog.programs,
+            "Tất cả",
+            "đùi trước"
+        )
+        val matchedMoves = results.flatMap { it.matchingMoves }
+
+        assertTrue(matchedMoves.any { it.name == "Squat không tạ" })
+        assertTrue(matchedMoves.isNotEmpty())
+        assertTrue(matchedMoves.all {
+            WorkoutExerciseFocus.descriptionFor(it.name)?.contains("đùi trước") == true
+        })
+    }
+
+    @Test fun muscleFocusSearchFindsUpperBodyMovesAndStillHonorsCategory() {
+        val results = WorkoutLibrarySearch.filter(
+            TrainingCatalog.programs,
+            "Sức mạnh",
+            "cơ tay sau"
+        )
+        val matchedMoves = results.flatMap { it.matchingMoves }
+
+        assertTrue(matchedMoves.any { it.name == "Chống đẩy tường" })
+        assertTrue(results.all { it.program.category == "Sức mạnh" })
+        assertTrue(matchedMoves.all {
+            WorkoutExerciseFocus.descriptionFor(it.name)?.contains("cơ tay sau") == true
+        })
+    }
+
+    @Test fun uncuratedMuscleNamesDoNotCreateSpeculativeSearchResults() {
+        val results = WorkoutLibrarySearch.filter(
+            TrainingCatalog.programs,
+            "Tất cả",
+            "cơ tam đầu"
+        )
+        assertTrue(results.isEmpty())
     }
 }

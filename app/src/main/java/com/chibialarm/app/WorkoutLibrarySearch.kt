@@ -66,6 +66,7 @@ internal object WorkoutLibrarySearch {
         append(move.steps).append(' ')
         append(move.easier).append(' ')
         append(move.avoid).append(' ')
+        WorkoutExerciseFocus.descriptionFor(move.name)?.let { append(it).append(' ') }
         move.equipmentOptions.forEach { equipment ->
             append(
                 when (equipment) {

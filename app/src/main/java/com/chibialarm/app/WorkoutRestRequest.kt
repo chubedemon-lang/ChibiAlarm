@@ -68,12 +68,17 @@ object WorkoutRestRequest {
      */
     fun contextualExtensionSeconds(utterance: String, restIsActive: Boolean): Int? {
         if (!restIsActive || utterance.isBlank() || utterance.length > 140) return null
-        val text = Normalizer.normalize(utterance.lowercase(Locale.ROOT), Normalizer.Form.NFD)
+        // Protect "đừng" and "dừng" before accent folding; otherwise both collapse
+        // to "dung" and would incorrectly reject the affirmative "đúng, thêm...".
+        val protected = utterance.lowercase(Locale.ROOT)
+            .replace("đừng", "dontword")
+            .replace("dừng", "stopword")
+        val text = Normalizer.normalize(protected, Normalizer.Form.NFD)
             .replace(Regex("\\p{M}+"), "").replace('đ', 'd')
             .replace(Regex("[^a-z0-9 ]"), " ").replace(Regex("\\s+"), " ").trim()
         if (text.isEmpty()) return null
         // A negation or symptom in the same utterance must never become a rest extension.
-        if (Regex("""(?:^| )(?:khong|dung|bo qua|huy|dau|nhuc|chan thuong|choang|chong mat|kho tho)(?: |$)""")
+        if (Regex("""(?:^| )(?:khong|dontword|stopword|bo qua|huy|dau|nhuc|chan thuong|choang|chong mat|kho tho)(?: |$)""")
                 .containsMatchIn(text)
         ) return null
         val explicitIncrease = Regex("""(?:^| )(?:them|keo dai)(?: |$)""").containsMatchIn(text)

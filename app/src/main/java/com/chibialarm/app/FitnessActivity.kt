@@ -111,6 +111,7 @@ class FitnessActivity:Activity() {
         speechOutput?.speak(speechText, TextToSpeech.QUEUE_FLUSH, null, "fitness-follow-up")
     }
 
+
     private fun renderCoachTranscript() {
         val panel = coachTranscriptView ?: return
         val rendered = coachTranscript.render()
@@ -894,20 +895,54 @@ class FitnessActivity:Activity() {
                     if (constraintResult.notice.isNotBlank()) append("\n\n").append(constraintResult.notice)
                     if (equipmentResult.notice.isNotBlank()) append("\n\n").append(equipmentResult.notice)
                 }
+                val profileSummary = FitnessPlanProfileSummary.format(
+                    goalLabel = goals[goal],
+                    energyLabel = energyLevels[energy],
+                    levelLabel = levels[level.selectedItemPosition],
+                    minutes = targetMinutes,
+                    equipmentSelection = equipment,
+                    additionalEquipment = additionalEquipment,
+                    impact = impact,
+                    constraints = constraintProfile
+                )
+                val recommendationMessage = profileSummary + "\n\n" + durationSummary + "\n\n" +
+                    recommendation.explanation +
+                    (historySuggestion?.let { "\n\n📚 " + it.reason } ?: "") +
+                    "\n\nGợi ý offline theo quy tắc trên máy, không phải AI chẩn đoán hay tư vấn y khoa."
+                val spokenProfileSummary = FitnessPlanSpeechSummary.fromProfile(profileSummary, p.name)
+                val dialogContent = LinearLayout(this@FitnessActivity).apply {
+                    orientation = LinearLayout.VERTICAL
+                    val summaryText = TextView(this@FitnessActivity).apply {
+                        text = recommendationMessage
+                        textSize = 14f
+                        val inset = (16 * resources.displayMetrics.density).toInt()
+                        setPadding(inset, inset, inset, inset)
+                    }
+                    addView(summaryText)
+                    addView(Button(this@FitnessActivity).apply {
+                        text = "🔊 Nghe tóm tắt hồ sơ"
+                        isAllCaps = false
+                        contentDescription =
+                            "Đọc thành tiếng mục tiêu, trình độ, thời lượng, dụng cụ và bộ lọc vận động; không bắt đầu buổi tập"
+                        setOnClickListener {
+                            if (speechOutput == null || !speechReady) {
+                                Toast.makeText(
+                                    this@FitnessActivity,
+                                    "Hãy bật giọng Chibi ở phần hội thoại phía trên rồi nhấn nghe lại.",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            } else {
+                                sayFollowUp(spokenProfileSummary)
+                            }
+                        }
+                    })
+                }
+                val dialogScroll = ScrollView(this@FitnessActivity).apply {
+                    isFillViewport = true
+                    addView(dialogContent)
+                }
                 AlertDialog.Builder(this@FitnessActivity).setTitle("🐰 Chibi đề xuất: "+p.name)
-                    .setMessage(FitnessPlanProfileSummary.format(
-                        goalLabel = goals[goal],
-                        energyLabel = energyLevels[energy],
-                        levelLabel = levels[level.selectedItemPosition],
-                        minutes = targetMinutes,
-                        equipmentSelection = equipment,
-                        additionalEquipment = additionalEquipment,
-                        impact = impact,
-                        constraints = constraintProfile
-                    )+"\n\n"+durationSummary+"\n\n"+
-                        recommendation.explanation+
-                        (historySuggestion?.let { "\n\n📚 " + it.reason } ?: "")+
-                        "\n\nGợi ý offline theo quy tắc trên máy, không phải AI chẩn đoán hay tư vấn y khoa.")
+                    .setView(dialogScroll)
                     .setPositiveButton("▶ Bắt đầu"){_,_->startProgram(p, constraintProfile)}
                     .setNeutralButton("📖 Xem từng bước") { _, _ ->
                         showProgramPreview(p, planned, constraintProfile, equipment, additionalEquipment)

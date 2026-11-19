@@ -10,7 +10,8 @@ class FitnessPlanSpeechSummaryTest {
         constraints: WorkoutConstraintProfile = WorkoutConstraintProfile(
             avoidWristLoad = true,
             avoidFloorPositions = true,
-            avoidOverheadReach = true
+            avoidOverheadReach = true,
+            avoidJumping = true
         ),
         goal: String = "Tăng sức mạnh",
         level: String = "Đang tập đều",
@@ -37,6 +38,7 @@ class FitnessPlanSpeechSummaryTest {
         assertTrue(spoken.contains("tránh tải cổ tay"))
         assertTrue(spoken.contains("tránh tư thế sàn"))
         assertTrue(spoken.contains("tránh với quá đầu"))
+        assertTrue(spoken.contains("tránh bật nhảy"))
         assertTrue(spoken.contains("Gợi ý offline"))
         assertTrue(spoken.length <= FitnessPlanSpeechSummary.MAX_CHARACTERS)
     }

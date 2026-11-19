@@ -47,6 +47,7 @@ object FitnessPlanProfileSummary {
             if (constraints.avoidWristLoad) add("tránh chống tay/tải qua cổ tay")
             if (constraints.avoidFloorPositions) add("tránh tư thế nằm hoặc quỳ sàn")
             if (constraints.avoidOverheadReach) add("tránh đưa tay hoặc tải lên quá đầu")
+            if (constraints.avoidJumping) add("tránh bật nhảy")
         }
         val filterDescription = if (movementFilters.isEmpty()) {
             "Chưa bật bộ lọc cổ tay, tư thế sàn hoặc đưa tay quá đầu."

@@ -83,13 +83,15 @@ class FitnessPlanProfileSummaryTest {
             constraints = WorkoutConstraintProfile(
                 avoidWristLoad = true,
                 avoidFloorPositions = true,
-                avoidOverheadReach = true
+                avoidOverheadReach = true,
+                avoidJumping = true
             )
         )
 
         assertTrue(summary.contains("tránh chống tay/tải qua cổ tay"))
         assertTrue(summary.contains("tránh tư thế nằm hoặc quỳ sàn"))
         assertTrue(summary.contains("tránh đưa tay hoặc tải lên quá đầu"))
+        assertTrue(summary.contains("tránh bật nhảy"))
         assertTrue(summary.contains("chỉ áp dụng cho buổi hiện tại"))
         assertTrue(summary.contains("không lưu thành hồ sơ sức khỏe"))
     }

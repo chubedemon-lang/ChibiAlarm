@@ -312,11 +312,18 @@ class GuidedWorkoutEffortVoiceTest {
                 "Nghỉ ${expectedRest} giây",
                 pauseDialog.getButton(AlertDialog.BUTTON_POSITIVE).text.toString()
             )
-            val message = pauseDialog.findViewById<android.widget.TextView>(android.R.id.message)
+            val message = pauseDialog.window?.decorView
+                ?.findViewWithTag<android.widget.TextView>("workout-very-hard-message")
                 ?.text?.toString().orEmpty()
             assertTrue(message.contains("Nghỉ theo giáo án: ${checkIn.plan.defaultRestSeconds} giây"))
-            assertTrue(message.contains("Thời gian đề xuất: ${expectedRest} giây"))
-            assertTrue(message.contains("không ngắn hơn giáo án"))
+            assertTrue(message.contains("Thời gian nghỉ gợi ý: ${expectedRest} giây"))
+            assertTrue(message.contains("không tự bắt đầu hiệp hoặc động tác mới"))
+            assertTrue(message.contains("không phải phép đo thể lực hay chẩn đoán"))
+
+            val previewButton = pauseDialog.window?.decorView
+                ?.findViewWithTag<android.widget.Button>("workout-very-hard-preview")
+            assertEquals("🌿 Xem phương án nhẹ hơn", previewButton?.text?.toString())
+            assertEquals("Giữ tạm dừng", pauseDialog.getButton(AlertDialog.BUTTON_NEGATIVE).text.toString())
 
             val resting = GuidedWorkoutActivity::class.java.getDeclaredField("resting")
                 .apply { isAccessible = true }

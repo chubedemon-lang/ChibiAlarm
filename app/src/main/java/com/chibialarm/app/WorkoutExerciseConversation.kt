@@ -35,7 +35,7 @@ object WorkoutExerciseConversation {
         "dong", "tac", "nay", "la", "gi", "toi", "tao", "minh", "muon",
         "biet", "cho", "tung", "buoc", "theo", "voi", "nua", "phut", "dung",
         "nhom", "co", "vao", "dau", "tac", "can", "cu", "chinh",
-        "giua", "dang", "hien", "tai"
+        "giua", "dang", "hien", "tai", "do", "vua", "noi", "nhac", "luc"
     )
 
     private data class Match(

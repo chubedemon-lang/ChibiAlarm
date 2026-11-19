@@ -9,6 +9,7 @@ package com.chibialarm.app
 internal object WorkoutRestVoiceCue {
     const val WARNING_WINDOW_MS = 10_000L
 
+    /** The caller must report false while TTS is already speaking, to avoid flushing it. */
     fun shouldAnnounce(
         remainingMs: Long,
         alreadyAnnounced: Boolean,

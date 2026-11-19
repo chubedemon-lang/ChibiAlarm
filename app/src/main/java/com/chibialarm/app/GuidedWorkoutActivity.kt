@@ -392,11 +392,15 @@ class GuidedWorkoutActivity:Activity() {
                         alreadyAnnounced = restTenSecondCueGiven,
                         pausedForSafety = pausedForSafety,
                         microphoneActive = pendingRecognitionRequestCode != null,
-                        speechEngineReady = ready && spoken != null
+                        // Do not flush an utterance that is already speaking. The next tick retries.
+                        speechEngineReady = ready && spoken != null && spoken?.isSpeaking != true
                     )) {
-                    restTenSecondCueGiven = true
-                    speak(WorkoutRestVoiceCue.message(left, restPreview.text.toString()).orEmpty())
-                    saveCheckpoint()
+                    val cue = WorkoutRestVoiceCue.message(left, restPreview.text.toString())
+                    // Persist the one-shot only after Android accepts the utterance.
+                    if (!cue.isNullOrBlank() && speak(cue)) {
+                        restTenSecondCueGiven = true
+                        saveCheckpoint()
+                    }
                 }
                 if(left==0L) {
                     resting=false
@@ -420,13 +424,14 @@ class GuidedWorkoutActivity:Activity() {
                             ?.takeIf { it != index }
                             ?.let { moves.getOrNull(it) }
                         speak(
-                            WorkoutRestVoiceCue.completionMessage(
+                            message = WorkoutRestVoiceCue.completionMessage(
                                 moveName = moves.getOrNull(index)?.name,
                                 completedSets = completedSets,
                                 plan = plan,
                                 nextMoveName = nextMove?.name,
                                 nextMoveDose = nextMove?.dose
-                            )
+                            ),
+                            queueMode = TextToSpeech.QUEUE_ADD
                         )
                     }
                 } else handler.postDelayed(this,300)
@@ -3471,11 +3476,14 @@ class GuidedWorkoutActivity:Activity() {
         else Toast.makeText(this,message,Toast.LENGTH_SHORT).show()
     }
 
-    private fun speak(message:String) {
-        if(ready) {
-            spoken?.setSpeechRate(workoutSpeechRate)
-            spoken?.speak(message.take(350),TextToSpeech.QUEUE_FLUSH,null,"fitness-${index}")
-        }
+    private fun speak(
+        message: String,
+        queueMode: Int = TextToSpeech.QUEUE_FLUSH
+    ): Boolean {
+        if (!ready || message.isBlank()) return false
+        val engine = spoken ?: return false
+        engine.setSpeechRate(workoutSpeechRate)
+        return engine.speak(message.take(350), queueMode, null, "fitness-${index}") == TextToSpeech.SUCCESS
     }
     private fun resume() {
         if(pausedForSafety) {

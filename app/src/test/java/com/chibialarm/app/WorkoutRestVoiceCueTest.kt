@@ -42,7 +42,7 @@ class WorkoutRestVoiceCueTest {
         assertTrue(WorkoutRestVoiceCue.shouldAnnounce(5_000L, false, false))
     }
 
-    @Test fun unavailableSpeechEngineDoesNotConsumeTheOneShot() {
+    @Test fun busyOrUnavailableSpeechEngineDoesNotConsumeTheOneShot() {
         assertFalse(
             WorkoutRestVoiceCue.shouldAnnounce(
                 remainingMs = 5_000L,

@@ -174,6 +174,25 @@ class WorkoutLibrarySearchTest {
         })
     }
 
+    @Test fun wristAndGripTermsStillSearchGeneralExerciseInstructions() {
+        val gripProgram = TrainingProgram(
+            id = "grip",
+            name = "Cầm tạ an toàn",
+            subtitle = "Hướng dẫn cầm dụng cụ",
+            category = "Sức mạnh",
+            moves = listOf(
+                move("Kéo tạ bằng tay", steps = "Cầm tạ bằng hai tay và giữ cổ tay thẳng.")
+            )
+        )
+
+        val results = WorkoutLibrarySearch.filter(
+            listOf(gripProgram),
+            "Tất cả",
+            "tay cầm"
+        )
+        assertEquals("Kéo tạ bằng tay", results.single().matchingMoves.single().name)
+    }
+
     @Test fun uncuratedMuscleNamesDoNotCreateSpeculativeSearchResults() {
         val results = WorkoutLibrarySearch.filter(
             TrainingCatalog.programs,

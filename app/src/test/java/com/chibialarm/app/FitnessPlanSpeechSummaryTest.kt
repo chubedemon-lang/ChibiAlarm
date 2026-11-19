@@ -43,6 +43,16 @@ class FitnessPlanSpeechSummaryTest {
         assertTrue(spoken.length <= FitnessPlanSpeechSummary.MAX_CHARACTERS)
     }
 
+    @Test fun lowImpactPreferenceIsNotTruncatedInSpokenSummary() {
+        val spoken = FitnessPlanSpeechSummary.fromProfile(
+            profile(impact = 1),
+            "Cardio nhẹ không bật nhảy"
+        )
+
+        assertTrue(spoken.contains("Ưu tiên ít tác động, không nhảy."))
+        assertTrue(spoken.length <= FitnessPlanSpeechSummary.MAX_CHARACTERS)
+    }
+
     @Test fun noRestrictionIsSpokenAsNoExtraMovementFilter() {
         val spoken = FitnessPlanSpeechSummary.fromProfile(
             profile(impact = 0, constraints = WorkoutConstraintProfile(), equipment = 0),

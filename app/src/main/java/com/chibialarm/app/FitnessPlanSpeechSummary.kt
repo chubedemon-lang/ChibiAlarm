@@ -53,7 +53,9 @@ internal object FitnessPlanSpeechSummary {
             "Trình độ ${clip(level, 18)}.",
             "${minutes} phút.",
             "Dụng cụ ${clip(equipment, 24)}.",
-            "Ưu tiên ${clip(impact, 20)}.",
+            // Keep the complete low-impact/no-jumping preference audible. A 20-character
+            // clip changed "ít tác động, không nhảy" into an incomplete sentence.
+            "Ưu tiên ${clip(impact, 32)}.",
             "Bộ lọc ${clip(filters, 65)}.",
             "Gợi ý offline, không phải tư vấn y khoa."
         )

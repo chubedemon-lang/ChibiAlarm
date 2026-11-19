@@ -1155,6 +1155,53 @@ class WorkoutMidSessionPlannerTest {
         assertEquals(listOf("Chống đẩy sàn → Chống đẩy tường"), preview.replacements)
     }
 
+    @Test fun spokenShorthandCatalogReplacementIsPreviewedForTheCurrentMove() {
+        val parsed = WorkoutMidSessionRequest.parse("Đổi sang bài chống đẩy tường")
+        assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
+        val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+        assertEquals("Chống đẩy tường", request.replaceCurrentWith)
+
+        val moves = listOf(
+            move("Khởi động tại chỗ"),
+            move("Chống đẩy sàn"),
+            move("Squat không tạ"),
+            move("Thả lỏng")
+        )
+        val result = WorkoutMidSessionPlanner.preview(
+            currentMoves = moves,
+            currentIndex = 1,
+            completedCurrentSets = 0,
+            currentStepLocked = false,
+            constraints = WorkoutConstraintProfile(),
+            request = request,
+            remainingCurrentSeconds = 45,
+            extensionMoveNames = emptySet(),
+            level = 0
+        )
+        assertTrue(result is WorkoutMidSessionPlanner.Result.Proposed)
+        val preview = (result as WorkoutMidSessionPlanner.Result.Proposed).preview
+        assertEquals(
+            listOf("Khởi động tại chỗ", "Chống đẩy tường", "Squat không tạ", "Thả lỏng"),
+            preview.after.map { it.name }
+        )
+        assertEquals(listOf("Chống đẩy sàn → Chống đẩy tường"), preview.replacements)
+    }
+
+    @Test fun genericEasierShorthandIsNotMistakenForAnUnknownCatalogMove() {
+        val parsed = WorkoutMidSessionRequest.parse("Đổi sang bài nhẹ hơn")
+        assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
+        val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+        assertNull(request.replaceCurrentWith)
+        assertTrue(request.preferEasier)
+    }
+
+    @Test fun unknownShorthandCatalogReplacementFailsClosed() {
+        assertSame(
+            WorkoutMidSessionRequest.Result.Unsupported,
+            WorkoutMidSessionRequest.parse("Đổi sang bài burpee")
+        )
+    }
+
     @Test fun explicitCatalogReplacementCannotRewriteAConfirmedSet() {
         val parsed = WorkoutMidSessionRequest.parse(
             "Thay động tác hiện tại bằng chống đẩy tường"

@@ -147,17 +147,29 @@ object WorkoutMidSessionRequest {
         val allowJumping = !avoidJumping && saysJumpingIsOkay
 
         // Explicit mid-session replacement is deliberately strict: the user must name
-        // a canonical catalog exercise, not provide arbitrary instructions.
-        val replacementMatch = Regex(
+        // a canonical catalog exercise, not provide arbitrary instructions. Also accept
+        // the shorter spoken form "đổi sang bài <tên>" used while following a live guide.
+        val explicitReplacementMatch = Regex(
             """\b(?:doi|thay)\s+(?:bai|dong tac)\s+(?:hien tai|nay)\s+(?:thanh|sang|bang)\s+(.+)$"""
         ).find(text)
-        val replacementTarget = replacementMatch?.groupValues?.get(1)
+        val shorthandReplacementMatch = if (explicitReplacementMatch == null) {
+            Regex("""\bdoi\s+sang\s+(?:(?:bai|dong tac)\s+)?(.+)$""").find(text)
+        } else null
+        val replacementTarget = (
+            explicitReplacementMatch?.groupValues?.get(1)
+                ?: shorthandReplacementMatch?.groupValues?.get(1)
+            )
             ?.removePrefix("bai ")
             ?.trim()
         val replacementExercise = replacementTarget?.let { target ->
             TrainingCatalog.allMoves.singleOrNull { normalize(it.name) == target }?.name
         }
-        if (replacementMatch != null && replacementExercise == null) return Result.Unsupported
+        // "Đổi sang bài nhẹ hơn" is a generic easier-plan request, not an exercise name.
+        val genericEasierTarget = shorthandReplacementMatch != null &&
+            replacementTarget in setOf("nhe hon", "de hon", "nhe", "de")
+        if ((explicitReplacementMatch != null || shorthandReplacementMatch != null) &&
+            replacementExercise == null && !genericEasierTarget
+        ) return Result.Unsupported
 
         // A negative statement ("không còn 5 phút") is not a deadline.
         // Accept common spoken qualifiers while preserving the distinction between

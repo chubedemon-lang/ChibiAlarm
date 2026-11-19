@@ -115,6 +115,14 @@ object FitnessCoachConversation {
         // Speech-to-text replies often omit the unit ("mười lăm" instead of
         // "mười lăm phút"). Add the unit only while Chibi is explicitly asking
         // for duration; the same words in other conversation turns stay ambiguous.
+        if (question == FitnessCoachFollowUp.Question.DURATION &&
+            FitnessNaturalRequest.needsDurationClarification(input)
+        ) {
+            return parsed.copy(
+                minutes = null,
+                reply = "Tao nghe thấy một khoảng hoặc nhiều mốc thời gian nên chưa chọn đại một con số. Mày chọn một thời lượng cụ thể, ví dụ 20 phút, nhé."
+            )
+        }
         val contextualMinutes = if (question == FitnessCoachFollowUp.Question.DURATION) {
             parsed.minutes ?: FitnessNaturalRequest.parse("$input phút").minutes
         } else null

@@ -13,6 +13,36 @@ class WorkoutTargetCommandTest {
         assertNull(WorkoutTargetCommand.spokenReps("Nghỉ thêm 30 giây"))
     }
 
+    @Test fun contextualTargetsInferDroppedUnitsOnlyFromTheActiveExercise() {
+        assertEquals(
+            WorkoutTargetCommand.SpokenTarget(8, "lần"),
+            WorkoutTargetCommand.spokenTarget("Giảm xuống còn tám", expectedUnit = "lần")
+        )
+        assertEquals(
+            WorkoutTargetCommand.SpokenTarget(8, "lần"),
+            WorkoutTargetCommand.spokenTarget("Giảm còn 8", expectedUnit = "lần")
+        )
+        assertNull(WorkoutTargetCommand.spokenTarget("Giảm còn 8"))
+        assertNull(WorkoutTargetCommand.spokenTarget("Nghỉ thêm 30 giây", expectedUnit = "lần"))
+    }
+
+    @Test fun contextualTargetCanFollowRestAndKeepsSafetyPriority() {
+        assertEquals(
+            WorkoutTargetCommand.SpokenTarget(8, "lần"),
+            WorkoutTargetCommand.spokenTarget(
+                "Nghỉ thêm 30 giây rồi giảm xuống còn 8",
+                expectedUnit = "lần"
+            )
+        )
+        assertEquals(
+            WorkoutTargetCommand.SpokenTarget(8, "giây"),
+            WorkoutTargetCommand.spokenTarget("Giảm xuống còn 8", expectedUnit = "giây")
+        )
+        assertNull(WorkoutTargetCommand.spokenTarget("Đau gối rồi giảm còn 8", expectedUnit = "lần"))
+        assertNull(WorkoutTargetCommand.spokenTarget("Dừng tập rồi giảm còn 8", expectedUnit = "lần"))
+        assertNull(WorkoutTargetCommand.spokenTarget("Giảm còn 8", expectedUnit = "unknown"))
+    }
+
     @Test fun spokenTargetsPreserveTheExerciseUnitAndDoNotConfuseRestWithPlankTime() {
         assertEquals(WorkoutTargetCommand.SpokenTarget(6, "lần"),
             WorkoutTargetCommand.spokenTarget("Giảm còn 6 lần"))

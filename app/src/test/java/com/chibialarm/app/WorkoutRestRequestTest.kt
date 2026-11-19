@@ -106,4 +106,20 @@ class WorkoutRestRequestTest {
         assertEquals(WorkoutVoiceCommands.Command.UNKNOWN,
             WorkoutVoiceCommands.parse("bài 60 giây"))
     }
+
+    @Test fun contextualExtensionRequiresActiveRestAndAnExplicitIncrease() {
+        assertEquals(30, WorkoutRestRequest.contextualExtensionSeconds("Thêm 30 giây nữa", true))
+        assertEquals(60, WorkoutRestRequest.contextualExtensionSeconds("Cộng thêm một phút", true))
+        assertEquals(45, WorkoutRestRequest.contextualExtensionSeconds("Kéo dài thêm 45 giây", true))
+        assertNull(WorkoutRestRequest.contextualExtensionSeconds("Thêm 30 giây nữa", false))
+    }
+
+    @Test fun contextualExtensionRejectsAmbiguousNegativeAndUnrelatedPhrases() {
+        assertNull(WorkoutRestRequest.contextualExtensionSeconds("Thêm chút nữa", true))
+        assertNull(WorkoutRestRequest.contextualExtensionSeconds("Thêm 10 lần", true))
+        assertNull(WorkoutRestRequest.contextualExtensionSeconds("Không thêm 30 giây", true))
+        assertNull(WorkoutRestRequest.contextualExtensionSeconds("Đau gối, thêm 30 giây", true))
+        assertNull(WorkoutRestRequest.contextualExtensionSeconds("Bài này 30 giây", true))
+        assertNull(WorkoutRestRequest.contextualExtensionSeconds("Còn 30 giây", true))
+    }
 }

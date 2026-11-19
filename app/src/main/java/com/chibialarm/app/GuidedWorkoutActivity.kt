@@ -1054,9 +1054,12 @@ class GuidedWorkoutActivity:Activity() {
     }
 
     private fun requestTypedCommand() {
-        val field=EditText(this).apply { hint="Ví dụ: tôi đã làm 10 lần, xong hiệp, bài này khó quá, hướng dẫn từng bước, đọc tiến độ, đổi bài, nghỉ thêm, bỏ qua nghỉ";setSingleLine(false) }
-        AlertDialog.Builder(this).setTitle("💬 Chibi Coach • lệnh offline")
-            .setMessage("Điều khiển buổi tập bằng chữ, không gửi dữ liệu lên mạng.")
+        val field=EditText(this).apply {
+            hint="Ví dụ: bài này tác động nhóm cơ nào?, nghỉ bao lâu?, cách tập bài này?, tôi đã làm 10 lần, xong hiệp, đổi bài, nghỉ thêm"
+            setSingleLine(false)
+        }
+        AlertDialog.Builder(this).setTitle("💬 Chibi Coach • hỏi & điều khiển")
+            .setMessage("Mày có thể hỏi về động tác đang mở hoặc nêu tên bài trong thư viện. Chibi trả lời từ dữ liệu offline; lệnh thay đổi buổi tập vẫn cần xem trước và xác nhận.")
             .setView(field).setPositiveButton("Gửi"){_,_->handleCoachCommand(field.text.toString())}
             .setNegativeButton("Hủy",null).show()
     }
@@ -1749,9 +1752,27 @@ class GuidedWorkoutActivity:Activity() {
                 }
             }
             WorkoutVoiceCommands.Command.UNKNOWN -> {
-                AlertDialog.Builder(this).setTitle("Chibi chưa hiểu yêu cầu")
-                    .setMessage("Bạn có thể nói: tôi đã làm 10 lần, xong hiệp, bài này khó quá, vì sao bài này dễ hơn, hướng dẫn từng bước, đọc tiến độ, tạm dừng, tiếp tục, đổi động tác, nghỉ thêm hoặc bỏ qua nghỉ. Đây là bộ lệnh offline, chưa phải hội thoại AI tự do.")
-                    .setPositiveButton("Đóng",null).show()
+                val currentMove = moves.getOrNull(index)
+                val questionAnswer = WorkoutCoachQuestionRouter.answer(
+                    input = utterance,
+                    currentMove = currentMove,
+                    currentDose = currentMove?.let { targetDose(index) },
+                    pausedForSafety = pausedForSafety
+                )
+                if (questionAnswer != null) {
+                    // Keep the exercise/rest clock from advancing while the user reads or hears
+                    // a catalog-grounded answer. The user explicitly resumes when ready.
+                    if (!paused && !pausedForSafety) pause()
+                    AlertDialog.Builder(this).setTitle("🐰 Chibi Coach • trả lời bài tập")
+                        .setMessage(questionAnswer)
+                        .setPositiveButton("Đã hiểu", null)
+                        .show()
+                    speak(questionAnswer)
+                } else {
+                    AlertDialog.Builder(this).setTitle("Chibi chưa hiểu yêu cầu")
+                        .setMessage("Mày có thể hỏi cách tập bài đang mở, nhóm cơ, dụng cụ, số lần hoặc thời gian nghỉ; hoặc nói: tôi đã làm 10 lần, xong hiệp, đổi bài, nghỉ thêm, đọc tiến độ, tạm dừng hay tiếp tục. Các thay đổi giáo án vẫn cần xác nhận.")
+                        .setPositiveButton("Đóng",null).show()
+                }
             }
         }
     }

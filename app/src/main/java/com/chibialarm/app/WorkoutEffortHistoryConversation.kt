@@ -262,7 +262,13 @@ object WorkoutEffortHistoryConversation {
 
     private fun hardestSetAnswer(query: String, sessions: List<Session>): String {
         val latest = sessions.first()
-        val choice = chooseMove(query, latest.moves.map { it.name })
+        // Resolve the requested exercise against recent history, then restrict the
+        // actual answer to the latest session. This avoids silently answering for
+        // every latest-session move when the named exercise is absent today.
+        val knownNames = sessions.flatMap { it.moves }
+            .map { it.name }
+            .distinctBy { normalize(it) }
+        val choice = chooseMove(query, knownNames)
         if (choice.ambiguous.isNotEmpty()) {
             return "Chibi tìm thấy vài động tác gần giống: " +
                 choice.ambiguous.joinToString(", ") +
@@ -307,7 +313,7 @@ object WorkoutEffortHistoryConversation {
         } else {
             "Trong buổi có check-in gần nhất (" + latest.date.format(dateFormat) +
                 "), chưa có hiệp nào" + scope +
-                " được bạn tự đánh dấu “Khó, cần nghỉ thêm” hoặc “Quá sức, tạm dừng”. Mức cao nhất đã ghi là:\n" +
+                " được bạn tự đánh dấu ở hai mức gắng sức cao nhất. Mức cao nhất đã ghi là:\n" +
                 lines.joinToString("\n") +
                 "\nĐiều này chỉ phản ánh các nhãn bạn đã chọn, không chứng minh buổi tập nhẹ hay an toàn."
         }

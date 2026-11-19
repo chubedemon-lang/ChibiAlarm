@@ -86,11 +86,13 @@ object WorkoutSetHistoryConversation {
         if (isLatestExerciseQuestion(query)) {
             return latestExerciseAnswer(sessions)
         }
-        if (isLatestSessionMoveListQuestion(query)) {
-            return latestSessionMoveList(sessions)
-        }
+        // Specific progress-ranking requests must win over the broader
+        // "list exercises in the latest session" intent.
         if (isLargestRepIncreaseQuestion(query)) {
             return largestRepIncreaseAnswer(sessions)
+        }
+        if (isLatestSessionMoveListQuestion(query)) {
+            return latestSessionMoveList(sessions)
         }
 
         val knownNames = sessions.flatMap { it.moves }

@@ -91,7 +91,7 @@ internal object WorkoutLibrarySearch {
     // unrelated tokens from exercise steps (e.g. "cơ trung tâm" + "đầu gối")
     // from being combined into a false muscle-group match.
     private val muscleFocusMarkers = setOf(
-        "dui", "mong", "nguc", "vai", "lung", "tay", "chan", "bung", "hong"
+        "dui", "mong", "nguc", "vai", "lung", "chan", "bung", "hong"
     )
     private val focusQueryFillers = setOf(
         "co", "bai", "tap", "nhom", "chinh", "thuong", "tham", "gia"
@@ -99,6 +99,7 @@ internal object WorkoutLibrarySearch {
 
     private fun isMuscleFocusQuery(terms: List<String>): Boolean =
         terms.any { it in muscleFocusMarkers } ||
+            ("tay" in terms && terms.any { it == "sau" || it == "truoc" }) ||
             ("co" in terms && terms.any { it == "trung" || it == "dau" })
 
     private fun focusTerms(terms: List<String>): List<String> =

@@ -180,6 +180,32 @@ class WorkoutRestVoiceCueTest {
         )
     }
 
+    @Test fun timedMovePreviewAnnouncesTheNextCatalogMoveWithoutInventingSets() {
+        assertEquals(
+            "Tiếp theo: Đi bộ tại chỗ; mục tiêu 2 phút.",
+            WorkoutRestVoiceCue.previewMessage(
+                moveName = "Plank",
+                completedSets = 0,
+                plan = null,
+                nextMoveName = "Đi bộ tại chỗ",
+                nextMoveDose = "2 phút"
+            )
+        )
+    }
+
+    @Test fun timedMoveCompletionAnnouncesTheNextCatalogMoveWithoutStartingIt() {
+        assertEquals(
+            "Đã hết giờ nghỉ. Tiếp theo: Đi bộ tại chỗ; mục tiêu 2 phút. Khi sẵn sàng, bạn có thể chuyển sang động tác tiếp theo.",
+            WorkoutRestVoiceCue.completionMessage(
+                moveName = "Plank",
+                completedSets = 0,
+                plan = null,
+                nextMoveName = "Đi bộ tại chỗ",
+                nextMoveDose = "2 phút"
+            )
+        )
+    }
+
     @Test fun countdownPreviewSanitizesControlCharactersAndBoundsLength() {
         assertEquals(
             "Còn 5 giây nghỉ. Sau nghỉ: hiệp 2 của Squat.",

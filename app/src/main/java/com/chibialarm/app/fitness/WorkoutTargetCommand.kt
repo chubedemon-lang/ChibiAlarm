@@ -22,6 +22,8 @@ object WorkoutTargetCommand {
     // and mixed units ("một phút ba mươi giây"), without a network dependency.
     private val numeral = """(?:\d{1,3}|một|hai|ba|bốn|tư|năm|lăm|mốt|sáu|bảy|tám|chín|mười|mươi|linh|lẻ|trăm)(?:\s+(?:\d{1,3}|một|hai|ba|bốn|tư|năm|lăm|mốt|sáu|bảy|tám|chín|mười|mươi|linh|lẻ|trăm))*"""
     private val repsPattern = Regex("""(?:\b(?:còn|xuống|thành|giảm xuống|tăng lên|đổi thành)\s*)?($numeral)\s*(?:lần|cái|reps?)\b""")
+    // Relative edits differ from absolute targets: "giảm 2 lần" subtracts 2 from the active plan.
+    private val relativeRepsPattern = Regex("""(?:^|\\s)(bớt|giảm(?:\\s+đi)?|thêm|tăng(?:\\s+thêm)?)\\s+($numeral)\\s*(?:lần|cái|reps?)\\b""")
     private val spokenTargetPattern = Regex(
         """(?:(còn|xuống|thành|giảm xuống|tăng lên|đổi thành)\s*)?($numeral)\s*(lần|cái|reps?|nhịp|giây)\b"""
     )
@@ -135,6 +137,8 @@ object WorkoutTargetCommand {
     fun spokenTarget(spokenText: String, expectedUnit: String? = null): SpokenTarget? {
         val normalized = spokenText.lowercase(Locale.ROOT).trim()
         if (painWords.containsMatchIn(normalized) || hasCompetingControlIntent(normalized)) return null
+        // Relative edits need the active session baseline; this method returns absolute targets only.
+        if (relativeRepsPattern.containsMatchIn(normalized)) return null
         val matches = spokenTargetPattern.findAll(normalized).toList()
         val match = matches.firstOrNull { it.groupValues[1].isNotBlank() }
             ?: matches.firstOrNull()
@@ -179,7 +183,27 @@ object WorkoutTargetCommand {
         if (selectedExerciseId.isBlank() || completedSets !in 0..session.sets.size) return Result.Unsupported
         if (session.sets.drop(completedSets).none { it.exerciseId == selectedExerciseId }) return Result.Unsupported
 
-        val reps = number(repsPattern.find(normalized)?.groupValues?.get(1))
+        val relativeMatch = relativeRepsPattern.find(normalized)
+        val reps = if (relativeMatch == null) {
+            number(repsPattern.find(normalized)?.groupValues?.get(1))
+        } else {
+            // Do not combine two competing repetition values into one guessed edit.
+            val repValues = Regex("""($numeral)\\s*(?:lần|cái|reps?)\\b""")
+                .findAll(normalized).toList()
+            if (repValues.size != 1) return Result.Unsupported
+            val delta = number(relativeMatch.groupValues[2])
+                ?.takeIf { it in 1..100 } ?: return Result.Unsupported
+            val pendingTargets = session.sets.drop(completedSets)
+                .filter { it.exerciseId == selectedExerciseId }
+                .map { it.reps }
+                .distinct()
+            // A relative change is ambiguous when unfinished sets have different baselines.
+            val baseline = pendingTargets.singleOrNull() ?: return Result.Unsupported
+            val decreases = relativeMatch.groupValues[1].startsWith("bớt") ||
+                relativeMatch.groupValues[1].startsWith("giảm")
+            val adjusted = if (decreases) baseline - delta else baseline + delta
+            adjusted.takeIf { it in 1..100 } ?: return Result.Unsupported
+        }
         val restMatch = restPattern.find(normalized)
         val rawRest = number(restMatch?.groupValues?.get(1))
         val rest = if (rawRest != null) {

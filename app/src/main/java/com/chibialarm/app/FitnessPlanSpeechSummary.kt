@@ -21,6 +21,7 @@ internal object FitnessPlanSpeechSummary {
         val level = field("Trình độ")
         val energy = field("Năng lượng tự đánh giá")
         val minutes = field("Thời lượng mục tiêu").removeSuffix(" phút").trim().toIntOrNull()
+            ?: throw IllegalArgumentException("Missing plan duration")
         val equipment = compactEquipment(field("Dụng cụ"))
         val impact = compactImpact(field("Ưu tiên vận động"))
         val filters = compactFilters(field("Bộ lọc động tác"))

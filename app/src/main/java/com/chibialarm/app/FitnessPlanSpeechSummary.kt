@@ -72,8 +72,8 @@ internal object FitnessPlanSpeechSummary {
         value.startsWith("Chưa bật bộ lọc") -> "không có bộ lọc bổ sung"
         else -> value
             .replace("tránh chống tay/tải qua cổ tay", "tránh tải cổ tay")
-            .replace("tránh tư thế nằm hoặc quỳ sàn", "tránh tư thế sàn")
-            .replace("tránh đưa tay hoặc tải lên quá đầu", "tránh với quá đầu")
+            .replace("tránh tư thế nằm hoặc quỳ sàn", "tránh sàn")
+            .replace("tránh đưa tay hoặc tải lên quá đầu", "tránh với cao")
             .trim()
     }
 

@@ -36,8 +36,8 @@ class FitnessPlanSpeechSummaryTest {
         assertTrue(spoken.contains("Dụng cụ tạ hoặc dây"))
         assertTrue(spoken.contains("ít tác động, không nhảy"))
         assertTrue(spoken.contains("tránh tải cổ tay"))
-        assertTrue(spoken.contains("tránh tư thế sàn"))
-        assertTrue(spoken.contains("tránh với quá đầu"))
+        assertTrue(spoken.contains("tránh sàn"))
+        assertTrue(spoken.contains("tránh với cao"))
         assertTrue(spoken.contains("tránh bật nhảy"))
         assertTrue(spoken.contains("Gợi ý offline"))
         assertTrue(spoken.length <= FitnessPlanSpeechSummary.MAX_CHARACTERS)
@@ -75,7 +75,7 @@ class FitnessPlanSpeechSummaryTest {
 
         assertTrue(spoken.length <= FitnessPlanSpeechSummary.MAX_CHARACTERS)
         assertTrue(spoken.contains("tránh tải cổ tay"))
-        assertTrue(spoken.contains("tránh tư thế sàn"))
-        assertTrue(spoken.contains("tránh với quá đầu"))
+        assertTrue(spoken.contains("tránh sàn"))
+        assertTrue(spoken.contains("tránh với cao"))
     }
 }

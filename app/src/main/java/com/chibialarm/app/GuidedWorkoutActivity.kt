@@ -1495,6 +1495,14 @@ class GuidedWorkoutActivity:Activity() {
                         repTargets.keys.removeAll {
                             it > index || (it == index && preview.currentMoveChanged)
                         }
+
+                        preview.currentRepLimit?.let { limit ->
+                            val cappedTarget = WorkoutRemainingRepTarget.capExistingTarget(
+                                repTargets[index], limit
+                            )
+                            if (cappedTarget == null) repTargets.remove(index)
+                            else repTargets[index] = cappedTarget
+                        }
                         // If the user removed only optional sets and has already confirmed
                         // the required minimum, mark this move complete without inventing
                         // a set, changing its log, or awarding extra XP.

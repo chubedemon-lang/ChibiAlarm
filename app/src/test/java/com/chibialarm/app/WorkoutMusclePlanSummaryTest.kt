@@ -72,6 +72,7 @@ class WorkoutMusclePlanSummaryTest {
         )
         assertNotNull(text)
         assertTrue(text!!.contains("không phải khối lượng tập"))
+        assertTrue(text.contains("\n• Nhóm chính:"))
         assertTrue(WorkoutMusclePlanSummary.spoken(
             listOf(catalog.getValue("Squat không tạ"))
         )!!.contains("không phải phép đo khối lượng tập"))

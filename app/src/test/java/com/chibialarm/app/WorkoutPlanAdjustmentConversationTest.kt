@@ -300,4 +300,21 @@ class WorkoutPlanAdjustmentConversationTest {
         assertFalse(answer.contains("Cat-cow nhẹ"))
     }
 
+
+
+    @Test fun standaloneKneelingPreferenceFallsThroughToCoachProfileParser() {
+        assertNull(
+            WorkoutPlanAdjustmentConversation.answer(
+                input = "không quỳ gối",
+                programs = listOf(TrainingCatalog.byId("full"))
+            )
+        )
+        assertNull(
+            WorkoutPlanAdjustmentConversation.answer(
+                input = "có thể quỳ gối",
+                programs = listOf(TrainingCatalog.byId("full"))
+            )
+        )
+    }
+
 }

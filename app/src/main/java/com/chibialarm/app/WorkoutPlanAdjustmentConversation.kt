@@ -87,6 +87,14 @@ object WorkoutPlanAdjustmentConversation {
             query, "bai nao de hon", "co bai nao de hon",
             "hom nay met", "it nang luong", "muon tap nhe hon", "giam do kho"
         )
+        // A plain kneeling preference belongs to the coach profile parser so the checkbox
+        // can be updated. Only build a non-mutating plan preview when the user also asks to
+        // replace/change the plan or combines it with another plan constraint.
+        val kneelingPreferenceOnly = effectiveAvoidKneeling != profile.avoidKneeling &&
+            remainingMinutes == null && !noEquipment && !noDumbbell && !noBand && !noChair && !noMat &&
+            !preferLowImpact && !preferGentle &&
+            !containsAny(query, "thay bai", "thay the", "doi bai", "bai thay the")
+        if (kneelingPreferenceOnly) return null
         val asksForChange = remainingMinutes != null || noEquipment || noDumbbell || noBand || noChair || noMat ||
             avoidFloor != profile.avoidFloorPositions ||
             avoidWrist != profile.avoidWristLoad ||

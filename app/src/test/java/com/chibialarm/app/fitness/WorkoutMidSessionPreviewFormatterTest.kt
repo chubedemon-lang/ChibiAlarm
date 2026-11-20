@@ -255,4 +255,27 @@ class WorkoutMidSessionPreviewFormatterTest {
         assertTrue(spoken.length <= 350)
     }
 
+
+    @Test fun repLimitPreviewExplainsThatOnlyUnstartedRepsAreChanged() {
+        val result = preview(
+            listOf(
+                move("Khởi động tại chỗ"),
+                move("Squat không tạ"),
+                move("Thả lỏng")
+            ),
+            currentIndex = 1,
+            request = WorkoutMidSessionRequest.Request(currentRepLimit = 10),
+            completedCurrentSets = 1
+        )
+
+        val text = WorkoutMidSessionPreviewFormatter.format(result)
+        val spoken = WorkoutMidSessionPreviewFormatter.spokenSummary(result)
+        assertTrue(text.contains("2–3 hiệp × 8–10 lần"))
+        assertTrue(text.contains("tối đa còn 10 lần mỗi hiệp cho phần chưa thực hiện"))
+        assertTrue(text.contains("các hiệp đã xác nhận giữ nguyên"))
+        assertTrue(spoken.contains("10 lần mỗi hiệp"))
+        assertTrue(spoken.contains("Chưa áp dụng"))
+        assertTrue(spoken.length <= 350)
+    }
+
 }

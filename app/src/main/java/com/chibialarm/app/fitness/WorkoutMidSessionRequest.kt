@@ -229,12 +229,23 @@ object WorkoutMidSessionRequest {
             "dung chiu tai qua co tay"
         )
         val allowWristLoad = fitness.avoidWristLoad == false
-        val avoidFloorPositions = fitness.avoidFloorPositions == true || has(
+        // Keep kneeling distinct from floor-position restrictions. The broad colloquial
+        // "không quỳ" fallback must not turn "không quỳ gối" into "avoid all floor work".
+        val kneelingOnlyPhrases = listOf(
+            "bo han che quy goi", "bo tranh quy goi", "khong can tranh quy goi",
+            "khong con can tranh quy goi", "co the quy goi", "quy goi duoc",
+            "khong quy goi", "tranh quy goi", "dung quy goi",
+            "khong muon quy goi", "khong the quy goi", "han che quy goi"
+        )
+        val floorRestrictionText = kneelingOnlyPhrases.fold(text) { remaining, phrase ->
+            remaining.replace(phrase, " ")
+        }
+        val avoidFloorPositions = fitness.avoidFloorPositions == true || listOf(
             "dung nam san", "dung quy san", "dung xuong san",
             "khong nam san", "khong quy san", "khong xuong san",
             "tranh nam san", "tranh quy san", "tranh xuong san",
             "dung nam", "dung quy", "khong nam", "khong quy", "tranh nam", "tranh quy"
-        )
+        ).any(floorRestrictionText::contains)
         val allowFloorPositions = fitness.avoidFloorPositions == false
         val avoidOverheadReach = fitness.avoidOverheadReach == true
         val allowOverheadReach = fitness.avoidOverheadReach == false

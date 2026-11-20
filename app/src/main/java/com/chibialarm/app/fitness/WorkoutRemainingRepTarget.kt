@@ -38,6 +38,13 @@ object WorkoutRemainingRepTarget {
         return Preview(currentTarget, requestedReps, completedSets, maximumSets)
     }
 
+
+    /** Keep an existing per-exercise override inside a newly lowered rep ceiling. */
+    fun capExistingTarget(currentTarget: Int?, maximumAllowed: Int): Int? {
+        if (maximumAllowed !in 1..200) return currentTarget?.takeIf { it in 1..100 }
+        return currentTarget?.takeIf { it in 1..100 }?.coerceAtMost(maximumAllowed)
+    }
+
     /** Reject stale dialogs if progress, the current target or the set plan changed. */
     fun accept(
         proposal: Preview,

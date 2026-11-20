@@ -42,9 +42,9 @@ internal object WorkoutMusclePlanSummary {
         val supporting = render(summary.supporting, 3).ifBlank { "chưa có nhãn hỗ trợ" }
         return buildString {
             append("Nhóm cơ theo nhãn thư viện (đếm động tác, không phải khối lượng tập):")
-            append("\\n• Nhóm chính: ").append(primary)
-            append("\\n• Nhóm hỗ trợ: ").append(supporting)
-            append("\\nDữ liệu nhóm cơ có cho ")
+            append("\n• Nhóm chính: ").append(primary)
+            append("\n• Nhóm hỗ trợ: ").append(supporting)
+            append("\nDữ liệu nhóm cơ có cho ")
             append(summary.cataloguedMoveCount).append("/")
             append(summary.eligibleMoveCount).append(" động tác chính.")
         }

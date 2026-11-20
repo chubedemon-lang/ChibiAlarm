@@ -965,6 +965,10 @@ class GuidedWorkoutActivity:Activity() {
     }
 
     private fun launchSpeechRecognition(requestCode:Int) {
+        // Track the external recognizer as an active microphone session, not only a pending permission request.
+        // Rest TTS and step narration stay quiet until Android returns the recognition result.
+        pendingRecognitionRequestCode = requestCode
+        updateRestStepSpeakButton()
         val guideRequest = requestCode == guideVoiceRequest
         val effortRequest = requestCode == effortVoiceRequest
         val prompt = when {
@@ -976,6 +980,8 @@ class GuidedWorkoutActivity:Activity() {
         try {
             startActivityForResult(request,requestCode)
         } catch (_:Exception) {
+            if (pendingRecognitionRequestCode == requestCode) pendingRecognitionRequestCode = null
+            updateRestStepSpeakButton()
             if (guideRequest) guideVoiceResultHandler = null
             if (effortRequest) effortVoiceResultHandler = null
             Toast.makeText(this,"Thiết bị chưa có dịch vụ nhận giọng nói. Hãy dùng các lựa chọn trên màn hình.",Toast.LENGTH_LONG).show()
@@ -2443,7 +2449,7 @@ class GuidedWorkoutActivity:Activity() {
         message: String,
         emptyMessage: String,
         isSafety: (String) -> Boolean,
-        onSelected: (String) -> Unit
+        onSelected: (CoachSpeechTranscript.Candidate) -> Unit
     ) {
         val candidates = CoachSpeechTranscript.candidates(raw)
         if (candidates.isEmpty()) {
@@ -2454,12 +2460,12 @@ class GuidedWorkoutActivity:Activity() {
         // Never hide a safety symptom behind a less urgent alternative from the recognizer.
         val safetyCandidate = candidates.firstOrNull { isSafety(it.text) }
         if (safetyCandidate != null) {
-            onSelected(safetyCandidate.text)
+            onSelected(safetyCandidate)
             return
         }
 
         if (candidates.size == 1) {
-            onSelected(candidates.single().text)
+            onSelected(candidates.single())
             return
         }
 
@@ -2469,7 +2475,7 @@ class GuidedWorkoutActivity:Activity() {
             .setItems(candidates.mapIndexed { index, candidate ->
                 "${index + 1}. ${candidate.label}"
             }.toTypedArray()) { _, which ->
-                candidates.getOrNull(which)?.let { onSelected(it.text) }
+                candidates.getOrNull(which)?.let(onSelected)
             }
             .setNegativeButton("Hủy", null)
             .show()
@@ -2478,6 +2484,10 @@ class GuidedWorkoutActivity:Activity() {
     @Deprecated("Android activity result compatibility")
     override fun onActivityResult(requestCode:Int,resultCode:Int,data:Intent?) {
         super.onActivityResult(requestCode,resultCode,data)
+        if (requestCode == voiceRequest || requestCode == guideVoiceRequest || requestCode == effortVoiceRequest) {
+            if (pendingRecognitionRequestCode == requestCode) pendingRecognitionRequestCode = null
+            updateRestStepSpeakButton()
+        }
         if (requestCode == guideVoiceRequest) {
             val callback = guideVoiceResultHandler
             guideVoiceResultHandler = null
@@ -2488,7 +2498,8 @@ class GuidedWorkoutActivity:Activity() {
                     message = "Dịch vụ nhận dạng đưa ra nhiều phương án. Chọn câu đúng trước khi chuyển bước hoặc điều khiển hướng dẫn.",
                     emptyMessage = "Không nhận được câu nói rõ ràng. Bạn vẫn có thể dùng các nút hướng dẫn.",
                     isSafety = { WorkoutVoiceCommands.parse(it) == WorkoutVoiceCommands.Command.PAIN },
-                    onSelected = { phrase ->
+                    onSelected = { candidate ->
+                        val phrase = candidate.text
                         if (WorkoutVoiceCommands.parse(phrase) == WorkoutVoiceCommands.Command.PAIN) {
                             handleCoachCommand(phrase)
                         } else {
@@ -2513,7 +2524,7 @@ class GuidedWorkoutActivity:Activity() {
                     // This contextual parser avoids treating the anatomical phrase "đầu gối"
                     // as a pain report, while still prioritizing explicit symptoms.
                     isSafety = { WorkoutEffortVoiceCommand.parse(it) == WorkoutEffortVoiceCommand.Result.SafetyStop },
-                    onSelected = callback
+                    onSelected = { candidate -> callback(candidate.text) }
                 )
             } else if (resultCode != RESULT_OK) {
                 Toast.makeText(this,"Chưa nhận được câu trả lời; bạn vẫn có thể chọn cảm nhận bằng nút.",Toast.LENGTH_SHORT).show()

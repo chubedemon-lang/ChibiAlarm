@@ -1,6 +1,10 @@
 package com.chibialarm.app
 
+import android.app.Activity
 import android.app.AlertDialog
+import android.content.Intent
+import android.speech.RecognizerIntent
+import org.junit.Assert.assertEquals
 import android.content.Context
 import android.os.Looper
 import android.view.View
@@ -64,6 +68,59 @@ class GuidedWorkoutStepSpeechTest {
             assertTrue(reply.contains("Bạn đã tự xác nhận 1 trên " + plan.maximumSets + " hiệp"))
             assertTrue(reply.contains("Còn " + (plan.requiredSets - 1) + " hiệp bắt buộc"))
             assertTrue(reply.contains("không phải cảm biến tự đếm"))
+        } finally {
+            activity.finish()
+        }
+    }
+
+
+    @Test fun activeRecognizerSuppressesRestTtsUntilAndroidReturnsAResult() {
+        val app = RuntimeEnvironment.getApplication()
+        val resolver = android.content.pm.ResolveInfo().apply {
+            isDefault = true
+            activityInfo = android.content.pm.ActivityInfo().apply {
+                packageName = app.packageName
+                name = "com.chibialarm.app.TestSpeechRecognizer"
+                exported = true
+            }
+        }
+        shadowOf(app.packageManager).addResolveInfoForIntent(
+            Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH),
+            resolver
+        )
+
+        val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup().get()
+        try {
+            fun field(name: String) = GuidedWorkoutActivity::class.java.getDeclaredField(name).apply {
+                isAccessible = true
+            }
+            val requestCode = field("voiceRequest").getInt(activity)
+            GuidedWorkoutActivity::class.java.getDeclaredMethod(
+                "launchSpeechRecognition", Int::class.javaPrimitiveType
+            ).apply { isAccessible = true }.invoke(activity, requestCode)
+
+            val pending = field("pendingRecognitionRequestCode")
+            assertEquals(requestCode, pending.get(activity))
+            assertFalse(
+                WorkoutRestVoiceCue.shouldAnnounce(
+                    remainingMs = 5_000L,
+                    alreadyAnnounced = false,
+                    pausedForSafety = false,
+                    microphoneActive = pending.get(activity) != null
+                )
+            )
+
+            activity.onActivityResult(requestCode, Activity.RESULT_CANCELED, null)
+
+            assertEquals(null, pending.get(activity))
+            assertTrue(
+                WorkoutRestVoiceCue.shouldAnnounce(
+                    remainingMs = 5_000L,
+                    alreadyAnnounced = false,
+                    pausedForSafety = false,
+                    microphoneActive = pending.get(activity) != null
+                )
+            )
         } finally {
             activity.finish()
         }

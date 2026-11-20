@@ -62,7 +62,8 @@ object WorkoutContextCoach {
         }
     }
 
-    private fun equipmentCue(move: TrainingMove): String {
+    /** Human-readable equipment requirement; multiple catalog options are alternatives. */
+    fun equipmentCue(move: TrainingMove): String {
         val labels = move.equipmentOptions
             .sortedBy { it.ordinal }
             .map { equipment ->

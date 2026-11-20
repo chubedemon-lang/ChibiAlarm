@@ -3049,7 +3049,7 @@ class GuidedWorkoutActivity:Activity() {
         val restGuidance = currentSetPlan()?.let {
             "\n\n⏱ Nghỉ giữa hiệp đề xuất: ${it.defaultRestSeconds} giây. Có thể tùy chỉnh nếu cần."
         }.orEmpty()
-        guide.text="🎯 ${targetDose(index)}${restGuidance}\n\n📖 Cách thực hiện:\n${move.steps}\n\n🌿 Giảm độ khó:\n${move.easier}\n\n⚠️ Lưu ý:\n${move.avoid}"
+        guide.text="🎯 ${targetDose(index)}${restGuidance}\n\n🧰 ${WorkoutContextCoach.equipmentCue(move)}\n\n📖 Cách thực hiện:\n${move.steps}\n\n🌿 Giảm độ khó:\n${move.easier}\n\n⚠️ Lưu ý:\n${move.avoid}"
     }
     private fun displayStep() {
         lastGuideStepCue = null

@@ -12,7 +12,8 @@ internal object FitnessPlanSpeechSummary {
         programName: String,
         estimatedMinutes: Int? = null,
         exceedsTarget: Boolean = false,
-        prescribedRestSeconds: Int? = null
+        prescribedRestSeconds: Int? = null,
+        muscleFocusSummary: String? = null
     ): String {
         require(profileSummary.isNotBlank() && profileSummary.length <= 5_000)
         require(programName.isNotBlank() && programName.length <= 120)
@@ -70,6 +71,14 @@ internal object FitnessPlanSpeechSummary {
             }
             prescribedRestSeconds?.takeIf { it > 0 }?.let {
                 add("Tổng thời gian nghỉ theo giáo án: ${formatDuration(it)}.")
+            }
+            muscleFocusSummary?.let { raw ->
+                val compact = raw
+                    .replace(Regex("[\\r\\n\\p{Cc}\\p{Cf}]+"), " ")
+                    .replace(Regex("\\s+"), " ")
+                    .trim()
+                    .take(180)
+                if (compact.isNotBlank()) add(compact)
             }
             if (energy.isNotBlank()) add("Năng lượng ${clip(energy, 14)}.")
         }

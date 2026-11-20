@@ -23,7 +23,7 @@ class FitnessCoachRestorableProfileActivityTest {
         (field("recommendationEquipmentSpinner").get(first) as Spinner).setSelection(4)
         (field("level").get(first) as Spinner).setSelection(1)
         (field("length").get(first) as Spinner).setSelection(
-            WorkoutDurationChoices.indexForMinutes(25)
+            WorkoutDurationChoices.indexForMinutes(30)
         )
         (field("impactRestrictionSpinner").get(first) as Spinner).setSelection(1)
         (field("wristLoadCheckBox").get(first) as CheckBox).isChecked = true
@@ -53,7 +53,7 @@ class FitnessCoachRestorableProfileActivityTest {
         assertEquals(0, (field("recommendationEnergySpinner").get(restored) as Spinner).selectedItemPosition)
         assertEquals(4, (field("recommendationEquipmentSpinner").get(restored) as Spinner).selectedItemPosition)
         assertEquals(1, (field("level").get(restored) as Spinner).selectedItemPosition)
-        assertEquals(25, WorkoutDurationChoices.minutes[
+        assertEquals(30, WorkoutDurationChoices.minutes[
             (field("length").get(restored) as Spinner).selectedItemPosition
         ])
         assertEquals(1, (field("impactRestrictionSpinner").get(restored) as Spinner).selectedItemPosition)
@@ -71,7 +71,7 @@ class FitnessCoachRestorableProfileActivityTest {
         assertEquals(0, preferences.getInt("recommendEnergy", -1))
         assertEquals(4, preferences.getInt("recommendEquipment", -1))
         assertEquals(1, preferences.getInt("fitLevel", -1))
-        assertEquals(25, preferences.getInt("fitTimeMinutes", -1))
+        assertEquals(30, preferences.getInt("fitTimeMinutes", -1))
         val savedTools = preferences.getString("recommendAdditionalEquipment", "").orEmpty()
         assertTrue(savedTools.contains("MAT"))
         assertTrue(savedTools.contains("STABLE_CHAIR"))

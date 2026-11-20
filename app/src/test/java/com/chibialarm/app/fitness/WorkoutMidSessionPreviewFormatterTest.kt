@@ -232,4 +232,27 @@ class WorkoutMidSessionPreviewFormatterTest {
         assertTrue(spoken.length <= 350)
     }
 
+    @Test fun setLimitPreviewExplainsThatOnlyOptionalSetsWereRemoved() {
+        val result = preview(
+            listOf(
+                move("Khởi động tại chỗ"),
+                move("Squat không tạ"),
+                move("Thả lỏng")
+            ),
+            currentIndex = 1,
+            request = WorkoutMidSessionRequest.Request(currentSetLimit = 2),
+            completedCurrentSets = 1
+        )
+
+        val text = WorkoutMidSessionPreviewFormatter.format(result)
+        val spoken = WorkoutMidSessionPreviewFormatter.spokenSummary(result)
+        assertTrue(text.contains("Giới hạn Squat không tạ tối đa còn 2 hiệp"))
+        assertTrue(text.contains("giữ nguyên 2 hiệp bắt buộc"))
+        assertTrue(text.contains("chỉ bỏ hiệp tùy chọn"))
+        assertTrue(spoken.contains("Giới hạn Squat không tạ tối đa còn 2 hiệp"))
+        assertTrue(spoken.contains("2 hiệp bắt buộc"))
+        assertTrue(spoken.contains("Chưa áp dụng"))
+        assertTrue(spoken.length <= 350)
+    }
+
 }

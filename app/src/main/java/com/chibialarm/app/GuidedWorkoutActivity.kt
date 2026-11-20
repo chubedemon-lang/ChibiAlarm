@@ -126,6 +126,7 @@ class GuidedWorkoutActivity:Activity() {
     private var activeEffortDialog: AlertDialog? = null
     private var pendingEffortLevel: WorkoutEffortFeedback.Level? = null
     private lateinit var setProgress:TextView
+    private lateinit var setProgressBar:ProgressBar
     private lateinit var completeSetButton:Button
     private lateinit var restSetButton:Button
     private lateinit var customSetRestButton:Button
@@ -698,6 +699,16 @@ class GuidedWorkoutActivity:Activity() {
             setTextColor(Color.rgb(75,55,95))
         }
         root.addView(setProgress)
+        setProgressBar=ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal).apply {
+            max=1
+            progress=0
+            visibility=android.view.View.GONE
+            contentDescription="Tiến độ hiệp bắt buộc"
+        }
+        root.addView(
+            setProgressBar,
+            LinearLayout.LayoutParams(-1,(8*resources.displayMetrics.density).toInt())
+        )
         completeSetButton=Button(this).apply {
             text="✓ Xác nhận hoàn thành hiệp"
             contentDescription="Tự xác nhận đã thực hiện xong hiệp hiện tại; không phải cảm biến đếm lần tập"
@@ -3124,6 +3135,7 @@ class GuidedWorkoutActivity:Activity() {
         skipRestButton.visibility = if (canSkipRest) android.view.View.VISIBLE else android.view.View.GONE
         skipRestButton.isEnabled = canSkipRest
         if(plan==null) {
+            setProgressBar.visibility=android.view.View.GONE
             restSetButton.visibility=android.view.View.GONE
             customSetRestButton.visibility=android.view.View.GONE
             return
@@ -3131,10 +3143,12 @@ class GuidedWorkoutActivity:Activity() {
         val done=(completedSetsByMove[index] ?: 0).coerceIn(0,plan.maximumSets)
         val target=if(plan.targetMin==plan.targetMax) "${plan.targetMin} ${plan.unit}"
             else "${plan.targetMin}–${plan.targetMax} ${plan.unit}"
-        val setDescription=if(plan.maximumSets>plan.requiredSets)
-            "Tối thiểu ${plan.requiredSets} hiệp, có thể thêm đến ${plan.maximumSets}"
-            else "${plan.requiredSets} hiệp"
-        setProgress.text="Hiệp tự xác nhận: $done/${plan.maximumSets} • $setDescription • $target"
+        val progressDisplay=WorkoutSetProgressDisplay.from(plan,done)
+        setProgressBar.max=progressDisplay.progressMax
+        setProgressBar.progress=progressDisplay.progress
+        setProgressBar.contentDescription=progressDisplay.contentDescription
+        setProgressBar.visibility=android.view.View.VISIBLE
+        setProgress.text="Hiệp tự xác nhận: $done/${plan.maximumSets} • ${progressDisplay.summary} • $target"
         val actualValues=actualSetValuesByMove[index].orEmpty()
         val actualValueLabels=actualValues.mapIndexedNotNull { set,value ->
             if(value<=0) null else "Hiệp ${set+1}: $value ${plan.unit}"

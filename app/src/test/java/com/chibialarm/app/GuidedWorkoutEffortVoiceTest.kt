@@ -308,14 +308,102 @@ class GuidedWorkoutEffortVoiceTest {
             assertFalse(checkIn.dialog.isShowing)
             val restChoice = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
             assertTrue(restChoice.isShowing)
-            assertTrue(restChoice.getButton(AlertDialog.BUTTON_NEUTRAL).text.toString().contains("nhẹ hơn"))
+            assertEquals("Điều chỉnh thêm", restChoice.getButton(AlertDialog.BUTTON_NEUTRAL).text.toString())
             restChoice.getButton(AlertDialog.BUTTON_NEUTRAL).performClick()
-            assertFalse("The rest-choice dialog must close before the planner preview opens", restChoice.isShowing)
+            assertFalse("The rest-choice dialog must close before the adjustment options open", restChoice.isShowing)
+
+            val adjustmentOptions = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
+            assertTrue(adjustmentOptions.isShowing)
+            assertEquals(1, adjustmentOptions.listView.count)
+            assertTrue(
+                adjustmentOptions.listView.getItemAtPosition(0).toString()
+                    .contains("Thay động tác bằng biến thể nhẹ hơn")
+            )
+            val optionList = adjustmentOptions.listView
+            optionList.performItemClick(
+                optionList.getChildAt(0),
+                0,
+                optionList.getItemIdAtPosition(0)
+            )
+            assertFalse(adjustmentOptions.isShowing)
+
             val planPreview = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
             assertTrue(planPreview.isShowing)
             assertTrue(
                 planPreview.findViewById<android.widget.TextView>(android.R.id.message)
                     ?.text?.toString().orEmpty().contains("Các hiệp đã xác nhận không bị sửa")
+            )
+        } finally {
+            checkIn.activity.finish()
+        }
+    }
+
+    @Test fun repeatedHardVoiceCheckInOffersRepReductionOnlyThroughPreviewAndConfirmation() {
+        val checkIn = openCheckIn(
+            completedSetCount = 1,
+            previousEfforts = listOf(WorkoutEffortFeedback.Level.HARD)
+        )
+        try {
+            sendVoice(checkIn, "khó quá")
+            assertTrue(checkIn.dialog.isShowing)
+            checkIn.dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+
+            assertEquals(
+                listOf(WorkoutEffortFeedback.Level.HARD, WorkoutEffortFeedback.Level.HARD),
+                effortLevels(checkIn)[checkIn.moveIndex]
+            )
+            val restChoice = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
+            assertTrue(restChoice.isShowing)
+            assertEquals("Điều chỉnh thêm", restChoice.getButton(AlertDialog.BUTTON_NEUTRAL).text.toString())
+            restChoice.getButton(AlertDialog.BUTTON_NEUTRAL).performClick()
+
+            val adjustmentOptions = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
+            val options = adjustmentOptions.listView
+            assertEquals(2, options.count)
+            assertTrue(options.getItemAtPosition(0).toString().contains("biến thể nhẹ hơn"))
+            assertTrue(options.getItemAtPosition(1).toString().contains("Giảm tối đa 1 lần mỗi hiệp còn lại"))
+            options.performItemClick(
+                options.getChildAt(1),
+                1,
+                options.getItemIdAtPosition(1)
+            )
+            assertFalse(adjustmentOptions.isShowing)
+
+            val preview = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
+            val previewMessage = preview.findViewById<android.widget.TextView>(android.R.id.message)
+                ?.text?.toString().orEmpty()
+            val expectedCeiling = checkIn.plan.targetMax - 1
+            assertTrue(previewMessage.contains(
+                "tối đa còn $expectedCeiling ${checkIn.plan.unit} mỗi hiệp cho phần chưa thực hiện"
+            ))
+            assertTrue(previewMessage.contains("Các hiệp đã xác nhận không bị sửa"))
+
+            fun activityField(name: String) =
+                GuidedWorkoutActivity::class.java.getDeclaredField(name).apply { isAccessible = true }
+            @Suppress("UNCHECKED_CAST")
+            val completedSets = activityField("completedSetsByMove").get(checkIn.activity)
+                as MutableMap<Int, Int>
+            @Suppress("UNCHECKED_CAST")
+            val moves = activityField("moves").get(checkIn.activity) as List<TrainingMove>
+            val originalDose = moves[checkIn.moveIndex].dose
+            assertEquals(checkIn.completedSets, completedSets[checkIn.moveIndex])
+            assertEquals("The preview must not mutate the active plan", originalDose,
+                moves[checkIn.moveIndex].dose)
+
+            preview.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+
+            @Suppress("UNCHECKED_CAST")
+            val updatedMoves = activityField("moves").get(checkIn.activity) as List<TrainingMove>
+            val updatedPlan = WorkoutSetTracker.parse(
+                updatedMoves[checkIn.moveIndex].dose,
+                updatedMoves[checkIn.moveIndex].restSeconds
+            )
+            assertEquals(expectedCeiling, updatedPlan?.targetMax)
+            assertEquals("Confirmed sets must remain untouched", checkIn.completedSets,
+                completedSets[checkIn.moveIndex])
+            assertEquals(
+                listOf(WorkoutEffortFeedback.Level.HARD, WorkoutEffortFeedback.Level.HARD),
+                effortLevels(checkIn)[checkIn.moveIndex]
             )
         } finally {
             checkIn.activity.finish()

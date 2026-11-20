@@ -322,7 +322,7 @@ object WorkoutMidSessionRequest {
         // Accept only an explicit reduction/limit phrase. A progress question such as
         // "còn 2 hiệp nữa?" must never mutate the active prescription.
         val setLimitMatch = Regex(
-            """(?:giam(?: xuong)? con|rut(?: xuong)? con|chi lam|chi tap|lam|tap)\\s+([0-9]{1,2}|mot|hai|ba|bon|tu|nam|sau|bay|tam|chin|muoi)\\s+hiep(?:\\s+thoi)?\\b"""
+            """(?:giam(?: xuong)? con|rut(?: xuong)? con|chi lam|chi tap|lam|tap)\s+([0-9]{1,2}|mot|hai|ba|bon|tu|nam|sau|bay|tam|chin|muoi)\s+hiep(?:\s+thoi)?\b"""
         ).find(text)
         val setLimitPrefix = setLimitMatch?.let { text.substring(0, it.range.first).trimEnd() }.orEmpty()
         val negatedSetLimit = listOf("khong", "dung", "khong can", "khong muon", "chua")

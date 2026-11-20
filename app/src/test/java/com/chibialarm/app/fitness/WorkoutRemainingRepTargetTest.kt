@@ -78,4 +78,14 @@ class WorkoutRemainingRepTargetTest {
         assertNull(WorkoutRemainingRepTarget.preview(null, 0, 3, 0))
         assertNull(WorkoutRemainingRepTarget.preview(null, 0, 3, 101))
     }
+
+    @Test fun existingTargetIsCappedWithoutInventingAnOverride() {
+        assertEquals(10, WorkoutRemainingRepTarget.capExistingTarget(12, 10))
+        assertEquals(9, WorkoutRemainingRepTarget.capExistingTarget(9, 10))
+        assertNull(WorkoutRemainingRepTarget.capExistingTarget(null, 10))
+        assertEquals(12, WorkoutRemainingRepTarget.capExistingTarget(12, 150))
+        assertNull(WorkoutRemainingRepTarget.capExistingTarget(101, 10))
+        assertEquals(12, WorkoutRemainingRepTarget.capExistingTarget(12, 0))
+    }
+
 }

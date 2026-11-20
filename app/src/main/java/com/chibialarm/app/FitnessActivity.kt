@@ -232,7 +232,33 @@ class FitnessActivity:Activity() {
         // Retain only coarse selections across a configuration change. Raw speech/text is never kept.
         conversation = FitnessCoachSessionSnapshot.restore(lastNonConfigurationInstance as? FitnessCoachSessionSnapshot)
             ?: restoreCoachHandoff(intent)
+            ?: FitnessCoachRestorableProfile.fromBundle(savedInstanceState)?.restore()
         render()
+    }
+
+    /**
+     * Android may recreate this Activity after reclaiming the process. Restore structured workout
+     * choices and session safety switches only; raw chat, recognized speech, and coach replies
+     * are deliberately excluded from saved state.
+     */
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        FitnessCoachRestorableProfile.capture(
+            goal = recommendationGoalSpinner?.selectedItemPosition,
+            level = if (::level.isInitialized) level.selectedItemPosition else conversation?.level,
+            energy = recommendationEnergySpinner?.selectedItemPosition,
+            minutes = if (::length.isInitialized) {
+                WorkoutDurationChoices.minutes.getOrNull(length.selectedItemPosition)
+            } else conversation?.minutes,
+            equipment = recommendationEquipmentSpinner?.selectedItemPosition,
+            impact = impactRestrictionSpinner?.let { effectiveImpactRestriction() } ?: conversation?.impact,
+            avoidWristLoad = wristLoadCheckBox?.isChecked ?: conversation?.avoidWristLoad,
+            avoidFloorPositions = floorPositionCheckBox?.isChecked ?: conversation?.avoidFloorPositions,
+            avoidOverheadReach = overheadReachCheckBox?.isChecked ?: conversation?.avoidOverheadReach,
+            additionalEquipment = if (additionalEquipmentCheckBoxes.isNotEmpty()) {
+                currentAdditionalEquipment()
+            } else conversation?.additionalEquipment ?: emptySet()
+        )?.writeTo(outState)
     }
 
     /** The safety selection survives rotation in memory only; it is not written to disk or backup. */
@@ -309,13 +335,13 @@ class FitnessActivity:Activity() {
         root.addView(txt("🎚 Trình độ của bạn",19f))
         level=Spinner(this).apply {
             adapter=ArrayAdapter(this@FitnessActivity,android.R.layout.simple_spinner_dropdown_item,levels)
-            setSelection(prefs.getInt("fitLevel",0).coerceIn(0,2))
+            setSelection((conversation?.level ?: prefs.getInt("fitLevel",0)).coerceIn(0,2))
         }
         root.addView(level)
         root.addView(txt("⏱ Thời lượng bạn muốn",19f))
         length=Spinner(this).apply {
             adapter=ArrayAdapter(this@FitnessActivity,android.R.layout.simple_spinner_dropdown_item,lengths)
-            val savedMinutes = if (prefs.contains("fitTimeMinutes")) {
+            val savedMinutes = conversation?.minutes ?: if (prefs.contains("fitTimeMinutes")) {
                 prefs.getInt("fitTimeMinutes", 20)
             } else {
                 WorkoutDurationChoices.legacyMinutesForIndex(prefs.getInt("fitTime", 2))
@@ -450,13 +476,13 @@ class FitnessActivity:Activity() {
         val energyLevels=arrayOf("Hôm nay hơi mệt","Cảm thấy bình thường","Rất nhiều năng lượng")
         val goalSpinner=Spinner(this).apply {
             adapter=ArrayAdapter(this@FitnessActivity,android.R.layout.simple_spinner_dropdown_item,goals)
-            setSelection(prefs.getInt("recommendGoal",0).coerceIn(0,goals.lastIndex))
+            setSelection((conversation?.goal ?: prefs.getInt("recommendGoal",0)).coerceIn(0,goals.lastIndex))
         }
         root.addView(goalSpinner)
         recommendationGoalSpinner = goalSpinner
         val energySpinner=Spinner(this).apply {
             adapter=ArrayAdapter(this@FitnessActivity,android.R.layout.simple_spinner_dropdown_item,energyLevels)
-            setSelection(prefs.getInt("recommendEnergy",1).coerceIn(0,2))
+            setSelection((conversation?.energy ?: prefs.getInt("recommendEnergy",1)).coerceIn(0,2))
         }
         root.addView(energySpinner)
         recommendationEnergySpinner = energySpinner
@@ -471,18 +497,23 @@ class FitnessActivity:Activity() {
         )
         val equipmentSpinner=Spinner(this).apply {
             adapter=ArrayAdapter(this@FitnessActivity,android.R.layout.simple_spinner_dropdown_item,equipmentOptions)
-            setSelection(prefs.getInt("recommendEquipment",0).coerceIn(0,equipmentOptions.lastIndex))
+            setSelection((conversation?.equipment ?: prefs.getInt("recommendEquipment",0)).coerceIn(0,equipmentOptions.lastIndex))
         }
         root.addView(equipmentSpinner)
         recommendationEquipmentSpinner = equipmentSpinner
         equipmentSpinner.onItemSelectedListener=object:android.widget.AdapterView.OnItemSelectedListener {
             override fun onNothingSelected(parent:android.widget.AdapterView<*>?) {}
             override fun onItemSelected(parent:android.widget.AdapterView<*>?,view:android.view.View?,position:Int,id:Long) {
+                persistNonSensitiveProfile()
                 if (::filter.isInitialized) {
                     programContainer?.let { drawPrograms(it,categories[filter.selectedItemPosition]) }
                 }
             }
         }
+        watchProfileSelection(level)
+        watchProfileSelection(length)
+        watchProfileSelection(goalSpinner)
+        watchProfileSelection(energySpinner)
         root.addView(txt("➕ Dụng cụ bổ sung (có thể chọn nhiều)",16f))
         val savedAdditionalEquipment = prefs.getString("recommendAdditionalEquipment", "").orEmpty()
             .split(',')
@@ -506,10 +537,7 @@ class FitnessActivity:Activity() {
                     conversation = if (previous == null) {
                         FitnessNaturalRequest.Result(reply = "Đã chọn dụng cụ bổ sung.", additionalEquipment = selected)
                     } else previous.copy(additionalEquipment = selected)
-                    prefs.edit().putString(
-                        "recommendAdditionalEquipment",
-                        selected.sortedBy { it.ordinal }.joinToString(",") { it.name }
-                    ).apply()
+                    persistNonSensitiveProfile()
                     if (::filter.isInitialized) {
                         programContainer?.let { drawPrograms(it, categories[filter.selectedItemPosition]) }
                     }
@@ -523,7 +551,7 @@ class FitnessActivity:Activity() {
         val impactOptions=arrayOf("Không có hạn chế được báo","Ưu tiên bài ít tác động, không nhảy","Đang đau hoặc có chấn thương")
         val impactSpinner=Spinner(this).apply {
             adapter=ArrayAdapter(this@FitnessActivity,android.R.layout.simple_spinner_dropdown_item,impactOptions)
-            setSelection(0) // Sensitive movement limitations are session-only
+            setSelection(conversation?.impact ?: 0) // Restored only from this Activity's transient state
         }
         root.addView(impactSpinner)
         impactRestrictionSpinner = impactSpinner
@@ -805,8 +833,7 @@ class FitnessActivity:Activity() {
                 val energy=energySpinner.selectedItemPosition
                 val equipment=equipmentSpinner.selectedItemPosition
                 val impact=effectiveImpactRestriction()
-                prefs.edit().putInt("recommendGoal",goal).putInt("recommendEnergy",energy)
-                    .putInt("recommendEquipment",equipment).apply()
+                persistNonSensitiveProfile()
                 val recommendation=FitnessPlanAdvisor.recommend(FitnessPlanAdvisor.Preferences(
                     goal,energy,level.selectedItemPosition,mins[length.selectedItemPosition],equipment,impact,
                     currentAdditionalEquipment()))
@@ -1349,6 +1376,42 @@ class FitnessActivity:Activity() {
             container.addView(card,LinearLayout.LayoutParams(-1,-2).apply { bottomMargin=15 })
         }
     }
+    /** Persist only non-sensitive workout preferences in the existing device-local guest store. */
+    private fun persistNonSensitiveProfile() {
+        if (!::level.isInitialized || !::length.isInitialized) return
+        val goal = recommendationGoalSpinner?.selectedItemPosition ?: return
+        val energy = recommendationEnergySpinner?.selectedItemPosition ?: return
+        val equipment = recommendationEquipmentSpinner?.selectedItemPosition ?: return
+        val minutes = WorkoutDurationChoices.minutes.getOrNull(length.selectedItemPosition) ?: return
+        val extras = currentAdditionalEquipment()
+        prefs.edit()
+            .putInt("recommendGoal", goal)
+            .putInt("recommendEnergy", energy)
+            .putInt("recommendEquipment", equipment)
+            .putInt("fitLevel", level.selectedItemPosition)
+            .putInt("fitTime", WorkoutDurationChoices.legacyIndexForMinutes(minutes))
+            .putInt("fitTimeMinutes", minutes)
+            .putString(
+                "recommendAdditionalEquipment",
+                extras.sortedBy { it.ordinal }.joinToString(",") { it.name }
+            )
+            .apply()
+    }
+
+    private fun watchProfileSelection(spinner: Spinner) {
+        spinner.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) = Unit
+            override fun onItemSelected(
+                parent: android.widget.AdapterView<*>?,
+                view: android.view.View?,
+                position: Int,
+                id: Long
+            ) {
+                persistNonSensitiveProfile()
+            }
+        }
+    }
+
     private fun currentAdditionalEquipment(): Set<TrainingEquipment> =
         additionalEquipmentCheckBoxes.filterValues { it.isChecked }.keys.toSet()
 

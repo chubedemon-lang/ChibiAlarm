@@ -498,4 +498,49 @@ class FitnessCoachConversationTest {
         assertEquals(emptySet<TrainingEquipment>(), cleared.additionalEquipment)
     }
 
+
+    @Test fun colloquialLowEnergyRepliesAreUnderstoodOnlyWhenTheCoachAsksAboutEnergy() {
+        val previous = FitnessNaturalRequest.Result(
+            goal = 2,
+            level = 1,
+            minutes = 20,
+            equipment = 0,
+            impact = 0,
+            reply = "profile",
+            avoidWristLoad = false,
+            avoidFloorPositions = false,
+            avoidOverheadReach = false,
+            additionalEquipment = emptySet()
+        )
+        assertEquals(FitnessCoachFollowUp.Question.ENERGY, FitnessCoachFollowUp.nextQuestionType(previous))
+
+        listOf("hơi đuối", "đuối sức", "hết pin", "mỏi cơ", "cơ bắp mỏi").forEach { phrase ->
+            val reply = FitnessCoachConversation.parseReply(previous, phrase)
+            val merged = FitnessCoachConversation.merge(previous, reply)
+            assertEquals("Failed for: $phrase", 0, merged.energy)
+            assertEquals(2, merged.goal)
+            assertEquals(20, merged.minutes)
+            assertEquals(0, merged.equipment)
+            assertTrue(reply.reply.contains("buổi tập nhẹ"))
+        }
+    }
+
+    @Test fun negativeSorenessReplyDoesNotBecomeLowEnergyOrClearTheExistingProfile() {
+        val previous = FitnessNaturalRequest.Result(
+            goal = 2,
+            level = 1,
+            minutes = 20,
+            equipment = 0,
+            impact = 0,
+            reply = "profile",
+            avoidWristLoad = false,
+            avoidFloorPositions = false,
+            avoidOverheadReach = false,
+            additionalEquipment = emptySet()
+        )
+        val reply = FitnessCoachConversation.parseReply(previous, "không mỏi")
+        assertNull(reply.energy)
+        assertEquals(2, FitnessCoachConversation.merge(previous, reply).goal)
+    }
+
 }

@@ -6,6 +6,15 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class WorkoutPoseMotionTest {
+
+    @Test fun illustrationDisclosesItIsNotAFormAssessment() {
+        assertEquals("Minh họa · không chấm tư thế", WorkoutPoseMotion.VISUAL_DISCLAIMER)
+        assertTrue(
+            WorkoutPoseMotion.accessibilityCue(WorkoutPoseGuide.Pose.SQUAT, false)
+                .contains("không đánh giá tư thế")
+        )
+    }
+
     @Test fun dynamicExercisesHaveTwoPhases() {
         for (pose in listOf(
             WorkoutPoseGuide.Pose.SQUAT,

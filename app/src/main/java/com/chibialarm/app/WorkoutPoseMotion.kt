@@ -2,6 +2,8 @@ package com.chibialarm.app
 
 /** Offline two-phase exercise cues. Illustrations are not a form assessment. */
 object WorkoutPoseMotion {
+    const val VISUAL_DISCLAIMER = "Minh họa · không chấm tư thế"
+
     fun hasMotion(pose: WorkoutPoseGuide.Pose): Boolean = when (pose) {
         WorkoutPoseGuide.Pose.SQUAT,
         WorkoutPoseGuide.Pose.HIP_HINGE,

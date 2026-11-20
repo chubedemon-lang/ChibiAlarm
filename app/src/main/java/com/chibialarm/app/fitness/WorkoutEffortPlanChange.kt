@@ -26,4 +26,25 @@ object WorkoutEffortPlanChange {
             WorkoutEffortFeedback.Level.MODERATE,
             WorkoutEffortFeedback.Level.VERY_HARD -> null
         }
+
+    /**
+     * Offers a one-rep lower ceiling only after two consecutive HARD self-reports
+     * for this exercise. The required minimum, confirmed sets and XP evidence stay
+     * unchanged. The caller must show a preview and obtain explicit user approval.
+     */
+    fun repReductionPreviewRequest(
+        level: WorkoutEffortFeedback.Level,
+        plan: com.chibialarm.app.WorkoutSetTracker.Plan,
+        completedSets: Int,
+        previousLevelsForSameMove: List<WorkoutEffortFeedback.Level?>
+    ): WorkoutMidSessionRequest.Request? {
+        if (level != WorkoutEffortFeedback.Level.HARD) return null
+        if (previousLevelsForSameMove.size > 20) return null
+        if (previousLevelsForSameMove.lastOrNull() != WorkoutEffortFeedback.Level.HARD) return null
+        if (plan.unit == "giây" || completedSets !in 1 until plan.maximumSets) return null
+        val reducedCeiling = plan.targetMax - 1
+        if (reducedCeiling < plan.targetMin) return null
+        return WorkoutMidSessionRequest.Request(currentRepLimit = reducedCeiling)
+    }
+
 }

@@ -53,6 +53,9 @@ object WorkoutMidSessionRequest {
             require(replaceCurrentWith == null || replaceCurrentWith.length in 1..90)
             require(currentSetLimit == null || currentSetLimit in 1..20)
             require(currentRepLimit == null || currentRepLimit in 1..200)
+            require(currentSetLimit == null || currentRepLimit == null)
+            require(!addOptionalExercise || (currentSetLimit == null && currentRepLimit == null))
+            require(replaceCurrentWith == null || currentRepLimit == null)
         }
 
         /** True only when the request changes the rest countdown and nothing else. */

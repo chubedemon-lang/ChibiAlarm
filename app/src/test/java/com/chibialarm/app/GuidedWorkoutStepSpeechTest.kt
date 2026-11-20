@@ -25,6 +25,25 @@ import org.robolectric.shadows.ShadowAlertDialog
 
 @RunWith(RobolectricTestRunner::class)
 class GuidedWorkoutStepSpeechTest {
+
+    private fun deliverActivityResult(
+        activity: GuidedWorkoutActivity,
+        requestCode: Int,
+        resultCode: Int,
+        data: Intent?
+    ) {
+        // Activity.onActivityResult is protected; invoke the real lifecycle callback
+        // reflectively so Robolectric exercises production dispatch without widening
+        // the app's Activity API solely for tests.
+        GuidedWorkoutActivity::class.java.getDeclaredMethod(
+            "onActivityResult",
+            Int::class.javaPrimitiveType,
+            Int::class.javaPrimitiveType,
+            Intent::class.java
+        ).apply { isAccessible = true }
+            .invoke(activity, requestCode, resultCode, data)
+    }
+
     @Before fun clearGuestCheckpoint() {
         RuntimeEnvironment.getApplication()
             .getSharedPreferences("chibi_workout_checkpoint_guest", Context.MODE_PRIVATE)
@@ -110,7 +129,7 @@ class GuidedWorkoutStepSpeechTest {
                 )
             )
 
-            activity.onActivityResult(requestCode, Activity.RESULT_CANCELED, null)
+            deliverActivityResult(activity,requestCode, Activity.RESULT_CANCELED, null)
 
             assertEquals(null, pending.get(activity))
             assertTrue(

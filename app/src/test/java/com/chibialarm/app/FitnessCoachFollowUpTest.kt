@@ -254,4 +254,26 @@ class FitnessCoachFollowUpTest {
         assertEquals(FitnessCoachFollowUp.Question.FLOOR_POSITIONS, FitnessCoachFollowUp.nextQuestionType(merged))
     }
 
+
+    @Test fun energyQuickRepliesIncludeNaturalFatigueWordingButNeverAppearForSafetyStop() {
+        val energyProfile = FitnessNaturalRequest.Result(
+            goal = 2,
+            level = 1,
+            minutes = 20,
+            equipment = 0,
+            impact = 0,
+            reply = "profile",
+            avoidWristLoad = false,
+            avoidFloorPositions = false,
+            avoidOverheadReach = false,
+            additionalEquipment = emptySet()
+        )
+        val replies = FitnessCoachFollowUp.quickReplies(energyProfile)
+        assertTrue(replies.any { it.label == "Hơi đuối" && it.utterance == "hơi đuối" })
+        assertTrue(replies.any { it.label == "Mỏi cơ" && it.utterance == "mỏi cơ" })
+
+        val safetyProfile = energyProfile.copy(impact = 2)
+        assertTrue(FitnessCoachFollowUp.quickReplies(safetyProfile).isEmpty())
+    }
+
 }

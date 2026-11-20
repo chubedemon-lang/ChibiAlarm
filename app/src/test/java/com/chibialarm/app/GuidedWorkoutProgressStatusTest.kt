@@ -45,7 +45,8 @@ class GuidedWorkoutProgressStatusTest {
         ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
 
     private fun dialogMessage(dialog: AlertDialog): String =
-        dialog.findViewById<TextView>(android.R.id.message)?.text?.toString().orEmpty()
+        dialog.window?.decorView?.findViewById<TextView>(android.R.id.message)
+            ?.text?.toString().orEmpty()
 
     @Test
     fun statusCommandPausesTheClockAndShowsReadableAnswerWithoutTts() {

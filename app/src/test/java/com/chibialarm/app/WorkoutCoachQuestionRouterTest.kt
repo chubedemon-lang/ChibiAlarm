@@ -66,6 +66,17 @@ class WorkoutCoachQuestionRouterTest {
         assertFalse(answer.contains("Mục tiêu tham khảo"))
     }
 
+    @Test fun safetyPauseSuppressesBreathingAdviceAsWellAsTechniqueAdvice() {
+        val answer = WorkoutCoachQuestionRouter.answer(
+            input = "Thở thế nào?",
+            currentMove = squat,
+            pausedForSafety = true
+        )
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("đang dừng vì cảnh báo an toàn"))
+        assertFalse(answer.contains("thở ra nhẹ ở pha dùng lực"))
+    }
+
     @Test fun unrelatedPlanRequestRemainsForThePlanConversation() {
         assertNull(
             WorkoutCoachQuestionRouter.answer(

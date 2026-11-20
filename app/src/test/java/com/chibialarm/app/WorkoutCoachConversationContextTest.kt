@@ -66,6 +66,17 @@ class WorkoutCoachConversationContextTest {
         assertFalse(answer.contains(squat.name))
     }
 
+    @Test fun followUpBreathingQuestionUsesTheLastExplicitlyNamedExercise() {
+        val context = WorkoutCoachConversationContext()
+        context.answer("Cách tập Đi bộ nhanh tại chỗ?", activeMove = squat)
+
+        val followUp = context.answer("Bài đó thở thế nào?", activeMove = squat)
+        assertNotNull(followUp)
+        assertTrue(followUp!!.contains(walk.name))
+        assertTrue(followUp.contains("Thở tự nhiên"))
+        assertFalse(followUp.contains(squat.name))
+    }
+
     @Test fun resetClearsPreviousExerciseReference() {
         val context = WorkoutCoachConversationContext()
         context.answer("Cách tập Đi bộ nhanh tại chỗ?", activeMove = squat)

@@ -25,7 +25,8 @@ object WorkoutExerciseConversation {
         "bai nay tac dong vao dau", "can dung cu gi", "bai nay can gi", "dung cu nao",
         "can ta hay day", "co can ta khong", "co can day khang luc khong", "co can tham khong",
         "nghi giua hiep bao lau", "how do i do this", "how many reps",
-        "how many sets", "how long rest", "giai thich"
+        "how many sets", "how long rest", "giai thich", "cach tho", "tho the nao",
+        "nhip tho", "hit vao", "tho ra", "how to breathe", "breathing"
     )
 
     private val questionWords = setOf(
@@ -35,7 +36,8 @@ object WorkoutExerciseConversation {
         "dong", "tac", "nay", "la", "gi", "toi", "tao", "minh", "muon",
         "biet", "cho", "tung", "buoc", "theo", "voi", "nua", "phut", "dung",
         "nhom", "co", "vao", "dau", "tac", "can", "cu", "chinh",
-        "giua", "dang", "hien", "tai", "do", "vua", "noi", "nhac", "luc"
+        "giua", "dang", "hien", "tai", "do", "vua", "noi", "nhac", "luc",
+        "tho", "hit", "vao", "ra", "nhip"
     )
 
     private data class Match(
@@ -63,7 +65,7 @@ object WorkoutExerciseConversation {
             "Chibi chưa nhận ra tên động tác trong thư viện. " +
                 "Mày hãy nêu rõ tên bài theo đúng tên trong thư viện để Chibi tránh hướng dẫn nhầm."
             )
-        return format(move)
+        return format(move, input)
     }
 
     /**
@@ -124,6 +126,7 @@ object WorkoutExerciseConversation {
         val setPlan = WorkoutSetTracker.parse(move.dose, move.restSeconds)
 
         return when {
+            isBreathingQuestion(query) -> WorkoutBreathingGuide.cue(name)
             asks("nhom co", "co nao", "tap vao dau", "tac dung", "bai nay tac dong vao dau") -> {
                 val focus = WorkoutExerciseFocus.descriptionFor(move.name)
                 if (focus == null) {
@@ -193,6 +196,10 @@ object WorkoutExerciseConversation {
         }.take(1_200)
     }
 
+    private fun isBreathingQuestion(query: String): Boolean = listOf(
+        "cach tho", "tho the nao", "nhip tho", "hit vao", "tho ra", "how to breathe", "breathing"
+    ).any(query::contains)
+
     private fun isExerciseQuestion(text: String): Boolean {
         if (questionPhrases.any(text::contains)) return true
         val namesAnExercise = text.contains("bai ") || text.contains("dong tac ")
@@ -227,7 +234,8 @@ object WorkoutExerciseConversation {
         else Match(ambiguous = best.map { it.name }.distinct().sorted())
     }
 
-    private fun format(move: TrainingMove): String {
+    private fun format(move: TrainingMove, input: String): String {
+        if (isBreathingQuestion(normalize(input))) return WorkoutBreathingGuide.cue(move.name)
         val steps = WorkoutStepGuide.split(move.steps).take(MAX_DISPLAY_STEPS)
         val rest = WorkoutSetTracker.restGuidance(move.dose, move.restSeconds)
         return buildString {

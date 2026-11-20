@@ -155,6 +155,47 @@ class WorkoutExerciseConversationTest {
         assertTrue(answer!!.contains("chưa ghi rõ dụng cụ"))
     }
 
+    @Test fun explicitExerciseBreathingQuestionUsesTheCatalogMovementPattern() {
+        val answer = WorkoutExerciseConversation.answer("Squat không tạ thở thế nào?")
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("Squat không tạ"))
+        assertTrue(answer.contains("thở ra nhẹ ở pha dùng lực"))
+        assertTrue(answer.contains("hít vào khi trở về hoặc hạ xuống"))
+        assertTrue(answer.contains("không nín thở"))
+    }
+
+    @Test fun contextualBreathingFollowUpNeedsNoRepeatedExerciseName() {
+        val squat = TrainingCatalog.allMoves.single { it.name == "Squat không tạ" }
+        val answer = WorkoutExerciseConversation.answerForCurrentMove(
+            "Khi nào hít vào, thở ra?", squat
+        )
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("Squat không tạ"))
+        assertTrue(answer.contains("hít vào khi trở về hoặc hạ xuống"))
+    }
+
+    @Test fun cardioBreathingAdviceEncouragesAComfortableConversationalPace() {
+        val walk = TrainingCatalog.allMoves.single { it.name == "Đi bộ nhanh tại chỗ" }
+        val answer = WorkoutExerciseConversation.answerForCurrentMove("Cách thở khi tập?", walk)
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("Thở tự nhiên"))
+        assertTrue(answer.contains("nói chuyện được"))
+    }
+
+    @Test fun unknownMoveDoesNotReceiveAnInventedExerciseSpecificBreathingPattern() {
+        val unknown = TrainingMove(
+            name = "Động tác thử nghiệm",
+            dose = "2 hiệp × 8 lần",
+            steps = "Thực hiện chậm.",
+            easier = "Giảm biên độ.",
+            avoid = "Dừng nếu đau."
+        )
+        val answer = WorkoutExerciseConversation.answerForCurrentMove("Thở thế nào?", unknown)
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("chưa có gợi ý nhịp thở riêng"))
+        assertFalse(answer.contains("Squat"))
+    }
+
     @Test fun unrelatedTextIsNotAnsweredAsAContextualExerciseQuestion() {
         val squat = TrainingCatalog.allMoves.single { it.name == "Squat không tạ" }
         assertNull(WorkoutExerciseConversation.answerForCurrentMove("Tao muốn đổi bài", squat))

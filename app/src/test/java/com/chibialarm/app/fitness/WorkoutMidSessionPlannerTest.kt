@@ -1558,4 +1558,72 @@ class WorkoutMidSessionPlannerTest {
         }
     }
 
+    @Test fun spokenKneelingRestrictionIsIndependentAndReplacesOnlyUnstartedKneelingMoves() {
+        val parsed = WorkoutMidSessionRequest.parse("Không quỳ gối nữa")
+        assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
+        val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+        assertTrue(request.avoidKneeling)
+        assertFalse(request.allowKneeling)
+        assertFalse("Kneeling alone must not mean avoiding every floor position", request.avoidFloorPositions)
+
+        val moves = listOf(
+            move("Squat không tạ"),
+            move("Bird-dog"),
+            move("Cat-cow nhẹ"),
+            move("Thả lỏng")
+        )
+        val result = WorkoutMidSessionPlanner.preview(
+            currentMoves = moves,
+            currentIndex = 1,
+            completedCurrentSets = 0,
+            currentStepLocked = false,
+            constraints = WorkoutConstraintProfile(),
+            request = request,
+            remainingCurrentSeconds = 60,
+            extensionMoveNames = emptySet(),
+            level = 0
+        )
+        assertTrue(result is WorkoutMidSessionPlanner.Result.Proposed)
+        val preview = (result as WorkoutMidSessionPlanner.Result.Proposed).preview
+        assertEquals("Completed prefix remains unchanged", moves.first(), preview.after.first())
+        assertEquals(
+            listOf("Squat không tạ", "Dead bug cơ bụng", "Mở vai và ngực", "Thả lỏng"),
+            preview.after.map { it.name }
+        )
+        assertTrue(preview.after.none { it.requiresKneeling })
+        val kneelingOnly = WorkoutConstraintProfile(avoidKneeling = true)
+        assertTrue("Supine dead bug remains allowed", WorkoutConstraintFilter.isAllowed(
+            move("Dead bug cơ bụng"), kneelingOnly
+        ))
+    }
+
+    @Test fun explicitKneelingPermissionRelaxesOnlyThatSessionPreference() {
+        val current = WorkoutConstraintProfile(avoidKneeling = true, avoidWristLoad = true)
+        val parsed = WorkoutMidSessionRequest.parse("Có thể quỳ gối")
+        assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
+        val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+        assertTrue(request.allowKneeling)
+        assertFalse(request.avoidKneeling)
+
+        val effective = WorkoutMidSessionPlanner.effectiveConstraints(current, request)
+        assertFalse(effective.avoidKneeling)
+        assertTrue("Unmentioned wrist restriction must remain active", effective.avoidWristLoad)
+    }
+
+    @Test fun kneelingRestrictionWinsOverPermissionAndUnrelatedRequestsPreserveIt() {
+        val conflict = WorkoutMidSessionRequest.parse("Không quỳ gối, có thể quỳ gối")
+        assertTrue(conflict is WorkoutMidSessionRequest.Result.Proposed)
+        val conflictingRequest = (conflict as WorkoutMidSessionRequest.Result.Proposed).request
+        assertTrue(conflictingRequest.avoidKneeling)
+        assertFalse(conflictingRequest.allowKneeling)
+
+        val current = WorkoutConstraintProfile(avoidKneeling = true)
+        val unrelated = WorkoutMidSessionRequest.parse("Đổi bài nhẹ hơn")
+        assertTrue(unrelated is WorkoutMidSessionRequest.Result.Proposed)
+        val preserved = WorkoutMidSessionPlanner.effectiveConstraints(
+            current, (unrelated as WorkoutMidSessionRequest.Result.Proposed).request
+        )
+        assertTrue("An unrelated utterance is not consent to relax kneeling", preserved.avoidKneeling)
+    }
+
 }

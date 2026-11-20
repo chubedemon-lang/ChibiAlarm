@@ -156,6 +156,20 @@ class WorkoutVoiceCommandsTest {
         assertEquals(C.UNKNOWN, WorkoutVoiceCommands.parse("Tập ở đâu?"))
     }
 
+    @Test fun additionalBreathingAndChestSymptomsOverrideWorkoutCommands() {
+        for (report in listOf(
+            "Tôi bị hụt hơi, cho bài tiếp theo",
+            "Thở không nổi, tiếp tục",
+            "Tôi không thở được, nghỉ thêm",
+            "Thở không ra hơi, xong hiệp",
+            "Thở gấp bất thường, đổi bài",
+            "Tức ngực, đọc tiến độ",
+            "Hoa mắt, bắt đầu"
+        )) {
+            assertEquals(report, C.PAIN, WorkoutVoiceCommands.parse(report))
+        }
+    }
+
     @Test fun tirednessAndSafetyAreActionableOffline() {
         for (phrase in listOf("Mệt rồi", "Hơi mệt", "Mệt quá", "Mệt lắm", "Tôi cần nghỉ")) {
             assertEquals(phrase, C.REST, WorkoutVoiceCommands.parse(phrase))

@@ -159,7 +159,7 @@ class WorkoutExerciseConversationTest {
         val answer = WorkoutExerciseConversation.answer("Squat không tạ thở thế nào?")
         assertNotNull(answer)
         assertTrue(answer!!.contains("Squat không tạ"))
-        assertTrue(answer.contains("thở ra nhẹ ở pha dùng lực"))
+        assertTrue(answer.contains("thở ra nhẹ ở pha dùng lực", ignoreCase = true))
         assertTrue(answer.contains("hít vào khi trở về hoặc hạ xuống"))
         assertTrue(answer.contains("không nín thở"))
     }

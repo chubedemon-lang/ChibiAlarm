@@ -61,7 +61,11 @@ object WorkoutVoiceCommands {
         ).any(normalized::contains)
         return when {
             normalized.contains("bi dau") || normalized.contains("dang dau") ||
-                normalized.contains("chan thuong") || normalized.contains("kho tho") ||
+                normalized.contains("chan thuong") ||
+                listOf(
+                    "kho tho", "hut hoi", "tho khong noi", "khong tho duoc",
+                    "tho khong ra hoi", "tho gap bat thuong", "tuc nguc", "hoa mat"
+                ).any(normalized::contains) ||
                 normalized.contains("chong mat") || normalized.contains("choang vang") ||
                 normalized.contains("dau nguc") || normalized.contains("dau dau") ||
                 normalized.contains("dau o ") || normalized.contains("dau qua") ||

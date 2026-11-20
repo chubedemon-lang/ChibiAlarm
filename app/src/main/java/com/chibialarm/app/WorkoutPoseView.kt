@@ -50,6 +50,11 @@ class WorkoutPoseView(context: Context) : View(context) {
         textSize = 11f
         typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
     }
+    private val disclaimerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.rgb(91, 85, 105)
+        textSize = 9f
+        typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.NORMAL)
+    }
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
@@ -414,6 +419,7 @@ class WorkoutPoseView(context: Context) : View(context) {
             }
         }
         canvas.drawText(WorkoutPoseMotion.phaseCue(pose, movementPhase), 8f, 16f, cuePaint)
+        canvas.drawText(WorkoutPoseMotion.VISUAL_DISCLAIMER, 8f, 118f, disclaimerPaint)
         canvas.restoreToCount(checkpoint)
     }
 }

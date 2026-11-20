@@ -208,4 +208,44 @@ class WorkoutConstraintFilterTest {
         WorkoutConstraintProfile.fromSessionSelections(impact = 3)
     }
 
+
+
+    @Test fun kneelingPreferenceUsesReviewedAlternativesButKeepsSupineAndStandingMoves() {
+        val bird = TrainingCatalog.allMoves.first { it.name == "Bird-dog" }
+        val catCow = TrainingCatalog.allMoves.first { it.name == "Cat-cow nhẹ" }
+        val kneePush = TrainingCatalog.allMoves.first { it.name == "Chống đẩy gối" }
+        val bridge = TrainingCatalog.allMoves.first { it.name == "Nâng hông trên sàn" }
+        val program = TrainingProgram(
+            "kneeling-test", "Kneeling test", "test", "test",
+            listOf(bird, catCow, kneePush, bridge)
+        )
+
+        val profile = WorkoutConstraintProfile(avoidKneeling = true)
+        val result = WorkoutConstraintFilter.apply(program, profile)
+
+        assertTrue(result.canStart)
+        assertTrue(result.program.moves.none { it.requiresKneeling })
+        assertTrue(result.substitutions.any {
+            it.originalName == "Bird-dog" && it.replacementName == "Dead bug cơ bụng"
+        })
+        assertTrue(result.substitutions.any {
+            it.originalName == "Cat-cow nhẹ" && it.replacementName == "Mở vai và ngực"
+        })
+        assertTrue(result.substitutions.any {
+            it.originalName == "Chống đẩy gối" && it.replacementName == "Chống đẩy tường"
+        })
+        assertTrue(result.program.moves.any { it.name == "Nâng hông trên sàn" })
+        assertTrue(result.program.moves.any { it.name == "Dead bug cơ bụng" })
+    }
+
+    @Test fun kneelingPreferenceChangesTheCheckpointFingerprint() {
+        val moves = TrainingCatalog.byId("full").moves
+        assertNotEquals(
+            WorkoutConstraintFilter.fingerprint(moves),
+            WorkoutConstraintFilter.fingerprint(
+                moves, WorkoutConstraintProfile(avoidKneeling = true)
+            )
+        )
+    }
+
 }

@@ -274,4 +274,30 @@ class WorkoutPlanAdjustmentConversationTest {
         assertFalse(unknown.contains("Phương án để xem trước"))
     }
 
+
+
+    @Test fun spokenKneelingPreferenceFiltersKneelingMovesWithoutBanningSupineWork() {
+        val program = TrainingProgram(
+            "kneeling-preview", "Kneeling preview", "test", "test",
+            listOf(
+                TrainingCatalog.allMoves.first { it.name == "Bird-dog" },
+                TrainingCatalog.allMoves.first { it.name == "Cat-cow nhẹ" },
+                TrainingCatalog.allMoves.first { it.name == "Nâng hông trên sàn" }
+            )
+        )
+        val answer = WorkoutPlanAdjustmentConversation.answer(
+            input = "Không quỳ gối, đổi bài giúp tao",
+            programs = listOf(program)
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("Mở vai và ngực"))
+        assertTrue(answer.contains("Dead bug cơ bụng"))
+        assertTrue(answer.contains("Nâng hông trên sàn"))
+        assertTrue(answer.contains("đã lọc động tác phải quỳ gối"))
+        assertTrue(answer.contains("buổi đang tập chưa bị thay đổi"))
+        assertFalse(answer.contains("Bird-dog"))
+        assertFalse(answer.contains("Cat-cow nhẹ"))
+    }
+
 }

@@ -71,6 +71,18 @@ object WorkoutPlanAdjustmentConversation {
         val avoidOverhead = profile.avoidOverheadReach || containsAny(
             query, "khong muon dua tay qua dau", "han che dua tay qua dau"
         )
+        val requestsAvoidKneeling = containsAny(
+            query, "khong quy goi", "khong muon quy goi", "khong the quy goi",
+            "tranh quy goi", "dung quy goi", "han che quy goi"
+        )
+        val allowsKneeling = containsAny(
+            query, "co the quy goi", "quy goi duoc", "khong can tranh quy goi"
+        )
+        val effectiveAvoidKneeling = when {
+            requestsAvoidKneeling -> true
+            allowsKneeling -> false
+            else -> profile.avoidKneeling
+        }
         val preferGentle = containsAny(
             query, "bai nao de hon", "co bai nao de hon",
             "hom nay met", "it nang luong", "muon tap nhe hon", "giam do kho"
@@ -79,6 +91,7 @@ object WorkoutPlanAdjustmentConversation {
             avoidFloor != profile.avoidFloorPositions ||
             avoidWrist != profile.avoidWristLoad ||
             avoidOverhead != profile.avoidOverheadReach ||
+            effectiveAvoidKneeling != profile.avoidKneeling ||
             preferLowImpact || preferGentle ||
             containsAny(query, "thay bai", "thay the", "doi bai", "bai thay the")
         if (!asksForChange) return null
@@ -86,7 +99,8 @@ object WorkoutPlanAdjustmentConversation {
         val effectiveProfile = profile.copy(
             avoidFloorPositions = avoidFloor,
             avoidWristLoad = avoidWrist,
-            avoidOverheadReach = avoidOverhead
+            avoidOverheadReach = avoidOverhead,
+            avoidKneeling = effectiveAvoidKneeling
         )
 
         var effectiveEquipment = equipmentSelection.coerceIn(0, 5)
@@ -197,6 +211,7 @@ object WorkoutPlanAdjustmentConversation {
                 if (constrained.changed) add("đã lọc theo hạn chế vận động")
                 if (equipped.changed) add("đã bỏ bài cần dụng cụ chưa chọn")
                 if (preferLowImpact) add("đã giới hạn ở chương trình ít tác động, không nhảy")
+                if (effectiveProfile.avoidKneeling) add("đã lọc động tác phải quỳ gối")
             }.joinToString("; ")
 
             Candidate(

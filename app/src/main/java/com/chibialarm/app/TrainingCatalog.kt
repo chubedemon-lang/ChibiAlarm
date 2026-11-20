@@ -18,7 +18,8 @@ data class TrainingMove(
     val restSeconds:Int=if (dose.contains("giây", ignoreCase=true)) 30 else 45,
     val equipmentOptions:Set<TrainingEquipment> = emptySet(),
     val requiresOverheadReach:Boolean = false,
-    val requiresJumping:Boolean = false
+    val requiresJumping:Boolean = false,
+    val requiresKneeling:Boolean = false
 ) {
     val requiresExternalLoad:Boolean
         get() = equipmentOptions.any { it == TrainingEquipment.DUMBBELL || it == TrainingEquipment.RESISTANCE_BAND }
@@ -36,8 +37,8 @@ data class TrainingProgram(
     val caution:String="Thở đều, tập trong phạm vi dễ chịu. Dừng khi đau, chóng mặt, đau ngực hoặc khó thở bất thường."
 )
 object TrainingCatalog {
-    private fun exercise(n:String,d:String,s:String,e:String,a:String="Nếu khó chịu hoặc mất kiểm soát kỹ thuật, dừng hoặc giảm mức độ.",secs:Int=60,restSecs:Int=if(d.contains("giây",ignoreCase=true))30 else 45,equipmentOptions:Set<TrainingEquipment> = emptySet(),requiresOverheadReach:Boolean=false,requiresJumping:Boolean=false)=
-        TrainingMove(n,d,s,e,a,secs,restSecs,equipmentOptions,requiresOverheadReach,requiresJumping)
+    private fun exercise(n:String,d:String,s:String,e:String,a:String="Nếu khó chịu hoặc mất kiểm soát kỹ thuật, dừng hoặc giảm mức độ.",secs:Int=60,restSecs:Int=if(d.contains("giây",ignoreCase=true))30 else 45,equipmentOptions:Set<TrainingEquipment> = emptySet(),requiresOverheadReach:Boolean=false,requiresJumping:Boolean=false,requiresKneeling:Boolean=false)=
+        TrainingMove(n,d,s,e,a,secs,restSecs,equipmentOptions,requiresOverheadReach,requiresJumping,requiresKneeling)
     private val warm=exercise("Khởi động tại chỗ","3–5 phút",
         "Đi bộ tại chỗ; xoay vai và cổ chân chậm; nâng gối nhẹ. Tăng tốc từng chút.",
         "Bước chậm, có thể vịn ghế chắc chắn.","Không xoay giật khớp.",120)
@@ -58,7 +59,7 @@ object TrainingCatalog {
         "Nâng hông với biên độ thấp.","Không ưỡn thắt lưng quá mức.",90)
     private val bird=exercise("Bird-dog","2 hiệp × 6 lần mỗi bên",
         "Chống tay và gối; duỗi tay đối diện chân; giữ lưng trung lập; đổi bên.",
-        "Chỉ duỗi một tay hoặc một chân.","Giữ thân ổn định.",90)
+        "Chỉ duỗi một tay hoặc một chân.","Giữ thân ổn định.",90, requiresKneeling=true)
     private val plank=exercise("Plank khuỷu hoặc plank gối","2 hiệp × 15–30 giây",
         "Giữ thân thành đường thẳng; siết bụng nhẹ; tiếp tục hít thở đều.",
         "Chống hai gối xuống sàn, rút ngắn thời gian.","Dừng nếu đau lưng hoặc vai.",60,45)
@@ -80,13 +81,13 @@ object TrainingCatalog {
         "Dùng hai tay vịn ghế để giữ thăng bằng.","Tránh nhún bật mạnh.",70)
     private val kneePush=exercise("Chống đẩy gối","2 hiệp × 5–10 lần",
         "Tay dưới vai, gối chạm sàn, giữ thân từ vai tới gối thẳng, hạ ngực rồi đẩy lên.",
-        "Thay bằng chống đẩy tường.","Dừng nếu đau cổ tay hoặc vai.",100)
+        "Thay bằng chống đẩy tường.","Dừng nếu đau cổ tay hoặc vai.",100, requiresKneeling=true)
     private val deadBug=exercise("Dead bug cơ bụng","2 hiệp × 6–8 lần mỗi bên",
         "Nằm ngửa, tay hướng lên, gối gập trên hông. Hạ chậm tay và chân đối diện trong phạm vi giữ lưng thoải mái.",
         "Chỉ hạ một gót xuống sàn.","Không cố ép lưng nếu đau.",90)
     private val catCow=exercise("Cat-cow nhẹ","6–8 nhịp",
         "Chống tay và gối, hít vào chuyển lưng sang tư thế thoải mái, thở ra cuộn lưng nhẹ, không ép biên độ.",
-        "Thực hiện với chuyển động nhỏ.","Nếu đau cổ tay, thử đặt cẳng tay lên bề mặt chắc chắn.",70)
+        "Thực hiện với chuyển động nhỏ.","Nếu đau cổ tay, thử đặt cẳng tay lên bề mặt chắc chắn.",70, requiresKneeling=true)
     private val shoulder=exercise("Mở vai và ngực","6–10 nhịp",
         "Đứng thẳng, xoay vai nhẹ từ trước ra sau, khép bả vai, thả lỏng cổ.",
         "Chỉ xoay vai nhỏ.","Không ngửa cổ quá mức.",60)

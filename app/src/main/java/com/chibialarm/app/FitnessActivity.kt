@@ -34,6 +34,7 @@ class FitnessActivity:Activity() {
     private var recommendationEquipmentSpinner: Spinner? = null
     private var recommendationAction: Button? = null
     private val additionalEquipmentCheckBoxes = linkedMapOf<TrainingEquipment, CheckBox>()
+    private var kneelingCheckBox: CheckBox? = null
 
     private fun applySpeechCandidate(candidate: CoachSpeechTranscript.Candidate) {
         val input = speechInput ?: return
@@ -84,6 +85,7 @@ class FitnessActivity:Activity() {
         coachQuickRepliesContainer = null
         coachRequestInput = null
         recommendationAction = null
+        kneelingCheckBox = null
         historyEffortInsightView = null
         historyEffortAction = null
         effortPlanSuggestion = null
@@ -219,7 +221,7 @@ class FitnessActivity:Activity() {
             "coach_goal", "coach_level", "coach_energy", "coach_minutes",
             "coach_equipment", "coach_impact",
             "coach_avoid_wrist_load", "coach_avoid_floor_positions",
-            "coach_avoid_overhead_reach", "coach_additional_equipment"
+            "coach_avoid_overhead_reach", "coach_avoid_kneeling", "coach_additional_equipment"
         )
         if (keys.none(source::hasExtra)) return null
         fun intValue(key: String): Int? =
@@ -236,6 +238,7 @@ class FitnessActivity:Activity() {
             avoidWristLoad = booleanValue("coach_avoid_wrist_load"),
             avoidFloorPositions = booleanValue("coach_avoid_floor_positions"),
             avoidOverheadReach = booleanValue("coach_avoid_overhead_reach"),
+            avoidKneeling = booleanValue("coach_avoid_kneeling"),
             additionalEquipment = source.getStringArrayListExtra("coach_additional_equipment")
                 ?.mapNotNull { raw -> TrainingEquipment.values().firstOrNull { it.name == raw } }
                 ?.toSet()
@@ -270,6 +273,7 @@ class FitnessActivity:Activity() {
             avoidWristLoad = wristLoadCheckBox?.isChecked ?: conversation?.avoidWristLoad,
             avoidFloorPositions = floorPositionCheckBox?.isChecked ?: conversation?.avoidFloorPositions,
             avoidOverheadReach = overheadReachCheckBox?.isChecked ?: conversation?.avoidOverheadReach,
+            avoidKneeling = kneelingCheckBox?.isChecked ?: conversation?.avoidKneeling,
             additionalEquipment = if (additionalEquipmentCheckBoxes.isNotEmpty()) {
                 currentAdditionalEquipment()
             } else conversation?.additionalEquipment ?: emptySet()
@@ -287,6 +291,8 @@ class FitnessActivity:Activity() {
                 floorPositionCheckBox?.isChecked else null,
             selectedAvoidOverheadReach = if (overheadReachCheckBox?.isChecked == true || conversation?.avoidOverheadReach != null)
                 overheadReachCheckBox?.isChecked else null,
+            selectedAvoidKneeling = if (kneelingCheckBox?.isChecked == true || conversation?.avoidKneeling != null)
+                kneelingCheckBox?.isChecked else null,
             selectedAdditionalEquipment = currentAdditionalEquipment().takeIf {
                 it.isNotEmpty() || conversation?.additionalEquipment != null
             }
@@ -607,6 +613,26 @@ class FitnessActivity:Activity() {
         }
         floorPositionCheckBox = floorPositionRestriction
         root.addView(floorPositionRestriction)
+        val kneelingRestriction = CheckBox(this).apply {
+            text = "Tránh động tác phải quỳ gối (vẫn có thể nằm ngửa)"
+            contentDescription = "Chỉ lọc các động tác có điểm tựa trên hai gối; không đồng nghĩa với tránh mọi tư thế nằm sàn"
+            isChecked = conversation?.avoidKneeling == true
+            setOnCheckedChangeListener { _, checked ->
+                val previous = conversation
+                conversation = if (previous == null) {
+                    FitnessNaturalRequest.Result(
+                        reply = if (checked) "Đã chọn tránh động tác phải quỳ gối." else "Đã bỏ lựa chọn tránh quỳ gối.",
+                        avoidKneeling = checked
+                    )
+                } else previous.copy(avoidKneeling = checked)
+                renderCoachQuickReplies()
+                if (::filter.isInitialized) {
+                    programContainer?.let { drawPrograms(it, categories[filter.selectedItemPosition]) }
+                }
+            }
+        }
+        kneelingCheckBox = kneelingRestriction
+        root.addView(kneelingRestriction)
         val overheadReachRestriction = CheckBox(this).apply {
             text = "Tránh động tác đưa tay hoặc tải lên quá đầu"
             contentDescription = "Chỉ áp dụng cho buổi tập hiện tại; không lưu thành hồ sơ sức khỏe"
@@ -704,6 +730,7 @@ class FitnessActivity:Activity() {
             restored.avoidWristLoad?.let { wristLoadCheckBox?.isChecked = it }
             restored.avoidFloorPositions?.let { floorPositionCheckBox?.isChecked = it }
             restored.avoidOverheadReach?.let { overheadReachCheckBox?.isChecked = it }
+            restored.avoidKneeling?.let { kneelingCheckBox?.isChecked = it }
             naturalRequest.hint = FitnessCoachFollowUp.nextQuestion(restored)
             root.addView(txt("🐰 Đã giữ lựa chọn trong phiên hiện tại sau khi xoay màn hình. Kiểm tra lại trước khi xem giáo án.",14f))
         }
@@ -1440,7 +1467,8 @@ class FitnessActivity:Activity() {
             impact = effectiveImpactRestriction(),
             avoidWristLoad = wristLoadCheckBox?.isChecked == true,
             avoidFloorPositions = floorPositionCheckBox?.isChecked == true,
-            avoidOverheadReach = overheadReachCheckBox?.isChecked == true
+            avoidOverheadReach = overheadReachCheckBox?.isChecked == true,
+            avoidKneeling = kneelingCheckBox?.isChecked == true
         )
 
     private fun currentExtensionPreferences(
@@ -1664,6 +1692,7 @@ class FitnessActivity:Activity() {
             .putExtra("avoid_wrist_load", constraints.avoidWristLoad)
             .putExtra("avoid_floor_positions", constraints.avoidFloorPositions)
             .putExtra("avoid_overhead_reach", constraints.avoidOverheadReach)
+            .putExtra("avoid_kneeling", constraints.avoidKneeling)
             .putExtra("extension_goal", recommendationGoalSpinner?.selectedItemPosition ?: 0)
             .putExtra("extension_energy", recommendationEnergySpinner?.selectedItemPosition ?: 1)
             .putExtra("extension_equipment", equipmentSelection)
@@ -1689,7 +1718,7 @@ class FitnessActivity:Activity() {
         if (sessionConstraints.avoidWristLoad ||
             sessionConstraints.avoidFloorPositions ||
             sessionConstraints.avoidOverheadReach ||
-            sessionConstraints.avoidJumping) {
+            sessionConstraints.avoidJumping || sessionConstraints.avoidKneeling) {
             Toast.makeText(this, "Các hạn chế vận động chỉ áp dụng cho buổi hiện tại; lịch tuần chưa lưu bộ lọc này.", Toast.LENGTH_LONG).show()
             return
         }

@@ -183,4 +183,31 @@ class FitnessCoachSessionSnapshotTest {
         assertFalse(snapshot.toString().contains("transient"))
     }
 
+
+
+    @Test fun kneelingPreferenceSurvivesRotationWithoutPersistingAHealthProfile() {
+        val controller = Robolectric.buildActivity(FitnessActivity::class.java).setup()
+        val checkboxField = FitnessActivity::class.java.getDeclaredField("kneelingCheckBox").apply {
+            isAccessible = true
+        }
+        (checkboxField.get(controller.get()) as android.widget.CheckBox).isChecked = true
+
+        controller.recreate()
+        val restored = controller.get()
+        assertTrue((checkboxField.get(restored) as android.widget.CheckBox).isChecked)
+        assertFalse(restored.getSharedPreferences("chibi_fitness_offline", 0)
+            .contains("avoidKneeling"))
+        controller.pause().stop().destroy()
+
+        val source = FitnessNaturalRequest.Result(
+            reply = "transient speech",
+            avoidKneeling = true
+        )
+        val snapshot = FitnessCoachSessionSnapshot.capture(
+            source, 0, selectedAvoidKneeling = true
+        )!!
+        assertTrue(snapshot.restore()?.avoidKneeling == true)
+        assertFalse(snapshot.toString().contains("transient speech"))
+    }
+
 }

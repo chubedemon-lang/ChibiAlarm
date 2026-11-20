@@ -19,7 +19,8 @@ internal data class FitnessCoachRestorableProfile(
     val avoidWristLoad: Boolean,
     val avoidFloorPositions: Boolean,
     val avoidOverheadReach: Boolean,
-    val additionalEquipment: Set<TrainingEquipment>
+    val additionalEquipment: Set<TrainingEquipment>,
+    val avoidKneeling: Boolean? = null
 ) {
     fun restore(): FitnessNaturalRequest.Result = FitnessNaturalRequest.Result(
         goal = goal,
@@ -32,7 +33,8 @@ internal data class FitnessCoachRestorableProfile(
         avoidWristLoad = avoidWristLoad,
         avoidFloorPositions = avoidFloorPositions,
         avoidOverheadReach = avoidOverheadReach,
-        additionalEquipment = additionalEquipment
+        additionalEquipment = additionalEquipment,
+        avoidKneeling = avoidKneeling
     )
 
     fun writeTo(bundle: Bundle) {
@@ -47,6 +49,7 @@ internal data class FitnessCoachRestorableProfile(
         bundle.putBoolean(KEY_WRIST, avoidWristLoad)
         bundle.putBoolean(KEY_FLOOR, avoidFloorPositions)
         bundle.putBoolean(KEY_OVERHEAD, avoidOverheadReach)
+        avoidKneeling?.let { bundle.putBoolean(KEY_KNEELING, it) }
         bundle.putStringArrayList(
             KEY_ADDITIONAL_EQUIPMENT,
             ArrayList(additionalEquipment.sortedBy { it.ordinal }.map { it.name })
@@ -63,7 +66,8 @@ internal data class FitnessCoachRestorableProfile(
             additionalEquipment.size <= TrainingEquipment.values().size
 
     companion object {
-        private const val VERSION = 1
+        private const val VERSION = 2
+        private const val LEGACY_VERSION = 1
         private const val KEY_VERSION = "fitness_coach_state_version"
         private const val KEY_GOAL = "fitness_coach_state_goal"
         private const val KEY_LEVEL = "fitness_coach_state_level"
@@ -74,6 +78,7 @@ internal data class FitnessCoachRestorableProfile(
         private const val KEY_WRIST = "fitness_coach_state_avoid_wrist"
         private const val KEY_FLOOR = "fitness_coach_state_avoid_floor"
         private const val KEY_OVERHEAD = "fitness_coach_state_avoid_overhead"
+        private const val KEY_KNEELING = "fitness_coach_state_avoid_kneeling"
         private const val KEY_ADDITIONAL_EQUIPMENT = "fitness_coach_state_additional_equipment"
 
         fun capture(
@@ -86,7 +91,8 @@ internal data class FitnessCoachRestorableProfile(
             avoidWristLoad: Boolean?,
             avoidFloorPositions: Boolean?,
             avoidOverheadReach: Boolean?,
-            additionalEquipment: Set<TrainingEquipment>?
+            additionalEquipment: Set<TrainingEquipment>?,
+            avoidKneeling: Boolean? = null
         ): FitnessCoachRestorableProfile? {
             if (goal == null || goal !in 0..5 ||
                 level == null || level !in 0..2 ||
@@ -109,12 +115,15 @@ internal data class FitnessCoachRestorableProfile(
                 avoidWristLoad = avoidWristLoad,
                 avoidFloorPositions = avoidFloorPositions,
                 avoidOverheadReach = avoidOverheadReach,
-                additionalEquipment = additionalEquipment.toSet()
+                additionalEquipment = additionalEquipment.toSet(),
+                avoidKneeling = avoidKneeling
             )
         }
 
         fun fromBundle(bundle: Bundle?): FitnessCoachRestorableProfile? {
-            if (bundle == null || bundle.getInt(KEY_VERSION, -1) != VERSION) return null
+            if (bundle == null) return null
+            val version = bundle.getInt(KEY_VERSION, -1)
+            if (version != VERSION && version != LEGACY_VERSION) return null
             val rawEquipment = bundle.getStringArrayList(KEY_ADDITIONAL_EQUIPMENT) ?: return null
             if (rawEquipment.size > TrainingEquipment.values().size) return null
 
@@ -139,7 +148,8 @@ internal data class FitnessCoachRestorableProfile(
                 avoidWristLoad = booleanValue(KEY_WRIST),
                 avoidFloorPositions = booleanValue(KEY_FLOOR),
                 avoidOverheadReach = booleanValue(KEY_OVERHEAD),
-                additionalEquipment = additional
+                additionalEquipment = additional,
+                avoidKneeling = if (version >= VERSION) booleanValue(KEY_KNEELING) else null
             )
         }
     }

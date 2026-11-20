@@ -13,7 +13,8 @@ class FitnessCoachRestorableProfileTest {
         additional: Set<TrainingEquipment> = setOf(
             TrainingEquipment.MAT,
             TrainingEquipment.STABLE_CHAIR
-        )
+        ),
+        avoidKneeling: Boolean? = true
     ) = FitnessCoachRestorableProfile.capture(
         goal = 2,
         level = 1,
@@ -24,7 +25,8 @@ class FitnessCoachRestorableProfileTest {
         avoidWristLoad = true,
         avoidFloorPositions = false,
         avoidOverheadReach = true,
-        additionalEquipment = additional
+        additionalEquipment = additional,
+        avoidKneeling = avoidKneeling
     )!!
 
     @Test fun bundleRoundTripsEveryStructuredChoiceAndSafetySwitch() {
@@ -44,6 +46,7 @@ class FitnessCoachRestorableProfileTest {
         assertEquals(true, result.avoidWristLoad)
         assertEquals(false, result.avoidFloorPositions)
         assertEquals(true, result.avoidOverheadReach)
+        assertEquals(true, result.avoidKneeling)
         assertEquals(original.additionalEquipment, result.additionalEquipment)
     }
 
@@ -115,4 +118,30 @@ class FitnessCoachRestorableProfileTest {
         )
         assertNull(FitnessCoachRestorableProfile.fromBundle(bundle))
     }
+
+
+    @Test fun versionOneSavedStateRemainsReadableWithoutInventingKneelingPreference() {
+        val bundle = Bundle().apply {
+            putInt("fitness_coach_state_version", 1)
+            putInt("fitness_coach_state_goal", 2)
+            putInt("fitness_coach_state_level", 1)
+            putInt("fitness_coach_state_energy", 0)
+            putInt("fitness_coach_state_minutes", 25)
+            putInt("fitness_coach_state_equipment", 4)
+            putInt("fitness_coach_state_impact", 1)
+            putBoolean("fitness_coach_state_avoid_wrist", true)
+            putBoolean("fitness_coach_state_avoid_floor", false)
+            putBoolean("fitness_coach_state_avoid_overhead", true)
+            putStringArrayList(
+                "fitness_coach_state_additional_equipment",
+                arrayListOf("MAT", "STABLE_CHAIR")
+            )
+        }
+
+        val restored = FitnessCoachRestorableProfile.fromBundle(bundle)
+        assertNotNull(restored)
+        assertNull(restored!!.avoidKneeling)
+        assertNull(restored.restore().avoidKneeling)
+    }
+
 }

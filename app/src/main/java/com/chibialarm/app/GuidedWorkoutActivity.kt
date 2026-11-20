@@ -172,6 +172,7 @@ class GuidedWorkoutActivity:Activity() {
             .putBoolean("avoidWristLoad",workoutConstraints.avoidWristLoad)
             .putBoolean("avoidFloorPositions",workoutConstraints.avoidFloorPositions)
             .putBoolean("avoidOverheadReach",workoutConstraints.avoidOverheadReach)
+            .putBoolean("avoidKneeling",workoutConstraints.avoidKneeling)
             .putBoolean("avoidJumping",workoutConstraints.avoidJumping)
             .putInt("extensionImpact",extensionPreferences.impact)
             .putString("extensionMoves",optionalExtensionNames.sorted().joinToString("\n"))
@@ -218,6 +219,8 @@ class GuidedWorkoutActivity:Activity() {
                 checkpoint.getBoolean("avoidFloorPositions", false),
             avoidOverheadReach = workoutConstraints.avoidOverheadReach ||
                 checkpoint.getBoolean("avoidOverheadReach", false),
+            avoidKneeling = workoutConstraints.avoidKneeling ||
+                checkpoint.getBoolean("avoidKneeling", false),
             avoidJumping = workoutConstraints.avoidJumping ||
                 checkpoint.getBoolean("avoidJumping", false)
         )
@@ -247,7 +250,8 @@ class GuidedWorkoutActivity:Activity() {
             savedFingerprint == legacyFingerprint
         if (!restoredPlanCompatible || !fingerprintMatches ||
             (savedFingerprint == null && (restoredConstraints.avoidWristLoad ||
-                restoredConstraints.avoidFloorPositions || restoredConstraints.avoidOverheadReach))) {
+                restoredConstraints.avoidFloorPositions || restoredConstraints.avoidOverheadReach ||
+                restoredConstraints.avoidKneeling))) {
             checkpoint.edit().clear().apply()
             Toast.makeText(this,
                 "Giáo án đã thay đổi theo lựa chọn hiện tại. Chibi không khôi phục hiệp cũ để tránh gán nhầm tiến độ; hãy bắt đầu buổi mới.",
@@ -489,6 +493,8 @@ class GuidedWorkoutActivity:Activity() {
                 savedInstanceState?.getBoolean("workout_avoid_floor_positions", false) == true,
             avoidOverheadReach = intent.getBooleanExtra("avoid_overhead_reach", false) ||
                 savedInstanceState?.getBoolean("workout_avoid_overhead_reach", false) == true,
+            avoidKneeling = intent.getBooleanExtra("avoid_kneeling", false) ||
+                savedInstanceState?.getBoolean("workout_avoid_kneeling", false) == true,
             avoidJumping = intent.getIntExtra("extension_impact", 0) == 1 ||
                 savedInstanceState?.getBoolean("workout_avoid_jumping", false) == true
         )
@@ -878,7 +884,8 @@ class GuidedWorkoutActivity:Activity() {
         // Restore the active exercise after rotation, but never auto-resume.
         val savedPlanFingerprint = savedInstanceState?.getString("workout_plan_fingerprint")
         val savedPlanCompatible = savedPlanFingerprint == currentPlanFingerprint() ||
-            (savedPlanFingerprint == null && !workoutConstraints.avoidWristLoad && !workoutConstraints.avoidFloorPositions)
+            (savedPlanFingerprint == null && !workoutConstraints.avoidWristLoad &&
+                !workoutConstraints.avoidFloorPositions && !workoutConstraints.avoidKneeling)
         if(savedInstanceState!=null &&
             savedInstanceState.getString("workout_program")==program.id &&
             savedPlanCompatible) {
@@ -949,6 +956,7 @@ class GuidedWorkoutActivity:Activity() {
         outState.putBoolean("workout_avoid_wrist_load",workoutConstraints.avoidWristLoad)
         outState.putBoolean("workout_avoid_floor_positions",workoutConstraints.avoidFloorPositions)
         outState.putBoolean("workout_avoid_overhead_reach",workoutConstraints.avoidOverheadReach)
+        outState.putBoolean("workout_avoid_kneeling",workoutConstraints.avoidKneeling)
         outState.putBoolean("workout_avoid_jumping",workoutConstraints.avoidJumping)
         outState.putStringArrayList("workout_extension_names",ArrayList(optionalExtensionNames))
         outState.putInt("workout_extension_equipment",extensionPreferences.equipment)

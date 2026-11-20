@@ -106,6 +106,51 @@ class GuidedWorkoutEffortVoiceTest {
         )
     }
 
+
+    private fun deliverEffortCandidates(checkIn: CheckIn, phrases: List<String>) {
+        val activity = checkIn.activity
+        val callbackField = GuidedWorkoutActivity::class.java
+            .getDeclaredField("effortVoiceResultHandler")
+            .apply { isAccessible = true }
+        val callback: (String) -> Unit = { phrase -> sendVoice(checkIn, phrase) }
+        callbackField.set(activity, callback)
+        val requestCode = GuidedWorkoutActivity::class.java
+            .getDeclaredField("effortVoiceRequest")
+            .apply { isAccessible = true }
+            .getInt(activity)
+        activity.onActivityResult(
+            requestCode,
+            android.app.Activity.RESULT_OK,
+            Intent().putStringArrayListExtra(
+                android.speech.RecognizerIntent.EXTRA_RESULTS,
+                ArrayList(phrases)
+            )
+        )
+    }
+
+    private fun deliverGuideCandidates(
+        activity: GuidedWorkoutActivity,
+        phrases: List<String>,
+        onSelected: (String) -> Unit
+    ) {
+        GuidedWorkoutActivity::class.java
+            .getDeclaredField("guideVoiceResultHandler")
+            .apply { isAccessible = true }
+            .set(activity, onSelected)
+        val requestCode = GuidedWorkoutActivity::class.java
+            .getDeclaredField("guideVoiceRequest")
+            .apply { isAccessible = true }
+            .getInt(activity)
+        activity.onActivityResult(
+            requestCode,
+            android.app.Activity.RESULT_OK,
+            Intent().putStringArrayListExtra(
+                android.speech.RecognizerIntent.EXTRA_RESULTS,
+                ArrayList(phrases)
+            )
+        )
+    }
+
     @Test fun voiceAnswerRequiresDisclosureAndCanBeCancelledWithoutChangingTheCheckIn() {
         val checkIn = openCheckIn()
         try {
@@ -116,7 +161,7 @@ class GuidedWorkoutEffortVoiceTest {
             val disclosure = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
             val message = disclosure.findViewById<android.widget.TextView>(android.R.id.message)
                 ?.text?.toString().orEmpty()
-            assertTrue(message.contains("có thể xử lý âm thanh trực tuyến"))
+            assertTrue(message.contains("nhà cung cấp có thể bỏ qua và xử lý âm thanh trực tuyến"))
             assertTrue(message.contains("không lưu bản ghi"))
             assertTrue(message.contains("hiệp vừa rồi tôi cảm thấy quá khó"))
             disclosure.getButton(AlertDialog.BUTTON_NEGATIVE).performClick()
@@ -128,6 +173,97 @@ class GuidedWorkoutEffortVoiceTest {
             assertFalse(resting.getBoolean(checkIn.activity))
         } finally {
             checkIn.activity.finish()
+        }
+    }
+
+
+    @Test fun effortVoiceAlternativesRequireAChoiceAndRemainPendingUntilConfirmed() {
+        val checkIn = openCheckIn()
+        try {
+            deliverEffortCandidates(checkIn, listOf("vừa sức", "khó quá"))
+
+            val chooser = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
+            assertTrue(chooser.isShowing)
+            assertEquals(2, chooser.listView.count)
+            assertTrue(effortLevels(checkIn).isEmpty())
+
+            chooser.listView.performItemClick(
+                chooser.listView.getChildAt(1),
+                1,
+                chooser.listView.getItemIdAtPosition(1)
+            )
+
+            val message = checkIn.dialog.findViewById<android.widget.TextView>(android.R.id.message)
+                ?.text?.toString().orEmpty()
+            assertTrue(checkIn.dialog.isShowing)
+            assertTrue(message.contains("Khó, cần nghỉ thêm"))
+            assertTrue(message.contains("Chibi chưa lưu"))
+            assertTrue(effortLevels(checkIn).isEmpty())
+        } finally {
+            checkIn.activity.finish()
+        }
+    }
+
+    @Test fun cancellingEffortAlternativeChooserLeavesTheOriginalCheckInUntouched() {
+        val checkIn = openCheckIn()
+        try {
+            deliverEffortCandidates(checkIn, listOf("vừa sức", "khó quá"))
+
+            val chooser = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
+            assertTrue(chooser.isShowing)
+            chooser.getButton(AlertDialog.BUTTON_NEGATIVE).performClick()
+
+            assertTrue(checkIn.dialog.isShowing)
+            assertTrue(effortLevels(checkIn).isEmpty())
+            val resting = GuidedWorkoutActivity::class.java.getDeclaredField("resting")
+                .apply { isAccessible = true }
+            assertFalse(resting.getBoolean(checkIn.activity))
+        } finally {
+            checkIn.activity.finish()
+        }
+    }
+
+    @Test fun urgentEffortAlternativeWinsEvenWhenItIsNotTheFirstRecognizerGuess() {
+        val checkIn = openCheckIn()
+        try {
+            deliverEffortCandidates(checkIn, listOf("vừa sức", "đau ngực"))
+
+            val safety = GuidedWorkoutActivity::class.java.getDeclaredField("pausedForSafety")
+                .apply { isAccessible = true }
+            assertTrue(safety.getBoolean(checkIn.activity))
+            assertFalse(checkIn.dialog.isShowing)
+            assertTrue(effortLevels(checkIn).isEmpty())
+        } finally {
+            checkIn.activity.finish()
+        }
+    }
+
+    @Test fun guideVoiceLetsTheUserChooseAmongRecognizerAlternatives() {
+        val app = RuntimeEnvironment.getApplication()
+        val activity = Robolectric.buildActivity(
+            GuidedWorkoutActivity::class.java,
+            Intent(app, GuidedWorkoutActivity::class.java)
+                .putExtra("program", "full")
+                .putExtra("minutes", 30)
+        ).setup().get()
+        try {
+            var selected: String? = null
+            deliverGuideCandidates(activity, listOf("Bước tiếp theo", "Đọc lại bước này")) {
+                selected = it
+            }
+
+            val chooser = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
+            assertTrue(chooser.isShowing)
+            assertEquals(2, chooser.listView.count)
+            chooser.listView.performItemClick(
+                chooser.listView.getChildAt(1),
+                1,
+                chooser.listView.getItemIdAtPosition(1)
+            )
+
+            assertEquals("Đọc lại bước này", selected)
+        } finally {
+            activity.finish()
         }
     }
 

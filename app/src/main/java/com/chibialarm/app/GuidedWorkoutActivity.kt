@@ -2432,15 +2432,70 @@ class GuidedWorkoutActivity:Activity() {
             .show()
     }
 
+    /**
+     * Review every recognizer alternative before using it. Safety reports take priority even
+     * when they appear after an ordinary first guess; ordinary choices never change a workout
+     * until the caller's own confirmation flow accepts them.
+     */
+    private fun reviewSpeechAlternatives(
+        raw: List<String>?,
+        title: String,
+        message: String,
+        emptyMessage: String,
+        isSafety: (String) -> Boolean,
+        onSelected: (String) -> Unit
+    ) {
+        val candidates = CoachSpeechTranscript.candidates(raw)
+        if (candidates.isEmpty()) {
+            Toast.makeText(this, emptyMessage, Toast.LENGTH_LONG).show()
+            return
+        }
+
+        // Never hide a safety symptom behind a less urgent alternative from the recognizer.
+        val safetyCandidate = candidates.firstOrNull { isSafety(it.text) }
+        if (safetyCandidate != null) {
+            onSelected(safetyCandidate.text)
+            return
+        }
+
+        if (candidates.size == 1) {
+            onSelected(candidates.single().text)
+            return
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle(title)
+            .setMessage(message)
+            .setItems(candidates.mapIndexed { index, candidate ->
+                "${index + 1}. ${candidate.label}"
+            }.toTypedArray()) { _, which ->
+                candidates.getOrNull(which)?.let { onSelected(it.text) }
+            }
+            .setNegativeButton("Hủy", null)
+            .show()
+    }
+
     @Deprecated("Android activity result compatibility")
     override fun onActivityResult(requestCode:Int,resultCode:Int,data:Intent?) {
         super.onActivityResult(requestCode,resultCode,data)
         if (requestCode == guideVoiceRequest) {
             val callback = guideVoiceResultHandler
             guideVoiceResultHandler = null
-            val phrase = data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
-            if (resultCode == RESULT_OK && !phrase.isNullOrBlank()) {
-                callback?.invoke(phrase)
+            if (resultCode == RESULT_OK && callback != null) {
+                reviewSpeechAlternatives(
+                    data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS),
+                    title = "🐰 Chọn câu Chibi nghe được",
+                    message = "Dịch vụ nhận dạng đưa ra nhiều phương án. Chọn câu đúng trước khi chuyển bước hoặc điều khiển hướng dẫn.",
+                    emptyMessage = "Không nhận được câu nói rõ ràng. Bạn vẫn có thể dùng các nút hướng dẫn.",
+                    isSafety = { WorkoutVoiceCommands.parse(it) == WorkoutVoiceCommands.Command.PAIN },
+                    onSelected = { phrase ->
+                        if (WorkoutVoiceCommands.parse(phrase) == WorkoutVoiceCommands.Command.PAIN) {
+                            handleCoachCommand(phrase)
+                        } else {
+                            callback(phrase)
+                        }
+                    }
+                )
             } else if (resultCode != RESULT_OK) {
                 Toast.makeText(this,"Đã hủy nhận giọng nói; buổi tập vẫn tạm dừng.",Toast.LENGTH_SHORT).show()
             }
@@ -2449,10 +2504,18 @@ class GuidedWorkoutActivity:Activity() {
         if (requestCode == effortVoiceRequest) {
             val callback = effortVoiceResultHandler
             effortVoiceResultHandler = null
-            val phrase = data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
-            if (resultCode == RESULT_OK && !phrase.isNullOrBlank()) {
-                callback?.invoke(phrase)
-            } else {
+            if (resultCode == RESULT_OK && callback != null) {
+                reviewSpeechAlternatives(
+                    data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS),
+                    title = "🐰 Chọn câu trả lời về hiệp tập",
+                    message = "Chọn câu gần đúng nhất. Chibi sẽ đọc lại mức cảm nhận và vẫn chờ bạn xác nhận trước khi lưu.",
+                    emptyMessage = "Chưa nhận được câu trả lời; bạn vẫn có thể chọn cảm nhận bằng nút.",
+                    // This contextual parser avoids treating the anatomical phrase "đầu gối"
+                    // as a pain report, while still prioritizing explicit symptoms.
+                    isSafety = { WorkoutEffortVoiceCommand.parse(it) == WorkoutEffortVoiceCommand.Result.SafetyStop },
+                    onSelected = callback
+                )
+            } else if (resultCode != RESULT_OK) {
                 Toast.makeText(this,"Chưa nhận được câu trả lời; bạn vẫn có thể chọn cảm nhận bằng nút.",Toast.LENGTH_SHORT).show()
             }
             return
@@ -2462,29 +2525,14 @@ class GuidedWorkoutActivity:Activity() {
                 Toast.makeText(this, "Đã hủy nhận giọng nói; buổi tập vẫn tạm dừng.", Toast.LENGTH_SHORT).show()
                 return
             }
-            val candidates = CoachSpeechTranscript.candidates(
-                data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+            reviewSpeechAlternatives(
+                data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS),
+                title = "🐰 Chọn câu Chibi nghe được",
+                message = "Dịch vụ nhận dạng đưa ra nhiều phương án. Chọn câu đúng trước khi điều khiển buổi tập.",
+                emptyMessage = "Không nhận được câu nói rõ ràng. Bạn có thể nhập yêu cầu bằng chữ.",
+                isSafety = { WorkoutVoiceCommands.parse(it) == WorkoutVoiceCommands.Command.PAIN },
+                onSelected = ::reviewWorkoutVoiceCandidate
             )
-            val first = candidates.firstOrNull()
-            when {
-                first == null -> Toast.makeText(
-                    this, "Không nhận được câu nói rõ ràng. Bạn có thể nhập yêu cầu bằng chữ.",
-                    Toast.LENGTH_LONG
-                ).show()
-                WorkoutVoiceCandidatePolicy.review(first).command == WorkoutVoiceCommands.Command.PAIN ->
-                    reviewWorkoutVoiceCandidate(first)
-                candidates.size == 1 -> reviewWorkoutVoiceCandidate(first)
-                else -> AlertDialog.Builder(this)
-                    .setTitle("🐰 Chọn câu Chibi nghe được")
-                    .setMessage("Dịch vụ nhận dạng đưa ra nhiều phương án. Chọn câu đúng trước khi điều khiển buổi tập.")
-                    .setItems(candidates.mapIndexed { index, candidate ->
-                        "${index + 1}. ${candidate.label}"
-                    }.toTypedArray()) { _, which ->
-                        candidates.getOrNull(which)?.let(::reviewWorkoutVoiceCandidate)
-                    }
-                    .setNegativeButton("Để tôi gõ", null)
-                    .show()
-            }
             return
         }
         if(requestCode==pickVideoRequest && resultCode==RESULT_OK) {

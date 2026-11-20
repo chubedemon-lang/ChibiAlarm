@@ -18,6 +18,25 @@ import org.robolectric.RobolectricTestRunner
 
 @RunWith(RobolectricTestRunner::class)
 class GuidedWorkoutEffortVoiceTest {
+
+    private fun deliverActivityResult(
+        activity: GuidedWorkoutActivity,
+        requestCode: Int,
+        resultCode: Int,
+        data: Intent?
+    ) {
+        // Activity.onActivityResult is protected; invoke the real lifecycle callback
+        // reflectively so Robolectric exercises production dispatch without widening
+        // the app's Activity API solely for tests.
+        GuidedWorkoutActivity::class.java.getDeclaredMethod(
+            "onActivityResult",
+            Int::class.javaPrimitiveType,
+            Int::class.javaPrimitiveType,
+            Intent::class.java
+        ).apply { isAccessible = true }
+            .invoke(activity, requestCode, resultCode, data)
+    }
+
     @Before fun clearCheckpoint() {
         RuntimeEnvironment.getApplication()
             .getSharedPreferences("chibi_workout_checkpoint_guest", Context.MODE_PRIVATE)
@@ -118,7 +137,7 @@ class GuidedWorkoutEffortVoiceTest {
             .getDeclaredField("effortVoiceRequest")
             .apply { isAccessible = true }
             .getInt(activity)
-        activity.onActivityResult(
+        deliverActivityResult(activity,
             requestCode,
             android.app.Activity.RESULT_OK,
             Intent().putStringArrayListExtra(
@@ -141,7 +160,7 @@ class GuidedWorkoutEffortVoiceTest {
             .getDeclaredField("guideVoiceRequest")
             .apply { isAccessible = true }
             .getInt(activity)
-        activity.onActivityResult(
+        deliverActivityResult(activity,
             requestCode,
             android.app.Activity.RESULT_OK,
             Intent().putStringArrayListExtra(

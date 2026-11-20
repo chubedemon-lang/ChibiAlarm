@@ -42,7 +42,9 @@ object WorkoutMidSessionPlanner {
         // Self-confirmed progress for the active set-based move; never inferred from elapsed time.
         val completedCurrentSets: Int = 0,
         // Non-null only when the active move's optional set ceiling was reduced.
-        val currentSetLimit: Int? = null
+        val currentSetLimit: Int? = null,
+        // Non-null only when the active move's upper rep target was reduced.
+        val currentRepLimit: Int? = null
     ) {
         val changed: Boolean get() = before != after
     }
@@ -347,6 +349,42 @@ object WorkoutMidSessionPlanner {
             appliedCurrentSetLimit = requestedLimit
         }
 
+        var appliedCurrentRepLimit: Int? = null
+        request.currentRepLimit?.let { requestedLimit ->
+            val activeMove = remaining.firstOrNull()
+                ?: return Result.Blocked("Không còn động tác hiện tại để giới hạn số lần.")
+            val plan = WorkoutSetTracker.parse(activeMove.dose, activeMove.restSeconds)
+                ?: return Result.Blocked("Động tác hiện tại không có giáo án hiệp/lần để giới hạn số lần.")
+            when {
+                plan.unit == "giây" -> return Result.Blocked(
+                    "Động tác này được tính theo thời gian, không thể đổi thành số lần."
+                )
+                requestedLimit < plan.targetMin -> return Result.Blocked(
+                    "Mức tối thiểu hiện tại là ${plan.targetMin} ${plan.unit}. Chibi không hạ chuẩn bắt buộc hoặc phần thưởng tương ứng."
+                )
+                requestedLimit > plan.targetMax -> return Result.Blocked(
+                    "Mục tiêu mới vượt quá giới hạn ${plan.targetMax} ${plan.unit}. Chibi chỉ chấp nhận giảm tải."
+                )
+                requestedLimit == plan.targetMax -> return Result.Blocked(
+                    "Mục tiêu tối đa đã là $requestedLimit ${plan.unit}; không có phần lặp tùy chọn nào để giảm."
+                )
+            }
+            val setRange = if (plan.requiredSets == plan.maximumSets) {
+                "${plan.requiredSets}"
+            } else {
+                "${plan.requiredSets}–${plan.maximumSets}"
+            }
+            val repRange = if (plan.targetMin == requestedLimit) {
+                "$requestedLimit"
+            } else {
+                "${plan.targetMin}–$requestedLimit"
+            }
+            remaining[0] = activeMove.copy(
+                dose = "$setRange hiệp × $repRange ${plan.unit}"
+            )
+            appliedCurrentRepLimit = requestedLimit
+        }
+
         val after = prefix + remaining
         val estimated = estimate()
         val targetExceeded = targetSeconds != null && estimated > targetSeconds
@@ -367,7 +405,8 @@ object WorkoutMidSessionPlanner {
                 addedMoves = addedMoves,
                 availableEquipment = effectiveAvailableEquipment,
                 completedCurrentSets = completedCurrentSets,
-                currentSetLimit = appliedCurrentSetLimit
+                currentSetLimit = appliedCurrentSetLimit,
+                currentRepLimit = appliedCurrentRepLimit
             )
         )
     }

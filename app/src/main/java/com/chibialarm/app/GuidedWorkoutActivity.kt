@@ -3583,13 +3583,12 @@ class GuidedWorkoutActivity:Activity() {
                             startSetRest(plan.defaultRestSeconds)
                         }
                     }
-                    .setNeutralButton("Xem giáo án nhẹ hơn", null)
+                    .setNeutralButton("Điều chỉnh thêm", null)
                     .create()
                 // Back/outside dismissal is not consent to start a timer. The two
                 // explicit rest buttons are the only ways to choose a rest duration.
-                // Dismiss this dialog before opening the planner preview: showing a second
-                // AlertDialog from a button callback can leave the parent window active on
-                // some Android versions and makes the preview interaction non-deterministic.
+                // Dismiss this dialog before opening the option list to avoid stacked
+                // AlertDialog windows on Android versions with stricter window handling.
                 confirm.setOnCancelListener(null)
                 confirm.show()
                 confirm.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
@@ -3598,7 +3597,30 @@ class GuidedWorkoutActivity:Activity() {
                     )
                     confirm.dismiss()
                     if (contextStillMatches) {
-                        WorkoutEffortPlanChange.requestFor(level)?.let(::applyMidSessionRequest)
+                        val options = mutableListOf<Pair<String, WorkoutMidSessionRequest.Request>>()
+                        WorkoutEffortPlanChange.requestFor(level)?.let { request ->
+                            options += "Thay động tác bằng biến thể nhẹ hơn" to request
+                        }
+                        WorkoutEffortPlanChange.repReductionPreviewRequest(
+                            level, plan, completedSets, previousEffortLevels
+                        )?.let { request ->
+                            options += "Giảm tối đa 1 lần mỗi hiệp còn lại" to request
+                        }
+                        if (options.isNotEmpty()) {
+                            AlertDialog.Builder(this@GuidedWorkoutActivity)
+                                .setTitle("Chọn cách giảm tải")
+                                .setItems(options.map { it.first }.toTypedArray()) { _, choice ->
+                                    val selected = options.getOrNull(choice)?.second ?: return@setItems
+                                    if (isSameEffortContext(
+                                            selectedIndex, selectedSessionId, completedSets, plan
+                                        )
+                                    ) {
+                                        applyMidSessionRequest(selected)
+                                    }
+                                }
+                                .setNegativeButton("Để sau", null)
+                                .show()
+                        }
                     }
                 }
             }

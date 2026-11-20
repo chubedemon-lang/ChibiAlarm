@@ -65,4 +65,21 @@ class WorkoutSetRepetitionLogTest {
         assertEquals(updated, WorkoutSetRepetitionLog.decode(encoded, moves, mapOf(0 to 2)))
         assertEquals("Squat: hiệp 2: 9 lần", WorkoutSetRepetitionLog.summary(updated, moves))
     }
+
+    @Test fun loweringFutureRepTargetDoesNotErasePreviouslyReportedHigherValues() {
+        val reducedMove = moves[0].copy(dose = "2–3 hiệp × 8–10 lần")
+        val reducedMoves = listOf(reducedMove)
+        val priorValues = mapOf(0 to listOf(12))
+        val encoded = WorkoutSetRepetitionLog.encode(priorValues, reducedMoves)
+        assertEquals("0:12", encoded)
+        assertEquals(
+            priorValues,
+            WorkoutSetRepetitionLog.decode(encoded, reducedMoves, mapOf(0 to 1))
+        )
+        assertEquals(
+            "Squat: hiệp 1: 12 lần",
+            WorkoutSetRepetitionLog.summary(priorValues, reducedMoves)
+        )
+    }
+
 }

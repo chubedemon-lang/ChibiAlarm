@@ -1133,6 +1133,7 @@ class FitnessActivity:Activity() {
             phaseCaption.text = "↔ " + WorkoutPoseMotion.phaseCue(pose.pose, alternate)
         }
         val dose = txt("", 16f)
+        val equipment = txt("", 14f)
         val rest = txt("", 14f)
         val stepPosition = txt("", 13f)
         val stepInstruction = txt("", 16f)
@@ -1207,6 +1208,7 @@ class FitnessActivity:Activity() {
             12f
         ))
         content.addView(dose)
+        content.addView(equipment)
         content.addView(rest)
         content.addView(stepPosition)
         content.addView(stepInstruction)
@@ -1257,6 +1259,7 @@ class FitnessActivity:Activity() {
             stepPreview = WorkoutLibraryStepPreview.start(move)
             renderStepPreview()
             dose.text = "🎯 Mục tiêu: ${move.dose}"
+            equipment.text = "🧰 ${WorkoutContextCoach.equipmentCue(move)}"
             rest.text = WorkoutSetTracker.restGuidance(move.dose, move.restSeconds)
                 ?: "⏱ Nghỉ thêm khi cần; động tác này không có cấu trúc hiệp lặp."
             easier.text = "🌿 Dễ hơn: ${move.easier}"

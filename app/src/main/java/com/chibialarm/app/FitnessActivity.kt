@@ -547,6 +547,7 @@ class FitnessActivity:Activity() {
             additionalEquipmentContainer.addView(checkBox)
         }
         root.addView(additionalEquipmentContainer)
+        persistNonSensitiveProfile()
         root.addView(txt("🦵 Mức độ vận động phù hợp",19f))
         val impactOptions=arrayOf("Không có hạn chế được báo","Ưu tiên bài ít tác động, không nhảy","Đang đau hoặc có chấn thương")
         val impactSpinner=Spinner(this).apply {
@@ -1384,18 +1385,22 @@ class FitnessActivity:Activity() {
         val equipment = recommendationEquipmentSpinner?.selectedItemPosition ?: return
         val minutes = WorkoutDurationChoices.minutes.getOrNull(length.selectedItemPosition) ?: return
         val extras = currentAdditionalEquipment()
-        prefs.edit()
+        val editor = prefs.edit()
             .putInt("recommendGoal", goal)
             .putInt("recommendEnergy", energy)
             .putInt("recommendEquipment", equipment)
             .putInt("fitLevel", level.selectedItemPosition)
             .putInt("fitTime", WorkoutDurationChoices.legacyIndexForMinutes(minutes))
             .putInt("fitTimeMinutes", minutes)
-            .putString(
+        // The spinner listeners can fire before the additional-equipment controls exist.
+        // Do not erase a previously saved tool selection during that first render pass.
+        if (additionalEquipmentCheckBoxes.isNotEmpty()) {
+            editor.putString(
                 "recommendAdditionalEquipment",
                 extras.sortedBy { it.ordinal }.joinToString(",") { it.name }
             )
-            .apply()
+        }
+        editor.apply()
     }
 
     private fun watchProfileSelection(spinner: Spinner) {

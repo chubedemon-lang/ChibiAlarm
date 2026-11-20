@@ -232,7 +232,12 @@ object FitnessCoachConversation {
                     reply = "Đã ghi nhận cần tránh đưa tay hoặc tải lên quá đầu."
                 )
             question == FitnessCoachFollowUp.Question.ENERGY &&
-                answer in setOf("mệt", "met", "hơi mệt", "hoi met", "ít năng lượng", "it nang luong") ->
+                answer in setOf(
+                    "mệt", "met", "hơi mệt", "hoi met", "ít năng lượng", "it nang luong",
+                    "đuối", "duoi", "hơi đuối", "hoi duoi", "đuối sức", "duoi suc",
+                    "hết pin", "het pin", "mỏi cơ", "moi co", "cơ bắp mỏi", "co bap moi",
+                    "chân mỏi", "chan moi", "hơi mỏi", "hoi moi"
+                ) ->
                 parsed.copy(energy = 0, reply = "Đã ghi nhận mức năng lượng thấp. Tao sẽ ưu tiên buổi tập nhẹ.")
             question == FitnessCoachFollowUp.Question.ENERGY &&
                 answer in setOf("khỏe", "khoe", "nhiều năng lượng", "nhieu nang luong") ->

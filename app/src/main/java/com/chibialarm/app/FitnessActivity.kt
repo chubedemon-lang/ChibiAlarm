@@ -970,7 +970,10 @@ class FitnessActivity:Activity() {
                     impact = impact,
                     constraints = constraintProfile
                 )
-                val recommendationMessage = profileSummary + "\n\n" + durationSummary + "\n\n" +
+                val muscleFocusSummary = WorkoutMusclePlanSummary.format(planned.moves)
+                val spokenMuscleFocusSummary = WorkoutMusclePlanSummary.spoken(planned.moves)
+                val recommendationMessage = profileSummary + "\n\n" + durationSummary +
+                    (muscleFocusSummary?.let { "\n\n" + it } ?: "") + "\n\n" +
                     recommendation.explanation +
                     (historySuggestion?.let { "\n\n📚 " + it.reason } ?: "") +
                     "\n\nGợi ý offline theo quy tắc trên máy, không phải AI chẩn đoán hay tư vấn y khoa."
@@ -979,7 +982,8 @@ class FitnessActivity:Activity() {
                     programName = p.name,
                     estimatedMinutes = planned.estimatedMinutes,
                     exceedsTarget = planned.exceedsTarget,
-                    prescribedRestSeconds = planned.prescribedRestSeconds
+                    prescribedRestSeconds = planned.prescribedRestSeconds,
+                    muscleFocusSummary = spokenMuscleFocusSummary
                 )
                 val dialogContent = LinearLayout(this@FitnessActivity).apply {
                     orientation = LinearLayout.VERTICAL

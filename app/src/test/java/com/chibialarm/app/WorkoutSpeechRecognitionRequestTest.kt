@@ -39,18 +39,18 @@ class WorkoutSpeechRecognitionRequestTest {
     }
 
     @Test fun normalizesAndBoundsPromptWithoutControlCharacters() {
-        val raw = "  Bước tiếp\\n  " + "x".repeat(400)
+        val raw = "  Bước tiếp\n  " + "x".repeat(400)
         val intent = WorkoutSpeechRecognitionRequest.create(raw)
         val prompt = intent.getStringExtra(RecognizerIntent.EXTRA_PROMPT).orEmpty()
 
         assertTrue(prompt.length <= WorkoutSpeechRecognitionRequest.MAX_PROMPT_CHARS)
-        assertFalse(prompt.any { it == '\\n' || it == '\\r' || it.code < 0x20 })
+        assertFalse(prompt.any { it == '\n' || it == '\r' || it.code < 0x20 })
         assertTrue(prompt.startsWith("Bước tiếp"))
     }
 
     @Test fun rejectsAnEmptyPrompt() {
         try {
-            WorkoutSpeechRecognitionRequest.create("  \\n ")
+            WorkoutSpeechRecognitionRequest.create("  \n ")
             throw AssertionError("Expected blank prompt to be rejected")
         } catch (_: IllegalArgumentException) {
             // Expected: no malformed recognizer request is launched.

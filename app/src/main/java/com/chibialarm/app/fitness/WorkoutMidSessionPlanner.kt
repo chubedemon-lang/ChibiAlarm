@@ -77,6 +77,11 @@ object WorkoutMidSessionPlanner {
             request.avoidJumping -> true
             request.allowJumping -> false
             else -> current.avoidJumping
+        },
+        avoidKneeling = when {
+            request.avoidKneeling -> true
+            request.allowKneeling -> false
+            else -> current.avoidKneeling
         }
     )
 

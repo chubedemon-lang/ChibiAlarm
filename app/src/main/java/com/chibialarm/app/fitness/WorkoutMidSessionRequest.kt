@@ -41,7 +41,10 @@ object WorkoutMidSessionRequest {
         // Reduce only optional sets on the active move; required sets are never lowered.
         val currentSetLimit: Int? = null,
         // Lower only the upper rep target for unstarted sets; confirmed set values stay immutable.
-        val currentRepLimit: Int? = null
+        val currentRepLimit: Int? = null,
+        // Session-only kneeling preference; independent from avoiding all floor positions.
+        val avoidKneeling: Boolean = false,
+        val allowKneeling: Boolean = false
     ) {
         init {
             require(remainingMinutes == null || remainingMinutes in 5..120)
@@ -50,6 +53,7 @@ object WorkoutMidSessionRequest {
             require(!(avoidFloorPositions && allowFloorPositions))
             require(!(avoidOverheadReach && allowOverheadReach))
             require(!(avoidJumping && allowJumping))
+            require(!(avoidKneeling && allowKneeling))
             require(replaceCurrentWith == null || replaceCurrentWith.length in 1..90)
             require(currentSetLimit == null || currentSetLimit in 1..20)
             require(currentRepLimit == null || currentRepLimit in 1..200)
@@ -73,6 +77,8 @@ object WorkoutMidSessionRequest {
                 !allowOverheadReach &&
                 !avoidJumping &&
                 !allowJumping &&
+                !avoidKneeling &&
+                !allowKneeling &&
                 !addOptionalExercise &&
                 !removeOptionalExercises &&
                 currentSetLimit == null &&
@@ -232,6 +238,9 @@ object WorkoutMidSessionRequest {
         val allowFloorPositions = fitness.avoidFloorPositions == false
         val avoidOverheadReach = fitness.avoidOverheadReach == true
         val allowOverheadReach = fitness.avoidOverheadReach == false
+        // Kneeling is a distinct preference: preserve supine/standing alternatives.
+        val avoidKneeling = fitness.avoidKneeling == true
+        val allowKneeling = fitness.avoidKneeling == false
 
         val preferEasier = lowEnergy || has(
             "nhe hon", "de hon", "giam do kho", "doi bai nhe",
@@ -398,6 +407,7 @@ object WorkoutMidSessionRequest {
             !allowWristLoad && !allowFloorPositions &&
             !avoidOverheadReach && !allowOverheadReach &&
             !avoidJumping && !allowJumping &&
+            !avoidKneeling && !allowKneeling &&
             !preferEasier && restSeconds == null && !avoidExternalLoad &&
             !addOptionalExercise && availableEquipment.isEmpty() &&
             unavailableEquipment.isEmpty() && replacementExercise == null &&
@@ -423,6 +433,8 @@ object WorkoutMidSessionRequest {
                 replaceCurrentWith = replacementExercise,
                 avoidJumping = avoidJumping,
                 allowJumping = allowJumping,
+                avoidKneeling = avoidKneeling,
+                allowKneeling = allowKneeling,
                 removeOptionalExercises = removeOptionalExercises,
                 currentSetLimit = currentSetLimit,
                 currentRepLimit = currentRepLimit

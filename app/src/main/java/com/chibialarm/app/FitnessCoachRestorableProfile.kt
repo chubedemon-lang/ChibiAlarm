@@ -88,8 +88,12 @@ internal data class FitnessCoachRestorableProfile(
             avoidOverheadReach: Boolean?,
             additionalEquipment: Set<TrainingEquipment>?
         ): FitnessCoachRestorableProfile? {
-            if (goal !in 0..5 || level !in 0..2 || energy !in 0..2 ||
-                minutes !in 5..120 || equipment !in 0..5 || impact !in 0..2 ||
+            if (goal == null || goal !in 0..5 ||
+                level == null || level !in 0..2 ||
+                energy == null || energy !in 0..2 ||
+                minutes == null || minutes !in 5..120 ||
+                equipment == null || equipment !in 0..5 ||
+                impact == null || impact !in 0..2 ||
                 avoidWristLoad == null || avoidFloorPositions == null ||
                 avoidOverheadReach == null || additionalEquipment == null ||
                 additionalEquipment.size > TrainingEquipment.values().size

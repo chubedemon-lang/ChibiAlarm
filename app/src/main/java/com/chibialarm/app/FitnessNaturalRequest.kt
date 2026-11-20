@@ -64,6 +64,21 @@ object FitnessNaturalRequest {
     )
     private val negationAtEnd = Regex("(?:^| )(?:khong(?:\\s+(?:con|bi|co))?|het)$")
     private val standalonePain = Regex("(?:^| )$PAIN_WORD(?: |$)")
+    private val negatedEnergyPrefix = Regex(
+        "(?:^| )(?:khong(?:\\s+(?:con|bi|co|qua|that)){0,2}|chua|het)$"
+    )
+
+    /** Match a complete colloquial phrase without treating an explicit denial as fatigue. */
+    private fun hasUnnegatedPhrase(text: String, phrases: List<String>): Boolean {
+        for (phrase in phrases) {
+            val pattern = Regex("(?:^| )" + Regex.escape(phrase) + "(?: |$)")
+            for (match in pattern.findAll(text)) {
+                val prefix = text.substring(0, match.range.first).trimEnd()
+                if (!negatedEnergyPrefix.containsMatchIn(prefix)) return true
+            }
+        }
+        return false
+    }
 
     /** Recognizes pain/symptoms in either word order while respecting nearby negation. */
     private fun hasUnnegatedPain(text: String): Boolean {
@@ -269,16 +284,26 @@ object FitnessNaturalRequest {
             else -> null
         }
 
+        val lowEnergyPhrases = listOf(
+            "met", "het suc", "it nang luong", "tap nhe hon",
+            "buoi tap nhe hon", "uu tien van dong nhe", "hoi duoi",
+            "duoi suc", "het pin", "moi co", "co bap moi", "chan moi", "hoi moi"
+        )
+        val highEnergyPhrases = listOf("khoe", "nhieu nang luong", "sung suc")
+        val muscleSoreness = hasUnnegatedPhrase(
+            text, listOf("moi co", "co bap moi", "chan moi", "hoi moi")
+        )
         val energy = when {
-            has("met", "het suc", "it nang luong", "tap nhe hon", "buoi tap nhe hon", "uu tien van dong nhe") -> 0
-            has("khoe", "nhieu nang luong", "sung suc") -> 2
+            hasUnnegatedPhrase(text, lowEnergyPhrases) -> 0
+            hasUnnegatedPhrase(text, highEnergyPhrases) -> 2
             else -> null
         }
         val goal = when {
             has("gian co", "linh hoat", "yoga") -> 2
             has("ngoi lau", "van phong", "moi lung") -> 3
             has("tim mach", "cardio", "dot mo", "giam can", "giam mo", "suc ben", "ben bi") -> 1
-            has("suc manh", "tang co", "co bap", "tang suc manh", "phat trien co") -> 0
+            has("suc manh", "tang co", "co bap", "tang suc manh", "phat trien co") &&
+                !muscleSoreness -> 0
             has("moi beginning", "beginning", "moi bat dau", "tan thu") -> 4
             else -> null
         }

@@ -23,6 +23,26 @@ class FitnessNaturalRequestTest {
         assertNull(result.minutes)
     }
 
+    @Test fun colloquialFatigueIsNotMistakenForStrengthGoal() {
+        for (phrase in listOf(
+            "hơi đuối", "đuối sức", "hết pin", "mỏi cơ", "cơ bắp mỏi", "chân mỏi"
+        )) {
+            val result = FitnessNaturalRequest.parse(phrase)
+            assertEquals("Failed for $phrase", 0, result.energy)
+            assertNull("Fatigue must not overwrite the selected goal: $phrase", result.goal)
+        }
+    }
+
+    @Test fun explicitEnergyDenialsDoNotLowerTheWorkoutProfile() {
+        for (phrase in listOf(
+            "không mỏi cơ", "không đuối sức", "không hết pin", "không mệt"
+        )) {
+            val result = FitnessNaturalRequest.parse(phrase)
+            assertNull("A denial is not a low-energy report: $phrase", result.energy)
+            assertNull("A denial must not invent a goal: $phrase", result.goal)
+        }
+    }
+
     @Test fun parsesTrainingExperienceLevels() {
         assertEquals(0, FitnessNaturalRequest.parse("Mới bắt đầu, muốn tập nhẹ").level)
         assertEquals(1, FitnessNaturalRequest.parse("Tôi đang tập đều mỗi tuần").level)

@@ -1549,6 +1549,14 @@ class GuidedWorkoutActivity:Activity() {
                                 cueParts += "Đã giới hạn ${moves[index].name} tối đa còn $limit hiệp; giữ nguyên $required hiệp bắt buộc."
                             }
                         }
+                        preview.currentRepLimit?.let { limit ->
+                            val plan = WorkoutSetTracker.parse(
+                                moves[index].dose, moves[index].restSeconds
+                            )
+                            if (plan != null) {
+                                cueParts += "Đã giới hạn ${moves[index].name} tối đa còn $limit ${plan.unit} mỗi hiệp cho phần chưa thực hiện; các hiệp đã xác nhận giữ nguyên."
+                            }
+                        }
                         if (cueParts.isEmpty()) {
                             cueParts += "Đã cập nhật phần còn lại của giáo án. Các hiệp đã xác nhận được giữ nguyên."
                         }

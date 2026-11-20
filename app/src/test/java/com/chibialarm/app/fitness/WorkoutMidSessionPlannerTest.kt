@@ -6,6 +6,7 @@ import com.chibialarm.app.TrainingMove
 import com.chibialarm.app.WorkoutConstraintFilter
 import com.chibialarm.app.WorkoutConstraintProfile
 import com.chibialarm.app.WorkoutExtensionPreferences
+import com.chibialarm.app.WorkoutSetTracker
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -1338,6 +1339,104 @@ class WorkoutMidSessionPlannerTest {
         )
 
         assertSame(WorkoutMidSessionPlanner.Result.Unsupported, result)
+    }
+
+    @Test fun reducingTheActiveSetLimitDropsOnlyOptionalSetsAndPreservesRewardMinimum() {
+        val parsed = WorkoutMidSessionRequest.parse("Giảm còn 2 hiệp")
+        assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
+        val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+
+        val result = WorkoutMidSessionPlanner.preview(
+            currentMoves = listOf(
+                move("Khởi động tại chỗ"),
+                move("Squat không tạ"),
+                move("Thả lỏng")
+            ),
+            currentIndex = 1,
+            completedCurrentSets = 1,
+            currentStepLocked = false,
+            constraints = WorkoutConstraintProfile(),
+            request = request,
+            remainingCurrentSeconds = 45,
+            extensionMoveNames = emptySet(),
+            level = 0
+        )
+
+        assertTrue(result is WorkoutMidSessionPlanner.Result.Proposed)
+        val preview = (result as WorkoutMidSessionPlanner.Result.Proposed).preview
+        val adjusted = WorkoutSetTracker.parse(preview.after[1].dose, preview.after[1].restSeconds)!!
+        assertEquals(2, preview.currentSetLimit)
+        assertEquals(1, preview.completedCurrentSets)
+        assertEquals(2, adjusted.requiredSets)
+        assertEquals(2, adjusted.maximumSets)
+        assertEquals(1, WorkoutSetTracker.requiredSetsForReward(mapOf(1 to 1), preview.after))
+        assertTrue(preview.after[1].dose.contains("2 hiệp × 8–12 lần"))
+    }
+
+    @Test fun optionalSetLimitCanFinishOnlyWhenTheRequiredMinimumWasAlreadyConfirmed() {
+        val result = WorkoutMidSessionPlanner.preview(
+            currentMoves = listOf(move("Squat không tạ"), move("Thả lỏng")),
+            currentIndex = 0,
+            completedCurrentSets = 2,
+            currentStepLocked = false,
+            constraints = WorkoutConstraintProfile(),
+            request = WorkoutMidSessionRequest.Request(currentSetLimit = 2),
+            remainingCurrentSeconds = 20,
+            extensionMoveNames = emptySet(),
+            level = 0
+        )
+
+        assertTrue(result is WorkoutMidSessionPlanner.Result.Proposed)
+        val preview = (result as WorkoutMidSessionPlanner.Result.Proposed).preview
+        val adjusted = WorkoutSetTracker.parse(preview.after.first().dose)!!
+        assertTrue(WorkoutSetTracker.isComplete(2, adjusted))
+    }
+
+    @Test fun setLimitCannotLowerRequiredWorkOrRewriteConfirmedSets() {
+        fun preview(completed: Int, limit: Int) =
+            WorkoutMidSessionPlanner.preview(
+                currentMoves = listOf(move("Squat không tạ"), move("Thả lỏng")),
+                currentIndex = 0,
+                completedCurrentSets = completed,
+                currentStepLocked = completed > 0,
+                constraints = WorkoutConstraintProfile(),
+                request = WorkoutMidSessionRequest.Request(currentSetLimit = limit),
+                remainingCurrentSeconds = 30,
+                extensionMoveNames = emptySet(),
+                level = 0
+            )
+
+        assertTrue(preview(completed = 0, limit = 1) is WorkoutMidSessionPlanner.Result.Blocked)
+        assertTrue(preview(completed = 3, limit = 2) is WorkoutMidSessionPlanner.Result.Blocked)
+        assertTrue(preview(completed = 0, limit = 4) is WorkoutMidSessionPlanner.Result.Blocked)
+    }
+
+    @Test fun setLimitIsBlockedForTimedMovesAndWhenNoOptionalSetExists() {
+        val timed = WorkoutMidSessionPlanner.preview(
+            currentMoves = listOf(move("Đi bộ nhanh tại chỗ"), move("Thả lỏng")),
+            currentIndex = 0,
+            completedCurrentSets = 0,
+            currentStepLocked = false,
+            constraints = WorkoutConstraintProfile(),
+            request = WorkoutMidSessionRequest.Request(currentSetLimit = 1),
+            remainingCurrentSeconds = 30,
+            extensionMoveNames = emptySet(),
+            level = 0
+        )
+        val alreadyAtLimit = WorkoutMidSessionPlanner.preview(
+            currentMoves = listOf(move("Squat không tạ"), move("Thả lỏng")),
+            currentIndex = 0,
+            completedCurrentSets = 0,
+            currentStepLocked = false,
+            constraints = WorkoutConstraintProfile(),
+            request = WorkoutMidSessionRequest.Request(currentSetLimit = 3),
+            remainingCurrentSeconds = 30,
+            extensionMoveNames = emptySet(),
+            level = 0
+        )
+
+        assertTrue(timed is WorkoutMidSessionPlanner.Result.Blocked)
+        assertTrue(alreadyAtLimit is WorkoutMidSessionPlanner.Result.Blocked)
     }
 
 }

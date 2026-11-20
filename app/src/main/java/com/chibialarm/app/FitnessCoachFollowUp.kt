@@ -73,6 +73,8 @@ object FitnessCoachFollowUp {
             )
             Question.ENERGY -> listOf(
                 QuickReply("Hơi mệt", "hơi mệt"),
+                QuickReply("Hơi đuối", "hơi đuối"),
+                QuickReply("Mỏi cơ", "mỏi cơ"),
                 QuickReply("Bình thường", "bình thường"),
                 QuickReply("Nhiều năng lượng", "nhiều năng lượng")
             )

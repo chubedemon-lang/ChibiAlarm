@@ -344,6 +344,11 @@ class GuidedWorkoutEffortVoiceTest {
             previousEfforts = listOf(WorkoutEffortFeedback.Level.HARD)
         )
         try {
+            @Suppress("UNCHECKED_CAST")
+            val initialMoves = GuidedWorkoutActivity::class.java.getDeclaredField("moves")
+                .apply { isAccessible = true }.get(checkIn.activity) as List<TrainingMove>
+            val originalDose = initialMoves[checkIn.moveIndex].dose
+
             sendVoice(checkIn, "khó quá")
             assertTrue(checkIn.dialog.isShowing)
             checkIn.dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
@@ -385,10 +390,12 @@ class GuidedWorkoutEffortVoiceTest {
                 as MutableMap<Int, Int>
             @Suppress("UNCHECKED_CAST")
             val moves = activityField("moves").get(checkIn.activity) as List<TrainingMove>
-            val originalDose = moves[checkIn.moveIndex].dose
             assertEquals(checkIn.completedSets, completedSets[checkIn.moveIndex])
-            assertEquals("The preview must not mutate the active plan", originalDose,
-                moves[checkIn.moveIndex].dose)
+            assertEquals(
+                "The preview must not mutate the active plan before confirmation",
+                originalDose,
+                moves[checkIn.moveIndex].dose
+            )
 
             preview.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
 

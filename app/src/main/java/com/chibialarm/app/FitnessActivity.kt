@@ -28,6 +28,7 @@ class FitnessActivity:Activity() {
     private var speechReplayButton: Button? = null
     private var speechStopButton: Button? = null
     private val speechRequestCode = 4107
+    private var speechSequenceId = 0L
     private var recommendationGoalSpinner: Spinner? = null
     private var recommendationEnergySpinner: Spinner? = null
     private var recommendationEquipmentSpinner: Spinner? = null
@@ -100,6 +101,20 @@ class FitnessActivity:Activity() {
         refreshWorkoutHistoryInsight()
     }
 
+    /** Queue every bounded chunk so the coach never silently drops the end of a long answer. */
+    private fun speakCoachReply(text: String, utterancePrefix: String) {
+        val engine = speechOutput ?: return
+        val sequence = ++speechSequenceId
+        WorkoutSpeechSequence.plan(text).forEachIndexed { index, utterance ->
+            engine.speak(
+                utterance.text,
+                if (utterance.flushQueue) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD,
+                null,
+                "$utterancePrefix-$sequence-$index"
+            )
+        }
+    }
+
     private fun sayFollowUp(message: String) {
         coachSpeechMemory.remember(message)
         speechReplayButton?.isEnabled = coachSpeechMemory.hasReply()
@@ -108,7 +123,7 @@ class FitnessActivity:Activity() {
             voiceEnabled = speechOutput != null,
             engineReady = speechReady
         ) ?: return
-        speechOutput?.speak(speechText, TextToSpeech.QUEUE_FLUSH, null, "fitness-follow-up")
+        speakCoachReply(speechText, "fitness-follow-up")
     }
 
 
@@ -455,7 +470,7 @@ class FitnessActivity:Activity() {
                     }
                     Toast.makeText(this@FitnessActivity, message, Toast.LENGTH_LONG).show()
                 } else {
-                    speechOutput?.speak(reply, TextToSpeech.QUEUE_FLUSH, null, "fitness-coach-replay")
+                    speakCoachReply(reply, "fitness-coach-replay")
                 }
             }
         }

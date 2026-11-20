@@ -28,6 +28,19 @@ class FitnessCoachSpeechMemoryTest {
         assertFalse(replay.dropLast(1).endsWith(" "))
     }
 
+    @Test fun defaultMemoryPreservesLongCoachAnswerForChunkedPlayback() {
+        val memory = FitnessCoachSpeechMemory()
+        val answer = (1..12).joinToString(" ") { index ->
+            "Bước $index: thực hiện chậm, thở đều và giữ chuyển động trong biên độ thoải mái."
+        }
+        assertTrue(answer.length > 350)
+        assertTrue(answer.length <= 1_800)
+
+        memory.remember(answer)
+
+        assertEquals(answer, memory.replayText(voiceEnabled = true, engineReady = true))
+    }
+
     @Test fun blankReplyAndClearRemoveThePreviousAnswer() {
         val memory = FitnessCoachSpeechMemory()
         memory.remember("Một câu trả lời.")

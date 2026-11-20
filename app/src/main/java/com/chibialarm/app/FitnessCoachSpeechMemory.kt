@@ -8,7 +8,7 @@ package com.chibialarm.app
  * user clears the visible conversation.
  */
 internal class FitnessCoachSpeechMemory(
-    private val maxCharacters: Int = 350
+    private val maxCharacters: Int = 1_800
 ) {
     private var lastReply: String? = null
 

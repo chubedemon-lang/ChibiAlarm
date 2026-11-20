@@ -99,4 +99,33 @@ class WorkoutMidSessionEffortLanguageTest {
         assertFalse(preview.currentMoveChanged)
         assertEquals(60, preview.restSeconds)
     }
+
+    @Test fun colloquialFatiguePhrasesRequestALighterPreviewAndRecoveryRest() {
+        listOf("Tao hơi đuối", "Chân mỏi quá", "Hết pin rồi", "Cơ bắp mỏi").forEach { utterance ->
+            val result = WorkoutMidSessionRequest.parse(utterance)
+            assertTrue("$utterance should be understood", result is WorkoutMidSessionRequest.Result.Proposed)
+            val request = (result as WorkoutMidSessionRequest.Result.Proposed).request
+            assertTrue("$utterance should mark low energy", request.lowEnergy)
+            assertTrue("$utterance should prefer an easier option", request.preferEasier)
+            assertEquals(60, request.restSeconds)
+        }
+    }
+
+    @Test fun explicitNoSorenessOrFatigueDoesNotRequestAPlanChange() {
+        listOf("Hôm nay tao không mỏi", "Tao không đuối", "Tao không hết pin").forEach { utterance ->
+            assertSame(
+                "$utterance must not be interpreted as fatigue",
+                WorkoutMidSessionRequest.Result.Unsupported,
+                WorkoutMidSessionRequest.parse(utterance)
+            )
+        }
+    }
+
+    @Test fun painStillOverridesColloquialFatiguePhrases() {
+        assertSame(
+            WorkoutMidSessionRequest.Result.SafetyStop,
+            WorkoutMidSessionRequest.parse("Hết pin rồi, đau gối")
+        )
+    }
+
 }

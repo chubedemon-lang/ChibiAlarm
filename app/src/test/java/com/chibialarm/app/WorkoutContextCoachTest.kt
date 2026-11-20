@@ -1,5 +1,6 @@
 package com.chibialarm.app
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -28,6 +29,21 @@ class WorkoutContextCoachTest {
         assertTrue(text.contains("Đứng gần tường hơn"))
         assertFalse(text.contains("Chống hai tay lên tường"))
         assertTrue(text.contains("Hãy dừng nếu đau"))
+    }
+
+    @Test fun equipmentSummaryDistinguishesNoEquipmentAndStableChair() {
+        assertEquals("Không cần dụng cụ tập chuyên dụng.", WorkoutContextCoach.equipmentCue(move))
+        val chairMove = move.copy(equipmentOptions = setOf(TrainingEquipment.STABLE_CHAIR))
+        assertEquals("Dụng cụ cần có: ghế vững chắc.", WorkoutContextCoach.equipmentCue(chairMove))
+    }
+
+    @Test fun equipmentSummaryPresentsDumbbellAndBandAsAlternatives() {
+        val flexibleMove = move.copy(
+            equipmentOptions = setOf(TrainingEquipment.DUMBBELL, TrainingEquipment.RESISTANCE_BAND)
+        )
+        val cue = WorkoutContextCoach.equipmentCue(flexibleMove)
+        assertEquals("Dụng cụ: chọn một trong các lựa chọn tạ đơn hoặc dây kháng lực.", cue)
+        assertFalse(cue.contains("tạ đơn và dây kháng lực"))
     }
 
     @Test fun exerciseQuestionExplainsWhenNoSpecialEquipmentIsNeeded() {

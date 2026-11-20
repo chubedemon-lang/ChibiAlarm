@@ -14,6 +14,13 @@ object WorkoutMidSessionPreviewFormatter {
 
     fun format(preview: WorkoutMidSessionPlanner.Preview): String = buildString {
         append("Giáo án sau điều chỉnh:\n")
+        preview.currentSetLimit?.let { limit ->
+            val activeMove = preview.after.getOrNull(preview.currentIndex)
+            val activePlan = activeMove?.let { WorkoutSetTracker.parse(it.dose, it.restSeconds) }
+            if (activeMove != null && activePlan != null) {
+                append("Giới hạn ${activeMove.name} tối đa còn $limit hiệp; giữ nguyên ${activePlan.requiredSets} hiệp bắt buộc, chỉ bỏ hiệp tùy chọn.\n")
+            }
+        }
         if (preview.addedMoves.isNotEmpty()) {
             append("Bổ sung động tác tùy chọn theo yêu cầu:\n")
             preview.addedMoves.forEach { added ->
@@ -159,7 +166,14 @@ object WorkoutMidSessionPreviewFormatter {
             parts += "Thêm bài tùy chọn: " +
                 preview.addedMoves.take(2).joinToString(", ") + "."
         }
-        if (!preview.changed && preview.restSeconds == 0) {
+        preview.currentSetLimit?.let { limit ->
+            val activeMove = preview.after.getOrNull(preview.currentIndex)
+            val activePlan = activeMove?.let { WorkoutSetTracker.parse(it.dose, it.restSeconds) }
+            if (activeMove != null && activePlan != null) {
+                parts += "Giới hạn ${activeMove.name} tối đa còn $limit hiệp; giữ nguyên ${activePlan.requiredSets} hiệp bắt buộc."
+            }
+        }
+        if (!preview.changed && preview.restSeconds == 0 && preview.currentSetLimit == null) {
             parts += "Không có thay đổi nào được đề xuất."
         }
         parts += "Thời gian còn lại ước tính " + durationLabel(preview.estimatedRemainingSeconds) + "."

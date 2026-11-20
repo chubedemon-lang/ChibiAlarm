@@ -1545,4 +1545,17 @@ class WorkoutMidSessionPlannerTest {
         assertFalse(request.isRestOnly)
     }
 
+
+    @Test fun requestRejectsConflictingSetAndRepLimitEdits() {
+        assertThrows(IllegalArgumentException::class.java) {
+            WorkoutMidSessionRequest.Request(currentSetLimit = 2, currentRepLimit = 10)
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            WorkoutMidSessionRequest.Request(addOptionalExercise = true, currentRepLimit = 10)
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            WorkoutMidSessionRequest.Request(replaceCurrentWith = "Squat không tạ", currentRepLimit = 10)
+        }
+    }
+
 }

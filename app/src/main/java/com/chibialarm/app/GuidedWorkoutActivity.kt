@@ -1495,6 +1495,18 @@ class GuidedWorkoutActivity:Activity() {
                         repTargets.keys.removeAll {
                             it > index || (it == index && preview.currentMoveChanged)
                         }
+                        // If the user removed only optional sets and has already confirmed
+                        // the required minimum, mark this move complete without inventing
+                        // a set, changing its log, or awarding extra XP.
+                        val adjustedSetPlan = WorkoutSetTracker.parse(
+                            moves[index].dose, moves[index].restSeconds
+                        )
+                        val adjustedCompletedSets = completedSetsByMove[index] ?: 0
+                        if (adjustedSetPlan != null &&
+                            WorkoutSetTracker.isComplete(adjustedCompletedSets, adjustedSetPlan)
+                        ) {
+                            completedMoveIndices += index
+                        }
                         workoutConstraints = WorkoutMidSessionPlanner.effectiveConstraints(
                             workoutConstraints,
                             request
@@ -1525,11 +1537,22 @@ class GuidedWorkoutActivity:Activity() {
                         control.text = "▶ Tiếp tục"
                         saveCheckpoint()
 
-                        val cue = if (preview.currentMoveChanged) {
-                            "Đã đổi sang ${moves[index].name}. Hãy kiểm tra hướng dẫn trước khi tập tiếp."
-                        } else {
-                            "Đã cập nhật phần còn lại của giáo án. Các hiệp đã xác nhận được giữ nguyên."
+                        val cueParts = mutableListOf<String>()
+                        if (preview.currentMoveChanged) {
+                            cueParts += "Đã đổi sang ${moves[index].name}. Hãy kiểm tra hướng dẫn trước khi tập tiếp."
                         }
+                        preview.currentSetLimit?.let { limit ->
+                            val required = WorkoutSetTracker.parse(
+                                moves[index].dose, moves[index].restSeconds
+                            )?.requiredSets
+                            if (required != null) {
+                                cueParts += "Đã giới hạn ${moves[index].name} tối đa còn $limit hiệp; giữ nguyên $required hiệp bắt buộc."
+                            }
+                        }
+                        if (cueParts.isEmpty()) {
+                            cueParts += "Đã cập nhật phần còn lại của giáo án. Các hiệp đã xác nhận được giữ nguyên."
+                        }
+                        val cue = cueParts.joinToString(" ")
                         if (preview.restSeconds > 0) startSetRest(preview.restSeconds, cue)
                         else speak(cue)
                     }

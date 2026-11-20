@@ -1562,6 +1562,40 @@ class GuidedWorkoutActivity:Activity() {
         }
     }
 
+    /**
+     * Presents every coach answer as readable text first, with optional TTS replay.
+     * Voice output is an enhancement, never the only way to receive workout status.
+     */
+    private fun showCoachAnswer(title: String, answer: String) {
+        if (answer.isBlank()) return
+        val answerDialog = AlertDialog.Builder(this)
+            .setTitle(title)
+            .setMessage(answer)
+            .setPositiveButton("Đã hiểu", null)
+            .setNeutralButton("🔊 Nghe lại", null)
+            .create()
+        answerDialog.show()
+        answerDialog.getButton(AlertDialog.BUTTON_NEUTRAL).apply {
+            contentDescription = "Nghe lại toàn bộ câu trả lời của Chibi"
+            setOnClickListener {
+                if (!speakCoachAnswer(answer)) {
+                    Toast.makeText(
+                        this@GuidedWorkoutActivity,
+                        "Giọng đọc chưa sẵn sàng. Mày vẫn có thể đọc câu trả lời trên màn hình.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
+        if (!speakCoachAnswer(answer)) {
+            Toast.makeText(
+                this,
+                "Giọng đọc chưa sẵn sàng. Mày vẫn có thể đọc câu trả lời trên màn hình.",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
     /** One local progress snapshot shared by the main coach and the step-guide conversation. */
     private fun currentWorkoutProgressReply(): String? {
         if (moves.isEmpty() || index !in moves.indices) return null
@@ -1703,7 +1737,11 @@ class GuidedWorkoutActivity:Activity() {
             WorkoutVoiceCommands.Command.PAIN -> stopForSafety()
             WorkoutVoiceCommands.Command.PAUSE -> { pause();speak("Đã tạm dừng.") }
             WorkoutVoiceCommands.Command.STATUS -> {
-                currentWorkoutProgressReply()?.let(::speak)
+                // Freeze the active/rest countdown while the user reads or replays the report.
+                if (!paused && !pausedForSafety) pause()
+                currentWorkoutProgressReply()?.let {
+                    showCoachAnswer("🐰 Chibi Coach • tiến độ buổi tập", it)
+                }
             }
             WorkoutVoiceCommands.Command.STEP_GUIDE -> showStepByStepGuide()
             WorkoutVoiceCommands.Command.EXPLAIN_CURRENT -> {
@@ -1796,32 +1834,7 @@ class GuidedWorkoutActivity:Activity() {
                     // Keep the exercise/rest clock from advancing while the user reads or hears
                     // a catalog-grounded answer. The user explicitly resumes when ready.
                     if (!paused && !pausedForSafety) pause()
-                    val answerDialog = AlertDialog.Builder(this)
-                        .setTitle("🐰 Chibi Coach • trả lời bài tập")
-                        .setMessage(questionAnswer)
-                        .setPositiveButton("Đã hiểu", null)
-                        .setNeutralButton("🔊 Nghe lại", null)
-                        .create()
-                    answerDialog.show()
-                    answerDialog.getButton(AlertDialog.BUTTON_NEUTRAL).apply {
-                        contentDescription = "Nghe lại toàn bộ câu trả lời của Chibi"
-                        setOnClickListener {
-                            if (!speakCoachAnswer(questionAnswer)) {
-                                Toast.makeText(
-                                    this@GuidedWorkoutActivity,
-                                    "Giọng đọc chưa sẵn sàng. Mày vẫn có thể đọc câu trả lời trên màn hình.",
-                                    Toast.LENGTH_LONG
-                                ).show()
-                            }
-                        }
-                    }
-                    if (!speakCoachAnswer(questionAnswer)) {
-                        Toast.makeText(
-                            this,
-                            "Giọng đọc chưa sẵn sàng. Mày vẫn có thể đọc câu trả lời trên màn hình.",
-                            Toast.LENGTH_LONG
-                        ).show()
-                    }
+                    showCoachAnswer("🐰 Chibi Coach • trả lời bài tập", questionAnswer)
                 } else {
                     AlertDialog.Builder(this).setTitle("Chibi chưa hiểu yêu cầu")
                         .setMessage("Mày có thể hỏi cách tập bài đang mở, nhóm cơ, dụng cụ, số lần hoặc thời gian nghỉ; hoặc nói: tôi đã làm 10 lần, xong hiệp, đổi bài, nghỉ thêm, đọc tiến độ, tạm dừng hay tiếp tục. Các thay đổi giáo án vẫn cần xác nhận.")

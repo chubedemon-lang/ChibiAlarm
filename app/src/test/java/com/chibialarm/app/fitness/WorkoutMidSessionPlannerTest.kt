@@ -1566,6 +1566,12 @@ class WorkoutMidSessionPlannerTest {
         assertFalse(request.allowKneeling)
         assertFalse("Kneeling alone must not mean avoiding every floor position", request.avoidFloorPositions)
 
+        val combined = WorkoutMidSessionRequest.parse("Không quỳ gối và không nằm sàn")
+        assertTrue(combined is WorkoutMidSessionRequest.Result.Proposed)
+        val combinedRequest = (combined as WorkoutMidSessionRequest.Result.Proposed).request
+        assertTrue(combinedRequest.avoidKneeling)
+        assertTrue("An explicit no-floor request must still be preserved", combinedRequest.avoidFloorPositions)
+
         val moves = listOf(
             move("Squat không tạ"),
             move("Bird-dog"),

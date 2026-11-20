@@ -11,7 +11,28 @@ data class WorkoutConstraintProfile(
     val avoidFloorPositions: Boolean = false,
     val avoidOverheadReach: Boolean = false,
     val avoidJumping: Boolean = false
-)
+) {
+    companion object {
+        /**
+         * Converts visible session selections into the same filters used by plan previews,
+         * history variety and workout launch. Low-impact explicitly means no jumping.
+         */
+        fun fromSessionSelections(
+            impact: Int,
+            avoidWristLoad: Boolean = false,
+            avoidFloorPositions: Boolean = false,
+            avoidOverheadReach: Boolean = false
+        ): WorkoutConstraintProfile {
+            require(impact in 0..2)
+            return WorkoutConstraintProfile(
+                avoidWristLoad = avoidWristLoad,
+                avoidFloorPositions = avoidFloorPositions,
+                avoidOverheadReach = avoidOverheadReach,
+                avoidJumping = impact == 1
+            )
+        }
+    }
+}
 
 object WorkoutConstraintFilter {
     data class Substitution(

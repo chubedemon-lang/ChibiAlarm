@@ -1359,7 +1359,8 @@ class FitnessActivity:Activity() {
     }
 
     private fun currentWorkoutConstraintProfile(): WorkoutConstraintProfile =
-        WorkoutConstraintProfile(
+        WorkoutConstraintProfile.fromSessionSelections(
+            impact = effectiveImpactRestriction(),
             avoidWristLoad = wristLoadCheckBox?.isChecked == true,
             avoidFloorPositions = floorPositionCheckBox?.isChecked == true,
             avoidOverheadReach = overheadReachCheckBox?.isChecked == true
@@ -1607,9 +1608,11 @@ class FitnessActivity:Activity() {
             Toast.makeText(this, "Chưa có động tác phù hợp với dụng cụ đã chọn; chưa tạo lịch tuần.", Toast.LENGTH_LONG).show()
             return
         }
-        if (currentWorkoutConstraintProfile().avoidWristLoad ||
-            currentWorkoutConstraintProfile().avoidFloorPositions ||
-            currentWorkoutConstraintProfile().avoidOverheadReach) {
+        val sessionConstraints = currentWorkoutConstraintProfile()
+        if (sessionConstraints.avoidWristLoad ||
+            sessionConstraints.avoidFloorPositions ||
+            sessionConstraints.avoidOverheadReach ||
+            sessionConstraints.avoidJumping) {
             Toast.makeText(this, "Các hạn chế vận động chỉ áp dụng cho buổi hiện tại; lịch tuần chưa lưu bộ lọc này.", Toast.LENGTH_LONG).show()
             return
         }

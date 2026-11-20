@@ -174,4 +174,38 @@ class WorkoutConstraintFilterTest {
         )
     }
 
+
+    @Test fun lowImpactSelectionFiltersJumpingBeforePlanAndHistoryCandidatesArePreviewed() {
+        val profile = WorkoutConstraintProfile.fromSessionSelections(impact = 1)
+
+        assertTrue(profile.avoidJumping)
+        val filteredCandidates = TrainingCatalog.programs.map { candidate ->
+            WorkoutConstraintFilter.apply(candidate, profile)
+        }
+        assertTrue(
+            "No candidate shown under low-impact selection may retain a jumping move",
+            filteredCandidates.flatMap { it.program.moves }.none { it.requiresJumping }
+        )
+
+        val advanced = filteredCandidates.single { it.program.id == "advanced" }
+        assertTrue(advanced.canStart)
+        assertTrue(advanced.substitutions.any {
+            it.originalName == "Bật nhảy dang tay chân" && it.replacementName == "Bước ngang nhẹ"
+        })
+    }
+
+    @Test fun ordinaryImpactSelectionDoesNotSilentlyApplyNoJumpRestriction() {
+        val profile = WorkoutConstraintProfile.fromSessionSelections(impact = 0)
+        assertFalse(profile.avoidJumping)
+        assertTrue(
+            WorkoutConstraintFilter.apply(TrainingCatalog.byId("advanced"), profile)
+                .program.moves.any { it.requiresJumping }
+        )
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun invalidImpactCannotCreateSessionConstraintProfile() {
+        WorkoutConstraintProfile.fromSessionSelections(impact = 3)
+    }
+
 }

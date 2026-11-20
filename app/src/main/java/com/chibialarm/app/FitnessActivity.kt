@@ -412,13 +412,9 @@ class FitnessActivity:Activity() {
                 // Depending on the installed recognizer, speech may be processed online.
                 AlertDialog.Builder(this@FitnessActivity)
                     .setTitle("Quyền riêng tư giọng nói")
-                    .setMessage("Chibi sẽ mở dịch vụ nhận dạng giọng nói của thiết bị. Dịch vụ đó có thể yêu cầu quyền micro và có thể gửi âm thanh lên mạng tùy cài đặt. Chibi chỉ nhận văn bản trả về; hãy kiểm tra trước khi áp dụng giáo án.")
+                    .setMessage("Chibi yêu cầu dịch vụ ưu tiên nhận dạng ngoại tuyến và trả tối đa 5 phương án nếu dịch vụ hỗ trợ. Đây chỉ là gợi ý: nhà cung cấp có thể bỏ qua và xử lý âm thanh trực tuyến. Dịch vụ có thể yêu cầu quyền micro. Chibi chỉ nhận văn bản; hãy kiểm tra hoặc sửa trước khi áp dụng giáo án.")
                     .setPositiveButton("Tiếp tục") { _, _ ->
-                        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "vi-VN")
-                            putExtra(RecognizerIntent.EXTRA_PROMPT, "Nói yêu cầu tập luyện của bạn")
-                        }
+                        val intent = WorkoutSpeechRecognitionRequest.create("Nói yêu cầu tập luyện của bạn")
                         try { startActivityForResult(intent, speechRequestCode) }
                         catch (_: android.content.ActivityNotFoundException) {
                             Toast.makeText(this@FitnessActivity, "Thiết bị chưa có dịch vụ nhận dạng giọng nói. Hãy nhập bằng bàn phím.", Toast.LENGTH_LONG).show()
@@ -804,13 +800,11 @@ class FitnessActivity:Activity() {
                             // before every microphone handoff, including follow-up questions.
                             AlertDialog.Builder(this@FitnessActivity)
                                 .setTitle("Quyền riêng tư giọng nói")
-                                .setMessage("Dịch vụ nhận dạng trên thiết bị có thể yêu cầu micro và xử lý âm thanh trực tuyến. Chibi chỉ nhận văn bản; bạn có thể sửa trước khi gửi.")
+                                .setMessage("Chibi yêu cầu ưu tiên nhận dạng ngoại tuyến và tối đa 5 phương án nếu dịch vụ hỗ trợ; nhà cung cấp có thể bỏ qua và xử lý âm thanh trực tuyến. Chibi chỉ nhận văn bản; bạn có thể sửa trước khi gửi.")
                                 .setPositiveButton("Tiếp tục") { _, _ ->
-                                    val speechIntent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                                        putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                                        putExtra(RecognizerIntent.EXTRA_LANGUAGE, "vi-VN")
-                                        putExtra(RecognizerIntent.EXTRA_PROMPT, FitnessCoachFollowUp.nextQuestion(parsed))
-                                    }
+                                    val speechIntent = WorkoutSpeechRecognitionRequest.create(
+                                        FitnessCoachFollowUp.nextQuestion(parsed)
+                                    )
                                     try { startActivityForResult(speechIntent, speechRequestCode) }
                                     catch (_: android.content.ActivityNotFoundException) {
                                         Toast.makeText(this@FitnessActivity, "Không có dịch vụ nhận dạng. Hãy nhập câu trả lời bằng bàn phím.", Toast.LENGTH_LONG).show()

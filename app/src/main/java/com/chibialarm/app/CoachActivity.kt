@@ -182,7 +182,7 @@ class CoachActivity:Activity() {
         speaker?.stop()
         AlertDialog.Builder(this)
             .setTitle("🎤 Nhận dạng giọng nói")
-            .setMessage("Chibi sẽ mở dịch vụ nhận dạng giọng nói trên máy. Dịch vụ này có thể dùng Internet và xử lý âm thanh theo chính sách của nhà cung cấp. Chibi chỉ nhận văn bản được trả về. Bạn sẽ được xem và sửa văn bản trước khi gửi. Bạn cũng có thể gõ thay vì dùng mic.")
+            .setMessage("Chibi yêu cầu dịch vụ ưu tiên nhận dạng ngoại tuyến và trả tối đa 5 phương án nếu được hỗ trợ. Đây chỉ là gợi ý; nhà cung cấp có thể bỏ qua và xử lý âm thanh trực tuyến theo chính sách riêng. Chibi chỉ nhận văn bản được trả về. Bạn sẽ được xem và sửa trước khi gửi, hoặc có thể gõ thay vì dùng mic.")
             .setPositiveButton("Tiếp tục dùng mic") { _, _ -> listen() }
             .setNegativeButton("Để tôi gõ", null)
             .show()
@@ -192,11 +192,7 @@ class CoachActivity:Activity() {
         // Listening is user-initiated, never restarted by TTS callbacks.
         speaker?.stop()
         try {
-            val i=Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE,"vi-VN")
-                putExtra(RecognizerIntent.EXTRA_PROMPT,"Nói với Chibi về mục tiêu của bạn")
-            }
+            val i=WorkoutSpeechRecognitionRequest.create("Nói với Chibi về mục tiêu của bạn")
             startActivityForResult(i,speechRequest)
         } catch(_:Exception) { Toast.makeText(this,"Máy chưa có dịch vụ nhận dạng tiếng Việt. Bạn vẫn có thể gõ tin nhắn.",Toast.LENGTH_LONG).show() }
     }

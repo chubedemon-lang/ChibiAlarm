@@ -972,11 +972,7 @@ class GuidedWorkoutActivity:Activity() {
             effortRequest -> "Nói cảm nhận hiệp vừa rồi: nhẹ, vừa sức, khó cần nghỉ thêm hoặc quá sức. Nếu đau hay khó thở, hãy nói rõ."
             else -> "Ví dụ: tôi đã làm 10 lần, tôi giữ 20 giây, xong hiệp, bài này khó quá, nghỉ thêm, đổi bài, dừng lại"
         }
-        val request=Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE,"vi-VN")
-            putExtra(RecognizerIntent.EXTRA_PROMPT,prompt)
-        }
+        val request=WorkoutSpeechRecognitionRequest.create(prompt)
         try {
             startActivityForResult(request,requestCode)
         } catch (_:Exception) {
@@ -1012,7 +1008,7 @@ class GuidedWorkoutActivity:Activity() {
 
     private fun requestVoiceCommand() {
         AlertDialog.Builder(this).setTitle("🎤 Điều khiển bằng giọng nói")
-            .setMessage("Chỉ bắt đầu nghe sau khi bạn nhấn Tiếp tục. Android sẽ hỏi quyền micro nếu đây là lần đầu. Dịch vụ nhận dạng của máy có thể xử lý âm thanh trực tuyến tùy nhà cung cấp. Chibi không ghi âm nền và không lưu bản ghi hoặc câu nhận dạng. Bạn cũng có thể nhập yêu cầu bằng chữ.")
+            .setMessage("Chỉ bắt đầu nghe sau khi bạn nhấn Tiếp tục. Android sẽ hỏi quyền micro nếu đây là lần đầu. Chibi yêu cầu ưu tiên nhận dạng ngoại tuyến và tối đa 5 phương án nếu dịch vụ hỗ trợ; đây chỉ là gợi ý, nhà cung cấp có thể bỏ qua và xử lý âm thanh trực tuyến. Chibi không ghi âm nền và không lưu bản ghi hoặc câu nhận dạng. Bạn cũng có thể nhập yêu cầu bằng chữ.")
             .setPositiveButton("Tiếp tục"){_,_->
                 // A voice command must never compete with spoken instructions or a running timer.
                 pause()
@@ -1024,7 +1020,7 @@ class GuidedWorkoutActivity:Activity() {
     private fun requestGuideVoiceCommand(onResult:(String)->Unit) {
         guideVoiceResultHandler = onResult
         val disclosure = AlertDialog.Builder(this).setTitle("🎤 Điều khiển hướng dẫn bằng giọng nói")
-            .setMessage("Chỉ mở micro sau khi bạn nhấn Bắt đầu nghe. Android sẽ hỏi quyền micro nếu cần. Dịch vụ nhận dạng của máy có thể xử lý âm thanh trực tuyến tùy nhà cung cấp. Chibi chỉ dùng câu nhận dạng để chuyển bước, đọc lại, yêu cầu nghỉ, tạm dừng hoặc tiếp tục buổi tập, hoặc đóng hướng dẫn; không ghi âm nền và không lưu bản ghi hay bản chép lời. Bạn có thể hủy và tiếp tục dùng nút trên màn hình.")
+            .setMessage("Chỉ mở micro sau khi bạn nhấn Bắt đầu nghe. Android sẽ hỏi quyền micro nếu cần. Chibi yêu cầu ưu tiên nhận dạng ngoại tuyến và tối đa 5 phương án nếu dịch vụ hỗ trợ; đây chỉ là gợi ý, nhà cung cấp có thể bỏ qua và xử lý âm thanh trực tuyến. Chibi chỉ dùng câu nhận dạng để chuyển bước, đọc lại, yêu cầu nghỉ, tạm dừng hoặc tiếp tục buổi tập, hoặc đóng hướng dẫn; không ghi âm nền và không lưu bản ghi hay bản chép lời. Bạn có thể hủy và tiếp tục dùng nút trên màn hình.")
             .setPositiveButton("Bắt đầu nghe"){_,_->
                 pause()
                 spoken?.stop()
@@ -1041,7 +1037,7 @@ class GuidedWorkoutActivity:Activity() {
             .setTitle("🎤 Báo cảm nhận hiệp bằng giọng nói")
             .setMessage(
                 "Chỉ mở micro sau khi bạn nhấn Bắt đầu nghe và cấp quyền Android nếu được hỏi. " +
-                    "Dịch vụ nhận dạng của máy có thể xử lý âm thanh trực tuyến tùy nhà cung cấp. " +
+                    "Chibi yêu cầu ưu tiên nhận dạng ngoại tuyến và tối đa 5 phương án nếu dịch vụ hỗ trợ; đây chỉ là gợi ý, nhà cung cấp có thể bỏ qua và xử lý âm thanh trực tuyến. " +
                     "Chibi chỉ dùng câu nhận dạng để chọn mức cảm nhận sau khi bạn xác nhận; " +
                     "ví dụ: “hiệp vừa rồi tôi cảm thấy quá khó” hoặc “không còn sức để tiếp tục”. " +
                     "Ứng dụng không ghi âm nền và không lưu bản ghi hay bản chép lời. " +

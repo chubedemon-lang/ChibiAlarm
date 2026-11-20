@@ -1439,4 +1439,69 @@ class WorkoutMidSessionPlannerTest {
         assertTrue(alreadyAtLimit is WorkoutMidSessionPlanner.Result.Blocked)
     }
 
+
+    @Test fun explicitPerSetRepLimitIsRecognizedButQuestionsAndNegationsAreNotCommands() {
+        val reduced = WorkoutMidSessionRequest.parse("Giảm còn 10 lần mỗi hiệp")
+        assertTrue(reduced is WorkoutMidSessionRequest.Result.Proposed)
+        assertEquals(
+            10,
+            (reduced as WorkoutMidSessionRequest.Result.Proposed).request.currentRepLimit
+        )
+        val colloquial = WorkoutMidSessionRequest.parse("Mỗi hiệp 10 lần thôi")
+        assertTrue(colloquial is WorkoutMidSessionRequest.Result.Proposed)
+        assertEquals(
+            10,
+            (colloquial as WorkoutMidSessionRequest.Result.Proposed).request.currentRepLimit
+        )
+        assertSame(
+            WorkoutMidSessionRequest.Result.Unsupported,
+            WorkoutMidSessionRequest.parse("Còn 10 lần nữa?")
+        )
+        assertSame(
+            WorkoutMidSessionRequest.Result.Unsupported,
+            WorkoutMidSessionRequest.parse("Đừng giảm còn 10 lần mỗi hiệp")
+        )
+    }
+
+    @Test fun repLimitChangesOnlyTheFutureDoseAndKeepsConfirmedSetCount() {
+        val result = WorkoutMidSessionPlanner.preview(
+            currentMoves = listOf(move("Squat không tạ"), move("Thả lỏng")),
+            currentIndex = 0,
+            completedCurrentSets = 1,
+            currentStepLocked = true,
+            constraints = WorkoutConstraintProfile(),
+            request = WorkoutMidSessionRequest.Request(currentRepLimit = 10),
+            remainingCurrentSeconds = 45,
+            extensionMoveNames = emptySet(),
+            level = 0
+        )
+        assertTrue(result is WorkoutMidSessionPlanner.Result.Proposed)
+        val preview = (result as WorkoutMidSessionPlanner.Result.Proposed).preview
+        val adjusted = WorkoutSetTracker.parse(preview.after.first().dose)!!
+        assertEquals(10, preview.currentRepLimit)
+        assertEquals(1, preview.completedCurrentSets)
+        assertEquals(8, adjusted.targetMin)
+        assertEquals(10, adjusted.targetMax)
+        assertEquals(2, adjusted.requiredSets)
+        assertEquals(3, adjusted.maximumSets)
+        assertTrue(preview.after.first().dose.contains("2–3 hiệp × 8–10 lần"))
+    }
+
+    @Test fun repLimitCannotLowerTheMinimumOrIncreaseAnExistingTarget() {
+        fun result(limit: Int) = WorkoutMidSessionPlanner.preview(
+            currentMoves = listOf(move("Squat không tạ"), move("Thả lỏng")),
+            currentIndex = 0,
+            completedCurrentSets = 0,
+            currentStepLocked = false,
+            constraints = WorkoutConstraintProfile(),
+            request = WorkoutMidSessionRequest.Request(currentRepLimit = limit),
+            remainingCurrentSeconds = 45,
+            extensionMoveNames = emptySet(),
+            level = 0
+        )
+        assertTrue(result(6) is WorkoutMidSessionPlanner.Result.Blocked)
+        assertTrue(result(13) is WorkoutMidSessionPlanner.Result.Blocked)
+        assertTrue(result(12) is WorkoutMidSessionPlanner.Result.Blocked)
+    }
+
 }

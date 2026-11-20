@@ -273,4 +273,27 @@ class TrainingCatalogTest {
         }
     }
 
+
+    @Test fun everyCanonicalMoveHasReviewedMuscleFocus() {
+        val moves = TrainingCatalog.allMoves
+        assertTrue(moves.isNotEmpty())
+        assertTrue(moves.all { TrainingMuscleCatalog.isCurated(it.name) })
+        assertTrue(moves.all { it.muscleFocus.primary.isNotEmpty() })
+        assertTrue(moves.all {
+            it.muscleFocus.primary.toSet().intersect(it.muscleFocus.supporting.toSet()).isEmpty()
+        })
+    }
+
+    @Test fun squatAndRowExposeDifferentPrimaryMuscleGroups() {
+        val moves = TrainingCatalog.allMoves.associateBy { it.name }
+        assertEquals(
+            listOf(TrainingMuscleGroup.QUADRICEPS, TrainingMuscleGroup.GLUTES),
+            moves.getValue("Squat không tạ").muscleFocus.primary
+        )
+        assertEquals(
+            listOf(TrainingMuscleGroup.BACK, TrainingMuscleGroup.BICEPS),
+            moves.getValue("Kéo tạ đơn hoặc dây kháng lực").muscleFocus.primary
+        )
+    }
+
 }

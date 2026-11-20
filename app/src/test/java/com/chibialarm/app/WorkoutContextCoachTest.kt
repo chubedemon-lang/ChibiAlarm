@@ -279,4 +279,18 @@ class WorkoutContextCoachTest {
         assertTrue(text.length < 800)
         assertTrue(text.contains("không phải đánh giá tư thế"))
     }
+
+    @Test fun muscleCueNamesPrimaryAndSupportingGroupsFromTheCatalog() {
+        val cue = WorkoutContextCoach.muscleCue(move)
+        assertTrue(cue.contains("Nhóm cơ chính: Ngực, Tay sau"))
+        assertTrue(cue.contains("Nhóm cơ hỗ trợ: Vai, Cơ trung tâm"))
+        assertTrue(cue.contains("thông tin tham khảo"))
+    }
+
+    @Test fun spokenExerciseGuidanceIncludesMuscleFocus() {
+        val text = WorkoutContextCoach.script(move)
+        assertTrue(text.contains("Nhóm cơ chính: Ngực, Tay sau"))
+        assertTrue(text.contains("Nhóm cơ hỗ trợ: Vai, Cơ trung tâm"))
+    }
+
 }

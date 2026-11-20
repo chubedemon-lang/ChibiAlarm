@@ -81,6 +81,20 @@ object WorkoutContextCoach {
         }
     }
 
+    /** Approximate catalog emphasis; not a measurement or diagnosis. */
+    fun muscleCue(move: TrainingMove): String {
+        val focus = move.muscleFocus
+        val primary = focus.primary.joinToString(", ") { it.label }
+        val supporting = focus.supporting.joinToString(", ") { it.label }
+        return buildString {
+            append("Nhóm cơ chính: ").append(primary).append(".")
+            if (supporting.isNotBlank()) {
+                append(" Nhóm cơ hỗ trợ: ").append(supporting).append(".")
+            }
+            append(" Đây là thông tin tham khảo, không phải đánh giá kỹ thuật.")
+        }.take(300)
+    }
+
     fun script(move: TrainingMove, preferEasier: Boolean = false): String {
         val name = move.name.trim().take(90).ifBlank { "Động tác hiện tại" }
         val dose = move.dose.trim().take(120)
@@ -91,6 +105,7 @@ object WorkoutContextCoach {
             append(name).append(". ")
             if (dose.isNotBlank()) append("Mục tiêu tham khảo: ").append(dose).append(". ")
             append(equipmentCue(move)).append(" ")
+            append(muscleCue(move)).append(" ")
             if (preferEasier && easier.isNotBlank()) {
                 append("Cách tập nhẹ hơn: ").append(easier).append(". ")
             } else if (steps.isNotBlank()) {

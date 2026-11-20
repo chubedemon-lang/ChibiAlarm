@@ -3,6 +3,37 @@ package com.chibialarm.app
 /** Equipment a move can use; multiple entries mean alternatives, not cumulative requirements. */
 enum class TrainingEquipment { DUMBBELL, RESISTANCE_BAND, STABLE_CHAIR, MAT }
 
+enum class TrainingMuscleGroup(val label: String) {
+    CHEST("Ngực"),
+    BACK("Lưng"),
+    UPPER_BACK("Lưng trên"),
+    SHOULDERS("Vai"),
+    BICEPS("Tay trước"),
+    TRICEPS("Tay sau"),
+    CORE("Cơ trung tâm"),
+    GLUTES("Mông"),
+    QUADRICEPS("Đùi trước"),
+    HAMSTRINGS("Đùi sau"),
+    HIP_FLEXORS("Cơ gấp hông"),
+    HIP_ABDUCTORS("Cơ dạng hông"),
+    CALVES("Bắp chân"),
+    FULL_BODY("Toàn thân")
+}
+
+/** Curated, approximate muscle emphasis for explaining why a move appears in a plan. */
+data class TrainingMuscleFocus(
+    val primary: List<TrainingMuscleGroup>,
+    val supporting: List<TrainingMuscleGroup> = emptyList()
+) {
+    init {
+        require(primary.isNotEmpty() && primary.size <= 3)
+        require(supporting.size <= 4)
+        require(primary.distinct().size == primary.size)
+        require(supporting.distinct().size == supporting.size)
+        require(primary.none { it in supporting })
+    }
+}
+
 /**
  * Lightweight, fully offline wellness exercise library.
  * Informational guidance for generally healthy adults, not medical rehabilitation.
@@ -21,6 +52,9 @@ data class TrainingMove(
     val requiresJumping:Boolean = false,
     val requiresKneeling:Boolean = false
 ) {
+    val muscleFocus: TrainingMuscleFocus
+        get() = TrainingMuscleCatalog.forName(name)
+
     val requiresExternalLoad:Boolean
         get() = equipmentOptions.any { it == TrainingEquipment.DUMBBELL || it == TrainingEquipment.RESISTANCE_BAND }
 
@@ -28,6 +62,93 @@ data class TrainingMove(
         require(restSeconds in 15..180)
     }
 }
+/**
+ * Explicit metadata for every canonical catalog move. Unknown/custom moves fall back to
+ * full-body wording rather than guessing anatomy from an exercise name.
+ */
+object TrainingMuscleCatalog {
+    private fun focus(
+        vararg primary: TrainingMuscleGroup,
+        supporting: List<TrainingMuscleGroup> = emptyList()
+    ) = TrainingMuscleFocus(primary.toList(), supporting)
+
+    private val byName = mapOf(
+        "Khởi động tại chỗ" to focus(TrainingMuscleGroup.FULL_BODY,
+            supporting = listOf(TrainingMuscleGroup.SHOULDERS, TrainingMuscleGroup.QUADRICEPS, TrainingMuscleGroup.CALVES)),
+        "Thả lỏng" to focus(TrainingMuscleGroup.FULL_BODY,
+            supporting = listOf(TrainingMuscleGroup.BACK, TrainingMuscleGroup.HIP_FLEXORS, TrainingMuscleGroup.CALVES)),
+        "Đứng lên – ngồi xuống" to focus(TrainingMuscleGroup.QUADRICEPS, TrainingMuscleGroup.GLUTES,
+            supporting = listOf(TrainingMuscleGroup.HAMSTRINGS, TrainingMuscleGroup.CORE)),
+        "Chống đẩy tường" to focus(TrainingMuscleGroup.CHEST, TrainingMuscleGroup.TRICEPS,
+            supporting = listOf(TrainingMuscleGroup.SHOULDERS, TrainingMuscleGroup.CORE)),
+        "Squat không tạ" to focus(TrainingMuscleGroup.QUADRICEPS, TrainingMuscleGroup.GLUTES,
+            supporting = listOf(TrainingMuscleGroup.HAMSTRINGS, TrainingMuscleGroup.CORE)),
+        "Nâng hông trên sàn" to focus(TrainingMuscleGroup.GLUTES,
+            supporting = listOf(TrainingMuscleGroup.HAMSTRINGS, TrainingMuscleGroup.CORE)),
+        "Bird-dog" to focus(TrainingMuscleGroup.CORE, TrainingMuscleGroup.BACK,
+            supporting = listOf(TrainingMuscleGroup.GLUTES, TrainingMuscleGroup.SHOULDERS)),
+        "Plank khuỷu hoặc plank gối" to focus(TrainingMuscleGroup.CORE,
+            supporting = listOf(TrainingMuscleGroup.SHOULDERS, TrainingMuscleGroup.GLUTES)),
+        "Đi bộ nhanh tại chỗ" to focus(TrainingMuscleGroup.QUADRICEPS, TrainingMuscleGroup.CALVES,
+            supporting = listOf(TrainingMuscleGroup.HIP_FLEXORS, TrainingMuscleGroup.CORE)),
+        "Nâng gối luân phiên có điểm tựa" to focus(TrainingMuscleGroup.HIP_FLEXORS, TrainingMuscleGroup.QUADRICEPS,
+            supporting = listOf(TrainingMuscleGroup.CALVES, TrainingMuscleGroup.CORE)),
+        "Bước ngang nhẹ" to focus(TrainingMuscleGroup.HIP_ABDUCTORS, TrainingMuscleGroup.GLUTES,
+            supporting = listOf(TrainingMuscleGroup.QUADRICEPS)),
+        "Bước lùi – lunge" to focus(TrainingMuscleGroup.QUADRICEPS, TrainingMuscleGroup.GLUTES,
+            supporting = listOf(TrainingMuscleGroup.HAMSTRINGS, TrainingMuscleGroup.CORE)),
+        "Nhón gót" to focus(TrainingMuscleGroup.CALVES,
+            supporting = listOf(TrainingMuscleGroup.QUADRICEPS)),
+        "Chống đẩy gối" to focus(TrainingMuscleGroup.CHEST, TrainingMuscleGroup.TRICEPS,
+            supporting = listOf(TrainingMuscleGroup.SHOULDERS, TrainingMuscleGroup.CORE)),
+        "Dead bug cơ bụng" to focus(TrainingMuscleGroup.CORE,
+            supporting = listOf(TrainingMuscleGroup.HIP_FLEXORS)),
+        "Cat-cow nhẹ" to focus(TrainingMuscleGroup.BACK, TrainingMuscleGroup.CORE,
+            supporting = listOf(TrainingMuscleGroup.SHOULDERS)),
+        "Mở vai và ngực" to focus(TrainingMuscleGroup.SHOULDERS,
+            supporting = listOf(TrainingMuscleGroup.UPPER_BACK)),
+        "Ép ngực tường bằng cẳng tay" to focus(TrainingMuscleGroup.CHEST, TrainingMuscleGroup.TRICEPS,
+            supporting = listOf(TrainingMuscleGroup.SHOULDERS)),
+        "Siết bả vai đứng" to focus(TrainingMuscleGroup.UPPER_BACK,
+            supporting = listOf(TrainingMuscleGroup.SHOULDERS)),
+        "Dang chân sang bên có điểm tựa" to focus(TrainingMuscleGroup.HIP_ABDUCTORS, TrainingMuscleGroup.GLUTES,
+            supporting = listOf(TrainingMuscleGroup.CORE)),
+        "Giãn gân kheo ngồi ghế" to focus(TrainingMuscleGroup.HAMSTRINGS,
+            supporting = listOf(TrainingMuscleGroup.CALVES)),
+        "Giãn cơ và thở chậm" to focus(TrainingMuscleGroup.FULL_BODY,
+            supporting = listOf(TrainingMuscleGroup.SHOULDERS, TrainingMuscleGroup.HIP_FLEXORS)),
+        "Chống đẩy trên bề mặt cao" to focus(TrainingMuscleGroup.CHEST, TrainingMuscleGroup.TRICEPS,
+            supporting = listOf(TrainingMuscleGroup.SHOULDERS, TrainingMuscleGroup.CORE)),
+        "Mountain climber chậm" to focus(TrainingMuscleGroup.CORE, TrainingMuscleGroup.SHOULDERS,
+            supporting = listOf(TrainingMuscleGroup.QUADRICEPS, TrainingMuscleGroup.HIP_FLEXORS)),
+        "Bật nhảy dang tay chân" to focus(TrainingMuscleGroup.FULL_BODY,
+            supporting = listOf(TrainingMuscleGroup.SHOULDERS, TrainingMuscleGroup.QUADRICEPS, TrainingMuscleGroup.CALVES)),
+        "Side plank gối" to focus(TrainingMuscleGroup.CORE,
+            supporting = listOf(TrainingMuscleGroup.SHOULDERS, TrainingMuscleGroup.GLUTES)),
+        "Nâng gối ngồi ghế" to focus(TrainingMuscleGroup.HIP_FLEXORS, TrainingMuscleGroup.CORE,
+            supporting = listOf(TrainingMuscleGroup.QUADRICEPS)),
+        "Đứng thăng bằng có hỗ trợ" to focus(TrainingMuscleGroup.CALVES, TrainingMuscleGroup.GLUTES,
+            supporting = listOf(TrainingMuscleGroup.QUADRICEPS, TrainingMuscleGroup.CORE)),
+        "Squat chậm 3 giây" to focus(TrainingMuscleGroup.QUADRICEPS, TrainingMuscleGroup.GLUTES,
+            supporting = listOf(TrainingMuscleGroup.HAMSTRINGS, TrainingMuscleGroup.CORE)),
+        "Chống đẩy sàn" to focus(TrainingMuscleGroup.CHEST, TrainingMuscleGroup.TRICEPS,
+            supporting = listOf(TrainingMuscleGroup.SHOULDERS, TrainingMuscleGroup.CORE)),
+        "Kéo tạ đơn hoặc dây kháng lực" to focus(TrainingMuscleGroup.BACK, TrainingMuscleGroup.BICEPS,
+            supporting = listOf(TrainingMuscleGroup.SHOULDERS, TrainingMuscleGroup.CORE)),
+        "Gập hông với tạ đơn hoặc dây" to focus(TrainingMuscleGroup.GLUTES, TrainingMuscleGroup.HAMSTRINGS,
+            supporting = listOf(TrainingMuscleGroup.BACK, TrainingMuscleGroup.CORE)),
+        "Gập hông không dụng cụ" to focus(TrainingMuscleGroup.GLUTES, TrainingMuscleGroup.HAMSTRINGS,
+            supporting = listOf(TrainingMuscleGroup.BACK, TrainingMuscleGroup.CORE)),
+        "Đẩy vai với tạ đơn hoặc dây" to focus(TrainingMuscleGroup.SHOULDERS, TrainingMuscleGroup.TRICEPS,
+            supporting = listOf(TrainingMuscleGroup.CORE))
+    )
+
+    private val fallback = TrainingMuscleFocus(listOf(TrainingMuscleGroup.FULL_BODY))
+
+    fun forName(name: String): TrainingMuscleFocus = byName[name] ?: fallback
+    fun isCurated(name: String): Boolean = name in byName
+}
+
 data class TrainingProgram(
     val id:String,
     val name:String,

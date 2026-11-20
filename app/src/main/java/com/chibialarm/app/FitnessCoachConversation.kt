@@ -263,7 +263,8 @@ object FitnessCoachConversation {
             avoidWristLoad = next.avoidWristLoad ?: previous.avoidWristLoad,
             avoidFloorPositions = next.avoidFloorPositions ?: previous.avoidFloorPositions,
             avoidOverheadReach = next.avoidOverheadReach ?: previous.avoidOverheadReach,
-            additionalEquipment = next.additionalEquipment ?: previous.additionalEquipment
+            additionalEquipment = next.additionalEquipment ?: previous.additionalEquipment,
+            avoidKneeling = next.avoidKneeling ?: previous.avoidKneeling
         )
     }
 }

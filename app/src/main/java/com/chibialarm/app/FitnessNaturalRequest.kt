@@ -20,7 +20,8 @@ object FitnessNaturalRequest {
         val avoidFloorPositions: Boolean? = null,
         val avoidOverheadReach: Boolean? = null,
         // Additional tools are explicit session choices; null means this utterance said nothing about them.
-        val additionalEquipment: Set<TrainingEquipment>? = null
+        val additionalEquipment: Set<TrainingEquipment>? = null,
+        val avoidKneeling: Boolean? = null
     )
 
     private fun normalize(input: String): String {
@@ -249,7 +250,7 @@ object FitnessNaturalRequest {
             "khong nam san", "tranh nam san", "dung nam san",
             "khong quy san", "tranh quy san", "dung quy san",
             "khong xuong san", "tranh xuong san", "dung xuong san",
-            "khong nam", "tranh nam", "dung nam", "khong quy", "tranh quy", "dung quy",
+            "khong nam", "tranh nam", "dung nam",
             "khong tap duoi san", "tranh bai nam san", "khong nam xuong san"
         )
         val avoidFloorPositions = when {
@@ -281,6 +282,25 @@ object FitnessNaturalRequest {
         val avoidOverheadReach = when {
             overheadRestrictions.any(overheadRestrictionText::contains) -> true
             overheadRelaxations.any(text::contains) -> false
+            else -> null
+        }
+
+        // Kneeling is a distinct session preference: it must not ban supine work.
+        // Explicit pain such as "đau đầu gối" remains handled by the safety-stop parser above.
+        val kneelingRelaxations = listOf(
+            "bo han che quy goi", "bo tranh quy goi", "khong can tranh quy goi",
+            "co the quy goi", "quy goi duoc"
+        )
+        val kneelingRestrictionText = kneelingRelaxations.fold(text) { remaining, phrase ->
+            remaining.replace(phrase, " ")
+        }
+        val kneelingRestrictions = listOf(
+            "khong quy goi", "tranh quy goi", "dung quy goi",
+            "khong muon quy goi", "khong the quy goi", "han che quy goi"
+        )
+        val avoidKneeling = when {
+            kneelingRestrictions.any(kneelingRestrictionText::contains) -> true
+            kneelingRelaxations.any(text::contains) -> false
             else -> null
         }
 
@@ -370,12 +390,14 @@ object FitnessNaturalRequest {
             (if (injury || lowImpact) 1 else 0) +
             (if (avoidWristLoad != null) 1 else 0) +
             (if (avoidFloorPositions != null) 1 else 0) +
-            (if (avoidOverheadReach != null) 1 else 0)
+            (if (avoidOverheadReach != null) 1 else 0) +
+            (if (avoidKneeling != null) 1 else 0)
         val reply = when {
             injury -> "Mày báo đau hoặc có dấu hiệu cần thận trọng. Tao đã chọn mức hạn chế vận động cao nhất. Không bắt đầu tập khi đang có triệu chứng; hãy tham khảo chuyên gia y tế. Kiểm tra các lựa chọn trước khi tiếp tục."
             avoidWristLoad == true && avoidFloorPositions == true -> "Tao đã ghi nhận mày muốn tránh tải qua cổ tay và tránh nằm/quỳ sàn. Tao sẽ lọc các động tác đã được xác định trong thư viện, không tự bịa bài thay thế. Hãy xem lại giáo án trước khi bắt đầu."
             avoidWristLoad == true -> "Tao đã ghi nhận mày muốn tránh chống tay hoặc cầm tải qua cổ tay. Tao sẽ thay các động tác phù hợp trong thư viện và cho mày xem trước. Nếu đang đau, tê hoặc sưng, đừng bắt đầu tập; hãy xin tư vấn chuyên môn."
             avoidFloorPositions == true -> "Tao đã ghi nhận mày muốn tránh các động tác phải nằm hoặc quỳ sàn. Tao sẽ bỏ các động tác đã được xác định trong thư viện; có thể cần chọn chương trình khác nếu không còn đủ bài phù hợp."
+            avoidKneeling == true -> "Tao đã ghi nhận mày muốn tránh động tác phải quỳ gối. Lựa chọn này được lọc riêng với các bài nằm ngửa hoặc ngồi; hãy kiểm tra giáo án trước khi bắt đầu."
             avoidOverheadReach == true -> "Tao đã ghi nhận mày muốn tránh đưa tay hoặc tải lên quá đầu. Tao sẽ lọc những động tác đã được đánh dấu trong thư viện và cho mày xem trước; đây là lựa chọn vận động, không phải chẩn đoán vai."
             detected == 0 -> "Tao chưa hiểu rõ mục tiêu. Hãy thử: 'giãn cơ 15 phút không dụng cụ'. Mày vẫn có thể chọn thủ công."
             else -> "Tao đã điền những thông tin nhận ra vào biểu mẫu. Kiểm tra lại mục tiêu, thời gian, dụng cụ và hạn chế vận động rồi bấm 'Gợi ý chương trình phù hợp'. Đây là gợi ý offline, không phải tư vấn y khoa."
@@ -391,7 +413,8 @@ object FitnessNaturalRequest {
             avoidWristLoad = avoidWristLoad,
             avoidFloorPositions = avoidFloorPositions,
             avoidOverheadReach = avoidOverheadReach,
-            additionalEquipment = additionalEquipment
+            additionalEquipment = additionalEquipment,
+            avoidKneeling = avoidKneeling
         )
     }
 }

@@ -803,6 +803,7 @@ class FitnessActivity:Activity() {
                     parsed.avoidWristLoad?.let { wristLoadCheckBox?.isChecked = it }
                     parsed.avoidFloorPositions?.let { floorPositionCheckBox?.isChecked = it }
                     parsed.avoidOverheadReach?.let { overheadReachCheckBox?.isChecked = it }
+                    parsed.avoidKneeling?.let { kneelingCheckBox?.isChecked = it }
                     parsed.additionalEquipment?.let { setAdditionalEquipmentSelection(it) }
                     sayFollowUp(coachMessage)
                     val planReady =

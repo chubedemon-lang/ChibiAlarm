@@ -416,4 +416,25 @@ class FitnessNaturalRequestTest {
         assertEquals(emptySet<TrainingEquipment>(), result.additionalEquipment)
     }
 
+
+
+    @Test fun kneelingPreferenceIsDistinctFromFloorRestrictionAndKneePainStop() {
+        val kneeling = FitnessNaturalRequest.parse("không quỳ gối")
+        assertEquals(true, kneeling.avoidKneeling)
+        assertNull(kneeling.avoidFloorPositions)
+        assertNull(kneeling.impact)
+
+        val floor = FitnessNaturalRequest.parse("không quỳ sàn")
+        assertEquals(true, floor.avoidFloorPositions)
+        assertNull(floor.avoidKneeling)
+
+        val permission = FitnessNaturalRequest.parse("có thể quỳ gối")
+        assertEquals(false, permission.avoidKneeling)
+        assertNull(permission.avoidFloorPositions)
+
+        val pain = FitnessNaturalRequest.parse("đau đầu gối")
+        assertEquals(2, pain.impact)
+        assertNull(pain.avoidKneeling)
+    }
+
 }

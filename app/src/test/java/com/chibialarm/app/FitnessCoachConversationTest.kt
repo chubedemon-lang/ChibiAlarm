@@ -543,4 +543,27 @@ class FitnessCoachConversationTest {
         assertEquals(2, FitnessCoachConversation.merge(previous, reply).goal)
     }
 
+
+
+    @Test fun kneelingPreferenceSurvivesUnrelatedConversationTurnsAndCanBeRelaxed() {
+        val first = FitnessCoachConversation.merge(
+            null, FitnessNaturalRequest.parse("không quỳ gối")
+        )
+        assertEquals(true, first.avoidKneeling)
+
+        val later = FitnessCoachConversation.merge(
+            first, FitnessNaturalRequest.parse("giãn cơ 20 phút")
+        )
+        assertEquals(true, later.avoidKneeling)
+        assertEquals(2, later.goal)
+        assertEquals(20, later.minutes)
+
+        val relaxed = FitnessCoachConversation.merge(
+            later, FitnessNaturalRequest.parse("có thể quỳ gối")
+        )
+        assertEquals(false, relaxed.avoidKneeling)
+        assertEquals(2, relaxed.goal)
+        assertEquals(20, relaxed.minutes)
+    }
+
 }

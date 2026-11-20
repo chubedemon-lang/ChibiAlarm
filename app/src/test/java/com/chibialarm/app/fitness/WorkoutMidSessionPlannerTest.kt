@@ -1604,7 +1604,11 @@ class WorkoutMidSessionPlannerTest {
     }
 
     @Test fun explicitKneelingPermissionRelaxesOnlyThatSessionPreference() {
-        val current = WorkoutConstraintProfile(avoidKneeling = true, avoidWristLoad = true)
+        val current = WorkoutConstraintProfile(
+            avoidKneeling = true,
+            avoidWristLoad = true,
+            avoidFloorPositions = true
+        )
         val parsed = WorkoutMidSessionRequest.parse("Có thể quỳ gối")
         assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
         val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
@@ -1614,6 +1618,7 @@ class WorkoutMidSessionPlannerTest {
         val effective = WorkoutMidSessionPlanner.effectiveConstraints(current, request)
         assertFalse(effective.avoidKneeling)
         assertTrue("Unmentioned wrist restriction must remain active", effective.avoidWristLoad)
+        assertTrue("Allowing kneeling must not relax the separate floor preference", effective.avoidFloorPositions)
     }
 
     @Test fun kneelingRestrictionWinsOverPermissionAndUnrelatedRequestsPreserveIt() {
@@ -1630,6 +1635,31 @@ class WorkoutMidSessionPlannerTest {
             current, (unrelated as WorkoutMidSessionRequest.Result.Proposed).request
         )
         assertTrue("An unrelated utterance is not consent to relax kneeling", preserved.avoidKneeling)
+    }
+
+    @Test fun kneelingRestrictionCannotRewriteTheActiveMoveAfterASetWasConfirmed() {
+        val parsed = WorkoutMidSessionRequest.parse("Không quỳ gối nữa")
+        assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
+        val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+        val result = WorkoutMidSessionPlanner.preview(
+            currentMoves = listOf(
+                move("Bird-dog"),
+                move("Squat không tạ"),
+                move("Thả lỏng")
+            ),
+            currentIndex = 0,
+            completedCurrentSets = 1,
+            currentStepLocked = true,
+            constraints = WorkoutConstraintProfile(),
+            request = request,
+            remainingCurrentSeconds = 30,
+            extensionMoveNames = emptySet(),
+            level = 0
+        )
+        assertTrue(result is WorkoutMidSessionPlanner.Result.Blocked)
+        assertTrue(
+            (result as WorkoutMidSessionPlanner.Result.Blocked).reason.contains("không thể đổi hồi tố")
+        )
     }
 
 }

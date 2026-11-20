@@ -1504,4 +1504,20 @@ class WorkoutMidSessionPlannerTest {
         assertTrue(result(12) is WorkoutMidSessionPlanner.Result.Blocked)
     }
 
+
+    @Test fun repLimitIsBlockedWhenEverySetHasAlreadyBeenConfirmed() {
+        val result = WorkoutMidSessionPlanner.preview(
+            currentMoves = listOf(move("Squat không tạ"), move("Thả lỏng")),
+            currentIndex = 0,
+            completedCurrentSets = 3,
+            currentStepLocked = true,
+            constraints = WorkoutConstraintProfile(),
+            request = WorkoutMidSessionRequest.Request(currentRepLimit = 10),
+            remainingCurrentSeconds = 0,
+            extensionMoveNames = emptySet(),
+            level = 0
+        )
+        assertTrue(result is WorkoutMidSessionPlanner.Result.Blocked)
+    }
+
 }

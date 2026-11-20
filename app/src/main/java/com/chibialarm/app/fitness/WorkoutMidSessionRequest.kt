@@ -198,14 +198,19 @@ object WorkoutMidSessionRequest {
         // remaining time and a duration mentioned elsewhere in the sentence.
         val remainingMinutes = fitness.minutes.takeIf { hasRemainingTimeCue(text) }
 
-        val explicitlyNotTired = has("khong met", "khong hoi met", "khong thay met")
+        val explicitlyNotTired = has(
+            "khong met", "khong hoi met", "khong thay met",
+            "khong moi", "khong bi moi", "khong duoi", "khong duoi suc", "khong het pin"
+        )
         val explicitlyNotDifficult = has("khong kho", "khong qua suc")
         // People often describe a set as "khó quá" or "không theo kịp" rather than
         // naming fatigue. Treat these as a request for a preview, never an automatic
         // plan mutation. The existing safety gate above still gives pain priority.
         val explicitDifficulty = has(
             "kho qua", "qua suc", "khong theo kip", "khong theo noi",
-            "duoi roi", "duoi qua", "bai nay nang qua", "dong tac nay nang qua"
+            "duoi roi", "duoi qua", "hoi duoi", "duoi suc", "het pin",
+            "moi co", "co bap moi", "chan moi qua", "hoi moi",
+            "bai nay nang qua", "dong tac nay nang qua"
         )
         val lowEnergy = !(explicitlyNotTired || explicitlyNotDifficult) && (
             fitness.energy == 0 || explicitDifficulty ||

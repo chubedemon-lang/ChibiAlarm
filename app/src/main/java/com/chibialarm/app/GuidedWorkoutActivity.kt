@@ -439,10 +439,23 @@ class GuidedWorkoutActivity:Activity() {
             }
             val left=(deadline-SystemClock.elapsedRealtime()).coerceAtLeast(0L)
             remainingMs=left
-            if (left in 1L..10_000L && !tenSecondCueGiven && !pausedForSafety) {
-                tenSecondCueGiven=true
-                val upcoming = moves.getOrNull(index + 1)?.name
-                speak(if (upcoming != null) "Còn mười giây. Tiếp theo: $upcoming." else "Còn mười giây. Sắp hoàn thành buổi tập.")
+            if (WorkoutExerciseVoiceCue.shouldAnnounce(
+                    remainingMs = left,
+                    alreadyAnnounced = tenSecondCueGiven,
+                    pausedForSafety = pausedForSafety,
+                    microphoneActive = pendingRecognitionRequestCode != null,
+                    // Keep retrying on the next timer tick if TTS is busy or not ready.
+                    speechEngineReady = ready && spoken != null && spoken?.isSpeaking != true
+                )) {
+                val cue = WorkoutExerciseVoiceCue.message(
+                    remainingMs = left,
+                    upcomingMoveName = moves.getOrNull(index + 1)?.name
+                )
+                // Consume the one-shot only after Android accepts the utterance.
+                if (!cue.isNullOrBlank() && speak(cue)) {
+                    tenSecondCueGiven = true
+                    saveCheckpoint()
+                }
             }
             val seconds=(left/1000).toInt()
             counter.text=String.format(Locale.US,"%02d:%02d",seconds/60,seconds%60)

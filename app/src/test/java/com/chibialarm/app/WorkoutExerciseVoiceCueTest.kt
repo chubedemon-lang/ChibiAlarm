@@ -48,7 +48,7 @@ class WorkoutExerciseVoiceCueTest {
     @Test fun sanitizesAndBoundsTheNextMoveLabel() {
         assertEquals(
             "Còn 5 giây. Tiếp theo: Đi bộ tại chỗ.",
-            WorkoutExerciseVoiceCue.message(5_000L, "  Đi bộ\\n tại chỗ\\u0000 ")
+            WorkoutExerciseVoiceCue.message(5_000L, "  Đi bộ\n tại chỗ\u0000 ")
         )
         assertTrue(WorkoutExerciseVoiceCue.message(5_000L, "x".repeat(200))!!.length < 120)
     }

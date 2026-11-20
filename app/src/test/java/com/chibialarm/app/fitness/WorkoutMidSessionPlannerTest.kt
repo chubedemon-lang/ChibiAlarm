@@ -1520,4 +1520,29 @@ class WorkoutMidSessionPlannerTest {
         assertTrue(result is WorkoutMidSessionPlanner.Result.Blocked)
     }
 
+
+    @Test fun repLimitBlocksTimedMovesAndCanBeCombinedWithExplicitRest() {
+        val timed = WorkoutMidSessionPlanner.preview(
+            currentMoves = listOf(move("Plank khuỷu hoặc plank gối"), move("Thả lỏng")),
+            currentIndex = 0,
+            completedCurrentSets = 0,
+            currentStepLocked = false,
+            constraints = WorkoutConstraintProfile(),
+            request = WorkoutMidSessionRequest.Request(currentRepLimit = 10),
+            remainingCurrentSeconds = 30,
+            extensionMoveNames = emptySet(),
+            level = 0
+        )
+        assertTrue(timed is WorkoutMidSessionPlanner.Result.Blocked)
+
+        val parsed = WorkoutMidSessionRequest.parse(
+            "Giảm còn 10 lần mỗi hiệp và nghỉ 90 giây"
+        )
+        assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
+        val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+        assertEquals(10, request.currentRepLimit)
+        assertEquals(90, request.restSeconds)
+        assertFalse(request.isRestOnly)
+    }
+
 }

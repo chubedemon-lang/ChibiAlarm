@@ -40,4 +40,31 @@ class WorkoutMidSessionCompoundIntentTest {
 
         assertTrue(parsed is WorkoutMidSessionRequest.Result.Unsupported)
     }
+    @Test
+    fun explicitSetReductionAcceptsVietnameseNumberWordsAndCanIncludeRest() {
+        val parsed = WorkoutMidSessionRequest.parse("Giảm còn hai hiệp và nghỉ thêm 30 giây")
+
+        assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
+        val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+        assertEquals(2, request.currentSetLimit)
+        assertEquals(30, request.restSeconds)
+        assertTrue(!request.isRestOnly)
+    }
+
+    @Test
+    fun progressQuestionAndNegatedOrOutOfRangeSetCommandsDoNotBecomeChanges() {
+        assertTrue(
+            WorkoutMidSessionRequest.parse("Còn 2 hiệp nữa?") is
+                WorkoutMidSessionRequest.Result.Unsupported
+        )
+        assertTrue(
+            WorkoutMidSessionRequest.parse("Đừng giảm còn 2 hiệp") is
+                WorkoutMidSessionRequest.Result.Unsupported
+        )
+        assertTrue(
+            WorkoutMidSessionRequest.parse("Giảm còn 21 hiệp") is
+                WorkoutMidSessionRequest.Result.Unsupported
+        )
+    }
+
 }

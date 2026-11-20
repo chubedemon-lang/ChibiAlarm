@@ -135,6 +135,8 @@ class GuidedWorkoutActivity:Activity() {
     private var restDeadline=0L
     private var restRemainingMs=0L
     private var restTenSecondCueGiven=false
+    // A rest-completion cue survives a busy/unavailable TTS engine and process recreation.
+    private val restCompletionSpeechQueue = WorkoutRestCompletionSpeechQueue()
     private var setTimerExpired=false
     private fun targetDose(position:Int):String = repTargets[position]?.let {
         val unit = WorkoutSetTracker.parse(moves[position].dose, moves[position].restSeconds)?.unit ?: "lần"
@@ -189,6 +191,7 @@ class GuidedWorkoutActivity:Activity() {
             .putBoolean("resting",resting)
             .putLong("restRemaining",restRemainingMs.coerceIn(0L,600_000L))
             .putBoolean("restTenSecondCueGiven",restTenSecondCueGiven)
+            .putString("restCompletionSpeech",restCompletionSpeechQueue.pendingMessage)
             .putBoolean("setTimerExpired",setTimerExpired)
             .putBoolean("started",activeElapsedMs()>0L)
             .putLong("elapsed",activeElapsedMs())
@@ -312,6 +315,7 @@ class GuidedWorkoutActivity:Activity() {
                     val plan=setPlan(position)
                     plan!=null && !WorkoutSetTracker.isComplete(completedSetsByMove[position] ?: 0,plan)
                 }
+                restCompletionSpeechQueue.restore(checkpoint.getString("restCompletionSpeech",null))
                 displayStep()
                 remainingMs=checkpoint.getLong("remaining",remainingMs).coerceIn(0L,600_000L)
                 tenSecondCueGiven=checkpoint.getBoolean("tenSecondCueGiven",remainingMs<=10_000L)
@@ -407,34 +411,33 @@ class GuidedWorkoutActivity:Activity() {
                     resting=false
                     paused=true
                     restRemainingMs=0L
+                    val completedSets = completedSetsByMove[index] ?: 0
+                    val plan = currentSetPlan()
+                    val nextIndex = WorkoutRestPosePreview.nextMoveIndex(
+                        currentIndex = index,
+                        moveCount = moves.size,
+                        completedSets = completedSets,
+                        plan = plan
+                    )
+                    val nextMove = nextIndex
+                        ?.takeIf { it != index }
+                        ?.let { moves.getOrNull(it) }
+                    // Keep the spoken completion cue until TTS accepts it. If speech is
+                    // unavailable, the same message remains visible and manually replayable.
+                    restCompletionSpeechQueue.enqueue(
+                        WorkoutRestVoiceCue.completionMessage(
+                            moveName = moves.getOrNull(index)?.name,
+                            completedSets = completedSets,
+                            plan = plan,
+                            nextMoveName = nextMove?.name,
+                            nextMoveDose = nextMove?.dose
+                        )
+                    )
                     renderSetControls()
                     control.text="▶ Tiếp tục hiệp"
                     counter.text=clockText(remainingMs)
                     saveCheckpoint()
-                    // Do not let TTS interrupt an active speech-recognition session.
-                    if (pendingRecognitionRequestCode == null) {
-                        val completedSets = completedSetsByMove[index] ?: 0
-                        val plan = currentSetPlan()
-                        val nextIndex = WorkoutRestPosePreview.nextMoveIndex(
-                            currentIndex = index,
-                            moveCount = moves.size,
-                            completedSets = completedSets,
-                            plan = plan
-                        )
-                        val nextMove = nextIndex
-                            ?.takeIf { it != index }
-                            ?.let { moves.getOrNull(it) }
-                        speak(
-                            message = WorkoutRestVoiceCue.completionMessage(
-                                moveName = moves.getOrNull(index)?.name,
-                                completedSets = completedSets,
-                                plan = plan,
-                                nextMoveName = nextMove?.name,
-                                nextMoveDose = nextMove?.dose
-                            ),
-                            queueMode = TextToSpeech.QUEUE_ADD
-                        )
-                    }
+                    drainPendingRestCompletionSpeech()
                 } else handler.postDelayed(this,300)
                 return
             }
@@ -683,10 +686,12 @@ class GuidedWorkoutActivity:Activity() {
                         "Buổi tập đang dừng vì đau; không phát hướng dẫn vận động.", Toast.LENGTH_LONG).show()
                     pendingRecognitionRequestCode != null -> Toast.makeText(this@GuidedWorkoutActivity,
                         "Đang chờ quyền hoặc phiên nhận giọng nói; hãy nghe sau khi microphone đóng.", Toast.LENGTH_LONG).show()
+                    !ready -> Toast.makeText(this@GuidedWorkoutActivity,
+                        "Giọng đọc chưa sẵn sàng. Thông báo vẫn được giữ bằng chữ trên màn hình.", Toast.LENGTH_LONG).show()
+                    !resting && restCompletionSpeechQueue.pendingMessage != null ->
+                        drainPendingRestCompletionSpeech()
                     !resting -> Toast.makeText(this@GuidedWorkoutActivity,
                         "Chỉ có hướng dẫn xem trước trong thời gian nghỉ.", Toast.LENGTH_SHORT).show()
-                    !ready -> Toast.makeText(this@GuidedWorkoutActivity,
-                        "Giọng đọc chưa sẵn sàng. Bạn vẫn có thể đọc hướng dẫn trên màn hình.", Toast.LENGTH_LONG).show()
                     else -> restStepSpeechText?.let { speak(it) }
                 }
             }
@@ -853,6 +858,7 @@ class GuidedWorkoutActivity:Activity() {
             )
             ready=selection.languageSupported
             updateRestStepSpeakButton()
+            drainPendingRestCompletionSpeech()
             preferredWorkoutSpeechRate=WorkoutSpeechRate.normalize(settings.getFloat("rate",1f))
             if (!workoutSpeechRateRestored) workoutSpeechRate=preferredWorkoutSpeechRate
             engine.setSpeechRate(workoutSpeechRate)
@@ -886,6 +892,7 @@ class GuidedWorkoutActivity:Activity() {
             repTargets.putAll(WorkoutRepTargets.decode(savedInstanceState.getString("workout_rep_targets"),moves.size,index))
             completedMoveIndices.clear()
             completedMoveIndices.addAll(WorkoutCompletionTracker.decode(savedInstanceState.getString("workout_completed_moves"),moves.size))
+            restCompletionSpeechQueue.restore(savedInstanceState.getString("workout_rest_completion_speech"))
             completedSetsByMove.clear()
             completedSetsByMove.putAll(WorkoutSetTracker.decode(savedInstanceState.getString("workout_completed_sets"),moves))
             // Rotation uses the Android Bundle path, not the guest checkpoint dialog.
@@ -961,6 +968,7 @@ class GuidedWorkoutActivity:Activity() {
         outState.putBoolean("workout_resting",resting)
         outState.putLong("workout_rest_remaining",restRemainingMs.coerceIn(0L,600_000L))
         outState.putBoolean("workout_rest_ten_second_cue",restTenSecondCueGiven)
+        outState.putString("workout_rest_completion_speech",restCompletionSpeechQueue.pendingMessage)
         outState.putBoolean("workout_set_timer_expired",setTimerExpired)
         outState.putInt("workout_index",index)
         outState.putLong("workout_remaining",remainingMs)
@@ -1006,6 +1014,7 @@ class GuidedWorkoutActivity:Activity() {
         } catch (_:Exception) {
             if (pendingRecognitionRequestCode == requestCode) pendingRecognitionRequestCode = null
             updateRestStepSpeakButton()
+            handler.post { drainPendingRestCompletionSpeech() }
             if (guideRequest) guideVoiceResultHandler = null
             if (effortRequest) effortVoiceResultHandler = null
             Toast.makeText(this,"Thiết bị chưa có dịch vụ nhận giọng nói. Hãy dùng các lựa chọn trên màn hình.",Toast.LENGTH_LONG).show()
@@ -1033,6 +1042,7 @@ class GuidedWorkoutActivity:Activity() {
                 "Micro chưa được cấp quyền. Bạn vẫn có thể điều khiển buổi tập bằng chữ; có thể bật quyền trong Cài đặt ứng dụng.",
                 Toast.LENGTH_LONG
             ).show()
+            handler.post { drainPendingRestCompletionSpeech() }
         }
     }
 
@@ -2563,6 +2573,8 @@ class GuidedWorkoutActivity:Activity() {
         if (requestCode == voiceRequest || requestCode == guideVoiceRequest || requestCode == effortVoiceRequest) {
             if (pendingRecognitionRequestCode == requestCode) pendingRecognitionRequestCode = null
             updateRestStepSpeakButton()
+            // Post until the recognizer callback has finished processing its selected result.
+            handler.post { drainPendingRestCompletionSpeech() }
         }
         if (requestCode == guideVoiceRequest) {
             val callback = guideVoiceResultHandler
@@ -3080,17 +3092,25 @@ class GuidedWorkoutActivity:Activity() {
 
     private fun updateRestStepSpeakButton() {
         if (!::restStepSpeakButton.isInitialized) return
-        val hasCue = resting && !pausedForSafety && !restStepSpeechText.isNullOrBlank()
+        val pendingCompletion = !restCompletionSpeechQueue.pendingMessage.isNullOrBlank() && !resting
+        val hasCue = !pausedForSafety && (
+            pendingCompletion || (resting && !restStepSpeechText.isNullOrBlank())
+        )
         restStepSpeakButton.visibility = if (hasCue) android.view.View.VISIBLE else android.view.View.GONE
+        restStepSpeakButton.text = if (pendingCompletion) "🔊 Nghe thông báo sau nghỉ"
+            else "🔊 Nghe bước tiếp theo"
         restStepSpeakButton.isEnabled = hasCue && ready && pendingRecognitionRequestCode == null
-        val actionDescription =
+        val actionDescription = if (pendingCompletion) {
+            "Đọc lại thông báo kết thúc thời gian nghỉ; không thay đổi buổi tập"
+        } else {
             "Đọc một lần hướng dẫn bước tiếp theo; không thay đổi bộ đếm nghỉ"
+        }
         restStepSpeakButton.contentDescription = when {
             !hasCue -> "Không có hướng dẫn bước tiếp theo để đọc"
             pendingRecognitionRequestCode != null ->
                 "$actionDescription; tạm khóa khi đang chờ microphone"
             !ready ->
-                "$actionDescription; giọng đọc chưa sẵn sàng, hướng dẫn vẫn hiển thị bằng chữ"
+                "$actionDescription; giọng đọc chưa sẵn sàng, thông báo vẫn hiển thị bằng chữ"
             else -> actionDescription
         }
     }
@@ -3099,16 +3119,31 @@ class GuidedWorkoutActivity:Activity() {
         if (!::restPreview.isInitialized || !::restPosePreview.isInitialized ||
             !::restStepPreview.isInitialized || !::restStepSpeakButton.isInitialized) return
         if (!resting || pausedForSafety || index !in moves.indices) {
-            restPreview.text = ""
-            restPreview.contentDescription = ""
-            restPreview.visibility = android.view.View.GONE
-            restPosePreview.contentDescription = ""
-            restPosePreview.visibility = android.view.View.GONE
-            restPosePreview.motionEnabled = false
-            restStepPreview.text = ""
-            restStepPreview.contentDescription = ""
-            restStepPreview.visibility = android.view.View.GONE
-            restStepSpeechText = null
+            val pendingCompletion = restCompletionSpeechQueue.pendingMessage
+            if (!pausedForSafety && !pendingCompletion.isNullOrBlank()) {
+                val visibleMessage = "Thông báo sau nghỉ: $pendingCompletion"
+                restPreview.text = visibleMessage
+                restPreview.contentDescription = visibleMessage
+                restPreview.visibility = android.view.View.VISIBLE
+                restPosePreview.contentDescription = ""
+                restPosePreview.visibility = android.view.View.GONE
+                restPosePreview.motionEnabled = false
+                restStepPreview.text = pendingCompletion
+                restStepPreview.contentDescription = pendingCompletion
+                restStepPreview.visibility = android.view.View.VISIBLE
+                restStepSpeechText = pendingCompletion
+            } else {
+                restPreview.text = ""
+                restPreview.contentDescription = ""
+                restPreview.visibility = android.view.View.GONE
+                restPosePreview.contentDescription = ""
+                restPosePreview.visibility = android.view.View.GONE
+                restPosePreview.motionEnabled = false
+                restStepPreview.text = ""
+                restStepPreview.contentDescription = ""
+                restStepPreview.visibility = android.view.View.GONE
+                restStepSpeechText = null
+            }
             updateRestStepSpeakButton()
             if (::poseView.isInitialized) poseView.motionEnabled = !pausedForSafety
             return
@@ -3739,6 +3774,30 @@ class GuidedWorkoutActivity:Activity() {
         val engine = spoken ?: return false
         engine.setSpeechRate(workoutSpeechRate)
         return engine.speak(message.take(350), queueMode, null, "fitness-${index}") == TextToSpeech.SUCCESS
+    }
+
+    /**
+     * Deliver a rest-completion announcement only after Android accepts it.
+     * The queue is checkpointed, so a missing Vietnamese voice or an active
+     * microphone never silently discards the user's next-step guidance.
+     */
+    private fun drainPendingRestCompletionSpeech() {
+        val message = restCompletionSpeechQueue.takeIfReady(
+            microphoneActive = pendingRecognitionRequestCode != null,
+            pausedForSafety = pausedForSafety,
+            speechEngineReady = ready && spoken != null
+        ) ?: run {
+            updateRestStepSpeakButton()
+            return
+        }
+        if (speak(message, TextToSpeech.QUEUE_ADD)) {
+            saveCheckpoint()
+            renderRestPreview()
+        } else {
+            restCompletionSpeechQueue.restore(message)
+            saveCheckpoint()
+            updateRestStepSpeakButton()
+        }
     }
 
     /** Speak the complete coach answer as bounded utterances instead of truncating it at 350 chars. */

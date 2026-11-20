@@ -102,6 +102,17 @@ class FitnessPlanSpeechSummaryTest {
         assertTrue(spoken.length <= FitnessPlanSpeechSummary.MAX_CHARACTERS)
     }
 
+    @Test fun spokenSummaryCanExplainTheSelectedPlanMuscleFocus() {
+        val spoken = FitnessPlanSpeechSummary.fromProfile(
+            profile(),
+            "Toàn thân",
+            muscleFocusSummary = "Nhóm cơ chính: Đùi trước, Mông."
+        )
+
+        assertTrue(spoken.contains("Nhóm cơ chính: Đùi trước, Mông."))
+        assertTrue(spoken.length <= FitnessPlanSpeechSummary.MAX_CHARACTERS)
+    }
+
     @Test fun longUiLabelsRemainBoundedAndKeepAllSafetyFilters() {
         val spoken = FitnessPlanSpeechSummary.fromProfile(
             profile(

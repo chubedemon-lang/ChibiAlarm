@@ -355,6 +355,11 @@ object WorkoutMidSessionPlanner {
                 ?: return Result.Blocked("Không còn động tác hiện tại để giới hạn số lần.")
             val plan = WorkoutSetTracker.parse(activeMove.dose, activeMove.restSeconds)
                 ?: return Result.Blocked("Động tác hiện tại không có giáo án hiệp/lần để giới hạn số lần.")
+
+            val confirmedSets = if (currentChanged) 0 else completedCurrentSets
+            if (confirmedSets >= plan.maximumSets) {
+                return Result.Blocked("Bạn đã xác nhận đủ ${plan.maximumSets} hiệp; không còn hiệp chưa thực hiện để đổi số lần.")
+            }
             when {
                 plan.unit == "giây" -> return Result.Blocked(
                     "Động tác này được tính theo thời gian, không thể đổi thành số lần."

@@ -47,3 +47,24 @@ object CoachSpeechTranscript {
             .toList()
     }
 }
+
+/**
+ * A spoken command is actionable only after its length and safety priority are reviewed.
+ * Long/truncated recognizer output must be edited before a non-safety action can run.
+ */
+internal object WorkoutVoiceCandidatePolicy {
+    const val MAX_COMMAND_CHARS = 160
+
+    data class Review(
+        val command: WorkoutVoiceCommands.Command,
+        val requiresEdit: Boolean
+    )
+
+    fun review(candidate: CoachSpeechTranscript.Candidate): Review {
+        val text = candidate.text.trim()
+        return Review(
+            command = WorkoutVoiceCommands.parse(text.take(MAX_COMMAND_CHARS)),
+            requiresEdit = candidate.truncated || text.length > MAX_COMMAND_CHARS
+        )
+    }
+}

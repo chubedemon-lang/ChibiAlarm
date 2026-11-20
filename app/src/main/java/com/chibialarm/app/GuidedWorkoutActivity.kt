@@ -2374,6 +2374,68 @@ class GuidedWorkoutActivity:Activity() {
         }
         startActivityForResult(i,pickVideoRequest)
     }
+    /**
+     * Review bounded recognizer alternatives instead of silently trusting the first guess.
+     * A safety symptom in the selected prefix still stops immediately; long/truncated
+     * non-safety text must be edited before any workout command can be applied.
+     */
+    private fun reviewWorkoutVoiceCandidate(candidate: CoachSpeechTranscript.Candidate) {
+        val phrase = candidate.text.trim()
+        if (phrase.isBlank()) {
+            Toast.makeText(this, "Câu nhận dạng đang trống.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val review = WorkoutVoiceCandidatePolicy.review(candidate.copy(text = phrase))
+        if (review.command == WorkoutVoiceCommands.Command.PAIN) {
+            handleCoachCommand(phrase)
+            return
+        }
+        if (review.requiresEdit) {
+            editWorkoutVoiceCandidate(
+                phrase,
+                "Câu nhận dạng vượt giới hạn 160 ký tự hoặc đã được rút gọn. Chibi chưa thực hiện lệnh. Hãy rút gọn hoặc sửa lại ý chính; nếu đang đau hay khó thở, hãy dừng tập ngay."
+            )
+            return
+        }
+        AlertDialog.Builder(this).setTitle("🐰 Chibi nghe được")
+            .setMessage("“$phrase”\n\n" + WorkoutVoiceCommands.describe(review.command, phrase) +
+                "\n\nKiểm tra câu nhận dạng trước khi điều khiển buổi tập.")
+            .setPositiveButton("Áp dụng") { _, _ -> handleCoachCommand(phrase) }
+            .setNeutralButton("Sửa câu nhận dạng") { _, _ ->
+                editWorkoutVoiceCandidate(phrase, "Chỉnh sửa câu nhận dạng rồi xác nhận trước khi áp dụng.")
+            }
+            .setNegativeButton("Không đúng", null)
+            .show()
+    }
+
+    private fun editWorkoutVoiceCandidate(phrase: String, disclosure: String) {
+        val corrected = EditText(this).apply {
+            setText(phrase)
+            setSelection(text.length)
+            setSingleLine(false)
+            minLines = 3
+        }
+        AlertDialog.Builder(this).setTitle("Sửa yêu cầu gửi Chibi")
+            .setMessage(disclosure + "\n\nGiới hạn lệnh điều khiển là ${WorkoutVoiceCandidatePolicy.MAX_COMMAND_CHARS} ký tự.")
+            .setView(ScrollView(this).apply { addView(corrected) })
+            .setPositiveButton("Kiểm tra câu đã sửa") { _, _ ->
+                val edited = corrected.text.toString().trim()
+                when {
+                    edited.isBlank() -> Toast.makeText(
+                        this, "Câu sửa đang trống; buổi tập chưa thay đổi.", Toast.LENGTH_SHORT
+                    ).show()
+                    edited.length > WorkoutVoiceCandidatePolicy.MAX_COMMAND_CHARS -> Toast.makeText(
+                        this, "Hãy rút gọn yêu cầu còn tối đa 160 ký tự rồi thử lại.", Toast.LENGTH_LONG
+                    ).show()
+                    else -> reviewWorkoutVoiceCandidate(
+                        CoachSpeechTranscript.Candidate(edited, truncated = false)
+                    )
+                }
+            }
+            .setNegativeButton("Hủy", null)
+            .show()
+    }
+
     @Deprecated("Android activity result compatibility")
     override fun onActivityResult(requestCode:Int,resultCode:Int,data:Intent?) {
         super.onActivityResult(requestCode,resultCode,data)
@@ -2399,36 +2461,35 @@ class GuidedWorkoutActivity:Activity() {
             }
             return
         }
-        if(requestCode==voiceRequest && resultCode==RESULT_OK) {
-            val phrase=data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
-            if (!phrase.isNullOrBlank()) {
-                // Speech recognition is fallible: preview before changing workout state.
-                // A reported safety symptom is the exception: stop immediately.
-                val command=WorkoutVoiceCommands.parse(phrase)
-                if (command==WorkoutVoiceCommands.Command.PAIN) {
-                    handleCoachCommand(phrase)
-                } else {
-                    AlertDialog.Builder(this).setTitle("🐰 Chibi nghe được")
-                        .setMessage("“"+phrase.take(160)+"”\n\n"+WorkoutVoiceCommands.describe(command, phrase)+
-                            "\n\nKiểm tra câu nhận dạng trước khi điều khiển buổi tập.")
-                        .setPositiveButton("Áp dụng") { _,_ -> handleCoachCommand(phrase) }
-                        .setNeutralButton("Sửa câu nhận dạng") { _, _ ->
-                            val corrected=EditText(this).apply {
-                                setText(phrase.take(160))
-                                setSelection(text.length)
-                                setSingleLine(false)
-                            }
-                            AlertDialog.Builder(this).setTitle("Sửa yêu cầu gửi Chibi")
-                                .setMessage("Chibi chỉ áp dụng câu đã sửa sau khi bạn xác nhận. Nếu đang đau hoặc khó chịu, hãy dừng tập ngay.")
-                                .setView(corrected)
-                                .setPositiveButton("Gửi câu đã sửa") { _, _ ->
-                                    handleCoachCommand(corrected.text.toString())
-                                }
-                                .setNegativeButton("Hủy",null).show()
-                        }
-                        .setNegativeButton("Không đúng",null).show()
-                }
+        if (requestCode == voiceRequest) {
+            if (resultCode != RESULT_OK) {
+                Toast.makeText(this, "Đã hủy nhận giọng nói; buổi tập vẫn tạm dừng.", Toast.LENGTH_SHORT).show()
+                return
             }
+            val candidates = CoachSpeechTranscript.candidates(
+                data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+            )
+            val first = candidates.firstOrNull()
+            when {
+                first == null -> Toast.makeText(
+                    this, "Không nhận được câu nói rõ ràng. Bạn có thể nhập yêu cầu bằng chữ.",
+                    Toast.LENGTH_LONG
+                ).show()
+                WorkoutVoiceCandidatePolicy.review(first).command == WorkoutVoiceCommands.Command.PAIN ->
+                    reviewWorkoutVoiceCandidate(first)
+                candidates.size == 1 -> reviewWorkoutVoiceCandidate(first)
+                else -> AlertDialog.Builder(this)
+                    .setTitle("🐰 Chọn câu Chibi nghe được")
+                    .setMessage("Dịch vụ nhận dạng đưa ra nhiều phương án. Chọn câu đúng trước khi điều khiển buổi tập.")
+                    .setItems(candidates.mapIndexed { index, candidate ->
+                        "${index + 1}. ${candidate.label}"
+                    }.toTypedArray()) { _, which ->
+                        candidates.getOrNull(which)?.let(::reviewWorkoutVoiceCandidate)
+                    }
+                    .setNegativeButton("Để tôi gõ", null)
+                    .show()
+            }
+            return
         }
         if(requestCode==pickVideoRequest && resultCode==RESULT_OK) {
             val uri=data?.data ?: return

@@ -76,4 +76,44 @@ class CoachSpeechTranscriptTest {
         assertEquals(CoachSpeechTranscript.MAX_ALTERNATIVES, result.size)
         assertTrue(result.all { it.text.length == CoachSpeechTranscript.MAX_CHARS && it.truncated })
     }
+    @Test fun shortVoiceCommandCanBeReviewedWithoutEditing() {
+        val candidate = CoachSpeechTranscript.candidates(listOf("Bài tiếp theo")).single()
+        val review = WorkoutVoiceCandidatePolicy.review(candidate)
+
+        assertEquals(WorkoutVoiceCommands.Command.NEXT, review.command)
+        assertFalse(review.requiresEdit)
+    }
+
+    @Test fun longVoiceCommandRequiresEditingBeforeItCanBeApplied() {
+        val candidate = CoachSpeechTranscript.candidates(
+            listOf("Bài tiếp theo " + "x".repeat(180))
+        ).single()
+        val review = WorkoutVoiceCandidatePolicy.review(candidate)
+
+        // The recognized prefix is useful for the preview, but the full utterance is
+        // too long for a command and must never be applied without user editing.
+        assertEquals(WorkoutVoiceCommands.Command.NEXT, review.command)
+        assertTrue(review.requiresEdit)
+    }
+
+    @Test fun urgentSymptomStillWinsWhenItAppearsInALongRecognizedPrefix() {
+        val candidate = CoachSpeechTranscript.candidates(
+            listOf("Đau ngực, cho bài tiếp theo " + "x".repeat(180))
+        ).single()
+        val review = WorkoutVoiceCandidatePolicy.review(candidate)
+
+        assertEquals(WorkoutVoiceCommands.Command.PAIN, review.command)
+        assertTrue(review.requiresEdit)
+    }
+
+    @Test fun truncatedVoiceTranscriptRequiresEditing() {
+        val candidate = CoachSpeechTranscript.candidates(
+            listOf("Bài tiếp theo " + "x".repeat(CoachSpeechTranscript.MAX_CHARS + 50))
+        ).single()
+        val review = WorkoutVoiceCandidatePolicy.review(candidate)
+
+        assertTrue(candidate.truncated)
+        assertTrue(review.requiresEdit)
+    }
+
 }

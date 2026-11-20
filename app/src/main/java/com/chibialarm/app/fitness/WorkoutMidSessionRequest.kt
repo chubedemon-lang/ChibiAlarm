@@ -37,7 +37,9 @@ object WorkoutMidSessionRequest {
         val avoidJumping: Boolean = false,
         val allowJumping: Boolean = false,
         // Remove only future, unstarted optional extensions; the active step is never skipped.
-        val removeOptionalExercises: Boolean = false
+        val removeOptionalExercises: Boolean = false,
+        // Reduce only optional sets on the active move; required sets are never lowered.
+        val currentSetLimit: Int? = null
     ) {
         init {
             require(remainingMinutes == null || remainingMinutes in 5..120)
@@ -47,6 +49,7 @@ object WorkoutMidSessionRequest {
             require(!(avoidOverheadReach && allowOverheadReach))
             require(!(avoidJumping && allowJumping))
             require(replaceCurrentWith == null || replaceCurrentWith.length in 1..90)
+            require(currentSetLimit == null || currentSetLimit in 1..20)
         }
 
         /** True only when the request changes the rest countdown and nothing else. */
@@ -66,6 +69,7 @@ object WorkoutMidSessionRequest {
                 !allowJumping &&
                 !addOptionalExercise &&
                 !removeOptionalExercises &&
+                currentSetLimit == null &&
                 availableEquipment.isEmpty() &&
                 unavailableEquipment.isEmpty() &&
                 replaceCurrentWith == null
@@ -315,6 +319,35 @@ object WorkoutMidSessionRequest {
         )
         if (addOptionalExercise && removeOptionalExercises) return Result.Unsupported
 
+        // Accept only an explicit reduction/limit phrase. A progress question such as
+        // "còn 2 hiệp nữa?" must never mutate the active prescription.
+        val setLimitMatch = Regex(
+            """(?:giam(?: xuong)? con|rut(?: xuong)? con|chi lam|chi tap|lam|tap)\\s+([0-9]{1,2}|mot|hai|ba|bon|tu|nam|sau|bay|tam|chin|muoi)\\s+hiep(?:\\s+thoi)?\\b"""
+        ).find(text)
+        val setLimitPrefix = setLimitMatch?.let { text.substring(0, it.range.first).trimEnd() }.orEmpty()
+        val negatedSetLimit = listOf("khong", "dung", "khong can", "khong muon", "chua")
+            .any { setLimitPrefix == it || setLimitPrefix.endsWith(" $it") }
+        val currentSetLimit = if (setLimitMatch == null || negatedSetLimit) {
+            null
+        } else {
+            val token = setLimitMatch.groupValues[1]
+            val count = token.toIntOrNull() ?: when (token) {
+                "mot" -> 1
+                "hai" -> 2
+                "ba" -> 3
+                "bon", "tu" -> 4
+                "nam" -> 5
+                "sau" -> 6
+                "bay" -> 7
+                "tam" -> 8
+                "chin" -> 9
+                "muoi" -> 10
+                else -> null
+            }
+            count?.takeIf { it in 1..20 } ?: return Result.Unsupported
+        }
+        if (addOptionalExercise && currentSetLimit != null) return Result.Unsupported
+
         val hasRestRequest = Regex("""\b(nghi|rest)\b""").containsMatchIn(text)
         val explicitRest = if (hasRestRequest) WorkoutRestRequest.seconds(input) else null
         val restSeconds = explicitRest ?: if (lowEnergy) 60 else null
@@ -326,7 +359,7 @@ object WorkoutMidSessionRequest {
             !preferEasier && restSeconds == null && !avoidExternalLoad &&
             !addOptionalExercise && availableEquipment.isEmpty() &&
             unavailableEquipment.isEmpty() && replacementExercise == null &&
-            !removeOptionalExercises
+            !removeOptionalExercises && currentSetLimit == null
         ) return Result.Unsupported
 
         return Result.Proposed(
@@ -348,7 +381,8 @@ object WorkoutMidSessionRequest {
                 replaceCurrentWith = replacementExercise,
                 avoidJumping = avoidJumping,
                 allowJumping = allowJumping,
-                removeOptionalExercises = removeOptionalExercises
+                removeOptionalExercises = removeOptionalExercises,
+                currentSetLimit = currentSetLimit
             )
         )
     }

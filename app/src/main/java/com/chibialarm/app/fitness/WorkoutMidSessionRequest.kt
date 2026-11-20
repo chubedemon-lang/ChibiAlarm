@@ -39,7 +39,9 @@ object WorkoutMidSessionRequest {
         // Remove only future, unstarted optional extensions; the active step is never skipped.
         val removeOptionalExercises: Boolean = false,
         // Reduce only optional sets on the active move; required sets are never lowered.
-        val currentSetLimit: Int? = null
+        val currentSetLimit: Int? = null,
+        // Lower only the upper rep target for unstarted sets; confirmed set values stay immutable.
+        val currentRepLimit: Int? = null
     ) {
         init {
             require(remainingMinutes == null || remainingMinutes in 5..120)
@@ -50,6 +52,7 @@ object WorkoutMidSessionRequest {
             require(!(avoidJumping && allowJumping))
             require(replaceCurrentWith == null || replaceCurrentWith.length in 1..90)
             require(currentSetLimit == null || currentSetLimit in 1..20)
+            require(currentRepLimit == null || currentRepLimit in 1..200)
         }
 
         /** True only when the request changes the rest countdown and nothing else. */
@@ -70,6 +73,7 @@ object WorkoutMidSessionRequest {
                 !addOptionalExercise &&
                 !removeOptionalExercises &&
                 currentSetLimit == null &&
+                currentRepLimit == null &&
                 availableEquipment.isEmpty() &&
                 unavailableEquipment.isEmpty() &&
                 replaceCurrentWith == null
@@ -346,7 +350,37 @@ object WorkoutMidSessionRequest {
             }
             count?.takeIf { it in 1..20 } ?: return Result.Unsupported
         }
-        if (addOptionalExercise && currentSetLimit != null) return Result.Unsupported
+        // Explicit per-set repetition cap. Only a clear reduction command is accepted;
+        // progress questions and negated requests never mutate the prescription.
+        val repLimitMatch = Regex(
+            """(?:giam(?: xuong)? con|rut(?: xuong)? con|chi lam|lam)\s+([0-9]{1,3}|mot|hai|ba|bon|tu|nam|sau|bay|tam|chin|muoi)\s+lan(?:\s+moi\s+hiep)?(?:\s+thoi)?\b|moi\s+hiep\s+([0-9]{1,3}|mot|hai|ba|bon|tu|nam|sau|bay|tam|chin|muoi)\s+lan(?:\s+thoi)?\b"""
+        ).find(text)
+        val repLimitPrefix = repLimitMatch?.let { text.substring(0, it.range.first).trimEnd() }.orEmpty()
+        val negatedRepLimit = listOf("khong", "dung", "khong can", "khong muon", "chua")
+            .any { repLimitPrefix == it || repLimitPrefix.endsWith(" $it") }
+        val currentRepLimit = if (repLimitMatch == null || negatedRepLimit) {
+            null
+        } else {
+            val token = repLimitMatch.groupValues[1].ifBlank { repLimitMatch.groupValues[2] }
+            val count = token.toIntOrNull() ?: when (token) {
+                "mot" -> 1
+                "hai" -> 2
+                "ba" -> 3
+                "bon", "tu" -> 4
+                "nam" -> 5
+                "sau" -> 6
+                "bay" -> 7
+                "tam" -> 8
+                "chin" -> 9
+                "muoi" -> 10
+                else -> null
+            }
+            count?.takeIf { it in 1..200 } ?: return Result.Unsupported
+        }
+        if ((currentSetLimit != null && currentRepLimit != null) ||
+            (addOptionalExercise && (currentSetLimit != null || currentRepLimit != null)) ||
+            (replacementExercise != null && currentRepLimit != null)
+        ) return Result.Unsupported
 
         val hasRestRequest = Regex("""\b(nghi|rest)\b""").containsMatchIn(text)
         val explicitRest = if (hasRestRequest) WorkoutRestRequest.seconds(input) else null
@@ -359,7 +393,7 @@ object WorkoutMidSessionRequest {
             !preferEasier && restSeconds == null && !avoidExternalLoad &&
             !addOptionalExercise && availableEquipment.isEmpty() &&
             unavailableEquipment.isEmpty() && replacementExercise == null &&
-            !removeOptionalExercises && currentSetLimit == null
+            !removeOptionalExercises && currentSetLimit == null && currentRepLimit == null
         ) return Result.Unsupported
 
         return Result.Proposed(
@@ -382,7 +416,8 @@ object WorkoutMidSessionRequest {
                 avoidJumping = avoidJumping,
                 allowJumping = allowJumping,
                 removeOptionalExercises = removeOptionalExercises,
-                currentSetLimit = currentSetLimit
+                currentSetLimit = currentSetLimit,
+                currentRepLimit = currentRepLimit
             )
         )
     }

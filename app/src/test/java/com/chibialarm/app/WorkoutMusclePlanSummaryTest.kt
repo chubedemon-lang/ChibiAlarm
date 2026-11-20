@@ -2,7 +2,6 @@ package com.chibialarm.app
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -19,9 +18,8 @@ class WorkoutMusclePlanSummaryTest {
             catalog.getValue("Thả lỏng")
         )
 
-        val summary = WorkoutMusclePlanSummary.summarize(moves)
-        assertNotNull(summary)
-        assertEquals(3, summary!!.eligibleMoveCount)
+        val summary = requireNotNull(WorkoutMusclePlanSummary.summarize(moves))
+        assertEquals(3, summary.eligibleMoveCount)
         assertEquals(3, summary.cataloguedMoveCount)
         assertTrue(summary.primary.any { it.group == TrainingMuscleGroup.QUADRICEPS })
         assertTrue(summary.primary.any { it.group == TrainingMuscleGroup.BACK })
@@ -31,9 +29,8 @@ class WorkoutMusclePlanSummaryTest {
 
     @Test fun countsExerciseEntriesRatherThanSetsOrRepetitions() {
         val squat = catalog.getValue("Squat không tạ")
-        val summary = WorkoutMusclePlanSummary.summarize(listOf(squat, squat))
-        assertNotNull(summary)
-        assertEquals(2, summary!!.primary.single { it.group == TrainingMuscleGroup.QUADRICEPS }.exerciseCount)
+        val summary = requireNotNull(WorkoutMusclePlanSummary.summarize(listOf(squat, squat)))
+        assertEquals(2, summary.primary.single { it.group == TrainingMuscleGroup.QUADRICEPS }.exerciseCount)
         assertEquals(2, summary.primary.single { it.group == TrainingMuscleGroup.GLUTES }.exerciseCount)
     }
 
@@ -46,9 +43,8 @@ class WorkoutMusclePlanSummaryTest {
             avoid = "Dừng nếu đau."
         )
         val squat = catalog.getValue("Squat không tạ")
-        val summary = WorkoutMusclePlanSummary.summarize(listOf(squat, custom))
-        assertNotNull(summary)
-        assertEquals(2, summary!!.eligibleMoveCount)
+        val summary = requireNotNull(WorkoutMusclePlanSummary.summarize(listOf(squat, custom)))
+        assertEquals(2, summary.eligibleMoveCount)
         assertEquals(1, summary.cataloguedMoveCount)
         assertFalse(summary.primary.any { it.group == TrainingMuscleGroup.FULL_BODY })
         assertTrue(WorkoutMusclePlanSummary.format(listOf(squat, custom))!!.contains("1/2"))
@@ -67,14 +63,14 @@ class WorkoutMusclePlanSummaryTest {
     }
 
     @Test fun summaryClearlyStatesThatExerciseCountsAreNotTrainingVolume() {
-        val text = WorkoutMusclePlanSummary.format(
+        val text = requireNotNull(WorkoutMusclePlanSummary.format(
             listOf(catalog.getValue("Squat không tạ"), catalog.getValue("Chống đẩy tường"))
-        )
-        assertNotNull(text)
-        assertTrue(text!!.contains("không phải khối lượng tập"))
+        ))
+        assertTrue(text.contains("không phải khối lượng tập"))
         assertTrue(text.contains("\n• Nhóm chính:"))
-        assertTrue(WorkoutMusclePlanSummary.spoken(
+        val spoken = requireNotNull(WorkoutMusclePlanSummary.spoken(
             listOf(catalog.getValue("Squat không tạ"))
-        )!!.contains("không phải phép đo khối lượng tập"))
+        ))
+        assertTrue(spoken.contains("không phải phép đo khối lượng tập"))
     }
 }

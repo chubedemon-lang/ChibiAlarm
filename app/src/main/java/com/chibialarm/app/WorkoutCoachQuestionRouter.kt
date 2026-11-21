@@ -18,7 +18,8 @@ object WorkoutCoachQuestionRouter {
         restIsActive: Boolean = false,
         restRemainingMs: Long? = null,
         restIsPaused: Boolean = false,
-        completedSets: Int? = null
+        completedSets: Int? = null,
+        completedSetValues: List<Int>? = null
     ): String? {
         if (input.isBlank() || input.length > 300) return null
 
@@ -32,7 +33,8 @@ object WorkoutCoachQuestionRouter {
             input = input,
             currentDose = currentDose,
             fallbackDose = currentMove?.dose,
-            completedSets = completedSets
+            completedSets = completedSets,
+            completedSetValues = completedSetValues
         )
         val catalogAnswer = WorkoutExerciseConversation.answer(input)
         val contextualAnswer = if (

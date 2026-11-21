@@ -34,13 +34,18 @@ object WorkoutHistoryConversation {
         workouts: List<Workout>,
         today: LocalDate = LocalDate.now()
     ): String? {
+        val text = normalize(input.take(300))
+        // Eligibility questions are coaching requests, not historical rep totals. Route them
+        // before the set-history parser so "đủ điều kiện tăng số lần chưa?" is not misread
+        // as "tôi đã làm bao nhiêu lần?".
+        if (isSteadyProgressQuestion(text)) return steadyProgressAnswer(workouts, today)
+
         val effortHistoryAnswer = WorkoutEffortHistoryConversation.answer(input, workouts, today)
         if (effortHistoryAnswer != null) return effortHistoryAnswer
 
         val setHistoryAnswer = WorkoutSetHistoryConversation.answer(input, workouts, today)
         if (setHistoryAnswer != null) return setHistoryAnswer
 
-        val text = normalize(input.take(300))
         if (isEffortBasedLighterPlanQuestion(text)) {
             return effortBasedLighterPlanAnswer(workouts, today)
         }
@@ -304,6 +309,8 @@ object WorkoutHistoryConversation {
      * accidentally become a request to increase exercise dose.
      */
     private fun isSteadyProgressQuestion(text: String): Boolean {
+        // Comparative ranking belongs to the set-history conversation, not a progression gate.
+        if (has(text, "nhieu nhat", "tang duoc nhieu nhat", "tien bo nhat")) return false
         val asksForProgress = has(
             text, "tang nhe", "tang them", "tang so lan", "tang muc tieu",
             "buoc tien trien", "tien trien"

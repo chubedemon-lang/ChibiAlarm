@@ -1,6 +1,7 @@
 package com.chibialarm.app
 
 import android.content.Context
+import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
@@ -14,6 +15,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.shadows.ShadowAlertDialog
 
@@ -136,6 +138,7 @@ class FitnessActivityProgressionPreviewTest {
         assertTrue(disclosure.contains("quyền microphone"))
 
         privacyDialog.getButton(android.app.AlertDialog.BUTTON_NEGATIVE).performClick()
+        shadowOf(Looper.getMainLooper()).idle()
         assertFalse(privacyDialog.isShowing)
         previewDialog.dismiss()
         controller.pause().stop().destroy()

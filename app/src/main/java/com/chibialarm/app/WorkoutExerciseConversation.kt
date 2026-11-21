@@ -277,29 +277,50 @@ object WorkoutExerciseConversation {
     }
 
     private fun findMove(query: String, moves: List<TrainingMove>): Match {
+        // Remove only conversational modifiers, not unknown exercise descriptors. This prevents
+        // a partial token such as "Burpee" from swallowing a request for an unlisted variation.
+        val contextualTokens = questionWords + setOf(
+            "nhe", "hon", "o", "nha", "tai", "khong", "ta", "don", "trong", "voi"
+        )
+        val queryTokens = query.split(' ')
+            .filter { token ->
+                token.length >= 2 && token !in contextualTokens &&
+                    token.none { character -> character.isDigit() }
+            }
+            .toSet()
+
+        fun tokens(move: TrainingMove): Set<String> =
+            normalize(move.name).split(' ')
+                .filter { it.length >= 2 && it !in contextualTokens }
+                .toSet()
+
         val exact = moves.filter { move ->
             val name = normalize(move.name)
             name.isNotBlank() && query.contains(name)
         }
-        if (exact.size == 1) return Match(selected = exact.single())
-        if (exact.size > 1) return Match(ambiguous = exact.map { it.name })
-
-        val queryTokens = query.split(' ')
-            .filter { it.length >= 2 && it !in questionWords }
-            .toSet()
+        val compatibleExact = exact.filter { move ->
+            queryTokens.all { it in tokens(move) }
+        }
+        if (compatibleExact.size == 1) return Match(selected = compatibleExact.single())
+        if (compatibleExact.size > 1) {
+            return Match(ambiguous = compatibleExact.map { it.name }.distinct().sorted())
+        }
         if (queryTokens.isEmpty()) return Match()
 
         val scored = moves.map { move ->
-            val nameTokens = normalize(move.name).split(' ')
-                .filter { it.length >= 2 && it !in questionWords }
-                .toSet()
+            val nameTokens = tokens(move)
             move to nameTokens.count { it in queryTokens }
         }
         val bestScore = scored.maxOfOrNull { it.second } ?: 0
         if (bestScore <= 0) return Match()
         val best = scored.filter { it.second == bestScore }.map { it.first }
-        return if (best.size == 1) Match(selected = best.single())
-        else Match(ambiguous = best.map { it.name }.distinct().sorted())
+        if (best.size > 1) {
+            return Match(ambiguous = best.map { it.name }.distinct().sorted())
+        }
+        val selected = best.single()
+        // A fuzzy match is safe only when every explicit exercise token is represented.
+        // Extra descriptors such as "biến thể lạ" must return the unknown-name response.
+        return if (queryTokens.all { it in tokens(selected) }) Match(selected = selected) else Match()
     }
 
     private fun format(move: TrainingMove, input: String): String {

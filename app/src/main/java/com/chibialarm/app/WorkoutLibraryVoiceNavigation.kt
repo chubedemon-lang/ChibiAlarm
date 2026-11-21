@@ -58,6 +58,12 @@ internal object WorkoutLibraryVoiceNavigation {
             if (prefix.split(" ").any { it in negationWords }) return Action.UNSUPPORTED
         }
 
+        val selectionIntent = normalized.startsWith("chon phuong an") ||
+            normalized.startsWith("lua chon phuong an") ||
+            normalized.startsWith("chon bai") ||
+            normalized.startsWith("lua chon bai") ||
+            normalized == "phuong an" ||
+            Regex("^phuong an(?: so| thu)? [0-9].*$").containsMatchIn(normalized)
         val selectedAlternative = listOf(
             Regex("^(?:chon|lua chon) phuong an(?: so| thu)? ([1-4])$"),
             Regex("^(?:chon|lua chon) bai(?: tap)?(?: so| thu)? ([1-4])$"),
@@ -65,6 +71,7 @@ internal object WorkoutLibraryVoiceNavigation {
         ).firstNotNullOfOrNull { pattern ->
             pattern.matchEntire(normalized)?.groupValues?.get(1)?.toIntOrNull()
         }
+        if (selectionIntent && selectedAlternative == null) return Action.UNSUPPORTED
         if (selectedAlternative != null) {
             return when (selectedAlternative) {
                 1 -> Action.SELECT_ALTERNATIVE_1

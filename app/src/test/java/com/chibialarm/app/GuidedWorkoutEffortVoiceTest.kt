@@ -403,6 +403,7 @@ class GuidedWorkoutEffortVoiceTest {
             )
 
             preview.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+            shadowOf(Looper.getMainLooper()).idle()
 
             @Suppress("UNCHECKED_CAST")
             val updatedMoves = activityField("moves").get(checkIn.activity) as List<TrainingMove>
@@ -633,4 +634,42 @@ class GuidedWorkoutEffortVoiceTest {
             checkIn.activity.finish()
         }
     }
+
+    @Test fun planPreviewVoiceCommandRequiresExplicitPrivacyDisclosureAndCanBeCancelled() {
+        val app = RuntimeEnvironment.getApplication()
+        val activity = Robolectric.buildActivity(
+            GuidedWorkoutActivity::class.java,
+            Intent(app, GuidedWorkoutActivity::class.java)
+                .putExtra("program", "full")
+                .putExtra("minutes", 30)
+        ).setup().get()
+        try {
+            var selected: String? = null
+            val request = GuidedWorkoutActivity::class.java.declaredMethods
+                .single { it.name == "requestPlanPreviewVoiceCommand" }
+                .apply { isAccessible = true }
+            request.invoke(activity, { phrase: String -> selected = phrase })
+
+            val disclosure = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
+            val message = disclosure.findViewById<android.widget.TextView>(android.R.id.message)
+                ?.text?.toString().orEmpty()
+            assertTrue(message.contains("Chibi không nghe nền"))
+            assertTrue(message.contains("có thể xử lý âm thanh trực tuyến"))
+            assertTrue(message.contains("quyền microphone"))
+            assertTrue(message.contains("chạm Áp dụng"))
+            disclosure.getButton(AlertDialog.BUTTON_NEGATIVE).performClick()
+            shadowOf(Looper.getMainLooper()).idle()
+
+            assertFalse(disclosure.isShowing)
+            assertNull(selected)
+            val callback = GuidedWorkoutActivity::class.java
+                .getDeclaredField("previewVoiceResultHandler")
+                .apply { isAccessible = true }
+                .get(activity)
+            assertNull(callback)
+        } finally {
+            activity.finish()
+        }
+    }
+
 }

@@ -391,11 +391,14 @@ class GuidedWorkoutActivity:Activity() {
     private val voiceRequest=890
     private val guideVoiceRequest=891
     private val effortVoiceRequest=893
+    private val previewVoiceRequest=894
     private val microphonePermissionRequest=892
     private var pendingRecognitionRequestCode:Int?=null
     // Callbacks exist only for the active dialog; raw transcripts are never persisted.
     private var guideVoiceResultHandler:((String)->Unit)?=null
     private var effortVoiceResultHandler:((String)->Unit)?=null
+    // Transient callback for the currently visible mid-session preview; raw speech is never stored.
+    private var previewVoiceResultHandler:((String)->Unit)?=null
     private val tick=object:Runnable {
         override fun run() {
             if(paused)return
@@ -1039,9 +1042,11 @@ class GuidedWorkoutActivity:Activity() {
         updateRestStepSpeakButton()
         val guideRequest = requestCode == guideVoiceRequest
         val effortRequest = requestCode == effortVoiceRequest
+        val previewRequest = requestCode == previewVoiceRequest
         val prompt = when {
             guideRequest -> "Nói: bước tiếp, bước trước, đọc lại, bật tự đọc, tắt tự đọc, tạm dừng buổi tập, tiếp tục buổi tập hoặc đóng hướng dẫn. Nếu đau hay khó thở, hãy nói rõ."
             effortRequest -> "Nói cảm nhận hiệp vừa rồi: nhẹ, vừa sức, khó cần nghỉ thêm hoặc quá sức. Nếu đau hay khó thở, hãy nói rõ."
+            previewRequest -> "Nói rõ: xác nhận áp dụng, đồng ý áp dụng, hoặc giữ nguyên, hủy thay đổi. Nếu đau hoặc khó thở, hãy nói rõ."
             else -> "Ví dụ: tôi đã làm 10 lần, tôi giữ 20 giây, xong hiệp, bài này khó quá, nghỉ thêm, đổi bài, dừng lại"
         }
         val request=WorkoutSpeechRecognitionRequest.create(prompt)
@@ -1053,6 +1058,7 @@ class GuidedWorkoutActivity:Activity() {
             handler.post { drainPendingRestCompletionSpeech() }
             if (guideRequest) guideVoiceResultHandler = null
             if (effortRequest) effortVoiceResultHandler = null
+            if (previewRequest) previewVoiceResultHandler = null
             Toast.makeText(this,"Thiết bị chưa có dịch vụ nhận giọng nói. Hãy dùng các lựa chọn trên màn hình.",Toast.LENGTH_LONG).show()
         }
     }
@@ -1073,6 +1079,7 @@ class GuidedWorkoutActivity:Activity() {
         } else {
             if (target == guideVoiceRequest) guideVoiceResultHandler = null
             if (target == effortVoiceRequest) effortVoiceResultHandler = null
+            if (target == previewVoiceRequest) previewVoiceResultHandler = null
             Toast.makeText(
                 this,
                 "Micro chưa được cấp quyền. Bạn vẫn có thể điều khiển buổi tập bằng chữ; có thể bật quyền trong Cài đặt ứng dụng.",
@@ -1129,6 +1136,32 @@ class GuidedWorkoutActivity:Activity() {
             }
             .create()
         disclosure.setOnCancelListener { effortVoiceResultHandler = null }
+        disclosure.show()
+    }
+
+
+    private fun requestPlanPreviewVoiceCommand(onResult:(String)->Unit) {
+        previewVoiceResultHandler = onResult
+        val disclosure = AlertDialog.Builder(this)
+            .setTitle("🎙 Xác nhận bản xem trước bằng giọng nói")
+            .setMessage(
+                "Chỉ mở microphone sau khi bạn nhấn Bắt đầu nghe và cấp quyền Android nếu được hỏi. " +
+                    "Chibi yêu cầu ưu tiên nhận dạng ngoại tuyến và tối đa 5 phương án nếu dịch vụ hỗ trợ; " +
+                    "đây chỉ là gợi ý, nhà cung cấp có thể bỏ qua và xử lý âm thanh trực tuyến. " +
+                    "Chibi không nghe nền, chỉ nhận văn bản và không lưu bản ghi hay bản chép lời. " +
+                    "Câu nhận dạng sẽ được kiểm tra; sau đó bạn vẫn phải chạm Áp dụng ở bước xác nhận cuối. " +
+                    "Bạn có thể hủy và giữ nguyên giáo án."
+            )
+            .setPositiveButton("Bắt đầu nghe") { _, _ ->
+                pause()
+                spoken?.stop()
+                requestRecognitionPermissionOrStart(previewVoiceRequest)
+            }
+            .setNegativeButton("Hủy") { _, _ ->
+                previewVoiceResultHandler = null
+            }
+            .create()
+        disclosure.setOnCancelListener { previewVoiceResultHandler = null }
         disclosure.show()
     }
 
@@ -1510,15 +1543,37 @@ class GuidedWorkoutActivity:Activity() {
                     append(WorkoutMidSessionPreviewFormatter.format(preview))
                     append("\n\nCác hiệp đã xác nhận không bị sửa. Đây là gợi ý offline từ thư viện, không phải chẩn đoán hay đánh giá tư thế.")
                 }
-                val previewDialog = AlertDialog.Builder(this).setTitle("🐰 Xem trước điều chỉnh giữa buổi")
+                fun previewContextStillMatches(): Boolean =
+                    !pausedForSafety && !completed && !resting && index == beforeIndex &&
+                        sessionId == beforeSessionId && moves == beforeMoves &&
+                        currentPlanFingerprint() == beforeFingerprint &&
+                        (request.isRepTargetOnly || remainingMs == beforeRemaining) &&
+                        (completedSetsByMove[index] ?: 0) == beforeCompletedSets
+
+                val previewActions = LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    setPadding(24, 8, 24, 8)
+                }
+                val speakPreviewButton = Button(this).apply {
+                    tag = "workout-plan-preview-speak"
+                    text = "🔊 Nghe phương án"
+                    isAllCaps = false
+                }
+                val voiceConfirmButton = Button(this).apply {
+                    tag = "workout-plan-preview-voice-confirm"
+                    text = "🎙 Xác nhận bằng giọng nói"
+                    isAllCaps = false
+                    contentDescription = "Mở nhận dạng giọng nói sau khi đọc thông báo quyền riêng tư; Chibi không nghe nền"
+                }
+                previewActions.addView(speakPreviewButton)
+                previewActions.addView(voiceConfirmButton)
+
+                val previewDialog = AlertDialog.Builder(this)
+                    .setTitle("🐰 Xem trước điều chỉnh giữa buổi")
                     .setMessage(summary)
+                    .setView(previewActions)
                     .setPositiveButton("Áp dụng") { _, _ ->
-                        if (pausedForSafety || completed || resting || index != beforeIndex ||
-                            sessionId != beforeSessionId || moves != beforeMoves ||
-                            currentPlanFingerprint() != beforeFingerprint ||
-                            (!request.isRepTargetOnly && remainingMs != beforeRemaining) ||
-                            (completedSetsByMove[index] ?: 0) != beforeCompletedSets
-                        ) {
+                        if (!previewContextStillMatches()) {
                             Toast.makeText(this,"Buổi tập đã thay đổi. Hãy xem trước lại.",Toast.LENGTH_LONG).show()
                             return@setPositiveButton
                         }
@@ -1633,25 +1688,63 @@ class GuidedWorkoutActivity:Activity() {
                     .setNegativeButton("Giữ nguyên",null)
                     .setNeutralButton("🔊 Nghe phương án",null)
                     .create()
+                previewDialog.setOnDismissListener { previewVoiceResultHandler = null }
                 previewDialog.show()
-                previewDialog.getButton(AlertDialog.BUTTON_NEUTRAL).apply {
-                    contentDescription = "Nghe bằng giọng nói bản xem trước điều chỉnh; chưa áp dụng giáo án"
-                    setOnClickListener {
-                        val contextStillMatches = !pausedForSafety && !completed && !resting &&
-                            index == beforeIndex && sessionId == beforeSessionId &&
-                            moves == beforeMoves && currentPlanFingerprint() == beforeFingerprint &&
-                            remainingMs == beforeRemaining &&
-                            (completedSetsByMove[index] ?: 0) == beforeCompletedSets
-                        if (!contextStillMatches) {
-                            previewDialog.dismiss()
-                            Toast.makeText(this@GuidedWorkoutActivity,
-                                "Buổi tập đã thay đổi. Hãy xem trước lại.",Toast.LENGTH_LONG).show()
-                        } else if (ready) {
-                            speak(WorkoutMidSessionPreviewFormatter.spokenSummary(preview))
-                        } else {
-                            Toast.makeText(this@GuidedWorkoutActivity,
-                                "Giọng đọc chưa sẵn sàng. Mày vẫn có thể đọc bản xem trước trên màn hình.",
-                                Toast.LENGTH_LONG).show()
+                speakPreviewButton.setOnClickListener {
+                    if (!previewContextStillMatches()) {
+                        previewDialog.dismiss()
+                        Toast.makeText(this@GuidedWorkoutActivity,
+                            "Buổi tập đã thay đổi. Hãy xem trước lại.", Toast.LENGTH_LONG).show()
+                    } else if (ready) {
+                        speak(WorkoutMidSessionPreviewFormatter.spokenSummary(preview))
+                    } else {
+                        Toast.makeText(this@GuidedWorkoutActivity,
+                            "Giọng đọc chưa sẵn sàng. Mày vẫn có thể đọc bản xem trước trên màn hình.",
+                            Toast.LENGTH_LONG).show()
+                    }
+                }
+                voiceConfirmButton.setOnClickListener {
+                    if (!previewContextStillMatches()) {
+                        previewDialog.dismiss()
+                        Toast.makeText(this@GuidedWorkoutActivity,
+                            "Buổi tập đã thay đổi. Hãy xem trước lại.", Toast.LENGTH_LONG).show()
+                        return@setOnClickListener
+                    }
+                    requestPlanPreviewVoiceCommand { phrase ->
+                        when (WorkoutPlanPreviewVoiceCommand.parse(phrase)) {
+                            WorkoutPlanPreviewVoiceCommand.Action.CONFIRM -> {
+                                AlertDialog.Builder(this@GuidedWorkoutActivity)
+                                    .setTitle("Xác nhận áp dụng")
+                                    .setMessage(
+                                        "Chibi nghe được yêu cầu xác nhận áp dụng. Giáo án vẫn chưa thay đổi. " +
+                                            "Kiểm tra lại bản xem trước rồi chạm Áp dụng để tiếp tục."
+                                    )
+                                    .setPositiveButton("Áp dụng") { _, _ ->
+                                        if (previewContextStillMatches()) {
+                                            previewDialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+                                        } else {
+                                            previewDialog.dismiss()
+                                            Toast.makeText(this@GuidedWorkoutActivity,
+                                                "Buổi tập đã thay đổi. Hãy xem trước lại.", Toast.LENGTH_LONG).show()
+                                        }
+                                    }
+                                    .setNegativeButton("Giữ nguyên", null)
+                                    .show()
+                            }
+                            WorkoutPlanPreviewVoiceCommand.Action.CANCEL -> {
+                                previewDialog.dismiss()
+                                Toast.makeText(this@GuidedWorkoutActivity,
+                                    "Đã giữ nguyên giáo án; không áp dụng bản xem trước.", Toast.LENGTH_SHORT).show()
+                            }
+                            WorkoutPlanPreviewVoiceCommand.Action.SAFETY -> {
+                                previewDialog.dismiss()
+                                stopForSafety()
+                            }
+                            WorkoutPlanPreviewVoiceCommand.Action.UNSUPPORTED -> {
+                                Toast.makeText(this@GuidedWorkoutActivity,
+                                    "Chibi chưa hiểu. Hãy nói “xác nhận áp dụng” hoặc “giữ nguyên”. Giáo án chưa đổi.",
+                                    Toast.LENGTH_LONG).show()
+                            }
                         }
                     }
                 }
@@ -2674,7 +2767,8 @@ class GuidedWorkoutActivity:Activity() {
     @Deprecated("Android activity result compatibility")
     override fun onActivityResult(requestCode:Int,resultCode:Int,data:Intent?) {
         super.onActivityResult(requestCode,resultCode,data)
-        if (requestCode == voiceRequest || requestCode == guideVoiceRequest || requestCode == effortVoiceRequest) {
+        if (requestCode == voiceRequest || requestCode == guideVoiceRequest ||
+            requestCode == effortVoiceRequest || requestCode == previewVoiceRequest) {
             if (pendingRecognitionRequestCode == requestCode) pendingRecognitionRequestCode = null
             updateRestStepSpeakButton()
             // Post until the recognizer callback has finished processing its selected result.
@@ -2720,6 +2814,23 @@ class GuidedWorkoutActivity:Activity() {
                 )
             } else if (resultCode != RESULT_OK) {
                 Toast.makeText(this,"Chưa nhận được câu trả lời; bạn vẫn có thể chọn cảm nhận bằng nút.",Toast.LENGTH_SHORT).show()
+            }
+            return
+        }
+        if (requestCode == previewVoiceRequest) {
+            val callback = previewVoiceResultHandler
+            previewVoiceResultHandler = null
+            if (resultCode == RESULT_OK && callback != null) {
+                reviewSpeechAlternatives(
+                    data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS),
+                    title = "🐰 Chọn câu xác nhận Chibi nghe được",
+                    message = "Chọn câu đúng trước khi xem bước xác nhận cuối. Chibi chưa áp dụng giáo án chỉ từ kết quả nhận dạng.",
+                    emptyMessage = "Chưa nhận được câu nói rõ ràng; bản xem trước vẫn giữ nguyên.",
+                    isSafety = { WorkoutVoiceCommands.parse(it) == WorkoutVoiceCommands.Command.PAIN },
+                    onSelected = { candidate -> callback(candidate.text) }
+                )
+            } else if (resultCode != RESULT_OK) {
+                Toast.makeText(this, "Đã hủy nhận giọng nói; giáo án xem trước vẫn chưa thay đổi.", Toast.LENGTH_SHORT).show()
             }
             return
         }

@@ -20,7 +20,8 @@ class WorkoutCoachConversationContext {
         pausedForSafety: Boolean = false,
         restIsActive: Boolean = false,
         restRemainingMs: Long? = null,
-        restIsPaused: Boolean = false
+        restIsPaused: Boolean = false,
+        activeCompletedSets: Int? = null
     ): String? {
         if (input.isBlank() || input.length > MAX_INPUT_CHARS) return null
 
@@ -39,7 +40,12 @@ class WorkoutCoachConversationContext {
             pausedForSafety = pausedForSafety,
             restIsActive = restIsActive,
             restRemainingMs = restRemainingMs,
-            restIsPaused = restIsPaused
+            restIsPaused = restIsPaused,
+            completedSets = if (targetMove != null && targetMove.name == activeMove?.name) {
+                activeCompletedSets
+            } else {
+                null
+            }
         ) ?: return null
 
         // Remember only a uniquely named catalog move after a successful, non-ambiguous answer.

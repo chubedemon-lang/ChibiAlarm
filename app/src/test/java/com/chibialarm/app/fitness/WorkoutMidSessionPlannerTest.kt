@@ -312,6 +312,36 @@ class WorkoutMidSessionPlannerTest {
         assertEquals(260, preview.estimatedRemainingSeconds)
     }
 
+    @Test fun repCeilingPreviewKeepsCatalogDoseAndCarriesTheAcceptedTargetSeparately() {
+        val active = TrainingMove(
+            "Test squat", "2 hiệp × 8–12 lần", "Đứng vững",
+            "Hạ xuống có kiểm soát", "Dừng nếu đau", 120, 60
+        )
+        val result = WorkoutMidSessionPlanner.preview(
+            currentMoves = listOf(active),
+            currentIndex = 0,
+            completedCurrentSets = 1,
+            currentStepLocked = true,
+            constraints = WorkoutConstraintProfile(),
+            request = WorkoutMidSessionRequest.Request(currentRepLimit = 11),
+            remainingCurrentSeconds = 45,
+            extensionMoveNames = emptySet(),
+            level = 0
+        )
+
+        assertTrue(result is WorkoutMidSessionPlanner.Result.Proposed)
+        val preview = (result as WorkoutMidSessionPlanner.Result.Proposed).preview
+        assertEquals(11, preview.currentRepLimit)
+        assertEquals("The preview must not rewrite the catalog prescription", active.dose, preview.after.single().dose)
+    }
+
+    @Test fun onlyAnIsolatedRepCapMayIgnoreLiveTimerDriftAtConfirmation() {
+        assertTrue(WorkoutMidSessionRequest.Request(currentRepLimit = 11).isRepTargetOnly)
+        assertFalse(WorkoutMidSessionRequest.Request(currentRepLimit = 11, restSeconds = 60).isRepTargetOnly)
+        assertFalse(WorkoutMidSessionRequest.Request(currentRepLimit = 11, avoidWristLoad = true).isRepTargetOnly)
+        assertFalse(WorkoutMidSessionRequest.Request(currentSetLimit = 2).isRepTargetOnly)
+    }
+
     @Test fun checkpointPlanRoundTripsOnlyCanonicalCatalogExercises() {
         val moves = listOf(move("Squat không tạ"), move("Dead bug cơ bụng"), move("Thả lỏng"))
         val encoded = WorkoutMidSessionPlanner.encodePlan(moves)

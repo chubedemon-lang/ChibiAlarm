@@ -65,7 +65,9 @@ class WorkoutLibraryStepPreviewTest {
 
     @Test fun voiceReturnToFirstStepResetsOnlyThePreview() {
         val first = WorkoutLibraryStepPreview.start(
-            move("Squat không tạ", "Chân rộng.\\nHạ xuống.\\nĐứng lên.")
+                        move("Squat không tạ", """Chân rộng.
+Hạ xuống.
+Đứng lên.""")
         )
         val third = first.next().next()
 

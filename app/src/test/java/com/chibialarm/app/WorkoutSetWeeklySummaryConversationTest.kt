@@ -13,7 +13,7 @@ class WorkoutSetWeeklySummaryConversationTest {
         date: LocalDate,
         setLog: String,
         id: String,
-        selfReportedSets: Int = setLog.count { it == ':' }
+        selfReportedSets: Int = Regex("""hiệp \\d+\\s*:""").findAll(setLog).count()
     ) = Workout(
         date = date.toString(),
         name = "Toàn thân",

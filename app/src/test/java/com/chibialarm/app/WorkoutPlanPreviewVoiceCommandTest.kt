@@ -49,6 +49,49 @@ class WorkoutPlanPreviewVoiceCommandTest {
         )
     }
 
+    @Test fun unanimousRecognizerAlternativesCanBeHandledWithoutASelectionTap() {
+        assertEquals(
+            WorkoutPlanPreviewVoiceCommand.Action.CONFIRM,
+            WorkoutPlanPreviewVoiceCommand.parseAlternatives(
+                listOf("xác nhận áp dụng", "đồng ý áp dụng")
+            )
+        )
+        assertEquals(
+            WorkoutPlanPreviewVoiceCommand.Action.CANCEL,
+            WorkoutPlanPreviewVoiceCommand.parseAlternatives(
+                listOf("hủy thay đổi", "giữ nguyên")
+            )
+        )
+    }
+
+    @Test fun ambiguousOrPartlyUnrecognizedAlternativesFailClosed() {
+        assertEquals(
+            WorkoutPlanPreviewVoiceCommand.Action.UNSUPPORTED,
+            WorkoutPlanPreviewVoiceCommand.parseAlternatives(
+                listOf("xác nhận áp dụng", "giữ nguyên")
+            )
+        )
+        assertEquals(
+            WorkoutPlanPreviewVoiceCommand.Action.UNSUPPORTED,
+            WorkoutPlanPreviewVoiceCommand.parseAlternatives(
+                listOf("xác nhận áp dụng", "xác nhận")
+            )
+        )
+        assertEquals(
+            WorkoutPlanPreviewVoiceCommand.Action.UNSUPPORTED,
+            WorkoutPlanPreviewVoiceCommand.parseAlternatives(emptyList())
+        )
+    }
+
+    @Test fun anySafetyAlternativeOverridesAnOrdinaryConfirmation() {
+        assertEquals(
+            WorkoutPlanPreviewVoiceCommand.Action.SAFETY,
+            WorkoutPlanPreviewVoiceCommand.parseAlternatives(
+                listOf("xác nhận áp dụng", "tôi đau cổ tay")
+            )
+        )
+    }
+
     @Test fun safetySignalsOutrankPreviewConfirmation() {
         assertEquals(
             WorkoutPlanPreviewVoiceCommand.Action.SAFETY,

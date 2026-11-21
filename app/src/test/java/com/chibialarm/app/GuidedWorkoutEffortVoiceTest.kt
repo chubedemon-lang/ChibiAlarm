@@ -401,14 +401,21 @@ class GuidedWorkoutEffortVoiceTest {
 
             @Suppress("UNCHECKED_CAST")
             val updatedMoves = activityField("moves").get(checkIn.activity) as List<TrainingMove>
-            val updatedPlan = WorkoutSetTracker.parse(
-                updatedMoves[checkIn.moveIndex].dose,
-                updatedMoves[checkIn.moveIndex].restSeconds
-            )
             assertEquals(
-                "The confirmed preview must persist its rep ceiling; applied dose was '${updatedMoves[checkIn.moveIndex].dose}'",
-                expectedCeiling,
-                updatedPlan?.targetMax
+                "The catalog prescription stays immutable; the accepted target is stored separately",
+                originalDose,
+                updatedMoves[checkIn.moveIndex].dose
+            )
+            @Suppress("UNCHECKED_CAST")
+            val repTargets = activityField("repTargets").get(checkIn.activity) as MutableMap<Int, Int>
+            assertEquals(expectedCeiling, repTargets[checkIn.moveIndex])
+            val targetDose = GuidedWorkoutActivity::class.java.getDeclaredMethod(
+                "targetDose",
+                Int::class.javaPrimitiveType
+            ).apply { isAccessible = true }
+            assertTrue(
+                (targetDose.invoke(checkIn.activity, checkIn.moveIndex) as String)
+                    .contains("$expectedCeiling ${checkIn.plan.unit}")
             )
             assertEquals("Confirmed sets must remain untouched", checkIn.completedSets,
                 completedSets[checkIn.moveIndex])

@@ -2965,6 +2965,19 @@ class GuidedWorkoutActivity:Activity() {
                         lastCoachAnswer = summary
                         speak(summary)
                     }
+                    WorkoutStepVoiceCommand.Command.OPEN_EASIER_ALTERNATIVES -> {
+                        // Leave the walkthrough before opening a second dialog. The existing
+                        // substitution flow re-checks safety, completion, constraints and equipment,
+                        // then requires a separate confirmation before changing the active move.
+                        spoken?.stop()
+                        dialog.dismiss()
+                        Toast.makeText(
+                            this,
+                            "Chibi mở phương án thay thế đã duyệt; bài chỉ đổi sau khi mày xác nhận.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                        chooseEasierAlternative()
+                    }
                     WorkoutStepVoiceCommand.Command.EASIER -> {
                         val answer = WorkoutStepGuide.spokenEasierCue(move.name, move.easier)
                         lastCoachAnswer = answer

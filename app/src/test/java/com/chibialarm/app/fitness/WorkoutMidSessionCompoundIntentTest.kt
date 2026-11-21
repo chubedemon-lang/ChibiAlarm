@@ -1,10 +1,35 @@
 package com.chibialarm.app.fitness
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class WorkoutMidSessionCompoundIntentTest {
+    @Test
+    fun isRepTargetOnlyAllowsCountdownDriftButNotCompoundChanges() {
+        val repOnly = WorkoutMidSessionRequest.parse("Giảm còn 10 lần mỗi hiệp")
+        assertTrue(repOnly is WorkoutMidSessionRequest.Result.Proposed)
+        val repRequest = (repOnly as WorkoutMidSessionRequest.Result.Proposed).request
+        assertTrue(repRequest.isRepTargetOnly)
+        assertFalse(repRequest.isRestOnly)
+
+        val repAndRest = WorkoutMidSessionRequest.parse(
+            "Giảm còn 10 lần mỗi hiệp và nghỉ thêm 30 giây"
+        )
+        assertTrue(repAndRest is WorkoutMidSessionRequest.Result.Proposed)
+        val combinedRequest = (repAndRest as WorkoutMidSessionRequest.Result.Proposed).request
+        assertFalse(combinedRequest.isRepTargetOnly)
+        assertFalse(combinedRequest.isRestOnly)
+
+        assertFalse(
+            WorkoutMidSessionRequest.Request(
+                currentRepLimit = 10,
+                remainingMinutes = 15
+            ).isRepTargetOnly
+        )
+    }
+
     @Test
     fun easierReplacementCanBeCombinedWithTimeEnergyAndMovementConstraints() {
         val parsed = WorkoutMidSessionRequest.parse(

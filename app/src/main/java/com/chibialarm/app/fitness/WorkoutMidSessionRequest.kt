@@ -65,6 +65,36 @@ object WorkoutMidSessionRequest {
             require(replaceCurrentWith == null || currentRepLimit == null)
         }
 
+        /**
+         * True only for a standalone rep-ceiling edit. The live countdown may naturally
+         * drift while a preview is open, but every other session identity/progress guard
+         * must still be enforced by the caller.
+         */
+        val isRepTargetOnly: Boolean
+            get() = currentRepLimit != null &&
+                remainingMinutes == null &&
+                !lowEnergy &&
+                !avoidWristLoad &&
+                !avoidFloorPositions &&
+                !preferEasier &&
+                restSeconds == null &&
+                !avoidExternalLoad &&
+                !allowWristLoad &&
+                !allowFloorPositions &&
+                !avoidOverheadReach &&
+                !allowOverheadReach &&
+                !avoidJumping &&
+                !allowJumping &&
+                !avoidKneeling &&
+                !allowKneeling &&
+                !addOptionalExercise &&
+                !removeOptionalExercises &&
+                !removeOptionalSets &&
+                currentSetLimit == null &&
+                availableEquipment.isEmpty() &&
+                unavailableEquipment.isEmpty() &&
+                replaceCurrentWith == null
+
         /** True only when the request changes the rest countdown and nothing else. */
         val isRestOnly: Boolean
             get() = restSeconds != null &&

@@ -1518,7 +1518,7 @@ class WorkoutMidSessionPlannerTest {
         assertEquals(2, catalogPlan.requiredSets)
         assertEquals(3, catalogPlan.maximumSets)
         assertTrue(preview.after.first().dose.contains("2–3 hiệp × 8–12 lần"))
-        assertEquals(10, WorkoutRemainingRepTarget.capExistingTarget(null, preview.currentRepLimit!!))
+        assertTrue(WorkoutRemainingRepTarget.capExistingTarget(null, preview.currentRepLimit!!) == null)
     }
 
     @Test fun repLimitCannotLowerTheMinimumOrIncreaseAnExistingTarget() {

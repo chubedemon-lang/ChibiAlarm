@@ -379,16 +379,6 @@ object WorkoutMidSessionPlanner {
                     "Mục tiêu tối đa đã là $requestedLimit ${plan.unit}; không có phần lặp tùy chọn nào để giảm."
                 )
             }
-            val setRange = if (plan.requiredSets == plan.maximumSets) {
-                "${plan.requiredSets}"
-            } else {
-                "${plan.requiredSets}–${plan.maximumSets}"
-            }
-            val repRange = if (plan.targetMin == requestedLimit) {
-                "$requestedLimit"
-            } else {
-                "${plan.targetMin}–$requestedLimit"
-            }
             // Keep the catalog prescription in the plan snapshot. The accepted ceiling is
             // carried separately in Preview.currentRepLimit and stored in the Activity's
             // index-scoped repTargets map only after the user confirms the preview.

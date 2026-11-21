@@ -82,8 +82,43 @@ object WorkoutExerciseConversation {
         ).any(query::contains)
     }
 
+    /**
+     * Detects a named exercise after a technique-question cue when that name is not
+     * present in the curated catalog. This prevents a typo/unknown move from silently
+     * inheriting whichever exercise happens to be open.
+     */
+    fun hasUnknownExplicitExerciseName(input: String): Boolean {
+        if (input.isBlank() || input.length > 160) return false
+        val query = normalize(input)
+        if (!isExerciseQuestion(query)) return false
+        if (listOf(
+                "bai nay", "dong tac nay", "bai hien tai", "dong tac hien tai",
+                "bai dang tap", "dong tac dang tap", "bai do", "dong tac do",
+                "bai vua noi", "dong tac vua noi", "bai vua nhac", "dong tac vua nhac"
+            ).any(query::contains)
+        ) return false
+
+        val contextualWords = questionWords + setOf(
+            "lau", "hay", "ta", "day", "how", "long", "many", "sets", "reps", "rest",
+            "do", "vua", "noi", "nhac", "luc", "nguoi", "moi", "mot", "tai", "nha",
+            "khong", "khang", "tham", "hoac", "ghe", "video", "gym", "nhe", "hon",
+            "phuong", "an", "dung", "cu", "theo", "va", "neu", "duoc", "giup",
+            "ban", "em", "anh", "co", "can", "thoi", "gian"
+        )
+        val cues = listOf("cach tap", "huong dan", "lam sao tap", "lam sao de tap", "ky thuat")
+        val cue = cues.firstOrNull(query::contains) ?: return false
+        val candidate = query.substringAfter(cue).split(' ')
+            .firstOrNull { it.length >= 2 && it !in contextualWords }
+            ?: return false
+        val catalogTokens = TrainingCatalog.allMoves.asSequence()
+            .flatMap { normalize(it.name).split(' ').asSequence() }
+            .toSet()
+        return candidate !in catalogTokens
+    }
+
     fun isContextualQuestion(input: String): Boolean {
         if (input.isBlank() || input.length > 160) return false
+        if (hasUnknownExplicitExerciseName(input)) return false
         val query = normalize(input)
         if (!isExerciseQuestion(query)) return false
         val refersToCurrentMove = listOf(

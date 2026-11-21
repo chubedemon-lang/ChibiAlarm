@@ -340,7 +340,8 @@ class GuidedWorkoutEffortVoiceTest {
 
     @Test fun repeatedHardVoiceCheckInOffersRepReductionOnlyThroughPreviewAndConfirmation() {
         val checkIn = openCheckIn(
-            completedSetCount = 1,
+            // The current check-in is for completed set 2; set 1 is the prior HARD report.
+            completedSetCount = 2,
             previousEfforts = listOf(WorkoutEffortFeedback.Level.HARD)
         )
         try {

@@ -423,4 +423,55 @@ class WorkoutHistoryConversationTest {
         assertTrue(answer.contains("có thể bỏ qua"))
     }
 
+
+    @Test fun repeatedHardCheckInsOfferAnOptInLighterPlanPreview() {
+        val workouts = listOf(
+            guided(
+                today.minusDays(2),
+                "Squat không tạ: hiệp 1: Khó, cần nghỉ thêm",
+                "550e8400-e29b-41d4-a716-446655440081",
+                "private note from older session"
+            ),
+            guided(
+                today,
+                "Squat không tạ: hiệp 1: Quá sức, tạm dừng",
+                "550e8400-e29b-41d4-a716-446655440082",
+                "private note from latest session"
+            )
+        )
+
+        val answer = WorkoutHistoryConversation.answer(
+            "Có bài nào tao nên giảm tải không?",
+            workouts,
+            today
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("Squat không tạ"))
+        assertTrue(answer.contains("2 buổi"))
+        assertTrue(answer.contains("bản nháp"))
+        assertTrue(answer.contains("Tao muốn xem một buổi tập nhẹ hơn"))
+        assertTrue(answer.contains("chưa thay đổi giáo án"))
+        assertFalse(answer.contains("private note"))
+    }
+
+    @Test fun oneHardSessionDoesNotTriggerAnEffortBasedLoadChangeSuggestion() {
+        val workout = guided(
+            today,
+            "Squat không tạ: hiệp 1: Khó, cần nghỉ thêm, hiệp 2: Quá sức, tạm dừng",
+            "550e8400-e29b-41d4-a716-446655440083",
+            "private note says to reduce load"
+        )
+
+        val answer = WorkoutHistoryConversation.answer(
+            "Có bài nào tao nên giảm tải không?",
+            listOf(workout),
+            today
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("Chưa đủ dữ liệu"))
+        assertFalse(answer.contains("Squat không tạ"))
+        assertFalse(answer.contains("private note"))
+    }
 }

@@ -37,7 +37,7 @@ class WorkoutCoachQuestionRouterTest {
         )
 
         assertNotNull(answer)
-        assertTrue(answer!!.contains("chưa nhận ra tên động tác"))
+        assertTrue("Unexpected coach answer: $answer", answer!!.contains("chưa nhận ra tên động tác"))
         assertFalse(answer.contains("Squat không tạ"))
     }
 

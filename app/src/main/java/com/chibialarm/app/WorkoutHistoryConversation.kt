@@ -41,6 +41,9 @@ object WorkoutHistoryConversation {
         if (setHistoryAnswer != null) return setHistoryAnswer
 
         val text = normalize(input.take(300))
+        if (isEffortBasedLighterPlanQuestion(text)) {
+            return effortBasedLighterPlanAnswer(workouts, today)
+        }
         if (!isHistoryQuestion(text)) return null
 
         // Keep the newest records when a long-lived journal exceeds the processing cap.
@@ -268,6 +271,28 @@ object WorkoutHistoryConversation {
             }
             append("\nĐây là gợi ý theo nhật ký tự ghi, không đánh giá thể lực hay hồi phục. Hãy kiểm tra mục tiêu, thời lượng sẵn có, dụng cụ và hạn chế vận động rồi tự xác nhận ngày cụ thể trong Lịch trình.")
         }
+    }
+
+    /**
+     * Offers an opt-in lighter-plan preview only when the same move was self-rated
+     * HARD/VERY_HARD in at least two distinct recent guided sessions.
+     */
+    private fun isEffortBasedLighterPlanQuestion(text: String): Boolean {
+        val asksAboutMove = has(text, "bai nao", "dong tac nao", "co bai nao", "co dong tac nao")
+        val asksToReduce = has(text, "giam tai", "giam khoi luong", "tap nhe hon", "nhe hon")
+        return asksAboutMove && asksToReduce
+    }
+
+    private fun effortBasedLighterPlanAnswer(
+        workouts: List<Workout>,
+        today: LocalDate
+    ): String {
+        val suggestion = WorkoutEffortPlanAdvisor.suggest(workouts, today)
+            ?: return "Chưa đủ dữ liệu để gợi ý giảm tải: cần ít nhất hai buổi Guided Workout riêng biệt trong 30 ngày, cùng một động tác được bạn tự đánh dấu khó hoặc quá sức. Chibi không đọc ghi chú riêng tư và không tự thay đổi giáo án."
+
+        return suggestion.message +
+            "\\n\\nNếu muốn xem bản nháp, hãy nói: “${suggestion.prompt}”. " +
+            "Chibi chưa thay đổi giáo án hoặc lịch; mọi thay đổi vẫn cần bạn xem trước và xác nhận."
     }
 
     private fun isRecentListQuestion(text: String): Boolean {

@@ -313,4 +313,27 @@ class WorkoutExerciseConversationTest {
         assertNull(WorkoutExerciseStepQuestion.answer("Bước tiếp theo là gì?", squat.name, squat.steps))
     }
 
+
+    @Test fun unknownNamedExerciseDoesNotBecomeAContextualFollowUp() {
+        assertTrue(
+            WorkoutExerciseConversation.hasUnknownExplicitExerciseName(
+                "Cách tập Burpee biến thể lạ?"
+            )
+        )
+        assertFalse(
+            WorkoutExerciseConversation.isContextualQuestion(
+                "Cách tập Burpee biến thể lạ?"
+            )
+        )
+        assertFalse(
+            WorkoutExerciseConversation.hasUnknownExplicitExerciseName(
+                "Cách tập bài này?"
+            )
+        )
+        assertFalse(
+            WorkoutExerciseConversation.hasUnknownExplicitExerciseName(
+                "Cách tập Squat không tạ?"
+            )
+        )
+    }
 }

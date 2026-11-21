@@ -51,7 +51,7 @@ internal object WorkoutSetStatusConversation {
 
         val plan = sequenceOf(currentDose, fallbackDose)
             .filterNotNull()
-            .mapNotNull(WorkoutSetTracker::parse)
+            .mapNotNull { WorkoutSetTracker.parse(it) }
             .firstOrNull()
             ?: return "Động tác hiện tại không có mục tiêu theo hiệp; Chibi không thể xác định số hiệp."
 

@@ -490,4 +490,107 @@ class WorkoutHistoryConversationTest {
         assertFalse(answer.contains("Squat không tạ"))
         assertFalse(answer.contains("private note"))
     }
+
+    @Test fun progressionEligibilityIsAnswerableThroughTheCoachConversation() {
+        val workouts = listOf(
+            guided(
+                today.minusDays(4),
+                "Squat không tạ: hiệp 1: Nhẹ, còn dư sức, hiệp 2: Vừa sức",
+                "550e8400-e29b-41d4-a716-446655440091",
+                "private note from first session"
+            ),
+            guided(
+                today.minusDays(2),
+                "Squat không tạ: hiệp 1: Vừa sức, hiệp 2: Nhẹ, còn dư sức",
+                "550e8400-e29b-41d4-a716-446655440092",
+                "private note from second session"
+            ),
+            guided(
+                today,
+                "Squat không tạ: hiệp 1: Nhẹ, còn dư sức, hiệp 2: Vừa sức",
+                "550e8400-e29b-41d4-a716-446655440093",
+                "private note from latest session"
+            )
+        )
+
+        val answer = WorkoutHistoryConversation.answer(
+            "Bài nào tao có thể tăng nhẹ?",
+            workouts,
+            today
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("Trong 3 ngày tập riêng biệt"))
+        assertTrue(answer.contains("Xem bước tiến triển có kiểm soát"))
+        assertTrue(answer.contains("không tự tăng số lần"))
+        assertFalse(answer.contains("private note"))
+    }
+
+    @Test fun progressionQuestionExplainsTheThreeDistinctDayEvidenceGate() {
+        val workouts = listOf(
+            guided(
+                today.minusDays(2),
+                "Squat không tạ: hiệp 1: Nhẹ, còn dư sức, hiệp 2: Vừa sức",
+                "550e8400-e29b-41d4-a716-446655440094"
+            ),
+            guided(
+                today,
+                "Squat không tạ: hiệp 1: Vừa sức, hiệp 2: Nhẹ, còn dư sức",
+                "550e8400-e29b-41d4-a716-446655440095"
+            )
+        )
+
+        val answer = WorkoutHistoryConversation.answer(
+            "Tao có đủ điều kiện tăng số lần chưa?",
+            workouts,
+            today
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("Chưa đủ dữ liệu"))
+        assertTrue(answer.contains("ít nhất 3 ngày riêng biệt"))
+        assertFalse(answer.contains("Squat không tạ"))
+        assertFalse(answer.contains("private health note"))
+    }
+
+    @Test fun aHardCheckInBlocksTheConversationalProgressionSuggestion() {
+        val workouts = listOf(
+            guided(
+                today.minusDays(4),
+                "Squat không tạ: hiệp 1: Nhẹ, còn dư sức, hiệp 2: Vừa sức",
+                "550e8400-e29b-41d4-a716-446655440096"
+            ),
+            guided(
+                today.minusDays(2),
+                "Squat không tạ: hiệp 1: Vừa sức, hiệp 2: Nhẹ, còn dư sức",
+                "550e8400-e29b-41d4-a716-446655440097"
+            ),
+            guided(
+                today,
+                "Squat không tạ: hiệp 1: Khó, cần nghỉ thêm, hiệp 2: Vừa sức",
+                "550e8400-e29b-41d4-a716-446655440098"
+            )
+        )
+
+        val answer = WorkoutHistoryConversation.answer(
+            "Bài nào tao có thể tăng nhẹ?",
+            workouts,
+            today
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("Chưa đủ dữ liệu"))
+        assertFalse(answer.contains("Xem bước tiến triển có kiểm soát"))
+    }
+
+    @Test fun restDurationQuestionIsNotMistakenForProgressionIntent() {
+        assertNull(
+            WorkoutHistoryConversation.answer(
+                "Tao muốn tăng thời gian nghỉ 15 giây",
+                emptyList(),
+                today
+            )
+        )
+    }
+
 }

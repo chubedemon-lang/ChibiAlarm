@@ -21,7 +21,8 @@ class WorkoutCoachConversationContext {
         restIsActive: Boolean = false,
         restRemainingMs: Long? = null,
         restIsPaused: Boolean = false,
-        activeCompletedSets: Int? = null
+        activeCompletedSets: Int? = null,
+        activeCompletedSetValues: List<Int>? = null
     ): String? {
         if (input.isBlank() || input.length > MAX_INPUT_CHARS) return null
 
@@ -43,6 +44,11 @@ class WorkoutCoachConversationContext {
             restIsPaused = restIsPaused,
             completedSets = if (targetMove != null && targetMove.name == activeMove?.name) {
                 activeCompletedSets
+            } else {
+                null
+            },
+            completedSetValues = if (targetMove != null && targetMove.name == activeMove?.name) {
+                activeCompletedSetValues
             } else {
                 null
             }

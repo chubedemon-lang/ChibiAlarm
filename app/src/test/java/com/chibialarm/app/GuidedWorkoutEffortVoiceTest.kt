@@ -648,7 +648,8 @@ class GuidedWorkoutEffortVoiceTest {
             val request = GuidedWorkoutActivity::class.java.declaredMethods
                 .single { it.name == "requestPlanPreviewVoiceCommand" }
                 .apply { isAccessible = true }
-            request.invoke(activity, { phrase: String -> selected = phrase })
+            val callback: (String) -> Unit = { phrase -> selected = phrase }
+            request.invoke(activity, callback)
 
             val disclosure = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
             val message = disclosure.findViewById<android.widget.TextView>(android.R.id.message)

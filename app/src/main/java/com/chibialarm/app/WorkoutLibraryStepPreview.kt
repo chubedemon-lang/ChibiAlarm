@@ -21,6 +21,11 @@ internal class WorkoutLibraryStepPreview private constructor(
     fun next(): WorkoutLibraryStepPreview =
         if (canGoNext) WorkoutLibraryStepPreview(moveName, instructions, walkthrough.next()) else this
 
+    /** Return to instruction one without mutating this preview or workout progress. */
+    fun first(): WorkoutLibraryStepPreview =
+        if (position == 1) this
+        else WorkoutLibraryStepPreview(moveName, instructions, walkthrough.first())
+
     fun spokenCue(): String =
         WorkoutStepGuide.spokenCue(moveName, instructions, position)
 

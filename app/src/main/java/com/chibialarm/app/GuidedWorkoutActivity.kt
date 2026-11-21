@@ -1885,7 +1885,13 @@ class GuidedWorkoutActivity:Activity() {
                     input = utterance,
                     activeMove = currentMove,
                     activeDose = currentMove?.let { targetDose(index) },
-                    pausedForSafety = pausedForSafety
+                    pausedForSafety = pausedForSafety,
+                    restIsActive = resting,
+                    restRemainingMs = if (resting) {
+                        if (paused) restRemainingMs
+                        else (restDeadline - SystemClock.elapsedRealtime()).coerceIn(0L, 600_000L)
+                    } else null,
+                    restIsPaused = resting && paused
                 )
                 if (questionAnswer != null) {
                     // Keep the exercise/rest clock from advancing while the user reads or hears

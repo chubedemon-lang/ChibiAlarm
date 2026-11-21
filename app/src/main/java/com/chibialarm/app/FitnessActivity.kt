@@ -1413,6 +1413,11 @@ class FitnessActivity:Activity() {
             if (options.isEmpty()) {
                 Toast.makeText(this@FitnessActivity, "Chưa có biến thể phù hợp với dụng cụ và hạn chế hiện tại.", Toast.LENGTH_LONG).show()
             } else {
+                // The same curated options shown in the picker are read aloud when
+                // Vietnamese TTS is already enabled; no microphone or network is opened.
+                if (speechReady && speechOutput != null) {
+                    WorkoutAlternativeSpeech.summary(options)?.let(::sayFollowUp)
+                }
                 val labels = options.map { "${it.name} • ${it.dose}" }.toTypedArray()
                 AlertDialog.Builder(this@FitnessActivity)
                     .setTitle("Chọn bài thay thế đã duyệt")

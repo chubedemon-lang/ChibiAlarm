@@ -42,7 +42,7 @@ internal object WorkoutEffortRestAdviceConversation {
 
         // The latest confirmed set must have its own rating. Never borrow an earlier label.
         val confirmedReports = reports.take(confirmedCount)
-        val latest = confirmedReports.lastOrNull()
+        val latest = confirmedReports.getOrNull(confirmedCount - 1)
         if (latest == null) {
             return "Hiệp $confirmedCount chưa có check-in cảm nhận hợp lệ. " +
                 "Theo giáo án, thời gian nghỉ là $prescribed giây; nếu vẫn chưa sẵn sàng, " +

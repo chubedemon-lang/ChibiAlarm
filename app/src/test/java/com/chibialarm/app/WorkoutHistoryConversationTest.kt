@@ -334,4 +334,55 @@ class WorkoutHistoryConversationTest {
         assertFalse(answer.contains("Mục tiêu khởi đầu"))
     }
 
+
+    @Test fun nextWeekPlanShowsConcreteDatesWithoutSavingOrLeakingNotes() {
+        val answer = WorkoutHistoryConversation.answer(
+            "Tuần tới tao nên sắp xếp lịch tập thế nào?",
+            listOf(
+                workout(today.minusDays(5), 25, "Đi bộ", "private note"),
+                workout(today.minusDays(3), 30, "Toàn thân", "private note"),
+                workout(today.minusDays(1), 20, "Giãn cơ", "private note")
+            ),
+            today
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("bản nháp, chưa tự thay đổi lịch"))
+        assertTrue(answer.contains("Thứ Hai 16/11"))
+        assertTrue(answer.contains("Thứ Tư 18/11"))
+        assertTrue(answer.contains("Thứ Bảy 21/11"))
+        assertTrue(answer.contains("tự xác nhận"))
+        assertFalse(answer.contains("private note"))
+    }
+
+    @Test fun nextWeekPlanCapsStructuredDaysAtFiveWhenLastWeekHadSixActiveDays() {
+        val history = (0..5).map { offset ->
+            workout(today.minusDays(offset.toLong()), 20, "Đi bộ")
+        }
+        val answer = WorkoutHistoryConversation.answer(
+            "Tuần sau cho tao kế hoạch lịch tập thế nào?",
+            history,
+            today
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("tối đa 5 ngày tập có cấu trúc"))
+        assertTrue(answer.contains("chừa ít nhất hai ngày"))
+        assertTrue(answer.contains("Chủ nhật 22/11"))
+    }
+
+    @Test fun nextWeekPlanAfterAnInactiveWeekOffersOnlyOneOptionalLightDay() {
+        val history = listOf(workout(today.minusDays(9), 20, "Đi bộ"))
+        val answer = WorkoutHistoryConversation.answer(
+            "Tuần tới tao nên tập thế nào?",
+            history,
+            today
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("1 ngày vận động nhẹ"))
+        assertTrue(answer.contains("Thứ Tư 18/11"))
+        assertTrue(answer.contains("có thể bỏ qua"))
+    }
+
 }

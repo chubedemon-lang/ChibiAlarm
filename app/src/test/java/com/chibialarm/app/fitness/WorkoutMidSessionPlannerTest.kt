@@ -335,11 +335,14 @@ class WorkoutMidSessionPlannerTest {
         assertEquals("The preview must not rewrite the catalog prescription", active.dose, preview.after.single().dose)
     }
 
-    @Test fun onlyAnIsolatedRepCapMayIgnoreLiveTimerDriftAtConfirmation() {
-        assertTrue(WorkoutMidSessionRequest.Request(currentRepLimit = 11).isRepTargetOnly)
-        assertFalse(WorkoutMidSessionRequest.Request(currentRepLimit = 11, restSeconds = 60).isRepTargetOnly)
-        assertFalse(WorkoutMidSessionRequest.Request(currentRepLimit = 11, avoidWristLoad = true).isRepTargetOnly)
-        assertFalse(WorkoutMidSessionRequest.Request(currentSetLimit = 2).isRepTargetOnly)
+    @Test fun repCapRequestCarriesOnlyTheExplicitUnfinishedSetTarget() {
+        val request = WorkoutMidSessionRequest.Request(currentRepLimit = 11)
+        assertEquals(11, request.currentRepLimit)
+        assertNull(request.currentSetLimit)
+        assertNull(request.restSeconds)
+        assertFalse(request.lowEnergy)
+        assertFalse(request.preferEasier)
+        assertTrue(request.unavailableEquipment.isEmpty())
     }
 
     @Test fun checkpointPlanRoundTripsOnlyCanonicalCatalogExercises() {
@@ -1493,7 +1496,7 @@ class WorkoutMidSessionPlannerTest {
         )
     }
 
-    @Test fun repLimitChangesOnlyTheFutureDoseAndKeepsConfirmedSetCount() {
+    @Test fun repLimitIsStoredSeparatelyFromCatalogDoseAndKeepsConfirmedSetCount() {
         val result = WorkoutMidSessionPlanner.preview(
             currentMoves = listOf(move("Squat không tạ"), move("Thả lỏng")),
             currentIndex = 0,
@@ -1507,14 +1510,15 @@ class WorkoutMidSessionPlannerTest {
         )
         assertTrue(result is WorkoutMidSessionPlanner.Result.Proposed)
         val preview = (result as WorkoutMidSessionPlanner.Result.Proposed).preview
-        val adjusted = WorkoutSetTracker.parse(preview.after.first().dose)!!
+        val catalogPlan = WorkoutSetTracker.parse(preview.after.first().dose)!!
         assertEquals(10, preview.currentRepLimit)
         assertEquals(1, preview.completedCurrentSets)
-        assertEquals(8, adjusted.targetMin)
-        assertEquals(10, adjusted.targetMax)
-        assertEquals(2, adjusted.requiredSets)
-        assertEquals(3, adjusted.maximumSets)
-        assertTrue(preview.after.first().dose.contains("2–3 hiệp × 8–10 lần"))
+        assertEquals(8, catalogPlan.targetMin)
+        assertEquals(12, catalogPlan.targetMax)
+        assertEquals(2, catalogPlan.requiredSets)
+        assertEquals(3, catalogPlan.maximumSets)
+        assertTrue(preview.after.first().dose.contains("2–3 hiệp × 8–12 lần"))
+        assertEquals(10, WorkoutRemainingRepTarget.capExistingTarget(null, preview.currentRepLimit!!))
     }
 
     @Test fun repLimitCannotLowerTheMinimumOrIncreaseAnExistingTarget() {

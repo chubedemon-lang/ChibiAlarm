@@ -1488,7 +1488,7 @@ class GuidedWorkoutActivity:Activity() {
                         if (pausedForSafety || completed || resting || index != beforeIndex ||
                             sessionId != beforeSessionId || moves != beforeMoves ||
                             currentPlanFingerprint() != beforeFingerprint ||
-                            (remainingMs != beforeRemaining && !request.isRepTargetOnly) ||
+                            remainingMs != beforeRemaining ||
                             (completedSetsByMove[index] ?: 0) != beforeCompletedSets
                         ) {
                             Toast.makeText(this,"Buổi tập đã thay đổi. Hãy xem trước lại.",Toast.LENGTH_LONG).show()
@@ -1514,14 +1514,7 @@ class GuidedWorkoutActivity:Activity() {
                             it > index || (it == index && preview.currentMoveChanged)
                         }
 
-                        preview.currentRepLimit?.let { limit ->
-                            // An accepted reduction is a new target even when no override existed.
-                            // Preserve a stricter prior override, but never drop the user's choice.
-                            val cappedTarget = WorkoutRemainingRepTarget.capExistingTarget(
-                                repTargets[index], limit
-                            ) ?: limit
-                            repTargets[index] = cappedTarget
-                        }
+                        val acceptedRepLimit = preview.currentRepLimit
                         // If the user removed only optional sets and has already confirmed
                         // the required minimum, mark this move complete without inventing
                         // a set, changing its log, or awarding extra XP.
@@ -1558,6 +1551,21 @@ class GuidedWorkoutActivity:Activity() {
                         poseView.pose = WorkoutPoseGuide.classify(moves[index].name)
                         renderDose()
                         renderSetControls()
+                        acceptedRepLimit?.let { limit ->
+                            // Bind the accepted cap to the exact move index captured by the preview,
+                            // after plan replacement/removal has finished. This never rewrites catalog dose.
+                            val activeIndex = preview.currentIndex
+                            if (activeIndex != beforeIndex || activeIndex != index || activeIndex !in moves.indices) {
+                                Toast.makeText(this,"Vị trí động tác đã thay đổi. Hãy xem trước lại.",Toast.LENGTH_LONG).show()
+                                return@setPositiveButton
+                            }
+                            val cappedTarget = WorkoutRemainingRepTarget.capExistingTarget(
+                                repTargets[activeIndex], limit
+                            ) ?: limit
+                            repTargets[activeIndex] = cappedTarget
+                            renderDose()
+                            renderSetControls()
+                        }
                         progress.max = moves.size
                         progress.progress = index
                         counter.text = clockText(remainingMs)

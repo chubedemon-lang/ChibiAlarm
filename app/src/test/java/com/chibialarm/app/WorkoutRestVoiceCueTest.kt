@@ -30,6 +30,25 @@ class WorkoutRestVoiceCueTest {
         assertFalse(WorkoutRestVoiceCue.shouldAnnounce(5_000L, false, true))
     }
 
+    @Test fun userCanDisableAutomaticRestVoiceCueWithoutConsumingTheOneShot() {
+        assertFalse(
+            WorkoutRestVoiceCue.shouldAnnounce(
+                remainingMs = 5_000L,
+                alreadyAnnounced = false,
+                pausedForSafety = false,
+                voiceCueEnabled = false
+            )
+        )
+        assertTrue(
+            WorkoutRestVoiceCue.shouldAnnounce(
+                remainingMs = 5_000L,
+                alreadyAnnounced = false,
+                pausedForSafety = false,
+                voiceCueEnabled = true
+            )
+        )
+    }
+
     @Test fun microphoneInputSuppressesCueWithoutConsumingTheOneShot() {
         assertFalse(
             WorkoutRestVoiceCue.shouldAnnounce(

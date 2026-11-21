@@ -15,8 +15,10 @@ internal object WorkoutRestVoiceCue {
         alreadyAnnounced: Boolean,
         pausedForSafety: Boolean,
         microphoneActive: Boolean = false,
-        speechEngineReady: Boolean = true
-    ): Boolean = !alreadyAnnounced &&
+        speechEngineReady: Boolean = true,
+        voiceCueEnabled: Boolean = true
+    ): Boolean = voiceCueEnabled &&
+        !alreadyAnnounced &&
         !pausedForSafety &&
         !microphoneActive &&
         speechEngineReady &&

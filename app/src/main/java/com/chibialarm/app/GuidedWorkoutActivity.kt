@@ -135,6 +135,10 @@ class GuidedWorkoutActivity:Activity() {
     private var restDeadline=0L
     private var restRemainingMs=0L
     private var restTenSecondCueGiven=false
+    // Automatic ten-second rest narration is explicitly controllable and guest-session local.
+    private var restVoiceCueEnabled = true
+    private var updatingRestVoiceCueToggle = false
+    private lateinit var restVoiceCueToggle: CheckBox
     // A rest-completion cue survives a busy/unavailable TTS engine and process recreation.
     private val restCompletionSpeechQueue = WorkoutRestCompletionSpeechQueue()
     private var setTimerExpired=false
@@ -192,6 +196,7 @@ class GuidedWorkoutActivity:Activity() {
             .putBoolean("resting",resting)
             .putLong("restRemaining",restRemainingMs.coerceIn(0L,600_000L))
             .putBoolean("restTenSecondCueGiven",restTenSecondCueGiven)
+            .putBoolean("restVoiceCueEnabled",restVoiceCueEnabled)
             .putString("restCompletionSpeech",restCompletionSpeechQueue.pendingMessage)
             .putBoolean("setTimerExpired",setTimerExpired)
             .putBoolean("started",activeElapsedMs()>0L)
@@ -327,6 +332,7 @@ class GuidedWorkoutActivity:Activity() {
                 resting=checkpoint.getBoolean("resting",false)
                 restRemainingMs=checkpoint.getLong("restRemaining",0L).coerceIn(0L,600_000L)
                 restTenSecondCueGiven=checkpoint.getBoolean("restTenSecondCueGiven",false)
+                restVoiceCueEnabled=checkpoint.getBoolean("restVoiceCueEnabled",true)
                 restDeadline=0L
                 setTimerExpired=checkpoint.getBoolean("setTimerExpired",remainingMs<=0L)
                 renderSetControls()
@@ -366,6 +372,7 @@ class GuidedWorkoutActivity:Activity() {
                 resting=false
                 restRemainingMs=0L
                 restTenSecondCueGiven=false
+                restVoiceCueEnabled=true
                 restDeadline=0L
                 setTimerExpired=false
                 pausedForSafety=keepSafetyLock
@@ -400,6 +407,7 @@ class GuidedWorkoutActivity:Activity() {
                         remainingMs = left,
                         alreadyAnnounced = restTenSecondCueGiven,
                         pausedForSafety = pausedForSafety,
+                        voiceCueEnabled = restVoiceCueEnabled,
                         microphoneActive = pendingRecognitionRequestCode != null,
                         // Do not flush an utterance that is already speaking. The next tick retries.
                         speechEngineReady = ready && spoken != null && spoken?.isSpeaking != true
@@ -661,6 +669,24 @@ class GuidedWorkoutActivity:Activity() {
             visibility=android.view.View.GONE
         }
         root.addView(restPreview)
+        restVoiceCueToggle = CheckBox(this).apply {
+            tag = "workout-rest-auto-voice-cue"
+            text = "🔊 Tự đọc nhắc khi còn 10 giây"
+            contentDescription = "Bật hoặc tắt lời nhắc nghỉ bằng giọng đọc; không sử dụng microphone."
+            isChecked = restVoiceCueEnabled
+            visibility = android.view.View.GONE
+            setOnCheckedChangeListener { _, checked ->
+                if (updatingRestVoiceCueToggle) return@setOnCheckedChangeListener
+                restVoiceCueEnabled = checked
+                contentDescription = if (checked) {
+                    "Đang bật lời nhắc nghỉ bằng giọng đọc khi còn 10 giây; không sử dụng microphone."
+                } else {
+                    "Đã tắt lời nhắc nghỉ tự động bằng giọng đọc; có thể bật lại bất cứ lúc nào."
+                }
+                saveCheckpoint()
+            }
+        }
+        root.addView(restVoiceCueToggle)
         // A catalog-derived vector preview shows what follows the current rest.
         // It is a static cue during rest; the main pose animation resumes afterward.
         restPosePreview = WorkoutPoseView(this).apply {
@@ -928,6 +954,7 @@ class GuidedWorkoutActivity:Activity() {
             resting=savedInstanceState.getBoolean("workout_resting",false)
             restRemainingMs=savedInstanceState.getLong("workout_rest_remaining",0L).coerceIn(0L,600_000L)
             restTenSecondCueGiven=savedInstanceState.getBoolean("workout_rest_ten_second_cue",false)
+            restVoiceCueEnabled=savedInstanceState.getBoolean("workout_rest_voice_cue_enabled",true)
             restDeadline=0L
             setTimerExpired=savedInstanceState.getBoolean("workout_set_timer_expired",remainingMs<=0L)
             shorterFromIndex=savedInstanceState.getInt("workout_shorter_from",Int.MAX_VALUE).coerceIn(0,moves.size)
@@ -976,6 +1003,7 @@ class GuidedWorkoutActivity:Activity() {
         outState.putBoolean("workout_resting",resting)
         outState.putLong("workout_rest_remaining",restRemainingMs.coerceIn(0L,600_000L))
         outState.putBoolean("workout_rest_ten_second_cue",restTenSecondCueGiven)
+        outState.putBoolean("workout_rest_voice_cue_enabled",restVoiceCueEnabled)
         outState.putString("workout_rest_completion_speech",restCompletionSpeechQueue.pendingMessage)
         outState.putBoolean("workout_set_timer_expired",setTimerExpired)
         outState.putInt("workout_index",index)
@@ -3203,9 +3231,30 @@ class GuidedWorkoutActivity:Activity() {
         }
     }
 
+    private fun updateRestVoiceCueToggle() {
+        if (!::restVoiceCueToggle.isInitialized) return
+        restVoiceCueToggle.visibility = if (resting && !pausedForSafety && !completed) {
+            android.view.View.VISIBLE
+        } else {
+            android.view.View.GONE
+        }
+        if (restVoiceCueToggle.isChecked != restVoiceCueEnabled) {
+            updatingRestVoiceCueToggle = true
+            restVoiceCueToggle.isChecked = restVoiceCueEnabled
+            updatingRestVoiceCueToggle = false
+        }
+        restVoiceCueToggle.contentDescription = if (restVoiceCueEnabled) {
+            "Đang bật lời nhắc nghỉ bằng giọng đọc khi còn 10 giây; không sử dụng microphone."
+        } else {
+            "Đã tắt lời nhắc nghỉ tự động bằng giọng đọc; có thể bật lại bất cứ lúc nào."
+        }
+    }
+
     private fun renderRestPreview() {
         if (!::restPreview.isInitialized || !::restPosePreview.isInitialized ||
-            !::restStepPreview.isInitialized || !::restStepSpeakButton.isInitialized) return
+            !::restStepPreview.isInitialized || !::restStepSpeakButton.isInitialized ||
+            !::restVoiceCueToggle.isInitialized) return
+        updateRestVoiceCueToggle()
         if (!resting || pausedForSafety || index !in moves.indices) {
             val pendingCompletion = restCompletionSpeechQueue.pendingMessage
             if (!pausedForSafety && !pendingCompletion.isNullOrBlank()) {

@@ -16,6 +16,12 @@ object WorkoutRestStatusConversation {
         "con bao lau",
         "con may giay",
         "con may phut",
+        "con bao nhieu giay",
+        "con bao nhieu phut",
+        "con bao nhieu giay nua",
+        "con bao nhieu phut nua",
+        "nghi con bao nhieu giay",
+        "nghi con bao nhieu phut",
         "con lai bao nhieu",
         "nghi con lai",
         "thoi gian nghi con lai",
@@ -40,7 +46,7 @@ object WorkoutRestStatusConversation {
         // A short "còn bao lâu?" is meaningful only while a rest countdown is open.
         if (!asksRemaining && !(restIsActive && query.contains("con bao lau"))) return null
         if (!restIsActive) {
-            return if (hasRestReference || asksRemaining) {
+            return if (hasRestReference && asksRemaining) {
                 "Hiện không có đồng hồ nghỉ đang chạy. Nếu muốn hỏi thời gian nghỉ đề xuất của bài, hãy hỏi “nghỉ bao lâu?”."
             } else {
                 null

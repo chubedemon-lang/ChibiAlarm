@@ -1811,7 +1811,9 @@ class GuidedWorkoutActivity:Activity() {
             val dialog = AlertDialog.Builder(this)
                 .setTitle("🐰 Chibi cần làm rõ")
                 .setMessage(clarification.prompt)
-                .setItems(clarification.actions.map { it.label }.toTypedArray()) { _, choice ->
+                .setItems(clarification.actions.map { it.label }.toTypedArray()) { owner, choice ->
+                    // Dismiss the clarification surface before opening a second editor/preview dialog.
+                    (owner as? AlertDialog)?.dismiss()
                     when (clarification.actions.getOrNull(choice)) {
                         WorkoutMidSessionRequest.ClarificationAction.REDUCE_REPS -> requestRepTarget()
                         WorkoutMidSessionRequest.ClarificationAction.REMOVE_OPTIONAL_SETS ->

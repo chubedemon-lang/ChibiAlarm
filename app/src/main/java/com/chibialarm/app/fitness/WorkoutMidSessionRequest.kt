@@ -44,7 +44,9 @@ object WorkoutMidSessionRequest {
         val currentRepLimit: Int? = null,
         // Session-only kneeling preference; independent from avoiding all floor positions.
         val avoidKneeling: Boolean = false,
-        val allowKneeling: Boolean = false
+        val allowKneeling: Boolean = false,
+        // Remove only the active move's optional sets, keeping its required minimum.
+        val removeOptionalSets: Boolean = false
     ) {
         init {
             require(remainingMinutes == null || remainingMinutes in 5..120)
@@ -58,7 +60,8 @@ object WorkoutMidSessionRequest {
             require(currentSetLimit == null || currentSetLimit in 1..20)
             require(currentRepLimit == null || currentRepLimit in 1..200)
             require(currentSetLimit == null || currentRepLimit == null)
-            require(!addOptionalExercise || (currentSetLimit == null && currentRepLimit == null))
+            require(!(removeOptionalSets && currentSetLimit != null))
+            require(!addOptionalExercise || (currentSetLimit == null && currentRepLimit == null && !removeOptionalSets))
             require(replaceCurrentWith == null || currentRepLimit == null)
         }
 
@@ -81,6 +84,7 @@ object WorkoutMidSessionRequest {
                 !allowKneeling &&
                 !addOptionalExercise &&
                 !removeOptionalExercises &&
+                !removeOptionalSets &&
                 currentSetLimit == null &&
                 currentRepLimit == null &&
                 availableEquipment.isEmpty() &&
@@ -351,6 +355,23 @@ object WorkoutMidSessionRequest {
         )
         if (addOptionalExercise && removeOptionalExercises) return Result.Unsupported
 
+        // A plain-language request to skip only optional sets resolves to the active
+        // exercise's required minimum later in the planner. Negated forms must not
+        // accidentally become a destructive edit.
+        val explicitlyKeepOptionalSets = has(
+            "khong bo hiep tuy chon", "dung bo hiep tuy chon",
+            "khong can bo hiep tuy chon", "dung bo hiep phu",
+            "khong bo hiep phu", "giu hiep tuy chon", "giu lai hiep tuy chon"
+        )
+        val removeOptionalSets = !explicitlyKeepOptionalSets && has(
+            "bo hiep tuy chon", "bo hiep phu", "bo hiep bo sung",
+            "chi lam hiep bat buoc", "chi tap hiep bat buoc",
+            "khong can hiep tuy chon", "khong can lam hiep tuy chon",
+            "khong can tap hiep tuy chon", "khong can hiep phu",
+            "skip optional set", "skip optional sets",
+            "remove optional set", "remove optional sets"
+        )
+
         // Accept only an explicit reduction/limit phrase. A progress question such as
         // "còn 2 hiệp nữa?" must never mutate the active prescription.
         val setLimitMatch = Regex(
@@ -406,7 +427,8 @@ object WorkoutMidSessionRequest {
             count?.takeIf { it in 1..200 } ?: return Result.Unsupported
         }
         if ((currentSetLimit != null && currentRepLimit != null) ||
-            (addOptionalExercise && (currentSetLimit != null || currentRepLimit != null)) ||
+            (addOptionalExercise && (currentSetLimit != null || currentRepLimit != null || removeOptionalSets)) ||
+            (removeOptionalSets && currentSetLimit != null) ||
             (replacementExercise != null && currentRepLimit != null)
         ) return Result.Unsupported
 
@@ -422,7 +444,8 @@ object WorkoutMidSessionRequest {
             !preferEasier && restSeconds == null && !avoidExternalLoad &&
             !addOptionalExercise && availableEquipment.isEmpty() &&
             unavailableEquipment.isEmpty() && replacementExercise == null &&
-            !removeOptionalExercises && currentSetLimit == null && currentRepLimit == null
+            !removeOptionalExercises && !removeOptionalSets &&
+            currentSetLimit == null && currentRepLimit == null
         ) return Result.Unsupported
 
         return Result.Proposed(
@@ -448,7 +471,8 @@ object WorkoutMidSessionRequest {
                 allowKneeling = allowKneeling,
                 removeOptionalExercises = removeOptionalExercises,
                 currentSetLimit = currentSetLimit,
-                currentRepLimit = currentRepLimit
+                currentRepLimit = currentRepLimit,
+                removeOptionalSets = removeOptionalSets
             )
         )
     }

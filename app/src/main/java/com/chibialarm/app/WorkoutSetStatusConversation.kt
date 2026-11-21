@@ -37,17 +37,37 @@ internal object WorkoutSetStatusConversation {
         "sets completed"
     )
 
+    private val latestValueContexts = listOf(
+        "hiep vua roi", "hiep gan nhat", "hiep truoc", "last set"
+    )
+
+    private val totalValuePhrases = listOf(
+        "toi da lam bao nhieu lan",
+        "tao da lam bao nhieu lan",
+        "minh da lam bao nhieu lan",
+        "toi da thuc hien bao nhieu lan",
+        "tong so lan da lam",
+        "tong cong da lam bao nhieu lan",
+        "how many reps did i do",
+        "how many reps have i done",
+        "total reps completed"
+    )
+
     fun answer(
         input: String,
         currentDose: String?,
         fallbackDose: String?,
-        completedSets: Int?
+        completedSets: Int?,
+        completedSetValues: List<Int>? = null
     ): String? {
         if (input.isBlank() || input.length > MAX_INPUT_CHARS) return null
         val query = normalize(input)
         val asksRemaining = remainingPhrases.any(query::contains)
         val asksCompleted = completedPhrases.any(query::contains)
-        if (!asksRemaining && !asksCompleted) return null
+        val asksLatestValue = latestValueContexts.any(query::contains) &&
+            (query.contains("bao nhieu lan") || query.contains("may lan") || query.contains("how many reps"))
+        val asksTotalValue = totalValuePhrases.any(query::contains)
+        if (!asksRemaining && !asksCompleted && !asksLatestValue && !asksTotalValue) return null
 
         val plan = sequenceOf(currentDose, fallbackDose)
             .filterNotNull()
@@ -59,6 +79,37 @@ internal object WorkoutSetStatusConversation {
             ?: return "Chibi chưa có tiến độ xác nhận của động tác này; hãy mở đúng động tác để xem số hiệp."
         if (completed !in 0..plan.maximumSets) {
             return "Chibi chưa đọc được tiến độ hiệp hợp lệ; hãy kiểm tra bộ đếm trên màn hình."
+        }
+
+        // Actual values are self-reported and aligned to confirmed set indexes. Zero is
+        // an intentional placeholder for a manually confirmed set without a reported value.
+        if (asksLatestValue || asksTotalValue) {
+            val maximumActualValue = if (plan.unit == "giây") 600 else 200
+            val values = completedSetValues.orEmpty()
+            if (values.size > completed || values.any { it !in 0..maximumActualValue }) {
+                return "Chibi chưa đọc được số liệu thực tế hợp lệ; hãy kiểm tra nhật ký hiệp trên màn hình."
+            }
+            if (asksLatestValue) {
+                val latest = if (completed > 0) values.getOrNull(completed - 1) else null
+                return if (latest == null || latest == 0) {
+                    "Hiệp gần nhất đã ghi chưa có số liệu thực tế do bạn tự khai báo. Chibi không đoán từ mục tiêu giáo án."
+                } else {
+                    "Hiệp gần nhất đã ghi nhận (hiệp ${completed}): bạn tự khai báo ${latest} ${plan.unit}. Chibi không tự đếm."
+                }
+            }
+
+            val reported = values.take(completed).filter { it > 0 }
+            if (reported.isEmpty()) {
+                return "Chibi chưa có số liệu thực tế do bạn tự khai báo cho các hiệp đã ghi. Chibi không suy ra số lần từ mục tiêu giáo án."
+            }
+            val total = reported.sum()
+            val missing = (completed - reported.size).coerceAtLeast(0)
+            return if (missing > 0) {
+                "Tổng số liệu bạn tự khai báo là ${total} ${plan.unit} trong ${reported.size} hiệp có số liệu; " +
+                    "${missing} hiệp khác chưa có số liệu. Chibi không suy ra số lần từ mục tiêu giáo án."
+            } else {
+                "Tổng số liệu bạn tự khai báo là ${total} ${plan.unit} trong ${reported.size} hiệp đã ghi. Chibi không tự đếm."
+            }
         }
 
         val requiredDone = minOf(completed, plan.requiredSets)

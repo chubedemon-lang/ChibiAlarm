@@ -1488,7 +1488,7 @@ class GuidedWorkoutActivity:Activity() {
                         if (pausedForSafety || completed || resting || index != beforeIndex ||
                             sessionId != beforeSessionId || moves != beforeMoves ||
                             currentPlanFingerprint() != beforeFingerprint ||
-                            remainingMs != beforeRemaining ||
+                            (remainingMs != beforeRemaining && !request.isRepTargetOnly) ||
                             (completedSetsByMove[index] ?: 0) != beforeCompletedSets
                         ) {
                             Toast.makeText(this,"Buổi tập đã thay đổi. Hãy xem trước lại.",Toast.LENGTH_LONG).show()

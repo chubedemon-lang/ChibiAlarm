@@ -1145,7 +1145,7 @@ class GuidedWorkoutActivity:Activity() {
         val disclosure = AlertDialog.Builder(this)
             .setTitle("🎙 Xác nhận bản xem trước bằng giọng nói")
             .setMessage(
-                "Chỉ mở microphone sau khi bạn nhấn Bắt đầu nghe và cấp quyền Android nếu được hỏi. " +
+                "Chỉ mở microphone sau khi bạn nhấn Bắt đầu nghe và cấp quyền microphone của Android nếu được hỏi. " +
                     "Chibi yêu cầu ưu tiên nhận dạng ngoại tuyến và tối đa 5 phương án nếu dịch vụ hỗ trợ; " +
                     "đây chỉ là gợi ý, nhà cung cấp có thể bỏ qua và xử lý âm thanh trực tuyến. " +
                     "Chibi không nghe nền, chỉ nhận văn bản và không lưu bản ghi hay bản chép lời. " +

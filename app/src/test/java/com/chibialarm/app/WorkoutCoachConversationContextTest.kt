@@ -6,6 +6,7 @@ import org.junit.Test
 class WorkoutCoachConversationContextTest {
     private val squat = TrainingCatalog.allMoves.single { it.name == "Squat không tạ" }
     private val walk = TrainingCatalog.allMoves.single { it.name == "Đi bộ nhanh tại chỗ" }
+    private val chairSquat = TrainingCatalog.allMoves.single { it.name == "Đứng lên – ngồi xuống" }
 
     @Test fun followUpAboutThatExerciseUsesTheLastExplicitlyNamedCatalogMove() {
         val context = WorkoutCoachConversationContext()
@@ -118,7 +119,7 @@ class WorkoutCoachConversationContextTest {
 
     @Test fun previousExerciseQuestionCannotBorrowTheActiveMoveActualRepValues() {
         val context = WorkoutCoachConversationContext()
-        context.answer("Cách tập ${walk.name}?", activeMove = squat)
+        context.answer("Cách tập ${chairSquat.name}?", activeMove = squat)
 
         val answer = context.answer(
             input = "Bài đó tôi đã làm bao nhiêu lần?",

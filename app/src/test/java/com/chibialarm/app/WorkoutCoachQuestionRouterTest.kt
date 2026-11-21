@@ -96,6 +96,19 @@ class WorkoutCoachQuestionRouterTest {
         assertTrue(answer!!.contains("Squat không tạ"))
         assertTrue(answer.contains("60 giây"))
     }
+    @Test fun actualRepQuestionUsesOnlyConfirmedSelfReportedSetValues() {
+        val answer = WorkoutCoachQuestionRouter.answer(
+            input = "Tao đã làm bao nhiêu lần?",
+            currentMove = squat,
+            completedSets = 2,
+            completedSetValues = listOf(10, 8)
+        )
+        assertEquals(
+            "Tổng số liệu bạn tự khai báo là 18 lần trong 2 hiệp đã ghi. Chibi không tự đếm.",
+            answer
+        )
+    }
+
     @Test fun remainingRestQuestionUsesTheLiveCountdownInsteadOfRecommendedRest() {
         val answer = WorkoutCoachQuestionRouter.answer(
             input = "Còn bao lâu nghỉ?",

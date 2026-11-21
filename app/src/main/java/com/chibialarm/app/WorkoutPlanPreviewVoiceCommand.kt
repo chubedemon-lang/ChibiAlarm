@@ -41,4 +41,16 @@ internal object WorkoutPlanPreviewVoiceCommand {
             else -> Action.UNSUPPORTED
         }
     }
+
+    /**
+     * Collapses recognizer alternatives only when every candidate agrees.
+     * Any safety signal wins; disagreement or an unrecognized alternative fails closed.
+     */
+    fun parseAlternatives(utterances: List<String>?): Action {
+        if (utterances.isNullOrEmpty()) return Action.UNSUPPORTED
+        val actions = utterances.map(::parse)
+        if (actions.any { it == Action.SAFETY }) return Action.SAFETY
+        if (actions.any { it == Action.UNSUPPORTED }) return Action.UNSUPPORTED
+        return actions.distinct().singleOrNull() ?: Action.UNSUPPORTED
+    }
 }

@@ -17,7 +17,10 @@ class WorkoutCoachConversationContext {
         input: String,
         activeMove: TrainingMove?,
         activeDose: String? = null,
-        pausedForSafety: Boolean = false
+        pausedForSafety: Boolean = false,
+        restIsActive: Boolean = false,
+        restRemainingMs: Long? = null,
+        restIsPaused: Boolean = false
     ): String? {
         if (input.isBlank() || input.length > MAX_INPUT_CHARS) return null
 
@@ -33,7 +36,10 @@ class WorkoutCoachConversationContext {
             input = input,
             currentMove = targetMove,
             currentDose = targetDose,
-            pausedForSafety = pausedForSafety
+            pausedForSafety = pausedForSafety,
+            restIsActive = restIsActive,
+            restRemainingMs = restRemainingMs,
+            restIsPaused = restIsPaused
         ) ?: return null
 
         // Remember only a uniquely named catalog move after a successful, non-ambiguous answer.

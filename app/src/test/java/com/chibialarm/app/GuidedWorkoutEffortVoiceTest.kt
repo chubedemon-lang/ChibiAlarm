@@ -7,6 +7,7 @@ import android.content.Intent
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -635,6 +636,44 @@ class GuidedWorkoutEffortVoiceTest {
         }
     }
 
+    @Test fun finalVoiceConfirmationRequiresASeparateUserStartedMicrophoneSession() {
+        val app = RuntimeEnvironment.getApplication()
+        val activity = Robolectric.buildActivity(
+            GuidedWorkoutActivity::class.java,
+            Intent(app, GuidedWorkoutActivity::class.java)
+                .putExtra("program", "full")
+                .putExtra("minutes", 30)
+        ).setup().get()
+        try {
+            val request = GuidedWorkoutActivity::class.java.declaredMethods
+                .single { it.name == "requestFinalPlanPreviewVoiceCommand" }
+                .apply { isAccessible = true }
+            val callback: (String) -> Unit = { }
+            request.invoke(activity, callback)
+
+            val disclosure = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
+            val message = disclosure.findViewById<android.widget.TextView>(android.R.id.message)
+                ?.text?.toString().orEmpty()
+            val pendingBeforeConsent = GuidedWorkoutActivity::class.java
+                .getDeclaredField("pendingRecognitionRequestCode")
+                .apply { isAccessible = true }
+                .get(activity)
+            assertNull("The final microphone session must wait for explicit consent", pendingBeforeConsent)
+            assertTrue(message.contains("lần xác nhận cuối"))
+            assertTrue(message.contains("không nghe nền"))
+            disclosure.getButton(AlertDialog.BUTTON_NEGATIVE).performClick()
+            shadowOf(Looper.getMainLooper()).idle()
+            assertFalse(disclosure.isShowing)
+            val pendingHandler = GuidedWorkoutActivity::class.java
+                .getDeclaredField("previewVoiceResultHandler")
+                .apply { isAccessible = true }
+                .get(activity)
+            assertNull(pendingHandler)
+        } finally {
+            activity.finish()
+        }
+    }
+
     @Test fun planPreviewVoiceCommandRequiresExplicitPrivacyDisclosureAndCanBeCancelled() {
         val app = RuntimeEnvironment.getApplication()
         val activity = Robolectric.buildActivity(
@@ -662,17 +701,18 @@ class GuidedWorkoutEffortVoiceTest {
             assertTrue(message.contains("Chibi không nghe nền"))
             assertTrue(message.contains("có thể xử lý âm thanh trực tuyến"))
             assertTrue(message.contains("quyền microphone"))
-            assertTrue(message.contains("chạm Áp dụng"))
+            assertTrue(message.contains("xác nhận hai bước"))
+            assertTrue(message.contains("phiên nghe thứ hai"))
             disclosure.getButton(AlertDialog.BUTTON_NEGATIVE).performClick()
             shadowOf(Looper.getMainLooper()).idle()
 
             assertFalse(disclosure.isShowing)
             assertNull(selected)
-            val callback = GuidedWorkoutActivity::class.java
+            val pendingHandler = GuidedWorkoutActivity::class.java
                 .getDeclaredField("previewVoiceResultHandler")
                 .apply { isAccessible = true }
                 .get(activity)
-            assertNull(callback)
+            assertNull(pendingHandler)
         } finally {
             activity.finish()
         }

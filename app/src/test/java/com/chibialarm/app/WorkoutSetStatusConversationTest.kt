@@ -89,6 +89,78 @@ class WorkoutSetStatusConversationTest {
         assertTrue(corrupt!!.contains("chưa đọc được tiến độ hiệp hợp lệ"))
     }
 
+    @Test fun latestSetQuestionReportsOnlyTheLastSelfReportedValue() {
+        val answer = WorkoutSetStatusConversation.answer(
+            input = "Hiệp vừa rồi tao làm bao nhiêu lần?",
+            currentDose = squat.dose,
+            fallbackDose = null,
+            completedSets = 2,
+            completedSetValues = listOf(10, 8)
+        )
+        assertEquals(
+            "Hiệp gần nhất đã ghi nhận (hiệp 2): bạn tự khai báo 8 lần. Chibi không tự đếm.",
+            answer
+        )
+    }
+
+    @Test fun totalQuestionSumsOnlySelfReportedValues() {
+        val answer = WorkoutSetStatusConversation.answer(
+            input = "Tôi đã làm bao nhiêu lần?",
+            currentDose = squat.dose,
+            fallbackDose = null,
+            completedSets = 2,
+            completedSetValues = listOf(10, 8)
+        )
+        assertEquals(
+            "Tổng số liệu bạn tự khai báo là 18 lần trong 2 hiệp đã ghi. Chibi không tự đếm.",
+            answer
+        )
+    }
+
+    @Test fun totalQuestionDoesNotInventValuesForManuallyConfirmedSets() {
+        val answer = WorkoutSetStatusConversation.answer(
+            input = "Tổng số lần đã làm là bao nhiêu?",
+            currentDose = squat.dose,
+            fallbackDose = null,
+            completedSets = 2,
+            completedSetValues = listOf(10, 0)
+        )
+        assertEquals(
+            "Tổng số liệu bạn tự khai báo là 10 lần trong 1 hiệp có số liệu; 1 hiệp khác chưa có số liệu. Chibi không suy ra số lần từ mục tiêu giáo án.",
+            answer
+        )
+    }
+
+    @Test fun latestQuestionDoesNotBorrowAnOlderSetValueWhenTheLastSetWasUnreported() {
+        val answer = WorkoutSetStatusConversation.answer(
+            input = "Hiệp gần nhất làm bao nhiêu lần?",
+            currentDose = squat.dose,
+            fallbackDose = null,
+            completedSets = 2,
+            completedSetValues = listOf(10, 0)
+        )
+        assertTrue(answer!!.contains("Hiệp gần nhất đã ghi chưa có số liệu thực tế"))
+    }
+
+    @Test fun missingOrInvalidActualValuesAreNeverGuessed() {
+        val missing = WorkoutSetStatusConversation.answer(
+            input = "Tôi đã làm bao nhiêu lần?",
+            currentDose = squat.dose,
+            fallbackDose = null,
+            completedSets = 2,
+            completedSetValues = null
+        )
+        val invalid = WorkoutSetStatusConversation.answer(
+            input = "Tôi đã làm bao nhiêu lần?",
+            currentDose = squat.dose,
+            fallbackDose = null,
+            completedSets = 2,
+            completedSetValues = listOf(10, 999)
+        )
+        assertTrue(missing!!.contains("Chibi chưa có số liệu thực tế"))
+        assertTrue(invalid!!.contains("chưa đọc được số liệu thực tế hợp lệ"))
+    }
+
     @Test fun unrelatedRepAndRestQuestionsAreNotCaptured() {
         assertNull(WorkoutSetStatusConversation.answer("Bao nhiêu lần?", squat.dose, null, 1))
         assertNull(WorkoutSetStatusConversation.answer("Nghỉ bao lâu?", squat.dose, null, 1))

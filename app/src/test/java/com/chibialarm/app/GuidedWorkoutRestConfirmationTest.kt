@@ -549,7 +549,11 @@ class GuidedWorkoutRestConfirmationTest {
                 .apply { isAccessible = true }.invoke(activity)
             val preview = field("restPreview").get(activity) as android.widget.TextView
             assertEquals(View.VISIBLE, preview.visibility)
-            assertTrue(preview.text.toString().contains("hiệp ${completed + 1}/${plan.maximumSets}"))
+            val nextSet = completed + 1
+            val required = nextSet <= plan.requiredSets
+            val kind = if (required) "hiệp bắt buộc" else "hiệp tùy chọn"
+            val denominator = if (required) plan.requiredSets else plan.maximumSets
+            assertTrue(preview.text.toString().contains("$kind $nextSet/$denominator"))
             assertTrue(preview.text.toString().contains(move.name))
             assertTrue(preview.text.toString().contains("mục tiêu"))
             assertEquals(preview.text.toString(), preview.contentDescription.toString())

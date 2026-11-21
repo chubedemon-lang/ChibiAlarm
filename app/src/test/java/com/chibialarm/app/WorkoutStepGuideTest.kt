@@ -235,4 +235,14 @@ class WorkoutStepGuideTest {
         assertTrue(WorkoutStepGuide.shouldSpeakOnNavigation(true, 3, 2))
     }
 
+
+    @Test fun automaticStepSpeechRequiresOptInAndAnActualNavigation() {
+        assertFalse(WorkoutStepGuide.shouldSpeakOnNavigation(false, null, 1))
+        assertFalse(WorkoutStepGuide.shouldSpeakOnNavigation(true, null, 1))
+        assertFalse(WorkoutStepGuide.shouldSpeakOnNavigation(true, 1, 1))
+        assertTrue(WorkoutStepGuide.shouldSpeakOnNavigation(true, 1, 2))
+        assertTrue(WorkoutStepGuide.shouldSpeakOnNavigation(true, 2, 1))
+        assertFalse(WorkoutStepGuide.shouldSpeakOnNavigation(true, 0, 1))
+    }
+
 }

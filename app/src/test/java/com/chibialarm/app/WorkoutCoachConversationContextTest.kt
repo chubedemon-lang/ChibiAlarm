@@ -102,6 +102,34 @@ class WorkoutCoachConversationContextTest {
         assertTrue(answer!!.contains("đang dừng vì cảnh báo an toàn"))
         assertFalse(answer.contains("Bước 1:"))
     }
+    @Test fun activeMoveActualRepValuesArePassedThroughConversationContext() {
+        val context = WorkoutCoachConversationContext()
+        val answer = context.answer(
+            input = "Tôi đã làm bao nhiêu lần?",
+            activeMove = squat,
+            activeCompletedSets = 2,
+            activeCompletedSetValues = listOf(10, 8)
+        )
+        assertEquals(
+            "Tổng số liệu bạn tự khai báo là 18 lần trong 2 hiệp đã ghi. Chibi không tự đếm.",
+            answer
+        )
+    }
+
+    @Test fun previousExerciseQuestionCannotBorrowTheActiveMoveActualRepValues() {
+        val context = WorkoutCoachConversationContext()
+        context.answer("Cách tập ${walk.name}?", activeMove = squat)
+
+        val answer = context.answer(
+            input = "Bài đó tôi đã làm bao nhiêu lần?",
+            activeMove = squat,
+            activeCompletedSets = 2,
+            activeCompletedSetValues = listOf(10, 8)
+        )
+        assertTrue(answer!!.contains("chưa có tiến độ xác nhận"))
+        assertFalse(answer.contains("18 lần"))
+    }
+
     @Test fun liveRestCountdownIsPassedThroughConversationContext() {
         val context = WorkoutCoachConversationContext()
         val answer = context.answer(

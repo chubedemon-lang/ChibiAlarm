@@ -405,7 +405,11 @@ class GuidedWorkoutEffortVoiceTest {
                 updatedMoves[checkIn.moveIndex].dose,
                 updatedMoves[checkIn.moveIndex].restSeconds
             )
-            assertEquals(expectedCeiling, updatedPlan?.targetMax)
+            assertEquals(
+                "The confirmed preview must persist its rep ceiling; applied dose was '${updatedMoves[checkIn.moveIndex].dose}'",
+                expectedCeiling,
+                updatedPlan?.targetMax
+            )
             assertEquals("Confirmed sets must remain untouched", checkIn.completedSets,
                 completedSets[checkIn.moveIndex])
             assertEquals(

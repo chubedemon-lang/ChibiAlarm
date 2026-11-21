@@ -50,8 +50,10 @@ internal object WorkoutRestVoiceCue {
                 val nextSet = done + 1
                 val target = if (plan.targetMin == plan.targetMax) "${plan.targetMin} ${plan.unit}"
                     else "${plan.targetMin} đến ${plan.targetMax} ${plan.unit}"
-                val kind = if (nextSet <= plan.requiredSets) "hiệp" else "hiệp tùy chọn"
-                return "Sau nghỉ: $kind $nextSet/${plan.maximumSets} của $current; mục tiêu $target."
+                val required = nextSet <= plan.requiredSets
+                val kind = if (required) "hiệp bắt buộc" else "hiệp tùy chọn"
+                val denominator = if (required) plan.requiredSets else plan.maximumSets
+                return "Sau nghỉ: $kind $nextSet/$denominator của $current; mục tiêu $target."
             }
             val next = safeLabel(nextMoveName, 80)
             if (next.isNotBlank()) {
@@ -128,7 +130,7 @@ internal object WorkoutRestVoiceCue {
             "${plan.targetMin} đến ${plan.targetMax} ${plan.unit}"
         }
         return if (nextSet <= plan.requiredSets) {
-            "Đã hết giờ nghỉ. Khi sẵn sàng, bắt đầu hiệp $nextSet/${plan.requiredSets} của $safeName; mục tiêu $target. Hãy tập theo sức mình."
+            "Đã hết giờ nghỉ. Khi sẵn sàng, bắt đầu hiệp bắt buộc $nextSet/${plan.requiredSets} của $safeName; mục tiêu $target. Hãy tập theo sức mình."
         } else {
             "Đã hết giờ nghỉ. Hiệp tiếp theo của $safeName là tùy chọn ($nextSet/${plan.maximumSets}), mục tiêu $target. Chỉ thực hiện nếu bạn còn sức; có thể bỏ qua."
         }

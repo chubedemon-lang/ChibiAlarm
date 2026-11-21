@@ -78,7 +78,7 @@ class WorkoutRestVoiceCueTest {
 
     @Test fun restCompletionAnnouncesTheNextRequiredSetAndTarget() {
         assertEquals(
-            "Đã hết giờ nghỉ. Khi sẵn sàng, bắt đầu hiệp 2/2 của Squat không tạ; mục tiêu 8 đến 12 lần. Hãy tập theo sức mình.",
+            "Đã hết giờ nghỉ. Khi sẵn sàng, bắt đầu hiệp bắt buộc 2/2 của Squat không tạ; mục tiêu 8 đến 12 lần. Hãy tập theo sức mình.",
             WorkoutRestVoiceCue.completionMessage("Squat không tạ", 1, setPlan)
         )
     }
@@ -155,7 +155,7 @@ class WorkoutRestVoiceCueTest {
     }
     @Test fun countdownNamesTheNextRequiredSetAndTarget() {
         val preview = WorkoutRestVoiceCue.previewMessage("Squat không tạ", 1, setPlan)
-        assertEquals("Sau nghỉ: hiệp 2/3 của Squat không tạ; mục tiêu 8 đến 12 lần.", preview)
+        assertEquals("Sau nghỉ: hiệp bắt buộc 2/2 của Squat không tạ; mục tiêu 8 đến 12 lần.", preview)
         assertEquals("Còn 10 giây nghỉ. $preview", WorkoutRestVoiceCue.message(10_000L, preview))
     }
 

@@ -44,6 +44,9 @@ object WorkoutHistoryConversation {
         if (isEffortBasedLighterPlanQuestion(text)) {
             return effortBasedLighterPlanAnswer(workouts, today)
         }
+        if (isSteadyProgressQuestion(text)) {
+            return steadyProgressAnswer(workouts, today)
+        }
         if (!isHistoryQuestion(text)) return null
 
         // Keep the newest records when a long-lived journal exceeds the processing cap.
@@ -293,6 +296,40 @@ object WorkoutHistoryConversation {
         return suggestion.message +
             "\n\nNếu muốn xem bản nháp, hãy nói: “${suggestion.prompt}”. " +
             "Chibi chưa thay đổi giáo án hoặc lịch; mọi thay đổi vẫn cần bạn xem trước và xác nhận."
+    }
+
+    /**
+     * A conversational entry point to the existing three-day, effort-gated progression preview.
+     * Keep this separate from ordinary rest/time questions so a request to rest longer cannot
+     * accidentally become a request to increase exercise dose.
+     */
+    private fun isSteadyProgressQuestion(text: String): Boolean {
+        val asksForProgress = has(
+            text, "tang nhe", "tang them", "tang so lan", "tang muc tieu",
+            "buoc tien trien", "tien trien"
+        )
+        val asksForEligibilityOrTarget = has(
+            text, "du dieu kien", "co the", "co nen", "nen", "bai nao",
+            "dong tac nao", "bai tap nao", "xem"
+        )
+        return asksForProgress && asksForEligibilityOrTarget
+    }
+
+    private fun steadyProgressAnswer(
+        workouts: List<Workout>,
+        today: LocalDate
+    ): String {
+        val suggestion = WorkoutSteadyProgressAdvisor.suggest(workouts, today)
+            ?: return "Chưa đủ dữ liệu để xem bước tiến triển: cần cùng một động tác có check-in Guided Workout " +
+                "hợp lệ trong ít nhất 3 ngày riêng biệt ở 30 ngày gần nhất; mọi hiệp đã ghi của động tác đó " +
+                "trong ba ngày gần nhất phải được bạn tự đánh dấu nhẹ hoặc vừa sức. Một hiệp khó/quá sức, " +
+                "dữ liệu trùng phiên hoặc thiếu check-in sẽ không được tính. Chibi không tự tăng số lần, số hiệp hay tải."
+
+        return suggestion.message +
+            "\\n\\nĐể kiểm tra số lần thực tế có cho phép bước nhỏ hay không, hãy chạm “Xem bước tiến triển có kiểm soát” " +
+            "trong phần nhật ký. Bản xem trước còn phải khớp bài trong giáo án hiện tại, dải số lần của thư viện, " +
+            "dụng cụ và hạn chế vận động; nếu thiếu số lần đã ghi hoặc bài tính giây/nhịp, Chibi sẽ không đoán thay. " +
+            "Không có thay đổi nào được áp dụng trước khi bạn xác nhận."
     }
 
     private fun isRecentListQuestion(text: String): Boolean {

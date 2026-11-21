@@ -4,6 +4,7 @@ import android.content.Context
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.CheckBox
 import android.widget.TextView
 import java.time.LocalDate
 import java.util.UUID
@@ -74,4 +75,34 @@ class FitnessActivityProgressionPreviewTest {
 
         controller.pause().stop().destroy()
     }
+
+    @Test fun libraryPreviewOffersOptInStepNarrationWithoutOpeningMicrophone() {
+        val controller = Robolectric.buildActivity(FitnessActivity::class.java).setup()
+        val activity = controller.get()
+        val libraryButton = views(activity.findViewById<ViewGroup>(android.R.id.content))
+            .filterIsInstance<Button>()
+            .firstOrNull { it.text.toString().startsWith("📖 Xem bài") }
+        assertNotNull("The offline exercise library should expose a preview action", libraryButton)
+
+        libraryButton!!.performClick()
+        val dialog = ShadowAlertDialog.getLatestAlertDialog()
+        assertNotNull(dialog)
+        assertTrue(dialog.isShowing)
+        val dialogRoot = dialog.findViewById<ViewGroup>(android.R.id.custom)
+        val dialogViews = dialogRoot?.let(::views).orEmpty()
+        val autoSpeak = dialogViews.filterIsInstance<CheckBox>()
+            .firstOrNull { it.tag == "fitness-library-step-auto-speak" }
+
+        assertNotNull("The preview should expose a separate opt-in TTS control", autoSpeak)
+        assertFalse(autoSpeak!!.isChecked)
+        assertFalse("TTS must be enabled on the parent screen before auto narration is available", autoSpeak.isEnabled)
+        assertTrue(autoSpeak.contentDescription.toString().contains("không mở microphone"))
+        assertTrue(dialogViews.filterIsInstance<Button>().any {
+            it.text.toString() == "🔊 Nghe bước này"
+        })
+
+        dialog.dismiss()
+        controller.pause().stop().destroy()
+    }
+
 }

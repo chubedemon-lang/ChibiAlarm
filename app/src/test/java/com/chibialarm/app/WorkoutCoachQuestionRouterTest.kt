@@ -96,4 +96,46 @@ class WorkoutCoachQuestionRouterTest {
         assertTrue(answer!!.contains("Squat không tạ"))
         assertTrue(answer.contains("60 giây"))
     }
+    @Test fun remainingRestQuestionUsesTheLiveCountdownInsteadOfRecommendedRest() {
+        val answer = WorkoutCoachQuestionRouter.answer(
+            input = "Còn bao lâu nghỉ?",
+            currentMove = squat,
+            restIsActive = true,
+            restRemainingMs = 31_200L
+        )
+
+        assertEquals(
+            "Còn khoảng 32 giây nghỉ. Đồng hồ vẫn chạy; Chibi chưa thay đổi giáo án.",
+            answer
+        )
+        assertFalse(answer!!.contains("60 giây"))
+    }
+
+    @Test fun pausedRestQuestionReportsTheFrozenCountdownWithoutRestartingIt() {
+        val answer = WorkoutCoachQuestionRouter.answer(
+            input = "Nghỉ còn lại bao lâu?",
+            currentMove = squat,
+            restIsActive = true,
+            restRemainingMs = 90_001L,
+            restIsPaused = true
+        )
+
+        assertEquals(
+            "Đồng hồ nghỉ đang tạm dừng; còn khoảng 1 phút 31 giây. Chibi chưa tự chạy lại.",
+            answer
+        )
+    }
+
+    @Test fun explicitLiveRestQuestionDoesNotFallBackToRecommendedRestWhenNoTimerRuns() {
+        val answer = WorkoutCoachQuestionRouter.answer(
+            input = "Còn mấy giây nghỉ?",
+            currentMove = squat,
+            restIsActive = false,
+            restRemainingMs = null
+        )
+
+        assertTrue(answer!!.contains("không có đồng hồ nghỉ đang chạy"))
+        assertFalse(answer.contains("60 giây"))
+    }
+
 }

@@ -1900,7 +1900,8 @@ class GuidedWorkoutActivity:Activity() {
                         if (paused) restRemainingMs
                         else (restDeadline - SystemClock.elapsedRealtime()).coerceIn(0L, 600_000L)
                     } else null,
-                    restIsPaused = resting && paused
+                    restIsPaused = resting && paused,
+                    activeCompletedSets = currentMove?.let { completedSetsByMove[index] ?: 0 }
                 )
                 if (questionAnswer != null) {
                     // Keep the exercise/rest clock from advancing while the user reads or hears

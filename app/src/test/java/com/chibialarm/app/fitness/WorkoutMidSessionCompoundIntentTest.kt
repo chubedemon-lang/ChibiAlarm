@@ -138,6 +138,21 @@ class WorkoutMidSessionCompoundIntentTest {
     }
 
     @Test
+    fun clarificationAdaptsTheTargetChoiceToTheActiveSetUnitAndReadsAllChoices() {
+        val reps = WorkoutMidSessionRequest.clarificationFor("Giảm bài này đi", "lần")!!
+        assertEquals("Giảm số lần mỗi hiệp", reps.labelFor(WorkoutMidSessionRequest.ClarificationAction.REDUCE_REPS))
+        assertTrue(reps.spokenText().contains("Lựa chọn 1: Giảm số lần mỗi hiệp."))
+        assertTrue(reps.spokenText().contains("Lựa chọn 4: Tạm dừng buổi tập."))
+
+        val timed = WorkoutMidSessionRequest.clarificationFor("Giảm bài này đi", "giây")!!
+        assertEquals("Giảm thời lượng mỗi hiệp", timed.labelFor(WorkoutMidSessionRequest.ClarificationAction.REDUCE_REPS))
+        assertTrue(timed.spokenText().contains("Giảm thời lượng mỗi hiệp"))
+
+        val cadence = WorkoutMidSessionRequest.clarificationFor("Giảm bài này đi", "nhịp")!!
+        assertEquals("Giảm nhịp mỗi hiệp", cadence.labelFor(WorkoutMidSessionRequest.ClarificationAction.REDUCE_REPS))
+    }
+
+    @Test
     fun clarificationDoesNotInterceptExplicitCommandsNegationOrPain() {
         assertTrue(WorkoutMidSessionRequest.clarificationFor("Giảm còn 10 lần mỗi hiệp") == null)
         assertTrue(WorkoutMidSessionRequest.clarificationFor("Không giảm bài này") == null)

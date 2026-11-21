@@ -242,7 +242,11 @@ class GuidedWorkoutRestConfirmationTest {
     }
 
     @Test fun clarificationDismissesBeforeOpeningRepEditor() {
-        val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup().get()
+        val intent = Intent(RuntimeEnvironment.getApplication(), GuidedWorkoutActivity::class.java)
+            .putExtra("program", "full")
+            .putExtra("minutes", 30)
+        val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java, intent).setup().get()
+        selectSetBasedMove(activity, "lần")
         val command = GuidedWorkoutActivity::class.java
             .getDeclaredMethod("handleCoachCommand", String::class.java)
         command.isAccessible = true
@@ -250,6 +254,31 @@ class GuidedWorkoutRestConfirmationTest {
 
         val clarification = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
         assertTrue(clarification.isShowing)
+        clarification.listView.performItemClick(
+            clarification.listView.getChildAt(0),
+            0,
+            clarification.listView.getItemIdAtPosition(0)
+        )
+        assertFalse(clarification.isShowing)
+        val editor = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
+        assertTrue(editor.isShowing)
+        assertFalse(editor === clarification)
+        activity.finish()
+    }
+
+    @Test fun clarificationUsesTimedSetUnitAndOpensTheSameTargetEditor() {
+        val intent = Intent(RuntimeEnvironment.getApplication(), GuidedWorkoutActivity::class.java)
+            .putExtra("program", "core")
+            .putExtra("minutes", 20)
+        val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java, intent).setup().get()
+        selectSetBasedMove(activity, "giây")
+        val command = GuidedWorkoutActivity::class.java
+            .getDeclaredMethod("handleCoachCommand", String::class.java)
+        command.isAccessible = true
+        command.invoke(activity, "giảm bài này đi")
+
+        val clarification = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
+        assertEquals("Giảm thời lượng mỗi hiệp", clarification.listView.getItemAtPosition(0).toString())
         clarification.listView.performItemClick(
             clarification.listView.getChildAt(0),
             0,

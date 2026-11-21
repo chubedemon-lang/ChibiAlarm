@@ -131,14 +131,27 @@ object WorkoutMidSessionRequest {
 
     data class Clarification(
         val prompt: String,
-        val actions: List<ClarificationAction>
-    )
+        val actions: List<ClarificationAction>,
+        val reduceTargetLabel: String = "Giảm số lần mỗi hiệp"
+    ) {
+        fun labelFor(action: ClarificationAction): String =
+            if (action == ClarificationAction.REDUCE_REPS) reduceTargetLabel else action.label
+
+        /** TTS reads every choice so a voice-first user can choose without guessing the list. */
+        fun spokenText(): String = buildString {
+            append(prompt)
+            actions.forEachIndexed { index, action ->
+                append(" Lựa chọn ").append(index + 1).append(": ")
+                    .append(labelFor(action)).append(".")
+            }
+        }
+    }
 
     /**
      * Return a clarification only for vague plan-change language. Exact, bounded
      * commands continue through parse(); ambiguous speech never mutates a plan.
      */
-    fun clarificationFor(utterance: String): Clarification? {
+    fun clarificationFor(utterance: String, activeUnit: String? = null): Clarification? {
         val input = utterance.trim()
         if (input.isEmpty() || input.length > 300) return null
         if (FitnessNaturalRequest.parse(input).impact == 2) return null
@@ -156,10 +169,16 @@ object WorkoutMidSessionRequest {
         )
         if (vagueChangeCues.none(text::contains)) return null
 
+        val reduceTargetLabel = when (activeUnit) {
+            "giây" -> "Giảm thời lượng mỗi hiệp"
+            "nhịp" -> "Giảm nhịp mỗi hiệp"
+            else -> "Giảm số lần mỗi hiệp"
+        }
         return Clarification(
             prompt = "Mày muốn Chibi giảm phần nào? Chibi chưa thay đổi giáo án. " +
-                "Chọn giảm số lần, bỏ hiệp tùy chọn, đổi sang biến thể nhẹ hơn hoặc tạm dừng.",
-            actions = ClarificationAction.values().toList()
+                "Chọn giảm mục tiêu mỗi hiệp, bỏ hiệp tùy chọn, đổi sang biến thể nhẹ hơn hoặc tạm dừng.",
+            actions = ClarificationAction.values().toList(),
+            reduceTargetLabel = reduceTargetLabel
         )
     }
 

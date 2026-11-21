@@ -340,7 +340,7 @@ class GuidedWorkoutEffortVoiceTest {
 
     @Test fun repeatedHardVoiceCheckInOffersRepReductionOnlyThroughPreviewAndConfirmation() {
         val checkIn = openCheckIn(
-            completedSetCount = 2,
+            completedSetCount = 1,
             previousEfforts = listOf(WorkoutEffortFeedback.Level.HARD)
         )
         try {

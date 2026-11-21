@@ -345,7 +345,7 @@ class WorkoutMidSessionPlannerTest {
         val result = WorkoutMidSessionPlanner.preview(
             currentMoves = listOf(warmup, active, cooldown),
             currentIndex = 1,
-            completedCurrentSets = 2,
+            completedCurrentSets = 1,
             currentStepLocked = true,
             constraints = WorkoutConstraintProfile(),
             request = WorkoutMidSessionRequest.Request(currentRepLimit = 11),
@@ -359,6 +359,26 @@ class WorkoutMidSessionPlannerTest {
         assertEquals(1, preview.currentIndex)
         assertEquals(11, preview.currentRepLimit)
         assertEquals(active.dose, preview.after[1].dose)
+    }
+
+    @Test fun repCeilingIsBlockedAfterEverySetHasBeenConfirmed() {
+        val active = TrainingMove(
+            "Test squat", "2 hiệp × 8–12 lần", "Đứng vững",
+            "Hạ xuống có kiểm soát", "Dừng nếu đau", 120, 60
+        )
+        val result = WorkoutMidSessionPlanner.preview(
+            currentMoves = listOf(active),
+            currentIndex = 0,
+            completedCurrentSets = 2,
+            currentStepLocked = true,
+            constraints = WorkoutConstraintProfile(),
+            request = WorkoutMidSessionRequest.Request(currentRepLimit = 11),
+            remainingCurrentSeconds = 45,
+            extensionMoveNames = emptySet(),
+            level = 0
+        )
+
+        assertTrue(result is WorkoutMidSessionPlanner.Result.Blocked)
     }
 
     @Test fun repCapRequestCarriesOnlyTheExplicitUnfinishedSetTarget() {

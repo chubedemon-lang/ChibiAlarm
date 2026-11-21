@@ -1408,6 +1408,41 @@ class FitnessActivity:Activity() {
             preview = preview.next()
             renderPreview()
         }
+        val applyAlternativeToPreview: (Int, List<TrainingMove>) -> Unit = { selected, options ->
+            val chosen = options.getOrNull(selected)
+            when {
+                options.isEmpty() -> Toast.makeText(
+                    this@FitnessActivity,
+                    "Chưa có biến thể phù hợp với dụng cụ và hạn chế hiện tại.",
+                    Toast.LENGTH_LONG
+                ).show()
+                chosen == null -> Toast.makeText(
+                    this@FitnessActivity,
+                    "Chibi chỉ tìm thấy ${options.size} phương án. Hãy chọn số từ 1 đến ${options.size}.",
+                    Toast.LENGTH_LONG
+                ).show()
+                else -> {
+                    val updated = WorkoutPlanPreviewEditor.replace(planDraft, preview.index, chosen)
+                    if (updated == null) {
+                        Toast.makeText(this@FitnessActivity, "Phương án đã thay đổi hoặc không còn phù hợp. Hãy xem lại giáo án.", Toast.LENGTH_LONG).show()
+                    } else {
+                        val updatedPreview = WorkoutLibraryPreview.start(updated.moves, preview.index)
+                        if (updatedPreview == null) {
+                            Toast.makeText(this@FitnessActivity, "Không thể mở lại bản xem trước. Giáo án hiện tại được giữ nguyên.", Toast.LENGTH_LONG).show()
+                        } else {
+                            planDraft = updated
+                            preview = updatedPreview
+                            stepPreview = WorkoutLibraryStepPreview.start(preview.currentMove)
+                            renderPreview()
+                            sayFollowUp(
+                                "Đã thêm ${chosen.name} vào bản xem trước. Thời lượng ước tính ${WorkoutPlanPreviewEditor.durationLabel(planDraft.estimatedSeconds)}. Chưa bắt đầu buổi tập."
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
         substitute.setOnClickListener {
             val options = WorkoutPlanPreviewEditor.alternatives(planDraft, preview.index)
             if (options.isEmpty()) {
@@ -1422,20 +1457,7 @@ class FitnessActivity:Activity() {
                 AlertDialog.Builder(this@FitnessActivity)
                     .setTitle("Chọn bài thay thế đã duyệt")
                     .setItems(labels) { _, selected ->
-                        val chosen = options.getOrNull(selected) ?: return@setItems
-                        val updated = WorkoutPlanPreviewEditor.replace(planDraft, preview.index, chosen)
-                        if (updated == null) {
-                            Toast.makeText(this@FitnessActivity, "Phương án đã thay đổi hoặc không còn phù hợp. Hãy xem lại giáo án.", Toast.LENGTH_LONG).show()
-                        } else {
-                            planDraft = updated
-                            preview = WorkoutLibraryPreview.start(planDraft.moves, preview.index)
-                                ?: return@setItems
-                            stepPreview = WorkoutLibraryStepPreview.start(preview.currentMove)
-                            renderPreview()
-                            sayFollowUp(
-                                "Đã thêm ${chosen.name} vào bản xem trước. Thời lượng ước tính ${WorkoutPlanPreviewEditor.durationLabel(planDraft.estimatedSeconds)}. Chưa bắt đầu buổi tập."
-                            )
-                        }
+                        applyAlternativeToPreview(selected, options)
                     }
                     .setNegativeButton("Hủy", null)
                     .show()
@@ -1498,6 +1520,14 @@ class FitnessActivity:Activity() {
                     else Toast.makeText(this@FitnessActivity, "Bật giọng Chibi trước để nghe hướng dẫn.", Toast.LENGTH_LONG).show()
                 }
                 WorkoutLibraryVoiceNavigation.Action.OPEN_ALTERNATIVES -> substitute.performClick()
+                WorkoutLibraryVoiceNavigation.Action.SELECT_ALTERNATIVE_1 ->
+                    applyAlternativeToPreview(0, WorkoutPlanPreviewEditor.alternatives(planDraft, preview.index))
+                WorkoutLibraryVoiceNavigation.Action.SELECT_ALTERNATIVE_2 ->
+                    applyAlternativeToPreview(1, WorkoutPlanPreviewEditor.alternatives(planDraft, preview.index))
+                WorkoutLibraryVoiceNavigation.Action.SELECT_ALTERNATIVE_3 ->
+                    applyAlternativeToPreview(2, WorkoutPlanPreviewEditor.alternatives(planDraft, preview.index))
+                WorkoutLibraryVoiceNavigation.Action.SELECT_ALTERNATIVE_4 ->
+                    applyAlternativeToPreview(3, WorkoutPlanPreviewEditor.alternatives(planDraft, preview.index))
                 WorkoutLibraryVoiceNavigation.Action.CLOSE -> dialog.dismiss()
                 WorkoutLibraryVoiceNavigation.Action.SAFETY -> {
                     speechOutput?.stop()

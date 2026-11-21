@@ -17,6 +17,10 @@ internal object WorkoutLibraryVoiceNavigation {
         SPEAK_SAFETY_NOTE,
         SPEAK_EXERCISE,
         OPEN_ALTERNATIVES,
+        SELECT_ALTERNATIVE_1,
+        SELECT_ALTERNATIVE_2,
+        SELECT_ALTERNATIVE_3,
+        SELECT_ALTERNATIVE_4,
         CLOSE,
         SAFETY,
         UNSUPPORTED
@@ -26,6 +30,8 @@ internal object WorkoutLibraryVoiceNavigation {
     private val actionPhrases = listOf(
         "buoc tiep", "buoc truoc", "buoc dau", "doc lai", "tu doc",
         "doc muc tieu", "doc cach tap", "doc luu y", "phuong an thay the",
+        "chon phuong an", "lua chon phuong an", "chon bai", "lua chon bai",
+        "phuong an",
         "cach tap", "dong huong dan", "thoat huong dan"
     )
 
@@ -50,6 +56,23 @@ internal object WorkoutLibraryVoiceNavigation {
         if (firstActionIndex != null) {
             val prefix = normalized.substring(0, firstActionIndex)
             if (prefix.split(" ").any { it in negationWords }) return Action.UNSUPPORTED
+        }
+
+        val selectedAlternative = listOf(
+            Regex("^(?:chon|lua chon) phuong an(?: so| thu)? ([1-4])$"),
+            Regex("^(?:chon|lua chon) bai(?: tap)?(?: so| thu)? ([1-4])$"),
+            Regex("^phuong an(?: so| thu)? ([1-4])$")
+        ).firstNotNullOfOrNull { pattern ->
+            pattern.matchEntire(normalized)?.groupValues?.get(1)?.toIntOrNull()
+        }
+        if (selectedAlternative != null) {
+            return when (selectedAlternative) {
+                1 -> Action.SELECT_ALTERNATIVE_1
+                2 -> Action.SELECT_ALTERNATIVE_2
+                3 -> Action.SELECT_ALTERNATIVE_3
+                4 -> Action.SELECT_ALTERNATIVE_4
+                else -> Action.UNSUPPORTED
+            }
         }
 
         return when (parsed) {

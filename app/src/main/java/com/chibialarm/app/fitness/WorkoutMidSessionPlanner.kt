@@ -323,11 +323,14 @@ object WorkoutMidSessionPlanner {
         }
 
         var appliedCurrentSetLimit: Int? = null
-        request.currentSetLimit?.let { requestedLimit ->
+        if (request.currentSetLimit != null || request.removeOptionalSets) {
             val activeMove = remaining.firstOrNull()
                 ?: return Result.Blocked("Không còn động tác hiện tại để giới hạn số hiệp.")
             val plan = WorkoutSetTracker.parse(activeMove.dose, activeMove.restSeconds)
                 ?: return Result.Blocked("Động tác hiện tại không có giáo án hiệp/lần để giới hạn số hiệp.")
+            // "Bỏ hiệp tùy chọn" means keep the catalog's required minimum, never
+            // lower required work or remove a set the user has already confirmed.
+            val requestedLimit = request.currentSetLimit ?: plan.requiredSets
             val confirmedSets = if (currentChanged) 0 else completedCurrentSets
             when {
                 requestedLimit < confirmedSets -> return Result.Blocked(

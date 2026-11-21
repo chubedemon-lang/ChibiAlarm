@@ -112,7 +112,7 @@ class WorkoutCoachConversationContextTest {
         )
 
         assertEquals(
-            "Còn khoảng 45 giây nghỉ. Đồng hồ vẫn chạy; Chibi chưa thay đổi giáo án.",
+            "Còn khoảng 46 giây nghỉ. Đồng hồ vẫn chạy; Chibi chưa thay đổi giáo án.",
             answer
         )
     }

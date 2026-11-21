@@ -103,4 +103,16 @@ class WorkoutRestStatusConversationTest {
             )
         )
     }
+    @Test fun expiredRestDoesNotSayThatMoreRestTimeRemains() {
+        assertEquals(
+            "Thời gian nghỉ đã hết. Buổi tập vẫn tạm dừng; hãy tiếp tục khi bạn sẵn sàng.",
+            WorkoutRestStatusConversation.answer(
+                input = "Còn bao lâu nghỉ?",
+                restIsActive = true,
+                remainingMs = 0L,
+                restIsPaused = true
+            )
+        )
+    }
+
 }

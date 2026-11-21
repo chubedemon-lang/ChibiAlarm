@@ -14,6 +14,22 @@ class WorkoutHistoryConversationTest {
         note: String = "private health note"
     ) = Workout(date.toString(), name, minutes, note)
 
+    private fun guided(
+        date: LocalDate,
+        effortLog: String,
+        id: String,
+        note: String = "private health note"
+    ) = Workout(
+        date = date.toString(),
+        name = "Guided Workout",
+        minutes = 30,
+        note = note,
+        sessionId = id,
+        completedMoves = 2,
+        selfReportedSets = 2,
+        effortLog = effortLog
+    )
+
     @Test fun weeklyQuestionReportsSessionsActiveDaysAndMinutes() {
         val history = listOf(
             workout(today, 30, "Toàn thân"),

@@ -291,7 +291,7 @@ object WorkoutHistoryConversation {
             ?: return "Chưa đủ dữ liệu để gợi ý giảm tải: cần ít nhất hai buổi Guided Workout riêng biệt trong 30 ngày, cùng một động tác được bạn tự đánh dấu khó hoặc quá sức. Chibi không đọc ghi chú riêng tư và không tự thay đổi giáo án."
 
         return suggestion.message +
-            "\\n\\nNếu muốn xem bản nháp, hãy nói: “${suggestion.prompt}”. " +
+            "\n\nNếu muốn xem bản nháp, hãy nói: “${suggestion.prompt}”. " +
             "Chibi chưa thay đổi giáo án hoặc lịch; mọi thay đổi vẫn cần bạn xem trước và xác nhận."
     }
 

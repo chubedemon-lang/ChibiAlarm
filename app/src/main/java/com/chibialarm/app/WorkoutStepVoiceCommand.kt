@@ -5,7 +5,7 @@ import java.util.Locale
 
 /** Small offline command grammar for the step-by-step guide; no transcript is retained. */
 object WorkoutStepVoiceCommand {
-    enum class Command { FIRST, NEXT, PREVIOUS, PAUSE, RESUME, AUTO_SPEAK_ON, AUTO_SPEAK_OFF, REPEAT, REPEAT_ANSWER, SUMMARY, STATUS, EASIER, SAFETY_NOTE, SPEECH_SLOWER, SPEECH_FASTER, SPEECH_NORMAL, REST, ASK_EXERCISE, CLOSE, SAFETY, UNKNOWN }
+    enum class Command { FIRST, NEXT, PREVIOUS, PAUSE, RESUME, AUTO_SPEAK_ON, AUTO_SPEAK_OFF, REPEAT, REPEAT_ANSWER, SUMMARY, STATUS, EASIER, OPEN_EASIER_ALTERNATIVES, SAFETY_NOTE, SPEECH_SLOWER, SPEECH_FASTER, SPEECH_NORMAL, REST, ASK_EXERCISE, CLOSE, SAFETY, UNKNOWN }
 
     private fun containsPhrase(text: String, phrase: String): Boolean =
         Regex("(^|\\s)" + Regex.escape(phrase) + "(\\s|$)").containsMatchIn(text)
@@ -46,6 +46,12 @@ object WorkoutStepVoiceCommand {
                 "khong doc thoi gian nghi", "dung doc thoi gian nghi",
                 "khong hoi thoi gian nghi", "dung hoi thoi gian nghi",
                 "khong doc cach tap de hon", "dung doc cach tap de hon",
+                "khong doi bai de hon", "dung doi bai de hon",
+                "khong muon doi bai", "khong muon thay dong tac",
+                "khong doi sang bai nhe hon", "dung doi sang bai nhe hon",
+                "khong thay dong tac", "dung thay dong tac",
+                "khong xem bai thay the", "dung xem bai thay the",
+                "khong mo phuong an thay the", "dung mo phuong an thay the",
                 "khong doc luu y", "dung doc luu y", "khong nhac luu y",
                 "khong doc cham hon", "dung doc cham hon",
                 "khong noi cham lai", "dung noi cham lai",
@@ -65,6 +71,12 @@ object WorkoutStepVoiceCommand {
                 "do not turn on auto speak", "don t turn on auto speak",
                 "do not turn off auto speak", "don t turn off auto speak"
             ).any { normalized.contains(it) }) return Command.UNKNOWN
+        if (listOf(
+                "doi bai de hon", "doi sang bai nhe hon", "thay dong tac de hon",
+                "thay dong tac nay bang bai nhe hon", "xem bai thay the",
+                "mo phuong an thay the", "xem phuong an thay the",
+                "bai thay the nhe hon", "co bai nao thay the"
+            ).any { normalized.contains(it) }) return Command.OPEN_EASIER_ALTERNATIVES
         if (listOf("tam dung buoi tap", "pause workout", "pause the workout")
                 .any { normalized.contains(it) }) return Command.PAUSE
         if (listOf("tiep tuc buoi tap", "resume workout", "resume the workout")

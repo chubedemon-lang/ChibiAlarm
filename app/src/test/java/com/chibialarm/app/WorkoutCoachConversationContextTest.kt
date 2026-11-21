@@ -102,4 +102,19 @@ class WorkoutCoachConversationContextTest {
         assertTrue(answer!!.contains("đang dừng vì cảnh báo an toàn"))
         assertFalse(answer.contains("Bước 1:"))
     }
+    @Test fun liveRestCountdownIsPassedThroughConversationContext() {
+        val context = WorkoutCoachConversationContext()
+        val answer = context.answer(
+            input = "Còn bao lâu?",
+            activeMove = squat,
+            restIsActive = true,
+            restRemainingMs = 45_001L
+        )
+
+        assertEquals(
+            "Còn khoảng 45 giây nghỉ. Đồng hồ vẫn chạy; Chibi chưa thay đổi giáo án.",
+            answer
+        )
+    }
+
 }

@@ -1149,8 +1149,9 @@ class GuidedWorkoutActivity:Activity() {
                     "Chibi yêu cầu ưu tiên nhận dạng ngoại tuyến và tối đa 5 phương án nếu dịch vụ hỗ trợ; " +
                     "đây chỉ là gợi ý, nhà cung cấp có thể bỏ qua và xử lý âm thanh trực tuyến. " +
                     "Chibi không nghe nền, chỉ nhận văn bản và không lưu bản ghi hay bản chép lời. " +
-                    "Câu nhận dạng sẽ được kiểm tra; sau đó bạn vẫn phải chạm Áp dụng ở bước xác nhận cuối. " +
-                    "Bạn có thể hủy và giữ nguyên giáo án."
+                    "Đây là xác nhận hai bước: sau câu xác nhận đầu tiên, Chibi sẽ yêu cầu bạn chủ động bắt đầu một phiên nghe thứ hai. " +
+                    "Chỉ khi cả hai lần nhận dạng đều rõ ràng là “xác nhận áp dụng” và bản xem trước vẫn khớp, Chibi mới áp dụng. " +
+                    "Bạn có thể nói “giữ nguyên” ở bất kỳ bước nào để hủy."
             )
             .setPositiveButton("Bắt đầu nghe") { _, _ ->
                 pause()
@@ -1158,6 +1159,31 @@ class GuidedWorkoutActivity:Activity() {
                 requestRecognitionPermissionOrStart(previewVoiceRequest)
             }
             .setNegativeButton("Hủy") { _, _ ->
+                previewVoiceResultHandler = null
+            }
+            .create()
+        disclosure.setOnCancelListener { previewVoiceResultHandler = null }
+        disclosure.show()
+    }
+
+    /** A second, separately initiated microphone session is the final spoken consent. */
+    private fun requestFinalPlanPreviewVoiceCommand(onResult: (String) -> Unit) {
+        previewVoiceResultHandler = onResult
+        val disclosure = AlertDialog.Builder(this)
+            .setTitle("🎙 Xác nhận cuối bằng giọng nói")
+            .setMessage(
+                "Đây là lần xác nhận cuối cho bản xem trước đang hiển thị. " +
+                    "Chỉ mở microphone sau khi bạn nhấn Bắt đầu nghe và cấp quyền Android nếu được hỏi. " +
+                    "Chibi không nghe nền, không lưu bản ghi hay bản chép lời. " +
+                    "Hãy nói rõ “xác nhận áp dụng” để áp dụng phần chưa hoàn thành; nói “giữ nguyên” để hủy. " +
+                    "Nếu buổi tập hoặc tiến độ đã thay đổi, lệnh cũ sẽ bị từ chối."
+            )
+            .setPositiveButton("Bắt đầu nghe") { _, _ ->
+                pause()
+                spoken?.stop()
+                requestRecognitionPermissionOrStart(previewVoiceRequest)
+            }
+            .setNegativeButton("Giữ nguyên") { _, _ ->
                 previewVoiceResultHandler = null
             }
             .create()
@@ -1716,23 +1742,50 @@ class GuidedWorkoutActivity:Activity() {
                                 Toast.LENGTH_LONG).show()
                         } else when (WorkoutPlanPreviewVoiceCommand.parse(phrase)) {
                             WorkoutPlanPreviewVoiceCommand.Action.CONFIRM -> {
-                                AlertDialog.Builder(this@GuidedWorkoutActivity)
-                                    .setTitle("Xác nhận áp dụng")
-                                    .setMessage(
-                                        "Chibi nghe được yêu cầu xác nhận áp dụng. Giáo án vẫn chưa thay đổi. " +
-                                            "Kiểm tra lại bản xem trước rồi chạm Áp dụng để tiếp tục."
-                                    )
-                                    .setPositiveButton("Áp dụng") { _, _ ->
-                                        if (previewContextStillMatches()) {
-                                            previewDialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
-                                        } else {
+                                // First spoken confirmation is intent only. A separate disclosure
+                                // and a second user-started recognition session provide final consent.
+                                requestFinalPlanPreviewVoiceCommand { finalPhrase ->
+                                    if (!previewDialog.isShowing || !previewContextStillMatches()) {
+                                        previewDialog.dismiss()
+                                        Toast.makeText(
+                                            this@GuidedWorkoutActivity,
+                                            "Bản xem trước đã cũ hoặc buổi tập đã thay đổi. Không áp dụng lệnh giọng nói.",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                    } else when (WorkoutPlanPreviewVoiceCommand.parse(finalPhrase)) {
+                                        WorkoutPlanPreviewVoiceCommand.Action.CONFIRM -> {
+                                            if (previewContextStillMatches()) {
+                                                previewDialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+                                            } else {
+                                                previewDialog.dismiss()
+                                                Toast.makeText(
+                                                    this@GuidedWorkoutActivity,
+                                                    "Buổi tập đã thay đổi. Hãy xem trước lại.",
+                                                    Toast.LENGTH_LONG
+                                                ).show()
+                                            }
+                                        }
+                                        WorkoutPlanPreviewVoiceCommand.Action.CANCEL -> {
                                             previewDialog.dismiss()
-                                            Toast.makeText(this@GuidedWorkoutActivity,
-                                                "Buổi tập đã thay đổi. Hãy xem trước lại.", Toast.LENGTH_LONG).show()
+                                            Toast.makeText(
+                                                this@GuidedWorkoutActivity,
+                                                "Đã giữ nguyên giáo án; không áp dụng bản xem trước.",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
+                                        WorkoutPlanPreviewVoiceCommand.Action.SAFETY -> {
+                                            previewDialog.dismiss()
+                                            stopForSafety()
+                                        }
+                                        WorkoutPlanPreviewVoiceCommand.Action.UNSUPPORTED -> {
+                                            Toast.makeText(
+                                                this@GuidedWorkoutActivity,
+                                                "Chibi chưa hiểu lần xác nhận cuối. Giáo án vẫn chưa đổi.",
+                                                Toast.LENGTH_LONG
+                                            ).show()
                                         }
                                     }
-                                    .setNegativeButton("Giữ nguyên", null)
-                                    .show()
+                                }
                             }
                             WorkoutPlanPreviewVoiceCommand.Action.CANCEL -> {
                                 previewDialog.dismiss()
@@ -2824,14 +2877,34 @@ class GuidedWorkoutActivity:Activity() {
             val callback = previewVoiceResultHandler
             previewVoiceResultHandler = null
             if (resultCode == RESULT_OK && callback != null) {
-                reviewSpeechAlternatives(
-                    data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS),
-                    title = "🐰 Chọn câu xác nhận Chibi nghe được",
-                    message = "Chọn câu đúng trước khi xem bước xác nhận cuối. Chibi chưa áp dụng giáo án chỉ từ kết quả nhận dạng.",
-                    emptyMessage = "Chưa nhận được câu nói rõ ràng; bản xem trước vẫn giữ nguyên.",
-                    isSafety = { WorkoutVoiceCommands.parse(it) == WorkoutVoiceCommands.Command.PAIN },
-                    onSelected = { candidate -> callback(candidate.text) }
+                val raw = data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+                val candidates = CoachSpeechTranscript.candidates(raw)
+                val agreedAction = WorkoutPlanPreviewVoiceCommand.parseAlternatives(
+                    candidates.map { it.text }
                 )
+                when (agreedAction) {
+                    WorkoutPlanPreviewVoiceCommand.Action.SAFETY -> {
+                        candidates.firstOrNull {
+                            WorkoutPlanPreviewVoiceCommand.parse(it.text) ==
+                                WorkoutPlanPreviewVoiceCommand.Action.SAFETY
+                        }?.let { callback(it.text) }
+                    }
+                    WorkoutPlanPreviewVoiceCommand.Action.CONFIRM,
+                    WorkoutPlanPreviewVoiceCommand.Action.CANCEL -> {
+                        // All bounded recognizer alternatives agree, so no extra transcript tap is needed.
+                        candidates.firstOrNull()?.let { callback(it.text) }
+                    }
+                    WorkoutPlanPreviewVoiceCommand.Action.UNSUPPORTED -> {
+                        reviewSpeechAlternatives(
+                            raw,
+                            title = "🐰 Chọn câu xác nhận Chibi nghe được",
+                            message = "Các phương án nhận dạng chưa thống nhất. Chọn câu đúng; Chibi vẫn yêu cầu xác nhận giọng nói lần hai trước khi áp dụng.",
+                            emptyMessage = "Chưa nhận được câu nói rõ ràng; bản xem trước vẫn giữ nguyên.",
+                            isSafety = { WorkoutVoiceCommands.parse(it) == WorkoutVoiceCommands.Command.PAIN },
+                            onSelected = { candidate -> callback(candidate.text) }
+                        )
+                    }
+                }
             } else if (resultCode != RESULT_OK) {
                 Toast.makeText(this, "Đã hủy nhận giọng nói; giáo án xem trước vẫn chưa thay đổi.", Toast.LENGTH_SHORT).show()
             }

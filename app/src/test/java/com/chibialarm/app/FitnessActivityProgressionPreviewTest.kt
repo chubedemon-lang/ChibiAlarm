@@ -105,4 +105,40 @@ class FitnessActivityProgressionPreviewTest {
         controller.pause().stop().destroy()
     }
 
+
+    @Test fun libraryVoiceNavigationRequiresExplicitPrivacyConfirmation() {
+        val controller = Robolectric.buildActivity(FitnessActivity::class.java).setup()
+        val activity = controller.get()
+        val libraryButton = views(activity.findViewById<ViewGroup>(android.R.id.content))
+            .filterIsInstance<Button>()
+            .firstOrNull { it.text.toString().startsWith("📖 Xem bài") }
+        assertNotNull(libraryButton)
+
+        libraryButton!!.performClick()
+        val previewDialog = ShadowAlertDialog.getLatestAlertDialog()
+        assertNotNull(previewDialog)
+        val previewRoot = previewDialog.findViewById<ViewGroup>(android.R.id.custom)
+        val previewViews = previewRoot?.let(::views).orEmpty()
+        val voiceButton = previewViews.filterIsInstance<Button>()
+            .firstOrNull { it.text.toString().startsWith("🎙 Nói lệnh") }
+
+        assertNotNull("Voice navigation should be available from the exercise walkthrough", voiceButton)
+        assertTrue(voiceButton!!.contentDescription.toString().contains("Chibi không nghe nền"))
+
+        voiceButton.performClick()
+        val privacyDialog = ShadowAlertDialog.getLatestAlertDialog()
+        assertNotNull(privacyDialog)
+        assertTrue(privacyDialog.isShowing)
+        val disclosure = privacyDialog.findViewById<TextView>(android.R.id.message)?.text?.toString().orEmpty()
+        assertTrue(disclosure.contains("Chibi không nghe nền"))
+        assertTrue(disclosure.contains("Chibi chỉ nhận văn bản"))
+        assertTrue(disclosure.contains("có thể xử lý âm thanh trực tuyến"))
+        assertTrue(disclosure.contains("quyền microphone"))
+
+        privacyDialog.getButton(android.app.AlertDialog.BUTTON_NEGATIVE).performClick()
+        assertFalse(privacyDialog.isShowing)
+        previewDialog.dismiss()
+        controller.pause().stop().destroy()
+    }
+
 }

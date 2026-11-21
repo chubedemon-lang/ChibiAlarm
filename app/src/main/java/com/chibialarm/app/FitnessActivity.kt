@@ -28,6 +28,9 @@ class FitnessActivity:Activity() {
     private var speechReplayButton: Button? = null
     private var speechStopButton: Button? = null
     private val speechRequestCode = 4107
+    private val libraryStepSpeechRequestCode = 4108
+    // Exists only while the exercise-library preview dialog is visible.
+    private var libraryStepVoiceCommandHandler: ((WorkoutLibraryVoiceNavigation.Action) -> Unit)? = null
     private var speechSequenceId = 0L
     private var recommendationGoalSpinner: Spinner? = null
     private var recommendationEnergySpinner: Spinner? = null
@@ -48,8 +51,54 @@ class FitnessActivity:Activity() {
         Toast.makeText(this, message, Toast.LENGTH_LONG).show()
     }
 
+    private fun applyLibraryStepSpeechCandidate(candidate: CoachSpeechTranscript.Candidate) {
+        if (candidate.truncated) {
+            Toast.makeText(
+                this,
+                "Câu lệnh quá dài. Hãy nói ngắn như “bước tiếp theo” hoặc “đọc lại”.",
+                Toast.LENGTH_LONG
+            ).show()
+            return
+        }
+        val action = WorkoutLibraryVoiceNavigation.action(candidate.text)
+        if (action == WorkoutLibraryVoiceNavigation.Action.UNSUPPORTED) {
+            Toast.makeText(this, "Chibi chưa hiểu lệnh điều khiển bước. Hãy thử nói ngắn hơn.", Toast.LENGTH_LONG).show()
+            return
+        }
+        val handler = libraryStepVoiceCommandHandler
+        if (handler == null) {
+            Toast.makeText(this, "Hướng dẫn bài tập đã đóng. Hãy mở lại thư viện để dùng giọng nói.", Toast.LENGTH_LONG).show()
+            return
+        }
+        handler(action)
+    }
+
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == libraryStepSpeechRequestCode) {
+            if (resultCode != RESULT_OK) return
+            val candidates = CoachSpeechTranscript.candidates(
+                data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+            )
+            when {
+                candidates.isEmpty() -> Toast.makeText(
+                    this,
+                    "Không nhận được lệnh rõ ràng. Bạn có thể dùng các nút bước trước/bước tiếp.",
+                    Toast.LENGTH_LONG
+                ).show()
+                candidates.size == 1 -> applyLibraryStepSpeechCandidate(candidates.single())
+                else -> AlertDialog.Builder(this)
+                    .setTitle("Chọn lệnh Chibi nghe được")
+                    .setItems(candidates.mapIndexed { index, candidate ->
+                        "${index + 1}. ${candidate.label}"
+                    }.toTypedArray()) { _, which ->
+                        candidates.getOrNull(which)?.let(::applyLibraryStepSpeechCandidate)
+                    }
+                    .setNegativeButton("Để tôi chọn bằng nút", null)
+                    .show()
+            }
+            return
+        }
         if (requestCode != speechRequestCode || resultCode != RESULT_OK) return
 
         val candidates = CoachSpeechTranscript.candidates(
@@ -78,6 +127,7 @@ class FitnessActivity:Activity() {
         // Drop transient raw text on finish and configuration recreation.
         coachTranscript.clear()
         coachSpeechMemory.clear()
+        libraryStepVoiceCommandHandler = null
         speechReplayButton = null
         speechStopButton = null
         coachTranscriptView = null
@@ -1160,6 +1210,37 @@ class FitnessActivity:Activity() {
             addView(stepPrevious, LinearLayout.LayoutParams(0, -2, 1f))
             addView(stepNext, LinearLayout.LayoutParams(0, -2, 1f))
         }
+        val stepVoiceCommand = Button(this).apply {
+            text = "🎙 Nói lệnh điều khiển bước"
+            isAllCaps = false
+            contentDescription = "Chạm để mở nhận dạng giọng nói cho hướng dẫn; Chibi không nghe nền"
+            setOnClickListener {
+                AlertDialog.Builder(this@FitnessActivity)
+                    .setTitle("Quyền riêng tư giọng nói")
+                    .setMessage(
+                        "Chỉ mở dịch vụ nhận dạng sau khi bạn chọn Tiếp tục. Chibi không nghe nền và không tự ghi âm. " +
+                            "Chibi chỉ nhận văn bản; dịch vụ nhận dạng bên ngoài có thể xử lý âm thanh trực tuyến dù đã yêu cầu ưu tiên ngoại tuyến. " +
+                            "Dịch vụ có thể yêu cầu quyền microphone theo hệ thống. Bạn có thể hủy bất cứ lúc nào."
+                    )
+                    .setPositiveButton("Tiếp tục") { _, _ ->
+                        speechOutput?.stop()
+                        val request = WorkoutSpeechRecognitionRequest.create(
+                            "Nói lệnh: bước tiếp theo, bước trước, đọc lại hoặc đọc lưu ý an toàn"
+                        )
+                        try {
+                            startActivityForResult(request, libraryStepSpeechRequestCode)
+                        } catch (_: android.content.ActivityNotFoundException) {
+                            Toast.makeText(
+                                this@FitnessActivity,
+                                "Thiết bị chưa có dịch vụ nhận dạng giọng nói. Hãy dùng các nút điều hướng.",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    }
+                    .setNegativeButton("Hủy", null)
+                    .show()
+            }
+        }
         val stepAutoSpeak = CheckBox(this).apply {
             tag = "fitness-library-step-auto-speak"
             text = if (speechReady && speechOutput != null) {
@@ -1241,6 +1322,7 @@ class FitnessActivity:Activity() {
         content.addView(stepPosition)
         content.addView(stepInstruction)
         content.addView(stepNavigation)
+        content.addView(stepVoiceCommand)
         content.addView(stepAutoSpeak)
         content.addView(stepSpeak)
         content.addView(easier)
@@ -1361,6 +1443,70 @@ class FitnessActivity:Activity() {
             .setPositiveButton("▶ Bắt đầu", null)
             .setNegativeButton("Đóng", null)
             .create()
+        libraryStepVoiceCommandHandler = { action ->
+            val move = preview.currentMove
+            when (action) {
+                WorkoutLibraryVoiceNavigation.Action.FIRST -> {
+                    stepPreview = stepPreview.first()
+                    renderStepPreview()
+                }
+                WorkoutLibraryVoiceNavigation.Action.NEXT -> {
+                    if (stepPreview.canGoNext) {
+                        stepPreview = stepPreview.next()
+                        renderStepPreview()
+                    } else Toast.makeText(this@FitnessActivity, "Đang ở bước cuối.", Toast.LENGTH_SHORT).show()
+                }
+                WorkoutLibraryVoiceNavigation.Action.PREVIOUS -> {
+                    if (stepPreview.canGoPrevious) {
+                        stepPreview = stepPreview.previous()
+                        renderStepPreview()
+                    } else Toast.makeText(this@FitnessActivity, "Đang ở bước đầu.", Toast.LENGTH_SHORT).show()
+                }
+                WorkoutLibraryVoiceNavigation.Action.REPEAT -> {
+                    if (speechReady) sayFollowUp(stepPreview.spokenCue())
+                    else Toast.makeText(this@FitnessActivity, "Bật giọng Chibi trước để đọc bước.", Toast.LENGTH_LONG).show()
+                }
+                WorkoutLibraryVoiceNavigation.Action.AUTO_SPEAK_ON -> {
+                    if (stepAutoSpeak.isEnabled) stepAutoSpeak.isChecked = true
+                    else Toast.makeText(this@FitnessActivity, "Bật giọng Chibi ở màn hình Fitness trước.", Toast.LENGTH_LONG).show()
+                }
+                WorkoutLibraryVoiceNavigation.Action.AUTO_SPEAK_OFF -> {
+                    stepAutoSpeak.isChecked = false
+                    speechOutput?.stop()
+                }
+                WorkoutLibraryVoiceNavigation.Action.SPEAK_SUMMARY -> {
+                    val restCue = WorkoutSetTracker.restGuidance(move.dose, move.restSeconds)
+                        ?: "Nghỉ thêm khi cần; động tác này không có cấu trúc hiệp lặp."
+                    if (speechReady) sayFollowUp("${move.name}. Mục tiêu: ${move.dose}. $restCue")
+                    else Toast.makeText(this@FitnessActivity, "Bật giọng Chibi trước để đọc mục tiêu.", Toast.LENGTH_LONG).show()
+                }
+                WorkoutLibraryVoiceNavigation.Action.SPEAK_EASIER -> {
+                    if (speechReady) sayFollowUp(WorkoutStepGuide.spokenEasierCue(move.name, move.easier))
+                    else Toast.makeText(this@FitnessActivity, "Bật giọng Chibi trước để đọc phương án nhẹ hơn.", Toast.LENGTH_LONG).show()
+                }
+                WorkoutLibraryVoiceNavigation.Action.SPEAK_SAFETY_NOTE -> {
+                    if (speechReady) sayFollowUp(WorkoutStepGuide.spokenSafetyNoteCue(move.name, move.avoid))
+                    else Toast.makeText(this@FitnessActivity, "Bật giọng Chibi trước để đọc lưu ý.", Toast.LENGTH_LONG).show()
+                }
+                WorkoutLibraryVoiceNavigation.Action.SPEAK_EXERCISE -> {
+                    if (speechReady) sayFollowUp(WorkoutContextCoach.script(move))
+                    else Toast.makeText(this@FitnessActivity, "Bật giọng Chibi trước để nghe hướng dẫn.", Toast.LENGTH_LONG).show()
+                }
+                WorkoutLibraryVoiceNavigation.Action.OPEN_ALTERNATIVES -> substitute.performClick()
+                WorkoutLibraryVoiceNavigation.Action.CLOSE -> dialog.dismiss()
+                WorkoutLibraryVoiceNavigation.Action.SAFETY -> {
+                    speechOutput?.stop()
+                    Toast.makeText(
+                        this@FitnessActivity,
+                        "Đã nhận diện dấu hiệu khó chịu. Nếu đang vận động, hãy dừng lại; không cố tập tiếp theo hướng dẫn này.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+                WorkoutLibraryVoiceNavigation.Action.UNSUPPORTED -> {
+                    Toast.makeText(this@FitnessActivity, "Lệnh này không áp dụng trong thư viện bài tập.", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
         dialog.setOnShowListener {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                 if (!WorkoutPlanPreviewEditor.isValid(planDraft)) {
@@ -1372,6 +1518,7 @@ class FitnessActivity:Activity() {
             }
         }
         dialog.setOnDismissListener {
+            libraryStepVoiceCommandHandler = null
             pose.motionEnabled = false
             speechOutput?.stop()
         }

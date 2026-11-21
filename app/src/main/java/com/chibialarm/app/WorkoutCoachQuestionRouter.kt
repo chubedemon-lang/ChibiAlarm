@@ -14,10 +14,19 @@ object WorkoutCoachQuestionRouter {
         input: String,
         currentMove: TrainingMove?,
         currentDose: String? = null,
-        pausedForSafety: Boolean = false
+        pausedForSafety: Boolean = false,
+        restIsActive: Boolean = false,
+        restRemainingMs: Long? = null,
+        restIsPaused: Boolean = false
     ): String? {
         if (input.isBlank() || input.length > 300) return null
 
+        val restStatusAnswer = WorkoutRestStatusConversation.answer(
+            input = input,
+            restIsActive = restIsActive,
+            remainingMs = restRemainingMs,
+            restIsPaused = restIsPaused
+        )
         val catalogAnswer = WorkoutExerciseConversation.answer(input)
         val contextualAnswer = if (
             currentMove != null && WorkoutExerciseConversation.isContextualQuestion(input)
@@ -31,7 +40,7 @@ object WorkoutCoachQuestionRouter {
             null
         }
 
-        val resolvedAnswer = when {
+        val resolvedAnswer = restStatusAnswer ?: when {
             catalogAnswer != null && !catalogAnswer.startsWith(UNKNOWN_EXERCISE_PREFIX) ->
                 catalogAnswer
             contextualAnswer != null -> contextualAnswer

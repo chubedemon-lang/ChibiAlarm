@@ -299,4 +299,45 @@ class WorkoutStepVoiceCommandTest {
         assertEquals(WorkoutStepVoiceCommand.Command.SAFETY,
             WorkoutStepVoiceCommand.parse("Tắt tự đọc, tôi khó thở"))
     }
+
+    @Test fun opensCuratedEasierAlternativesFromVoice() {
+        for (phrase in listOf(
+            "Đổi bài dễ hơn",
+            "Đổi sang bài nhẹ hơn",
+            "Mở phương án thay thế",
+            "Xem bài thay thế",
+            "Có bài nào thay thế không",
+            "thay dong tac nay bang bai nhe hon"
+        )) {
+            assertEquals(
+                phrase,
+                WorkoutStepVoiceCommand.Command.OPEN_EASIER_ALTERNATIVES,
+                WorkoutStepVoiceCommand.parse(phrase)
+            )
+        }
+    }
+
+    @Test fun easierAlternativeVoiceCommandRespectsNegationAndSafetyPriority() {
+        for (phrase in listOf(
+            "Không đổi bài dễ hơn",
+            "Đừng thay động tác",
+            "Không muốn đổi bài",
+            "Không mở phương án thay thế"
+        )) {
+            assertEquals(
+                phrase,
+                WorkoutStepVoiceCommand.Command.UNKNOWN,
+                WorkoutStepVoiceCommand.parse(phrase)
+            )
+        }
+        assertEquals(
+            WorkoutStepVoiceCommand.Command.SAFETY,
+            WorkoutStepVoiceCommand.parse("Đổi bài dễ hơn nhưng tôi đau đầu gối")
+        )
+        assertEquals(
+            WorkoutStepVoiceCommand.Command.SAFETY,
+            WorkoutStepVoiceCommand.parse("Mở phương án thay thế nhưng tôi khó thở")
+        )
+    }
+
 }

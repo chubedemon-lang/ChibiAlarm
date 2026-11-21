@@ -326,7 +326,7 @@ object WorkoutHistoryConversation {
                 "dữ liệu trùng phiên hoặc thiếu check-in sẽ không được tính. Chibi không tự tăng số lần, số hiệp hay tải."
 
         return suggestion.message +
-            "\\n\\nĐể kiểm tra số lần thực tế có cho phép bước nhỏ hay không, hãy chạm “Xem bước tiến triển có kiểm soát” " +
+            "\n\nĐể kiểm tra số lần thực tế có cho phép bước nhỏ hay không, hãy chạm “Xem bước tiến triển có kiểm soát” " +
             "trong phần nhật ký. Bản xem trước còn phải khớp bài trong giáo án hiện tại, dải số lần của thư viện, " +
             "dụng cụ và hạn chế vận động; nếu thiếu số lần đã ghi hoặc bài tính giây/nhịp, Chibi sẽ không đoán thay. " +
             "Không có thay đổi nào được áp dụng trước khi bạn xác nhận."

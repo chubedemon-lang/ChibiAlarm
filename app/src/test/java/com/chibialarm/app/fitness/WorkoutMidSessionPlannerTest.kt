@@ -1696,4 +1696,70 @@ class WorkoutMidSessionPlannerTest {
         )
     }
 
+
+    @Test fun spokenOptionalSetRemovalKeepsRequiredWorkAndConfirmedSets() {
+        val active = TrainingMove(
+            "Test squat", "2–3 hiệp × 8–12 lần", "Đứng vững",
+            "Hạ xuống có kiểm soát", "Dừng nếu đau", 120, 60
+        )
+        val result = WorkoutMidSessionPlanner.preview(
+            currentMoves = listOf(active, move("Thả lỏng")),
+            currentIndex = 0,
+            completedCurrentSets = 1,
+            currentStepLocked = true,
+            constraints = WorkoutConstraintProfile(),
+            request = WorkoutMidSessionRequest.Request(removeOptionalSets = true),
+            remainingCurrentSeconds = 30,
+            extensionMoveNames = emptySet(),
+            level = 0
+        )
+
+        assertTrue(result is WorkoutMidSessionPlanner.Result.Proposed)
+        val preview = (result as WorkoutMidSessionPlanner.Result.Proposed).preview
+        assertEquals(2, preview.currentSetLimit)
+        assertEquals(1, preview.completedCurrentSets)
+        assertEquals("2 hiệp × 8–12 lần", preview.after.first().dose)
+        assertEquals("Thả lỏng", preview.after.last().name)
+    }
+
+    @Test fun spokenOptionalSetRemovalIsBlockedWhenNoOptionalSetRemains() {
+        val fixed = TrainingMove(
+            "Test fixed squat", "2 hiệp × 8–12 lần", "Đứng vững",
+            "Hạ xuống có kiểm soát", "Dừng nếu đau", 120, 60
+        )
+        val result = WorkoutMidSessionPlanner.preview(
+            currentMoves = listOf(fixed, move("Thả lỏng")),
+            currentIndex = 0,
+            completedCurrentSets = 1,
+            currentStepLocked = true,
+            constraints = WorkoutConstraintProfile(),
+            request = WorkoutMidSessionRequest.Request(removeOptionalSets = true),
+            remainingCurrentSeconds = 30,
+            extensionMoveNames = emptySet(),
+            level = 0
+        )
+
+        assertTrue(result is WorkoutMidSessionPlanner.Result.Blocked)
+    }
+
+    @Test fun spokenOptionalSetRemovalCannotEraseAnAlreadyConfirmedOptionalSet() {
+        val active = TrainingMove(
+            "Test squat", "2–3 hiệp × 8–12 lần", "Đứng vững",
+            "Hạ xuống có kiểm soát", "Dừng nếu đau", 120, 60
+        )
+        val result = WorkoutMidSessionPlanner.preview(
+            currentMoves = listOf(active, move("Thả lỏng")),
+            currentIndex = 0,
+            completedCurrentSets = 3,
+            currentStepLocked = true,
+            constraints = WorkoutConstraintProfile(),
+            request = WorkoutMidSessionRequest.Request(removeOptionalSets = true),
+            remainingCurrentSeconds = 0,
+            extensionMoveNames = emptySet(),
+            level = 0
+        )
+
+        assertTrue(result is WorkoutMidSessionPlanner.Result.Blocked)
+    }
+
 }

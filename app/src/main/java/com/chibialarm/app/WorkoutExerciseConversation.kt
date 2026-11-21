@@ -124,6 +124,7 @@ object WorkoutExerciseConversation {
         val name = safe(move.name, 80).ifBlank { "Động tác hiện tại" }
         val dose = safe(currentDose, 120).ifBlank { safe(move.dose, 120) }
         val setPlan = WorkoutSetTracker.parse(move.dose, move.restSeconds)
+        WorkoutExerciseStepQuestion.answer(input, name, move.steps)?.let { return it }
 
         return when {
             isBreathingQuestion(query) -> WorkoutBreathingGuide.cue(name)
@@ -201,6 +202,7 @@ object WorkoutExerciseConversation {
     ).any(query::contains)
 
     private fun isExerciseQuestion(text: String): Boolean {
+        if (WorkoutExerciseStepQuestion.hasExplicitStepReference(text)) return true
         if (questionPhrases.any(text::contains)) return true
         val namesAnExercise = text.contains("bai ") || text.contains("dong tac ")
         return namesAnExercise && (
@@ -236,6 +238,7 @@ object WorkoutExerciseConversation {
 
     private fun format(move: TrainingMove, input: String): String {
         if (isBreathingQuestion(normalize(input))) return WorkoutBreathingGuide.cue(move.name)
+        WorkoutExerciseStepQuestion.answer(input, move.name, move.steps)?.let { return it }
         val steps = WorkoutStepGuide.split(move.steps).take(MAX_DISPLAY_STEPS)
         val rest = WorkoutSetTracker.restGuidance(move.dose, move.restSeconds)
         return buildString {

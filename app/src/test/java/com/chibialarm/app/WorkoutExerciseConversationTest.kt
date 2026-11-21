@@ -250,4 +250,67 @@ class WorkoutExerciseConversationTest {
         assertNotNull(answer)
         assertTrue(answer!!.contains("chưa có mô tả nhóm cơ"))
     }
+
+    @Test fun explicitNamedMoveQuestionReturnsOnlyTheRequestedStep() {
+        val answer = WorkoutExerciseConversation.answer("Bước 3 của Squat không tạ là gì?")
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("Bước 3/5 của Squat không tạ"))
+        assertTrue(answer.contains("hạ xuống theo khả năng"))
+        assertFalse(answer.contains("đứng lên"))
+    }
+
+    @Test fun contextualOrdinalQuestionUsesTheOpenExerciseWithoutRepeatingItsName() {
+        val squat = TrainingCatalog.allMoves.single { it.name == "Squat không tạ" }
+        val answer = WorkoutExerciseConversation.answerForCurrentMove(
+            "Bước thứ hai của bài này là gì?",
+            squat
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("Bước 2/5 của Squat không tạ"))
+        assertTrue(answer.contains("đẩy hông nhẹ về sau"))
+        assertFalse(answer.contains("Chân rộng bằng vai"))
+    }
+
+    @Test fun firstAndLastAliasesResolveTheCatalogBoundaries() {
+        val squat = TrainingCatalog.allMoves.single { it.name == "Squat không tạ" }
+        val first = WorkoutExerciseConversation.answerForCurrentMove("Bước đầu tiên của bài này", squat)
+        val last = WorkoutExerciseConversation.answerForCurrentMove("Đọc bước cuối của bài này", squat)
+
+        assertTrue(first!!.contains("Bước 1/5"))
+        assertTrue(first.contains("Chân rộng bằng vai"))
+        assertTrue(last!!.contains("Bước 5/5"))
+        assertTrue(last.contains("giữ gối cùng hướng bàn chân"))
+    }
+
+    @Test fun outOfRangeStepIsNotClampedToAValidButDifferentInstruction() {
+        val squat = TrainingCatalog.allMoves.single { it.name == "Squat không tạ" }
+        val answer = WorkoutExerciseConversation.answerForCurrentMove("Bước 9 của bài này là gì?", squat)
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("có 5 bước"))
+        assertTrue(answer.contains("không có bước 9"))
+        assertFalse(answer.contains("Bước 5/5"))
+    }
+
+    @Test fun multipleRequestedStepsAskForOneUnambiguousPosition() {
+        val squat = TrainingCatalog.allMoves.single { it.name == "Squat không tạ" }
+        val answer = WorkoutExerciseConversation.answerForCurrentMove(
+            "Bước 2 và bước 3 của bài này là gì?",
+            squat
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("nhiều bước"))
+        assertFalse(answer.contains("Bước 2/5"))
+        assertFalse(answer.contains("Bước 3/5"))
+    }
+
+    @Test fun vagueNextStepDoesNotInventAnInstructionIndex() {
+        val squat = TrainingCatalog.allMoves.single { it.name == "Squat không tạ" }
+        assertFalse(WorkoutExerciseStepQuestion.hasExplicitStepReference("Bước tiếp theo là gì?"))
+        assertNull(WorkoutExerciseStepQuestion.answer("Bước tiếp theo là gì?", squat.name, squat.steps))
+    }
+
 }

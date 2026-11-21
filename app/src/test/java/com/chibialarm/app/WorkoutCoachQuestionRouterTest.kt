@@ -151,4 +151,29 @@ class WorkoutCoachQuestionRouterTest {
         assertFalse(answer.contains("60 giây"))
     }
 
+
+    @Test fun numberedStepQuestionUsesTheOpenMoveContext() {
+        val answer = WorkoutCoachQuestionRouter.answer(
+            input = "Bước 2 của bài này là gì?",
+            currentMove = squat
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("Bước 2/5 của Squat không tạ"))
+        assertTrue(answer.contains("đẩy hông nhẹ về sau"))
+        assertFalse(answer.contains("Bước 1/5"))
+    }
+
+    @Test fun safetyPauseSuppressesNumberedStepGuidance() {
+        val answer = WorkoutCoachQuestionRouter.answer(
+            input = "Bước 2 của bài này là gì?",
+            currentMove = squat,
+            pausedForSafety = true
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("đang dừng vì cảnh báo an toàn"))
+        assertFalse(answer.contains("Bước 2/5"))
+    }
+
 }

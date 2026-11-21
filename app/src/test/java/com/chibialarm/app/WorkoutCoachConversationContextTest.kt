@@ -146,4 +146,22 @@ class WorkoutCoachConversationContextTest {
         )
     }
 
+
+    @Test fun numberedStepFollowUpUsesTheLastExplicitlyNamedExercise() {
+        val context = WorkoutCoachConversationContext()
+        context.answer("Cách tập ${walk.name}?", activeMove = squat)
+
+        val answer = context.answer(
+            input = "Bước thứ hai của bài đó là gì?",
+            activeMove = squat
+        )
+
+        val expectedStep = WorkoutStepGuide.split(walk.steps)[1]
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("Bước 2/"))
+        assertTrue(answer.contains(walk.name))
+        assertTrue(answer.contains(expectedStep.take(50)))
+        assertFalse(answer.contains(squat.name))
+    }
+
 }

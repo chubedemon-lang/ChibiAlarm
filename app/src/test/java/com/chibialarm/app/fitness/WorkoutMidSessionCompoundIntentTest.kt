@@ -67,4 +67,34 @@ class WorkoutMidSessionCompoundIntentTest {
         )
     }
 
+
+    @Test
+    fun optionalSetSkipUsesTheRequiredMinimumAndCanBeCombinedWithRest() {
+        val parsed = WorkoutMidSessionRequest.parse(
+            "Bỏ hiệp tùy chọn và nghỉ thêm 30 giây"
+        )
+
+        assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
+        val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+        assertTrue(request.removeOptionalSets)
+        assertEquals(null, request.currentSetLimit)
+        assertEquals(30, request.restSeconds)
+        assertTrue(!request.isRestOnly)
+    }
+
+    @Test
+    fun negatedOptionalSetSkipDoesNotBecomeAPlanChange() {
+        listOf(
+            "Không bỏ hiệp tùy chọn",
+            "Đừng bỏ hiệp phụ",
+            "Không cần bỏ hiệp tùy chọn",
+            "Giữ hiệp tùy chọn"
+        ).forEach { phrase ->
+            assertTrue(
+                phrase,
+                WorkoutMidSessionRequest.parse(phrase) is WorkoutMidSessionRequest.Result.Unsupported
+            )
+        }
+    }
+
 }

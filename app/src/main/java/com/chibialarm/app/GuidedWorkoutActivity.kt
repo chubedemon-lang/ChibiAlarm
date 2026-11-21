@@ -1796,7 +1796,16 @@ class GuidedWorkoutActivity:Activity() {
             WorkoutVoiceCommands.Command.STATUS -> {
                 // Freeze the active/rest countdown while the user reads or replays the report.
                 if (!paused && !pausedForSafety) pause()
-                currentWorkoutProgressReply()?.let {
+                val liveRestAnswer = if (!pausedForSafety) {
+                    WorkoutRestStatusConversation.answer(
+                        input = utterance,
+                        restIsActive = resting,
+                        remainingMs = if (resting) restRemainingMs else null,
+                        restIsPaused = resting && paused
+                    )
+                } else null
+                val answer = liveRestAnswer ?: currentWorkoutProgressReply()
+                answer?.let {
                     showCoachAnswer("🐰 Chibi Coach • tiến độ buổi tập", it)
                 }
             }

@@ -335,6 +335,32 @@ class WorkoutMidSessionPlannerTest {
         assertEquals("The preview must not rewrite the catalog prescription", active.dose, preview.after.single().dose)
     }
 
+    @Test fun repCeilingPreviewKeepsTheAbsoluteIndexAfterCompletedPrefix() {
+        val warmup = move("Khởi động tại chỗ")
+        val active = TrainingMove(
+            "Test squat", "2 hiệp × 8–12 lần", "Đứng vững",
+            "Hạ xuống có kiểm soát", "Dừng nếu đau", 120, 60
+        )
+        val cooldown = move("Thả lỏng")
+        val result = WorkoutMidSessionPlanner.preview(
+            currentMoves = listOf(warmup, active, cooldown),
+            currentIndex = 1,
+            completedCurrentSets = 2,
+            currentStepLocked = true,
+            constraints = WorkoutConstraintProfile(),
+            request = WorkoutMidSessionRequest.Request(currentRepLimit = 11),
+            remainingCurrentSeconds = 45,
+            extensionMoveNames = emptySet(),
+            level = 0
+        )
+
+        assertTrue(result is WorkoutMidSessionPlanner.Result.Proposed)
+        val preview = (result as WorkoutMidSessionPlanner.Result.Proposed).preview
+        assertEquals(1, preview.currentIndex)
+        assertEquals(11, preview.currentRepLimit)
+        assertEquals(active.dose, preview.after[1].dose)
+    }
+
     @Test fun repCapRequestCarriesOnlyTheExplicitUnfinishedSetTarget() {
         val request = WorkoutMidSessionRequest.Request(currentRepLimit = 11)
         assertEquals(11, request.currentRepLimit)

@@ -1514,7 +1514,10 @@ class GuidedWorkoutActivity:Activity() {
                             it > index || (it == index && preview.currentMoveChanged)
                         }
 
-                        val acceptedRepLimit = preview.currentRepLimit
+                        // The planner validates a non-null request limit before returning Proposed.
+                        // Keep the request value as a defensive fallback so the accepted voice
+                        // ceiling cannot disappear between preview construction and confirmation.
+                        val acceptedRepLimit = preview.currentRepLimit ?: request.currentRepLimit
                         // If the user removed only optional sets and has already confirmed
                         // the required minimum, mark this move complete without inventing
                         // a set, changing its log, or awarding extra XP.
@@ -1796,6 +1799,41 @@ class GuidedWorkoutActivity:Activity() {
         val spokenTarget = contextualSpokenTarget(utterance)
         if (spokenTarget != null && WorkoutVoiceCommands.mayEditReps(utterance)) {
             confirmSpokenTarget(spokenTarget.value, spokenTarget.unit)
+            return
+        }
+
+        val clarification = if (!resting && !pausedForSafety && !completed && index in moves.indices) {
+            WorkoutMidSessionRequest.clarificationFor(utterance)
+        } else null
+        if (clarification != null) {
+            val wasRunning = !paused
+            pause()
+            val dialog = AlertDialog.Builder(this)
+                .setTitle("🐰 Chibi cần làm rõ")
+                .setMessage(clarification.prompt)
+                .setItems(clarification.actions.map { it.label }.toTypedArray()) { _, choice ->
+                    when (clarification.actions.getOrNull(choice)) {
+                        WorkoutMidSessionRequest.ClarificationAction.REDUCE_REPS -> requestRepTarget()
+                        WorkoutMidSessionRequest.ClarificationAction.REMOVE_OPTIONAL_SETS ->
+                            applyMidSessionRequest(WorkoutMidSessionRequest.Request(removeOptionalSets = true))
+                        WorkoutMidSessionRequest.ClarificationAction.EASIER_VARIANT ->
+                            applyMidSessionRequest(
+                                WorkoutMidSessionRequest.Request(lowEnergy = true, preferEasier = true)
+                            )
+                        WorkoutMidSessionRequest.ClarificationAction.PAUSE ->
+                            speak("Đã tạm dừng. Khi sẵn sàng, mày có thể tiếp tục buổi tập.")
+                        null -> Unit
+                    }
+                }
+                .setNegativeButton("Giữ nguyên") { _, _ ->
+                    if (wasRunning && !pausedForSafety && !completed && !resting) resume()
+                }
+                .create()
+            dialog.setOnCancelListener {
+                if (wasRunning && !pausedForSafety && !completed && !resting) resume()
+            }
+            dialog.show()
+            speak(clarification.prompt)
             return
         }
 

@@ -122,6 +122,47 @@ object WorkoutMidSessionRequest {
                 replaceCurrentWith == null
     }
 
+    enum class ClarificationAction(val label: String) {
+        REDUCE_REPS("Giảm số lần mỗi hiệp"),
+        REMOVE_OPTIONAL_SETS("Bỏ hiệp tùy chọn"),
+        EASIER_VARIANT("Đổi sang biến thể nhẹ hơn"),
+        PAUSE("Tạm dừng buổi tập")
+    }
+
+    data class Clarification(
+        val prompt: String,
+        val actions: List<ClarificationAction>
+    )
+
+    /**
+     * Return a clarification only for vague plan-change language. Exact, bounded
+     * commands continue through parse(); ambiguous speech never mutates a plan.
+     */
+    fun clarificationFor(utterance: String): Clarification? {
+        val input = utterance.trim()
+        if (input.isEmpty() || input.length > 300) return null
+        if (FitnessNaturalRequest.parse(input).impact == 2) return null
+
+        val text = normalize(input)
+        val explicitlyKeepingPlan = listOf(
+            "khong giam", "dung giam", "giu nguyen", "khong doi", "dung doi"
+        ).any(text::contains)
+        if (explicitlyKeepingPlan) return null
+
+        val vagueChangeCues = listOf(
+            "giam bai nay", "giam tai", "giam nhe di",
+            "tap it lai", "bot bai nay", "doi bai khac",
+            "thay bai khac", "bai nay khong hop", "dieu chinh bai nay"
+        )
+        if (vagueChangeCues.none(text::contains)) return null
+
+        return Clarification(
+            prompt = "Mày muốn Chibi giảm phần nào? Chibi chưa thay đổi giáo án. " +
+                "Chọn giảm số lần, bỏ hiệp tùy chọn, đổi sang biến thể nhẹ hơn hoặc tạm dừng.",
+            actions = ClarificationAction.values().toList()
+        )
+    }
+
     sealed class Result {
         data class Proposed(val request: Request) : Result()
         object SafetyStop : Result()

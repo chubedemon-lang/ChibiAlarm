@@ -122,4 +122,26 @@ class WorkoutMidSessionCompoundIntentTest {
         }
     }
 
+    @Test
+    fun vaguePlanChangesAskForClarificationInsteadOfGuessing() {
+        listOf(
+            "Giảm bài này đi",
+            "Tập ít lại một chút",
+            "Đổi bài khác đi",
+            "Bài này không hợp"
+        ).forEach { phrase ->
+            val clarification = WorkoutMidSessionRequest.clarificationFor(phrase)
+            assertTrue(phrase, clarification != null)
+            assertEquals(4, clarification!!.actions.size)
+            assertTrue(clarification.prompt.contains("chưa thay đổi giáo án"))
+        }
+    }
+
+    @Test
+    fun clarificationDoesNotInterceptExplicitCommandsNegationOrPain() {
+        assertTrue(WorkoutMidSessionRequest.clarificationFor("Giảm còn 10 lần mỗi hiệp") == null)
+        assertTrue(WorkoutMidSessionRequest.clarificationFor("Không giảm bài này") == null)
+        assertTrue(WorkoutMidSessionRequest.clarificationFor("Đau đầu gối, giảm bài này đi") == null)
+    }
+
 }

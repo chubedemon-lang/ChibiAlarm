@@ -190,9 +190,11 @@ class GuidedWorkoutRestConfirmationTest {
         activity.finish()
     }
 
-    @Test fun spokenRepPreviewRejectsChangedTimer() {
+    @Test fun spokenRepPreviewAllowsCountdownDriftForRepOnlyEdit() {
         val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup().get()
         selectSetBasedMove(activity, "lần")
+        val selectedIndex = GuidedWorkoutActivity::class.java.getDeclaredField("index")
+            .apply { isAccessible = true }.getInt(activity)
         val command = GuidedWorkoutActivity::class.java
             .getDeclaredMethod("handleCoachCommand", String::class.java)
         command.isAccessible = true
@@ -206,7 +208,36 @@ class GuidedWorkoutRestConfirmationTest {
         shadowOf(Looper.getMainLooper()).idle()
         val targets = GuidedWorkoutActivity::class.java.getDeclaredField("repTargets")
         targets.isAccessible = true
-        assertTrue((targets.get(activity) as Map<*, *>).isEmpty())
+        assertEquals(6, (targets.get(activity) as Map<*, *>)[selectedIndex])
+        activity.finish()
+    }
+
+    @Test fun vagueMidSessionCommandAsksBeforeChangingTheActivePlan() {
+        val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup().get()
+        @Suppress("UNCHECKED_CAST")
+        val before = GuidedWorkoutActivity::class.java.getDeclaredField("moves")
+            .apply { isAccessible = true }.get(activity) as List<TrainingMove>
+        val command = GuidedWorkoutActivity::class.java
+            .getDeclaredMethod("handleCoachCommand", String::class.java)
+        command.isAccessible = true
+        command.invoke(activity, "giảm bài này đi")
+
+        val dialog = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
+        assertTrue(dialog.isShowing)
+        assertEquals(4, dialog.listView.count)
+        val message = dialog.findViewById<android.widget.TextView>(android.R.id.message)
+            ?.text?.toString().orEmpty()
+        assertTrue(message.contains("chưa thay đổi giáo án"))
+        @Suppress("UNCHECKED_CAST")
+        val duringPreview = GuidedWorkoutActivity::class.java.getDeclaredField("moves")
+            .apply { isAccessible = true }.get(activity) as List<TrainingMove>
+        assertEquals(before, duringPreview)
+
+        dialog.getButton(AlertDialog.BUTTON_NEGATIVE).performClick()
+        @Suppress("UNCHECKED_CAST")
+        val afterCancel = GuidedWorkoutActivity::class.java.getDeclaredField("moves")
+            .apply { isAccessible = true }.get(activity) as List<TrainingMove>
+        assertEquals(before, afterCancel)
         activity.finish()
     }
 

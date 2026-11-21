@@ -1980,7 +1980,8 @@ class GuidedWorkoutActivity:Activity() {
                     restIsPaused = resting && paused,
                     activeCompletedSets = currentMove?.let { completedSetsByMove[index] ?: 0 },
                     activeCompletedSetValues = currentMove?.let { actualSetValuesByMove[index]?.toList() },
-                    activeEffortLevels = currentMove?.let { effortLevelsByMove[index]?.toList() }
+                    activeEffortLevels = currentMove?.let { effortLevelsByMove[index]?.toList() },
+                    nextMove = moves.getOrNull(index + 1)
                 )
                 if (questionAnswer != null) {
                     // Keep the exercise/rest clock from advancing while the user reads or hears

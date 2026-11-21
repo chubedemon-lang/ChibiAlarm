@@ -44,6 +44,24 @@ class WorkoutCoachConversationContextTest {
         assertFalse(followUp.contains(squat.name))
     }
 
+    @Test fun nextMoveQuestionUsesTheUpcomingCatalogMoveWithoutChangingPreviousReference() {
+        val context = WorkoutCoachConversationContext()
+        val answer = context.answer(
+            input = "Bài tiếp theo cần dụng cụ gì?",
+            activeMove = squat,
+            nextMove = walk
+        )
+        assertNotNull(answer)
+        assertTrue(answer!!.contains(walk.name))
+        assertTrue(answer.contains("không yêu cầu dụng cụ riêng"))
+        assertFalse(answer.contains(squat.name))
+
+        val ordinaryFollowUp = context.answer("Nghỉ bao lâu?", activeMove = squat, nextMove = walk)
+        assertNotNull(ordinaryFollowUp)
+        assertTrue(ordinaryFollowUp!!.contains(squat.name))
+        assertTrue(ordinaryFollowUp.contains("60 giây"))
+    }
+
     @Test fun ordinaryGenericFollowUpStillUsesTheCurrentlyOpenMove() {
         val context = WorkoutCoachConversationContext()
         context.answer("Cách tập Đi bộ nhanh tại chỗ?", activeMove = squat)

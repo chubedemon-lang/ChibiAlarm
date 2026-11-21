@@ -52,6 +52,55 @@ class WorkoutCoachQuestionRouterTest {
         assertFalse(answer.contains("Mục tiêu hiện tại của Squat không tạ"))
     }
 
+    @Test fun nextMoveTechniqueQuestionUsesTheUpcomingCatalogMoveNotTheActiveMove() {
+        val walk = TrainingCatalog.allMoves.single { it.name == "Đi bộ nhanh tại chỗ" }
+        val answer = WorkoutCoachQuestionRouter.answer(
+            input = "Bài tiếp theo tập thế nào?",
+            currentMove = squat,
+            nextMove = walk
+        )
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("Hướng dẫn Đi bộ nhanh tại chỗ"))
+        assertFalse(answer.contains("Squat không tạ"))
+    }
+
+    @Test fun nextMoveEquipmentQuestionUsesTheUpcomingMoveCatalog() {
+        val walk = TrainingCatalog.allMoves.single { it.name == "Đi bộ nhanh tại chỗ" }
+        val answer = WorkoutCoachQuestionRouter.answer(
+            input = "Bài kế tiếp cần dụng cụ gì?",
+            currentMove = squat,
+            nextMove = walk
+        )
+        assertNotNull(answer)
+        assertTrue(answer!!.contains(walk.name))
+        assertTrue(answer.contains("không yêu cầu dụng cụ riêng"))
+        assertFalse(answer.contains(squat.name))
+    }
+
+    @Test fun missingNextMoveNeverFallsBackToTheCurrentExercise() {
+        val answer = WorkoutCoachQuestionRouter.answer(
+            input = "Bài tiếp theo là gì?",
+            currentMove = squat,
+            nextMove = null
+        )
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("không còn động tác tiếp theo"))
+        assertFalse(answer.contains(squat.name))
+    }
+
+    @Test fun safetyPauseSuppressesNextMoveInstructions() {
+        val walk = TrainingCatalog.allMoves.single { it.name == "Đi bộ nhanh tại chỗ" }
+        val answer = WorkoutCoachQuestionRouter.answer(
+            input = "Bài tiếp theo tập thế nào?",
+            currentMove = squat,
+            nextMove = walk,
+            pausedForSafety = true
+        )
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("đang dừng vì cảnh báo an toàn"))
+        assertFalse(answer.contains("Hướng dẫn Đi bộ nhanh tại chỗ"))
+    }
+
     @Test fun safetyPauseSuppressesMovementInstructionsEvenForContextualQuestions() {
         val answer = WorkoutCoachQuestionRouter.answer(
             input = "Cách tập bài này?",

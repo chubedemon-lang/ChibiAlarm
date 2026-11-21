@@ -20,10 +20,12 @@ object WorkoutCoachQuestionRouter {
         restIsPaused: Boolean = false,
         completedSets: Int? = null,
         completedSetValues: List<Int>? = null,
-        completedEffortLevels: List<WorkoutEffortFeedback.Level?>? = null
+        completedEffortLevels: List<WorkoutEffortFeedback.Level?>? = null,
+        nextMove: TrainingMove? = null
     ): String? {
         if (input.isBlank() || input.length > 300) return null
 
+        val nextMoveAnswer = WorkoutExerciseConversation.answerForNextMove(input, nextMove)
         val restStatusAnswer = WorkoutRestStatusConversation.answer(
             input = input,
             restIsActive = restIsActive,
@@ -61,7 +63,7 @@ object WorkoutCoachQuestionRouter {
             null
         }
 
-        val resolvedAnswer = restStatusAnswer ?: effortRestAdviceAnswer ?: effortStatusAnswer ?: setStatusAnswer ?: when {
+        val resolvedAnswer = nextMoveAnswer ?: restStatusAnswer ?: effortRestAdviceAnswer ?: effortStatusAnswer ?: setStatusAnswer ?: when {
             catalogAnswer != null && !catalogAnswer.startsWith(UNKNOWN_EXERCISE_PREFIX) ->
                 catalogAnswer
             contextualAnswer != null -> contextualAnswer

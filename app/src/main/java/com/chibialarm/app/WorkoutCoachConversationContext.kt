@@ -23,7 +23,8 @@ class WorkoutCoachConversationContext {
         restIsPaused: Boolean = false,
         activeCompletedSets: Int? = null,
         activeCompletedSetValues: List<Int>? = null,
-        activeEffortLevels: List<WorkoutEffortFeedback.Level?>? = null
+        activeEffortLevels: List<WorkoutEffortFeedback.Level?>? = null,
+        nextMove: TrainingMove? = null
     ): String? {
         if (input.isBlank() || input.length > MAX_INPUT_CHARS) return null
 
@@ -57,7 +58,8 @@ class WorkoutCoachConversationContext {
                 activeEffortLevels
             } else {
                 null
-            }
+            },
+            nextMove = nextMove
         ) ?: return null
 
         // Remember only a uniquely named catalog move after a successful, non-ambiguous answer.

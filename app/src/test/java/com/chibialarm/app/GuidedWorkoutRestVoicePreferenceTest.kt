@@ -70,7 +70,10 @@ class GuidedWorkoutRestVoicePreferenceTest {
                 checkpoint.getBoolean("restVoiceCueEnabled", true))
 
             val bundle = android.os.Bundle()
-            activity.onSaveInstanceState(bundle)
+            GuidedWorkoutActivity::class.java
+                .getDeclaredMethod("onSaveInstanceState", android.os.Bundle::class.java)
+                .apply { isAccessible = true }
+                .invoke(activity, bundle)
             assertFalse("The opt-out must survive Activity recreation",
                 bundle.getBoolean("workout_rest_voice_cue_enabled", true))
 

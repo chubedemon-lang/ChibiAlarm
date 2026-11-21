@@ -135,6 +135,37 @@ object WorkoutExerciseConversation {
         return unresolvedNameTokens.isEmpty()
     }
 
+    /** True only when an exercise question explicitly points to the next planned move. */
+    fun isNextMoveQuestion(input: String): Boolean {
+        if (input.isBlank() || input.length > 160) return false
+        val query = normalize(input)
+        val refersToNext = listOf(
+            "bai tiep theo", "bai ke tiep", "bai tiep", "bai sau",
+            "dong tac tiep theo", "dong tac ke tiep", "dong tac sau"
+        ).any(query::contains)
+        return refersToNext && isExerciseQuestion(query)
+    }
+
+    /**
+     * Answers about the next move from the active plan, never by guessing from the current move.
+     * A missing next move is reported explicitly instead of falling back to the open exercise.
+     */
+    fun answerForNextMove(input: String, move: TrainingMove?): String? {
+        if (!isNextMoveQuestion(input)) return null
+        if (move == null) {
+            return "Giáo án hiện tại không còn động tác tiếp theo. Chibi không tự thêm bài ngoài thư viện."
+        }
+        val query = normalize(input)
+        if (listOf("la gi", "ten bai nao", "bai nao").any(query::contains)) {
+            val name = move.name.replace(Regex("[\\r\\n\\p{Cc}]+"), " ")
+                .replace(Regex("\\s+"), " ").trim().take(80)
+            val dose = move.dose.replace(Regex("[\\r\\n\\p{Cc}]+"), " ")
+                .replace(Regex("\\s+"), " ").trim().take(120)
+            return "Theo giáo án hiện tại, động tác tiếp theo là $name. Mục tiêu tham khảo: $dose. Đây là thông tin từ giáo án, chưa bắt đầu động tác."
+        }
+        return answerForCurrentMove(input, move)
+    }
+
     /**
      * Answers a short follow-up about the move already open in the guided workout.
      * This contextual path avoids asking the user to repeat the exercise name.

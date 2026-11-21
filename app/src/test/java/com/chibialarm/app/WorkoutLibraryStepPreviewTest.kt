@@ -63,6 +63,20 @@ class WorkoutLibraryStepPreviewTest {
         assertTrue(wallPush.spokenCue().contains("Đặt tay lên tường"))
     }
 
+    @Test fun voiceReturnToFirstStepResetsOnlyThePreview() {
+        val first = WorkoutLibraryStepPreview.start(
+            move("Squat không tạ", "Chân rộng.\\nHạ xuống.\\nĐứng lên.")
+        )
+        val third = first.next().next()
+
+        val reset = third.first()
+        assertEquals(3, third.position)
+        assertEquals(1, reset.position)
+        assertEquals("Chân rộng.", reset.currentStep)
+        assertSame(reset, reset.first())
+        assertEquals(3, third.position)
+    }
+
     @Test fun unknownMovementPhaseRemainsUnclassified() {
         val guide = WorkoutLibraryStepPreview.start(
             move("Động tác chưa có minh họa riêng", "Giữ tư thế thoải mái.")

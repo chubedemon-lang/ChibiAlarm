@@ -1118,6 +1118,9 @@ class FitnessActivity:Activity() {
             return
         }
         var stepPreview = WorkoutLibraryStepPreview.start(preview.currentMove)
+        // Library narration is opt-in and scoped to this preview dialog only.
+        var autoSpeakOnStepChange = false
+        var lastRenderedStepPosition: Int? = null
 
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -1156,6 +1159,25 @@ class FitnessActivity:Activity() {
             orientation = LinearLayout.HORIZONTAL
             addView(stepPrevious, LinearLayout.LayoutParams(0, -2, 1f))
             addView(stepNext, LinearLayout.LayoutParams(0, -2, 1f))
+        }
+        val stepAutoSpeak = CheckBox(this).apply {
+            tag = "fitness-library-step-auto-speak"
+            text = if (speechReady && speechOutput != null) {
+                "🔊 Tự đọc bước khi chuyển"
+            } else {
+                "🔊 Tự đọc bước khi chuyển (bật giọng Chibi trước)"
+            }
+            isChecked = false
+            isEnabled = speechReady && speechOutput != null
+            contentDescription = if (isEnabled) {
+                "Bật hoặc tắt đọc tự động khi chuyển bước; chỉ dùng TTS, không mở microphone"
+            } else {
+                "Đọc tự động cần bật giọng Chibi ở màn hình Fitness trước; không mở microphone"
+            }
+            setOnCheckedChangeListener { _, checked ->
+                autoSpeakOnStepChange = checked && speechReady && speechOutput != null
+                if (!autoSpeakOnStepChange) speechOutput?.stop()
+            }
         }
         val stepSpeak = Button(this).apply {
             text = "🔊 Nghe bước này"
@@ -1219,6 +1241,7 @@ class FitnessActivity:Activity() {
         content.addView(stepPosition)
         content.addView(stepInstruction)
         content.addView(stepNavigation)
+        content.addView(stepAutoSpeak)
         content.addView(stepSpeak)
         content.addView(easier)
         content.addView(caution)
@@ -1232,6 +1255,7 @@ class FitnessActivity:Activity() {
         ))
 
         fun renderStepPreview() {
+            val previousPosition = lastRenderedStepPosition
             val selected = stepPreview
             stepPosition.text = "📖 Bước ${selected.position}/${selected.size}"
             stepInstruction.text = selected.currentStep
@@ -1249,6 +1273,15 @@ class FitnessActivity:Activity() {
             } else {
                 "↔ " + WorkoutPoseMotion.phaseCue(pose.pose, phase)
             }
+            val shouldSpeak = WorkoutStepGuide.shouldSpeakOnNavigation(
+                enabled = autoSpeakOnStepChange && speechReady && speechOutput != null,
+                previousPosition = previousPosition,
+                nextPosition = selected.position
+            )
+            lastRenderedStepPosition = selected.position
+            if (shouldSpeak) {
+                speakCoachReply(selected.spokenCue(), "fitness-library-step")
+            }
         }
 
         fun renderPreview() {
@@ -1262,6 +1295,8 @@ class FitnessActivity:Activity() {
             substitute.text = if (substitute.isEnabled) "🔁 Thay động tác đang xem" else "Không có biến thể đã duyệt phù hợp"
             heading.text = move.name
             pose.pose = WorkoutPoseGuide.classify(move.name)
+            // A new exercise starts at step one without treating the exercise change as step navigation.
+            lastRenderedStepPosition = null
             stepPreview = WorkoutLibraryStepPreview.start(move)
             renderStepPreview()
             dose.text = "🎯 Mục tiêu: ${move.dose}"

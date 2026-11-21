@@ -348,6 +348,10 @@ class GuidedWorkoutEffortVoiceTest {
             val initialMoves = GuidedWorkoutActivity::class.java.getDeclaredField("moves")
                 .apply { isAccessible = true }.get(checkIn.activity) as List<TrainingMove>
             val originalDose = initialMoves[checkIn.moveIndex].dose
+            @Suppress("UNCHECKED_CAST")
+            val initialRepTargets = GuidedWorkoutActivity::class.java.getDeclaredField("repTargets")
+                .apply { isAccessible = true }.get(checkIn.activity) as MutableMap<Int, Int>
+            assertTrue("Expected no prior rep override before this preview; found " + initialRepTargets, initialRepTargets.isEmpty())
 
             sendVoice(checkIn, "khó quá")
             assertTrue(checkIn.dialog.isShowing)
@@ -408,7 +412,12 @@ class GuidedWorkoutEffortVoiceTest {
             )
             @Suppress("UNCHECKED_CAST")
             val repTargets = activityField("repTargets").get(checkIn.activity) as MutableMap<Int, Int>
-            assertEquals(expectedCeiling, repTargets[checkIn.moveIndex])
+            assertEquals(
+                "Expected rep ceiling " + expectedCeiling + " at move " + checkIn.moveIndex +
+                    "; actual=" + repTargets[checkIn.moveIndex] + "; all overrides=" + repTargets,
+                expectedCeiling,
+                repTargets[checkIn.moveIndex]
+            )
             val targetDose = GuidedWorkoutActivity::class.java.getDeclaredMethod(
                 "targetDose",
                 Int::class.javaPrimitiveType

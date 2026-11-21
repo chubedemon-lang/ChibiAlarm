@@ -38,6 +38,19 @@ class WorkoutEffortRestAdviceConversationTest {
         assertFalse(answer.contains("Khó, cần nghỉ thêm"))
     }
 
+    @Test fun shortEffortLogDoesNotTreatAnEarlierSetAsTheLatestSet() {
+        val answer = WorkoutEffortRestAdviceConversation.answer(
+            input = "Nghỉ thêm bao lâu?",
+            prescribedRestSeconds = 45,
+            completedSets = 2,
+            effortLevels = listOf(hard)
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("Hiệp 2 chưa có check-in"))
+        assertFalse(answer.contains("75 giây"))
+    }
+
     @Test fun veryHardCheckInKeepsTheSessionPausedInsteadOfTreatingRestAsClearance() {
         val answer = WorkoutEffortRestAdviceConversation.answer(
             input = "Vì sao phải nghỉ thêm?",

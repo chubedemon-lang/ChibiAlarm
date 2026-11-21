@@ -48,10 +48,11 @@ internal object WorkoutEffortStatusConversation {
 
     private fun isEffortQuestion(query: String): Boolean {
         val explicitCues = listOf(
-            "muc do gang suc", "gang suc", "cam nhan hiep",
-            "danh gia hiep", "cam nhan cua toi", "rpe", "effort"
+            "muc do gang suc", "gang suc", "danh gia hiep",
+            "cam nhan cua toi", "rpe", "effort"
         )
         if (explicitCues.any(query::contains)) return true
+        if (query.contains("cam nhan") && (query.contains("hiep") || query.contains("tong ket"))) return true
         val asksAboutSet = query.contains("hiep")
         val describesEffort = listOf("kho", "met", "nhe", "vua suc", "cam thay", "danh gia")
             .any(query::contains)

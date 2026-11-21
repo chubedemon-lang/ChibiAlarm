@@ -1515,11 +1515,12 @@ class GuidedWorkoutActivity:Activity() {
                         }
 
                         preview.currentRepLimit?.let { limit ->
+                            // An accepted reduction is a new target even when no override existed.
+                            // Preserve a stricter prior override, but never drop the user's choice.
                             val cappedTarget = WorkoutRemainingRepTarget.capExistingTarget(
                                 repTargets[index], limit
-                            )
-                            if (cappedTarget == null) repTargets.remove(index)
-                            else repTargets[index] = cappedTarget
+                            ) ?: limit
+                            repTargets[index] = cappedTarget
                         }
                         // If the user removed only optional sets and has already confirmed
                         // the required minimum, mark this move complete without inventing

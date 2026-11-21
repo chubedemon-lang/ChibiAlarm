@@ -23,8 +23,8 @@ class WorkoutWeekSchedulePreviewTest {
     @Test fun mondayInputStillTargetsTheFollowingCalendarWeek() {
         assertEquals(
             listOf(
-                LocalDate.of(2026, 11, 30),
-                LocalDate.of(2026, 12, 2)
+                LocalDate.of(2026, 12, 1),
+                LocalDate.of(2026, 12, 4)
             ),
             WorkoutWeekSchedulePreview.nextWeekDates(LocalDate.of(2026, 11, 23), 2)
         )

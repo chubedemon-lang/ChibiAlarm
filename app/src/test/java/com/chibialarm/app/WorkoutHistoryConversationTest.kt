@@ -385,4 +385,42 @@ class WorkoutHistoryConversationTest {
         assertTrue(answer.contains("có thể bỏ qua"))
     }
 
+
+    @Test fun nextWeekPlanUsesMedianDurationInsteadOfBeingPulledByOneLongSession() {
+        val history = listOf(
+            workout(today, 20, "Đi bộ"),
+            workout(today.minusDays(2), 30, "Toàn thân"),
+            workout(today.minusDays(4), 90, "Đạp xe")
+        )
+
+        val answer = WorkoutHistoryConversation.answer(
+            "Tuần tới tao nên sắp xếp lịch tập thế nào?",
+            history,
+            today
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("trung vị các buổi gần đây là 30 phút/buổi"))
+        assertTrue(answer.contains("không phải mục tiêu bắt buộc"))
+        assertFalse(answer.contains("private health note"))
+    }
+
+    @Test fun nextWeekPlanUsesPreviousWeekMedianWhenCurrentWeekHasNoSessions() {
+        val history = listOf(
+            workout(today.minusDays(9), 25, "Đi bộ"),
+            workout(today.minusDays(10), 45, "Giãn cơ")
+        )
+
+        val answer = WorkoutHistoryConversation.answer(
+            "Tuần tới tao nên sắp xếp lịch tập thế nào?",
+            history,
+            today
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("1 ngày vận động nhẹ"))
+        assertTrue(answer.contains("trung vị các buổi gần đây là 35 phút/buổi"))
+        assertTrue(answer.contains("có thể bỏ qua"))
+    }
+
 }

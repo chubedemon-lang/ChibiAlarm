@@ -126,8 +126,21 @@ object WorkoutHistoryConversation {
     private data class PeriodSummary(
         val sessions: Int,
         val activeDays: Int,
-        val minutes: Int
+        val minutes: Int,
+        val medianSessionMinutes: Int?
     )
+
+    /** Median is robust to one unusually long logged session; it is descriptive, not a prescription. */
+    private fun medianSessionMinutes(entries: List<Entry>): Int? {
+        val durations = entries.map { it.minutes }.sorted()
+        if (durations.isEmpty()) return null
+        val middle = durations.size / 2
+        return if (durations.size % 2 == 1) {
+            durations[middle]
+        } else {
+            ((durations[middle - 1].toLong() + durations[middle].toLong() + 1L) / 2L).toInt()
+        }
+    }
 
     /** Compare two fixed seven-day windows; this describes logged activity, not recovery. */
     private fun compareRecentPeriods(entries: List<Entry>, today: LocalDate): String {
@@ -140,7 +153,8 @@ object WorkoutHistoryConversation {
             return PeriodSummary(
                 sessions = selected.size,
                 activeDays = selected.map { it.date }.distinct().size,
-                minutes = minutes
+                minutes = minutes,
+                medianSessionMinutes = medianSessionMinutes(selected)
             )
         }
 
@@ -197,7 +211,8 @@ object WorkoutHistoryConversation {
                 sessions = selected.size,
                 activeDays = selected.map { it.date }.distinct().size,
                 minutes = selected.sumOf { it.minutes.toLong() }
-                    .coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+                    .coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
+                medianSessionMinutes = medianSessionMinutes(selected)
             )
         }
 
@@ -215,6 +230,9 @@ object WorkoutHistoryConversation {
         }
         val suggestedDates = WorkoutWeekSchedulePreview.nextWeekDates(today, targetDays)
         val schedule = suggestedDates.joinToString(" • ") { WorkoutWeekSchedulePreview.format(it) }
+        // Use the current week's median when available; otherwise fall back to the prior week.
+        // This only describes the user's recent logged duration and never increases a target.
+        val referenceDuration = current.medianSessionMinutes ?: previous.medianSessionMinutes
         val target = when {
             current.activeDays == 0 -> "1 ngày vận động nhẹ, nếu phù hợp"
             current.activeDays > 5 -> "tối đa 5 ngày tập có cấu trúc, xen kẽ ngày nghỉ"
@@ -245,7 +263,10 @@ object WorkoutHistoryConversation {
             append("\n• Ngày gợi ý: $schedule.")
             append("\n• $scheduleNote")
             append("\n• Không cần tập bù những ngày đã bỏ lỡ; giữ thời lượng vừa với quỹ thời gian hiện có.")
-            append("\nĐây là gợi ý theo số ngày đã ghi, không đánh giá thể lực hay hồi phục. Hãy kiểm tra mục tiêu, thời lượng, dụng cụ và hạn chế vận động rồi tự xác nhận ngày cụ thể trong Lịch trình.")
+            referenceDuration?.let {
+                append("\n• Thời lượng tham khảo: trung vị các buổi gần đây là $it phút/buổi; đây không phải mục tiêu bắt buộc.")
+            }
+            append("\nĐây là gợi ý theo nhật ký tự ghi, không đánh giá thể lực hay hồi phục. Hãy kiểm tra mục tiêu, thời lượng sẵn có, dụng cụ và hạn chế vận động rồi tự xác nhận ngày cụ thể trong Lịch trình.")
         }
     }
 

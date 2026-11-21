@@ -1106,7 +1106,7 @@ class GuidedWorkoutActivity:Activity() {
 
     private fun requestTypedCommand() {
         val field=EditText(this).apply {
-            hint="Ví dụ: bài này tác động nhóm cơ nào?, còn mấy hiệp nữa?, tôi đã làm mấy hiệp?, nghỉ bao lâu?, còn bao lâu nghỉ?, cách tập bài này?, tôi đã làm 10 lần, xong hiệp, đổi bài, nghỉ thêm"
+            hint="Ví dụ: bài này tác động nhóm cơ nào?, còn mấy hiệp nữa?, tôi đã làm mấy hiệp?, hiệp vừa rồi tao làm bao nhiêu lần?, tổng tao đã làm bao nhiêu lần?, nghỉ bao lâu?, còn bao lâu nghỉ?, cách tập bài này?, xong hiệp, đổi bài, nghỉ thêm"
             setSingleLine(false)
         }
         AlertDialog.Builder(this).setTitle("💬 Chibi Coach • hỏi & điều khiển")
@@ -1901,7 +1901,8 @@ class GuidedWorkoutActivity:Activity() {
                         else (restDeadline - SystemClock.elapsedRealtime()).coerceIn(0L, 600_000L)
                     } else null,
                     restIsPaused = resting && paused,
-                    activeCompletedSets = currentMove?.let { completedSetsByMove[index] ?: 0 }
+                    activeCompletedSets = currentMove?.let { completedSetsByMove[index] ?: 0 },
+                    activeCompletedSetValues = currentMove?.let { actualSetValuesByMove[index]?.toList() }
                 )
                 if (questionAnswer != null) {
                     // Keep the exercise/rest clock from advancing while the user reads or hears

@@ -55,6 +55,9 @@ object WorkoutRestStatusConversation {
 
         val safeRemaining = remainingMs?.takeIf { it in 0L..MAX_REST_MILLIS }
             ?: return "Chibi chưa đọc được thời gian nghỉ hiện tại; hãy nhìn bộ đếm trên màn hình."
+        if (safeRemaining == 0L) {
+            return "Thời gian nghỉ đã hết. Buổi tập vẫn tạm dừng; hãy tiếp tục khi bạn sẵn sàng."
+        }
         val seconds = ((safeRemaining + 999L) / 1_000L).toInt().coerceIn(0, 600)
         val duration = formatDuration(seconds)
         return if (restIsPaused) {

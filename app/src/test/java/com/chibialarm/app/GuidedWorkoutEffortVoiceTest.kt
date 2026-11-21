@@ -653,6 +653,11 @@ class GuidedWorkoutEffortVoiceTest {
             val disclosure = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
             val message = disclosure.findViewById<android.widget.TextView>(android.R.id.message)
                 ?.text?.toString().orEmpty()
+            val pendingBeforeConsent = GuidedWorkoutActivity::class.java
+                .getDeclaredField("pendingRecognitionRequestCode")
+                .apply { isAccessible = true }
+                .get(activity)
+            assertNull("Microphone recognition must not start before consent", pendingBeforeConsent)
             assertTrue(message.contains("Chibi không nghe nền"))
             assertTrue(message.contains("có thể xử lý âm thanh trực tuyến"))
             assertTrue(message.contains("quyền microphone"))

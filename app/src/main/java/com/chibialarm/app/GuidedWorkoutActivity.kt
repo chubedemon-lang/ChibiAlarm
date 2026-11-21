@@ -1686,7 +1686,6 @@ class GuidedWorkoutActivity:Activity() {
                         else speak(cue)
                     }
                     .setNegativeButton("Giữ nguyên",null)
-                    .setNeutralButton("🔊 Nghe phương án",null)
                     .create()
                 previewDialog.setOnDismissListener { previewVoiceResultHandler = null }
                 previewDialog.show()
@@ -1711,7 +1710,11 @@ class GuidedWorkoutActivity:Activity() {
                         return@setOnClickListener
                     }
                     requestPlanPreviewVoiceCommand { phrase ->
-                        when (WorkoutPlanPreviewVoiceCommand.parse(phrase)) {
+                        if (!previewDialog.isShowing || !previewContextStillMatches()) {
+                            Toast.makeText(this@GuidedWorkoutActivity,
+                                "Bản xem trước đã đóng hoặc buổi tập đã thay đổi. Không áp dụng lệnh giọng nói cũ.",
+                                Toast.LENGTH_LONG).show()
+                        } else when (WorkoutPlanPreviewVoiceCommand.parse(phrase)) {
                             WorkoutPlanPreviewVoiceCommand.Action.CONFIRM -> {
                                 AlertDialog.Builder(this@GuidedWorkoutActivity)
                                     .setTitle("Xác nhận áp dụng")
@@ -4357,6 +4360,9 @@ class GuidedWorkoutActivity:Activity() {
     }
     override fun onDestroy() {
         handler.removeCallbacks(tick)
+        previewVoiceResultHandler = null
+        guideVoiceResultHandler = null
+        effortVoiceResultHandler = null
         rewardScope.cancel()
         spoken?.stop();spoken?.shutdown()
         super.onDestroy()

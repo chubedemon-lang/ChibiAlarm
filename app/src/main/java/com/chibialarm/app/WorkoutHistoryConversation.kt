@@ -49,9 +49,6 @@ object WorkoutHistoryConversation {
         if (isEffortBasedLighterPlanQuestion(text)) {
             return effortBasedLighterPlanAnswer(workouts, today)
         }
-        if (isSteadyProgressQuestion(text)) {
-            return steadyProgressAnswer(workouts, today)
-        }
         if (!isHistoryQuestion(text)) return null
 
         // Keep the newest records when a long-lived journal exceeds the processing cap.

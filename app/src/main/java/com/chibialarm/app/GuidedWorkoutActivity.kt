@@ -1106,11 +1106,11 @@ class GuidedWorkoutActivity:Activity() {
 
     private fun requestTypedCommand() {
         val field=EditText(this).apply {
-            hint="Ví dụ: bài này tác động nhóm cơ nào?, nghỉ bao lâu?, còn bao lâu nghỉ?, cách tập bài này?, tôi đã làm 10 lần, xong hiệp, đổi bài, nghỉ thêm"
+            hint="Ví dụ: bài này tác động nhóm cơ nào?, còn mấy hiệp nữa?, tôi đã làm mấy hiệp?, nghỉ bao lâu?, còn bao lâu nghỉ?, cách tập bài này?, tôi đã làm 10 lần, xong hiệp, đổi bài, nghỉ thêm"
             setSingleLine(false)
         }
         AlertDialog.Builder(this).setTitle("💬 Chibi Coach • hỏi & điều khiển")
-            .setMessage("Mày có thể hỏi về động tác đang mở hoặc nêu tên bài trong thư viện. Chibi trả lời từ dữ liệu offline; lệnh thay đổi buổi tập vẫn cần xem trước và xác nhận.")
+            .setMessage("Mày có thể hỏi động tác, nhóm cơ, dụng cụ, số hiệp còn lại hoặc đã ghi, và thời gian nghỉ thực tế; Chibi trả lời từ dữ liệu offline. Lệnh thay đổi buổi tập vẫn cần xem trước và xác nhận.")
             .setView(field).setPositiveButton("Gửi"){_,_->handleCoachCommand(field.text.toString())}
             .setNegativeButton("Hủy",null).show()
     }

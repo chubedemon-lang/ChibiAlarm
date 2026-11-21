@@ -389,9 +389,9 @@ object WorkoutMidSessionPlanner {
             } else {
                 "${plan.targetMin}–$requestedLimit"
             }
-            remaining[0] = activeMove.copy(
-                dose = "$setRange hiệp × $repRange ${plan.unit}"
-            )
+            // Keep the catalog prescription in the plan snapshot. The accepted ceiling is
+            // carried separately in Preview.currentRepLimit and stored in the Activity's
+            // index-scoped repTargets map only after the user confirms the preview.
             appliedCurrentRepLimit = requestedLimit
         }
 

@@ -80,6 +80,9 @@ object WorkoutSetHistoryConversation {
             }
             .sortedWith(compareByDescending<Session> { it.date }.thenByDescending { it.originalIndex })
 
+        if (isWeeklyTotalQuestion(query)) {
+            return weeklyTotalAnswer(query, sessions, today)
+        }
         if (isLatestSetQuestion(query)) {
             return latestSetAnswer(sessions)
         }
@@ -223,9 +226,120 @@ object WorkoutSetHistoryConversation {
         val asksExerciseComparison = !mentionsWeekComparison && listOf(
             "so sanh", "so voi", "tien bo", "lan truoc", "lan nay", "hai buoi", "2 buoi"
         ).any { text.contains(it) }
-        return asksSetValues || asksExerciseComparison || isLargestRepIncreaseQuestion(text) ||
-            isLatestSetQuestion(text) || isLatestExerciseQuestion(text) ||
-            isLatestSessionMoveListQuestion(text)
+        return asksSetValues || asksExerciseComparison || isWeeklyTotalQuestion(text) ||
+            isLargestRepIncreaseQuestion(text) || isLatestSetQuestion(text) ||
+            isLatestExerciseQuestion(text) || isLatestSessionMoveListQuestion(text)
+    }
+
+    private data class WeeklyUnitTotal(
+        var total: Long = 0L,
+        var setCount: Int = 0,
+        val sessionIndexes: MutableSet<Int> = linkedSetOf()
+    )
+
+    /** A seven-calendar-day sum of values the user explicitly reported for confirmed sets. */
+    private fun isWeeklyTotalQuestion(text: String): Boolean {
+        val mentionsWeek = listOf(
+            "tuan nay", "7 ngay gan nhat", "bay ngay gan nhat", "7 ngay qua"
+        ).any { text.contains(it) }
+        val asksForRepetitions = listOf(
+            "bao nhieu lan", "tong so lan", "tong cong bao nhieu lan",
+            "tong so rep", "bao nhieu rep", "tong rep", "bao nhieu cai"
+        ).any { text.contains(it) }
+        return mentionsWeek && asksForRepetitions
+    }
+
+    /**
+     * Totals only recorded values in the latest seven calendar days.
+     * Missing set values are omitted rather than replaced with plan targets; units are never converted.
+     */
+    private fun weeklyTotalAnswer(
+        query: String,
+        sessions: List<Session>,
+        today: LocalDate
+    ): String {
+        val firstDay = today.minusDays(6)
+        val recent = sessions.filter { !it.date.isBefore(firstDay) && !it.date.isAfter(today) }
+        if (recent.isEmpty()) {
+            return "Chưa có buổi Guided Workout hợp lệ trong 7 ngày gần nhất để tổng hợp số liệu hiệp tự khai báo."
+        }
+
+        val knownNames = recent.flatMap { it.moves }
+            .map { it.name }
+            .distinctBy { normalize(it) }
+        if (knownNames.isEmpty()) {
+            return "Trong 7 ngày gần nhất chưa có chi tiết hiệp tự khai báo hợp lệ. Chibi không suy ra số lần từ mục tiêu giáo án."
+        }
+
+        val choice = chooseMove(query, knownNames)
+        if (choice.ambiguous.isNotEmpty()) {
+            return "Chibi tìm thấy vài động tác gần giống: " + choice.ambiguous.joinToString(", ") +
+                ". Hãy nhắc đầy đủ tên bài để tránh cộng nhầm."
+        }
+        val selectedName = choice.name
+        val selectedKey = selectedName?.let(::normalize)
+        val totals = linkedMapOf<String, MutableMap<String, WeeklyUnitTotal>>()
+        val displayNames = linkedMapOf<String, String>()
+        var skippedDuplicateEntries = 0
+
+        recent.forEach sessionLoop@{ session ->
+            session.moves.groupBy { normalize(it.name) }.forEach moveLoop@{ (key, entries) ->
+                if (selectedKey != null && key != selectedKey) return@moveLoop
+                // Duplicate normalized names in one saved session are ambiguous; do not double count.
+                if (entries.size != 1) {
+                    skippedDuplicateEntries++
+                    return@moveLoop
+                }
+                val move = entries.single()
+                if (move.sets.isEmpty()) return@moveLoop
+                displayNames.putIfAbsent(key, move.name)
+                val unitTotals = totals.getOrPut(key) { linkedMapOf() }
+                move.sets.forEach { set ->
+                    val total = unitTotals.getOrPut(set.unit) { WeeklyUnitTotal() }
+                    total.total = (total.total + set.value.toLong()).coerceAtMost(Int.MAX_VALUE.toLong())
+                    total.setCount = (total.setCount + 1).coerceAtMost(MAX_RECORDS * MAX_SETS)
+                    total.sessionIndexes.add(session.originalIndex)
+                }
+            }
+        }
+
+        if (totals.isEmpty()) {
+            return if (selectedName != null) {
+                "Chưa có số liệu hiệp tự khai báo hợp lệ cho " + selectedName +
+                    " trong 7 ngày gần nhất. Chibi không lấy mục tiêu giáo án hoặc buổi cũ để bù."
+            } else {
+                "Trong 7 ngày gần nhất chưa có số liệu hiệp tự khai báo hợp lệ để cộng. Chibi không suy ra số lần từ mục tiêu giáo án."
+            }
+        }
+
+        val visible = totals.entries
+            .sortedBy { normalize(displayNames[it.key] ?: it.key) }
+            .take(MAX_DISPLAY_MOVES)
+        val lines = visible.map { (key, units) ->
+            val unitText = units.entries.sortedBy { it.key }.joinToString("; ") { (unit, value) ->
+                value.total.toString() + " " + unit + " (" + value.setCount + " hiệp, " +
+                    value.sessionIndexes.size + " buổi)"
+            }
+            "• " + (displayNames[key] ?: key) + ": " + unitText
+        }
+
+        return buildString {
+            if (selectedName != null) {
+                append("Trong 7 ngày gần nhất, số liệu đã ghi cho " + selectedName + ":")
+            } else {
+                append("Tổng hợp số liệu hiệp tự khai báo trong 7 ngày gần nhất:")
+            }
+            append("\n")
+            append(lines.joinToString("\n"))
+            if (totals.size > visible.size) {
+                append("\n• Còn " + (totals.size - visible.size) + " động tác khác chưa hiển thị.")
+            }
+            if (skippedDuplicateEntries > 0) {
+                append("\nMột số mục trùng tên trong cùng buổi đã được bỏ qua để tránh cộng hai lần.")
+            }
+            append("\nChỉ cộng hiệp có số liệu bạn tự khai báo; hiệp chưa ghi số lần không được ước tính. " +
+                "Đơn vị lần, nhịp và giây được giữ riêng, không quy đổi. Ghi chú riêng tư không được đọc.")
+        }
     }
 
     /** Recognizes a request to rank exercises by logged rep increase, not perceived fitness. */

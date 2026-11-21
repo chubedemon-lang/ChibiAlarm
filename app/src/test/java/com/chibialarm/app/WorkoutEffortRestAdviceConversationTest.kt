@@ -108,7 +108,7 @@ class WorkoutEffortRestAdviceConversationTest {
     }
 
     @Test fun routerUsesOnlyTheActiveExerciseEffortAndNeverStartsTheTimer() {
-        val squat = TrainingCatalog.allMoves.single { it.name == "Squat không tạ" }
+        val squat = TrainingCatalog.allMoves.single { it.name == "Squat không tạ" }.copy(restSeconds = 45)
         val answer = WorkoutCoachQuestionRouter.answer(
             input = "Nghỉ thêm bao lâu?",
             currentMove = squat,
@@ -122,7 +122,7 @@ class WorkoutEffortRestAdviceConversationTest {
     }
 
     @Test fun safetyPauseOverridesAnEffortBasedRestAnswer() {
-        val squat = TrainingCatalog.allMoves.single { it.name == "Squat không tạ" }
+        val squat = TrainingCatalog.allMoves.single { it.name == "Squat không tạ" }.copy(restSeconds = 45)
         val answer = WorkoutCoachQuestionRouter.answer(
             input = "Nghỉ thêm bao lâu?",
             currentMove = squat,

@@ -62,6 +62,10 @@ object WorkoutMidSessionRequest {
             require(replaceCurrentWith == null || currentRepLimit == null)
         }
 
+        /** True only for an isolated rep-cap edit; the live timer is irrelevant to this choice. */
+        val isRepTargetOnly: Boolean
+            get() = currentRepLimit != null && copy(currentRepLimit = null) == Request()
+
         /** True only when the request changes the rest countdown and nothing else. */
         val isRestOnly: Boolean
             get() = restSeconds != null &&

@@ -43,6 +43,30 @@ class WorkoutMidSessionCompoundIntentTest {
         assertTrue(WorkoutMidSessionRequest.parse("Còn 15 giây nữa?") is WorkoutMidSessionRequest.Result.Unsupported)
         assertTrue(WorkoutMidSessionRequest.parse("Giảm còn 15 giây") is WorkoutMidSessionRequest.Result.Unsupported)
         assertTrue(WorkoutMidSessionRequest.parse("Đừng giảm còn 15 giây mỗi hiệp") is WorkoutMidSessionRequest.Result.Unsupported)
+
+        // Compound turns may put the rest clause before or after the plan edit.
+        val restFirst = WorkoutMidSessionRequest.parse(
+            "Nghỉ thêm 45 giây rồi giảm còn 12 lần mỗi hiệp"
+        )
+        assertTrue(restFirst is WorkoutMidSessionRequest.Result.Proposed)
+        val restFirstRequest = (restFirst as WorkoutMidSessionRequest.Result.Proposed).request
+        assertEquals(45, restFirstRequest.restSeconds)
+        assertEquals(12, restFirstRequest.currentRepLimit)
+
+        val affirmative = WorkoutMidSessionRequest.parse("Đúng, nghỉ thêm 30 giây")
+        assertTrue(affirmative is WorkoutMidSessionRequest.Result.Proposed)
+        assertEquals(
+            30,
+            (affirmative as WorkoutMidSessionRequest.Result.Proposed).request.restSeconds
+        )
+        assertTrue(
+            WorkoutMidSessionRequest.parse("Đừng nghỉ thêm 30 giây") is
+                WorkoutMidSessionRequest.Result.Unsupported
+        )
+        assertTrue(
+            WorkoutMidSessionRequest.parse("Không cần nghỉ thêm 30 giây") is
+                WorkoutMidSessionRequest.Result.Unsupported
+        )
     }
 
     @Test

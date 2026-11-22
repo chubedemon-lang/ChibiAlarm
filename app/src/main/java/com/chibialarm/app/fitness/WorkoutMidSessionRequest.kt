@@ -590,7 +590,23 @@ object WorkoutMidSessionRequest {
         ) return Result.Unsupported
 
         val hasRestRequest = Regex("""\b(nghi|rest)\b""").containsMatchIn(text)
-        val explicitRest = if (hasRestRequest) WorkoutRestRequest.seconds(input) else null
+        // In a compound command, parse the rest clause itself rather than the whole turn:
+        // "reduce the hold to 15 seconds per set AND rest 30 seconds" must keep both intents.
+        val restClauseMatch = Regex("""(?iu)(?:^|\s)(?:nghỉ|nghi|rest)\b.*$""").find(input)
+        val restPrefix = restClauseMatch?.let {
+            input.substring(0, it.range.first).trim()
+        }.orEmpty()
+        // Do not turn "don't rest" into a positive rest request. Protect "đúng" by
+        // checking the original accented prefix before any accent folding.
+        val negatedRestPrefix = Regex(
+            """(?iu)(?:^|[\s,])(?:không|khong|đừng|dừng|chưa|khỏi)(?:\s+(?:cần|muốn|phải|có|lại|nữa))*\s*[,;:]?$"""
+        )
+        val restWasNegated = restClauseMatch != null &&
+            negatedRestPrefix.containsMatchIn(restPrefix)
+        val restClause = restClauseMatch?.value?.trim()
+        val explicitRest = if (hasRestRequest && !restWasNegated) {
+            WorkoutRestRequest.seconds(restClause?.takeIf { it.isNotEmpty() } ?: input)
+        } else null
         val restSeconds = explicitRest ?: if (lowEnergy) 60 else null
 
         if (remainingMinutes == null && !lowEnergy && !avoidWristLoad && !avoidFloorPositions &&

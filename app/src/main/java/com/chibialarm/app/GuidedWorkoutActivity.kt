@@ -1147,7 +1147,7 @@ class GuidedWorkoutActivity:Activity() {
             .setMessage(
                 "Chỉ mở microphone sau khi bạn nhấn Bắt đầu nghe và cấp quyền microphone của Android nếu được hỏi. " +
                     "Chibi yêu cầu ưu tiên nhận dạng ngoại tuyến và tối đa 5 phương án nếu dịch vụ hỗ trợ; " +
-                    "đây chỉ là gợi ý, nhà cung cấp có thể bỏ qua và xử lý âm thanh trực tuyến. " +
+                    "đây chỉ là gợi ý; nhà cung cấp có thể bỏ qua ưu tiên nhận dạng ngoại tuyến và có thể xử lý âm thanh trực tuyến. " +
                     "Chibi không nghe nền, chỉ nhận văn bản và không lưu bản ghi hay bản chép lời. " +
                     "Đây là xác nhận hai bước: sau câu xác nhận đầu tiên, Chibi sẽ yêu cầu bạn chủ động bắt đầu một phiên nghe thứ hai. " +
                     "Chỉ khi cả hai lần nhận dạng đều rõ ràng là “xác nhận áp dụng” và bản xem trước vẫn khớp, Chibi mới áp dụng. " +

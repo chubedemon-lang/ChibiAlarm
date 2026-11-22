@@ -21,7 +21,8 @@ object WorkoutEffortVoiceCommand {
     private val phrases = listOf(
         WorkoutEffortFeedback.Level.EASY to setOf(
             "nhe", "rat nhe", "con du suc", "nhe con du suc", "de dang",
-            "rat nhe con du suc"
+            "rat nhe con du suc", "van con du suc", "con kha nhieu suc",
+            "con nhieu suc", "du suc de tiep tuc"
         ),
         WorkoutEffortFeedback.Level.MODERATE to setOf(
             "vua suc", "binh thuong", "on", "on roi", "tam duoc",
@@ -39,7 +40,9 @@ object WorkoutEffortVoiceCommand {
             "hoi met can nghi them", "kha met can nghi them",
             "kho nhung van lam duoc", "hoi kho nhung van lam duoc",
             "kha kho nhung van lam duoc", "hoi nang nhung van kiem soat duoc",
-            "kha nang nhung van kiem soat duoc"
+            "kha nang nhung van kiem soat duoc", "nghi them mot chut",
+            "nghi them chut nua", "ton suc hon du kien",
+            "can them chut de hoi suc", "co the lam tiep nhung can nghi them"
         ),
         WorkoutEffortFeedback.Level.VERY_HARD to setOf(
             "qua suc", "qua suc roi", "het suc", "het suc roi",
@@ -50,7 +53,9 @@ object WorkoutEffortVoiceCommand {
             "tam dung", "khong the tiep tuc", "khong the tiep tuc nua",
             "khong chiu noi", "duoi qua", "qua met khong the tiep tuc",
             "met den muc khong the tiep tuc", "qua suc khong the tiep tuc",
-            "qua suc roi khong the tiep tuc", "duoi khong the tiep tuc"
+            "qua suc roi khong the tiep tuc", "duoi khong the tiep tuc",
+            "khong the tiep tuc nua", "khong the lam tiep nua",
+            "khong du suc de tap tiep"
         )
     )
 
@@ -97,6 +102,14 @@ object WorkoutEffortVoiceCommand {
         "sau hiep vua roi toi thay ",
         "sau hiep nay toi thay ",
         "hiep vua roi ",
+        "hiep nay can ",
+        "hiep vua roi can ",
+        "toi can ",
+        "minh can ",
+        "em can ",
+        "toi ",
+        "minh ",
+        "em ",
         "hiep nay "
     )
 

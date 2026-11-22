@@ -63,11 +63,19 @@ object WorkoutCoachQuestionRouter {
             null
         }
 
-        val resolvedAnswer = nextMoveAnswer ?: restStatusAnswer ?: effortRestAdviceAnswer ?: effortStatusAnswer ?: setStatusAnswer ?: when {
-            catalogAnswer != null && !catalogAnswer.startsWith(UNKNOWN_EXERCISE_PREFIX) ->
-                catalogAnswer
+        val explicitUnknownExercise = WorkoutExerciseConversation.hasUnknownExplicitExerciseName(input)
+        val resolvedAnswer = when {
+            explicitUnknownExercise -> catalogAnswer
+                ?: "Chibi chưa nhận ra tên động tác trong thư viện. Hãy nêu rõ tên bài để tránh hướng dẫn nhầm."
+            nextMoveAnswer != null -> nextMoveAnswer
+            restStatusAnswer != null -> restStatusAnswer
+            effortRestAdviceAnswer != null -> effortRestAdviceAnswer
+            effortStatusAnswer != null -> effortStatusAnswer
+            setStatusAnswer != null -> setStatusAnswer
+            catalogAnswer?.startsWith(UNKNOWN_EXERCISE_PREFIX) == true -> catalogAnswer
+            catalogAnswer != null -> catalogAnswer
             contextualAnswer != null -> contextualAnswer
-            else -> catalogAnswer
+            else -> null
         } ?: return null
 
         if (pausedForSafety) {

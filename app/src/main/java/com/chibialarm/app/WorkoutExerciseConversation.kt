@@ -98,22 +98,35 @@ object WorkoutExerciseConversation {
             ).any(query::contains)
         ) return false
 
-        val contextualWords = questionWords + setOf(
-            "lau", "hay", "ta", "day", "how", "long", "many", "sets", "reps", "rest",
-            "do", "vua", "noi", "nhac", "luc", "nguoi", "moi", "mot", "tai", "nha",
-            "khong", "khang", "tham", "hoac", "ghe", "video", "gym", "nhe", "hon",
-            "phuong", "an", "dung", "cu", "theo", "va", "neu", "duoc", "giup",
-            "ban", "em", "anh", "co", "can", "thoi", "gian"
-        )
         val cues = listOf("cach tap", "huong dan", "lam sao tap", "lam sao de tap", "ky thuat")
         val cue = cues.firstOrNull(query::contains) ?: return false
-        val candidate = query.substringAfter(cue).split(' ')
-            .firstOrNull { it.length >= 2 && it !in contextualWords }
-            ?: return false
-        val catalogTokens = TrainingCatalog.allMoves.asSequence()
-            .flatMap { normalize(it.name).split(' ').asSequence() }
+        val candidate = query.substringAfter(cue)
+            .removeSuffix(" nhu the nao")
+            .removeSuffix(" the nao")
+            .removeSuffix(" la gi")
+            .trim()
+        val nonNameWords = setOf(
+            "bai", "dong", "tac", "nay", "hien", "tai", "dang", "tap", "cach",
+            "huong", "dan", "lam", "sao", "nhu", "nao", "cua", "hoac", "va", "hay",
+            "toi", "tao", "minh", "em", "anh", "ban", "giup", "duoc", "theo",
+            "how", "many", "sets", "reps", "rest", "long", "bao", "nhieu", "hiep",
+            "lan", "giay", "muc", "tieu", "nhom", "co", "vao", "dau", "dung", "cu",
+            "nghi", "phut", "nha", "tai", "o", "mot"
+        )
+        val explicitTokens = candidate.split(' ')
+            .filter { token ->
+                token.length >= 2 && token !in nonNameWords &&
+                    token.none { character -> character.isDigit() }
+            }
             .toSet()
-        return candidate !in catalogTokens
+        if (explicitTokens.isEmpty()) return false
+
+        val catalogTokenSets = TrainingCatalog.allMoves.asSequence()
+            .map { move -> normalize(move.name).split(' ').filter { it.length >= 2 }.toSet() }
+            .toList()
+        return catalogTokenSets.none { nameTokens ->
+            explicitTokens.all { token -> token in nameTokens }
+        }
     }
 
     fun isContextualQuestion(input: String): Boolean {

@@ -143,6 +143,24 @@ class WorkoutEffortVoiceCommandTest {
         )
     }
 
+    @Test fun understandsNaturalEnergyAndRestRequests() {
+        report(
+            WorkoutEffortFeedback.Level.EASY,
+            "Tôi vẫn còn dư sức",
+            "Mình còn khá nhiều sức"
+        )
+        report(
+            WorkoutEffortFeedback.Level.HARD,
+            "Tôi cần nghỉ thêm một chút",
+            "Hiệp này tốn sức hơn dự kiến",
+            "Mình cần nghỉ thêm chút nữa"
+        )
+        report(
+            WorkoutEffortFeedback.Level.VERY_HARD,
+            "Tôi không thể tiếp tục nữa"
+        )
+    }
+
     @Test fun acceptsAnExplicitSecondTurnConfirmationOnly() {
         for (phrase in listOf("Đúng rồi", "Chính xác", "Xác nhận", "Chuẩn rồi", "OK")) {
             assertEquals(

@@ -4104,6 +4104,11 @@ class GuidedWorkoutActivity:Activity() {
                         )?.let { request ->
                             options += "Giảm tối đa 1 lần mỗi hiệp còn lại" to request
                         }
+                        WorkoutEffortPlanChange.durationReductionPreviewRequest(
+                            level, plan, completedSets, previousEffortLevels
+                        )?.let { request ->
+                            options += "Giảm tối đa 5 giây mỗi hiệp còn lại" to request
+                        }
                         if (options.isNotEmpty()) {
                             AlertDialog.Builder(this@GuidedWorkoutActivity)
                                 .setTitle("Chọn cách giảm tải")

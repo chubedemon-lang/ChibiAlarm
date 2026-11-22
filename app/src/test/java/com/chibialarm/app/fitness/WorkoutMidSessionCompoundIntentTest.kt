@@ -53,6 +53,16 @@ class WorkoutMidSessionCompoundIntentTest {
         assertEquals(45, restFirstRequest.restSeconds)
         assertEquals(12, restFirstRequest.currentRepLimit)
 
+        // Accentless STT output must follow the same bounded clause path.
+        val accentlessRestFirst = WorkoutMidSessionRequest.parse(
+            "Nghi them 45 giay roi giam con 12 lan moi hiep"
+        )
+        assertTrue(accentlessRestFirst is WorkoutMidSessionRequest.Result.Proposed)
+        assertEquals(
+            45,
+            (accentlessRestFirst as WorkoutMidSessionRequest.Result.Proposed).request.restSeconds
+        )
+
         val affirmative = WorkoutMidSessionRequest.parse("Đúng, nghỉ thêm 30 giây")
         assertTrue(affirmative is WorkoutMidSessionRequest.Result.Proposed)
         assertEquals(

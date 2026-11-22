@@ -592,7 +592,7 @@ object WorkoutMidSessionRequest {
         val hasRestRequest = Regex("""\b(nghi|rest)\b""").containsMatchIn(text)
         // In a compound command, parse the rest clause itself rather than the whole turn:
         // "reduce the hold to 15 seconds per set AND rest 30 seconds" must keep both intents.
-        val restClauseMatch = Regex("""(?iu)(?:^|\s)(?:nghỉ|nghi|rest)\b.*$""").find(input)
+        val restClauseMatch = Regex("""(?iu)(?:^|\s)(?:nghỉ|nghi|rest)(?=\s|[,;:]|$).*$""").find(input)
         val restPrefix = restClauseMatch?.let {
             input.substring(0, it.range.first).trim()
         }.orEmpty()

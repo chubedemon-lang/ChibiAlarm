@@ -109,7 +109,7 @@ object WorkoutRestRequest {
             val seconds = parseNumberPhrase(secondPhrase)
             if (minutes != null && seconds != null && seconds in 0..59) {
                 val total = minutes.toLong() * 60L + seconds.toLong()
-                return total.takeIf { it in 15L..120L }?.toInt()
+                return total.takeIf { it in 15L..600L }?.toInt()
             }
             return null
         }
@@ -126,7 +126,7 @@ object WorkoutRestRequest {
         val unit = tokens[unitIndex]
         val total = if (unit in setOf("phut", "minute", "minutes")) count.toLong() * 60L else count.toLong()
         // Prevent implausible recognition results from silently adding a huge rest.
-        return total.takeIf { it in 15L..120L }?.toInt()
+        return total.takeIf { it in 15L..600L }?.toInt()
     }
 
     private inline fun <T> List<T>.indexOfFirstFrom(startIndex: Int, predicate: (T) -> Boolean): Int {

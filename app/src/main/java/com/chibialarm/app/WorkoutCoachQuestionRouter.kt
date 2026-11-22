@@ -65,8 +65,8 @@ object WorkoutCoachQuestionRouter {
 
         val explicitUnknownExercise = WorkoutExerciseConversation.hasUnknownExplicitExerciseName(input)
         val resolvedAnswer = when {
-            explicitUnknownExercise -> catalogAnswer
-                ?: "Chibi chưa nhận ra tên động tác trong thư viện. Hãy nêu rõ tên bài để tránh hướng dẫn nhầm."
+            explicitUnknownExercise ->
+                "Chibi chưa nhận ra tên động tác trong thư viện. Hãy nêu rõ tên bài theo đúng tên trong thư viện để Chibi tránh hướng dẫn nhầm."
             nextMoveAnswer != null -> nextMoveAnswer
             restStatusAnswer != null -> restStatusAnswer
             effortRestAdviceAnswer != null -> effortRestAdviceAnswer

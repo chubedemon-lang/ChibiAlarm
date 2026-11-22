@@ -77,4 +77,56 @@ class WorkoutExerciseStepQuestionTest {
         assertFalse(WorkoutExerciseStepQuestion.isQuestion("Bước 2 là gì? " + "x".repeat(170)))
         assertNull(WorkoutExerciseStepQuestion.answer("Bước 2 là gì? " + "x".repeat(170), "Squat", instructions))
     }
+
+    @Test fun answersTwoAdjacentRequestedStepsInOneBoundedCoachReply() {
+        val answer = WorkoutExerciseStepQuestion.answer(
+            "Bước 2 và bước 3 là gì?",
+            "Squat không tạ",
+            instructions
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("Bước 2/3 của Squat không tạ: Hạ người chậm và có kiểm soát."))
+        assertTrue(answer.contains("Bước 3/3 của Squat không tạ: Trở về vị trí ban đầu."))
+        assertTrue(answer.contains("không đánh giá tư thế thực tế"))
+        assertFalse(answer.contains("Chuẩn bị tư thế"))
+    }
+
+    @Test fun nonConsecutiveStepsAskForClarificationInsteadOfReadingAFragmentedList() {
+        val answer = WorkoutExerciseStepQuestion.answer(
+            "Bước 1 và bước 3 là gì?",
+            "Squat không tạ",
+            instructions
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("nhiều bước được nhắc tới"))
+        assertTrue(answer.contains("hai bước liền nhau"))
+        assertFalse(answer.contains("Chuẩn bị tư thế"))
+    }
+
+    @Test fun aPairWithAnOutOfRangeStepNeverReturnsOnlyTheValidStep() {
+        val answer = WorkoutExerciseStepQuestion.answer(
+            "Bước 2 và bước 3 là gì?",
+            "Squat không tạ",
+            "Chuẩn bị tư thế.\\nHạ người chậm và có kiểm soát."
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("không thể đọc đủ bước 2 và 3"))
+        assertTrue(answer.contains("không tự bỏ qua bước ngoài phạm vi"))
+        assertFalse(answer.contains("Hạ người chậm và có kiểm soát"))
+    }
+
+    @Test fun moreThanTwoRequestedStepsAskForACompactRange() {
+        val answer = WorkoutExerciseStepQuestion.answer(
+            "Bước 1, bước 2 và bước 3 là gì?",
+            "Squat không tạ",
+            instructions
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("nhiều bước được nhắc tới"))
+        assertTrue(answer.contains("tối đa hai bước liền nhau"))
+    }
 }

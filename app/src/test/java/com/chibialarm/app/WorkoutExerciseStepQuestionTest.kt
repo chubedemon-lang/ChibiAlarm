@@ -51,15 +51,17 @@ class WorkoutExerciseStepQuestionTest {
         assertTrue(answer.contains("Chuẩn bị tư thế"))
     }
 
-    @Test fun multipleRequestedStepsAskForClarificationInsteadOfGuessing() {
+    @Test fun spokenOrdinalPairReturnsBothRequestedInstructions() {
         val answer = WorkoutExerciseStepQuestion.answer(
-            "Bước 2 và bước 3 là gì?",
+            "Bước thứ hai và bước thứ ba của bài này là gì?",
             "Squat không tạ",
             instructions
         )
+
         assertNotNull(answer)
-        assertTrue(answer!!.contains("nhiều bước được nhắc tới"))
-        assertTrue(answer.contains("hỏi một bước cụ thể"))
+        assertTrue(answer!!.contains("Bước 2/3 của Squat không tạ: Hạ người chậm và có kiểm soát."))
+        assertTrue(answer.contains("Bước 3/3 của Squat không tạ: Trở về vị trí ban đầu."))
+        assertFalse(answer.contains("Chuẩn bị tư thế"))
     }
 
     @Test fun outOfRangeStepIsNotSilentlyReplaced() {

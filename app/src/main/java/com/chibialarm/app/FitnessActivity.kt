@@ -167,6 +167,7 @@ class FitnessActivity:Activity() {
         }
     }
 
+    @JvmOverloads
     private fun sayFollowUp(
         message: String,
         followUp: FitnessNaturalRequest.Result? = null

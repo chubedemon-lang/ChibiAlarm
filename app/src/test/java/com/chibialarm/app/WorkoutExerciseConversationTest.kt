@@ -294,7 +294,7 @@ class WorkoutExerciseConversationTest {
         assertFalse(answer.contains("Bước 5/5"))
     }
 
-    @Test fun multipleRequestedStepsAskForOneUnambiguousPosition() {
+    @Test fun multipleAdjacentRequestedStepsReturnBothCatalogInstructions() {
         val squat = TrainingCatalog.allMoves.single { it.name == "Squat không tạ" }
         val answer = WorkoutExerciseConversation.answerForCurrentMove(
             "Bước 2 và bước 3 của bài này là gì?",
@@ -302,9 +302,9 @@ class WorkoutExerciseConversationTest {
         )
 
         assertNotNull(answer)
-        assertTrue(answer!!.contains("nhiều bước"))
-        assertFalse(answer.contains("Bước 2/5"))
-        assertFalse(answer.contains("Bước 3/5"))
+        assertTrue(answer!!.contains("Bước 2/5 của Squat không tạ:"))
+        assertTrue(answer.contains("Bước 3/5 của Squat không tạ:"))
+        assertFalse(answer.contains("Bước 1/5"))
     }
 
     @Test fun vagueNextStepDoesNotInventAnInstructionIndex() {

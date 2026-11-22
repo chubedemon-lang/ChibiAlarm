@@ -336,4 +336,19 @@ class WorkoutExerciseConversationTest {
             )
         )
     }
+
+    @Test fun unknownVariationSharingCatalogPrefixIsNotReportedAsAmbiguous() {
+        val answer = WorkoutExerciseConversation.answer("Cách tập Burpee biến thể lạ?")
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("chưa nhận ra tên động tác"))
+        assertFalse(answer.contains("vài động tác gần giống"))
+    }
+
+    @Test fun namedStepQuestionAllowsNaturalVietnamesePreposition() {
+        val answer = WorkoutExerciseConversation.answer("Bước 3 trong Squat không tạ là gì?")
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("Bước 3/5 của Squat không tạ"))
+        assertTrue(answer.contains("hạ xuống theo khả năng"))
+        assertFalse(answer.contains("đứng lên"))
+    }
 }

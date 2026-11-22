@@ -34,7 +34,7 @@ object WorkoutExerciseConversation {
         "nhu", "the", "nao", "ky", "thuat", "luu", "y", "khi", "nghi",
         "bao", "nhieu", "hiep", "lan", "giay", "giai", "thich", "bai",
         "dong", "tac", "nay", "la", "gi", "toi", "tao", "minh", "muon",
-        "biet", "cho", "tung", "buoc", "theo", "voi", "nua", "phut", "dung",
+        "biet", "cho", "tung", "buoc", "theo", "voi", "nua", "cua", "phut", "dung",
         "nhom", "co", "vao", "dau", "tac", "can", "cu", "chinh",
         "giua", "dang", "hien", "tai", "do", "vua", "noi", "nhac", "luc",
         "tho", "hit", "vao", "ra", "nhip"
@@ -314,13 +314,15 @@ object WorkoutExerciseConversation {
         val bestScore = scored.maxOfOrNull { it.second } ?: 0
         if (bestScore <= 0) return Match()
         val best = scored.filter { it.second == bestScore }.map { it.first }
-        if (best.size > 1) {
-            return Match(ambiguous = best.map { it.name }.distinct().sorted())
+        // A shared catalog prefix is not enough to call a request ambiguous. Every explicit
+        // exercise token must be represented by each candidate; otherwise an unknown suffix
+        // such as "biến thể lạ" must fail closed instead of listing unrelated catalog variants.
+        val compatibleBest = best.filter { move -> queryTokens.all { it in tokens(move) } }
+        return when (compatibleBest.size) {
+            0 -> Match()
+            1 -> Match(selected = compatibleBest.single())
+            else -> Match(ambiguous = compatibleBest.map { it.name }.distinct().sorted())
         }
-        val selected = best.single()
-        // A fuzzy match is safe only when every explicit exercise token is represented.
-        // Extra descriptors such as "biến thể lạ" must return the unknown-name response.
-        return if (queryTokens.all { it in tokens(selected) }) Match(selected = selected) else Match()
     }
 
     private fun format(move: TrainingMove, input: String): String {

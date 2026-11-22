@@ -1091,7 +1091,7 @@ class GuidedWorkoutActivity:Activity() {
 
     private fun requestVoiceCommand() {
         AlertDialog.Builder(this).setTitle("🎤 Điều khiển bằng giọng nói")
-            .setMessage("Chỉ bắt đầu nghe sau khi bạn nhấn Tiếp tục. Android sẽ hỏi quyền micro nếu đây là lần đầu. Chibi yêu cầu ưu tiên nhận dạng ngoại tuyến và tối đa 5 phương án nếu dịch vụ hỗ trợ; đây chỉ là gợi ý, nhà cung cấp có thể bỏ qua và xử lý âm thanh trực tuyến. Chibi không ghi âm nền và không lưu bản ghi hoặc câu nhận dạng. Bạn cũng có thể nhập yêu cầu bằng chữ.")
+            .setMessage("Chỉ bắt đầu nghe sau khi bạn nhấn Tiếp tục. Android sẽ hỏi quyền micro nếu đây là lần đầu. Chibi yêu cầu ưu tiên nhận dạng ngoại tuyến và tối đa 5 phương án nếu dịch vụ hỗ trợ; đây chỉ là gợi ý; nhà cung cấp có thể bỏ qua ưu tiên này và có thể xử lý âm thanh trực tuyến. Chibi không ghi âm nền và không lưu bản ghi hoặc câu nhận dạng. Bạn cũng có thể nhập yêu cầu bằng chữ.")
             .setPositiveButton("Tiếp tục"){_,_->
                 // A voice command must never compete with spoken instructions or a running timer.
                 pause()

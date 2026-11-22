@@ -56,7 +56,8 @@ class GuidedWorkoutEffortVoiceTest {
     @Suppress("UNCHECKED_CAST")
     private fun openCheckIn(
         completedSetCount: Int = 1,
-        previousEfforts: List<WorkoutEffortFeedback.Level?> = emptyList()
+        previousEfforts: List<WorkoutEffortFeedback.Level?> = emptyList(),
+        customMove: TrainingMove? = null
     ): CheckIn {
         val app = RuntimeEnvironment.getApplication()
         val intent = Intent(app, GuidedWorkoutActivity::class.java)
@@ -68,6 +69,11 @@ class GuidedWorkoutEffortVoiceTest {
             isAccessible = true
         }
 
+        customMove?.let { move ->
+            val customMoves = listOf(move)
+            field("moves").set(activity, customMoves)
+            field("originalMoves").set(activity, customMoves)
+        }
         val moves = field("moves").get(activity) as List<TrainingMove>
         val moveIndex = moves.indices.first { index ->
             WorkoutSetTracker.parse(moves[index].dose, moves[index].restSeconds) != null
@@ -715,6 +721,81 @@ class GuidedWorkoutEffortVoiceTest {
             assertNull(pendingHandler)
         } finally {
             activity.finish()
+        }
+    }
+
+
+    @Test fun repeatedHardTimedCheckInOffersDurationReductionOnlyAfterPreviewConfirmation() {
+        val timedMove = TrainingMove(
+            "Test plank",
+            "3 hiệp × 15–30 giây",
+            "Giữ thân ổn định và tiếp tục thở đều.",
+            "Giữ thời gian ngắn hơn trong phạm vi thoải mái.",
+            "Dừng nếu đau hoặc có triệu chứng bất thường.",
+            60,
+            45
+        )
+        val checkIn = openCheckIn(
+            completedSetCount = 2,
+            previousEfforts = listOf(WorkoutEffortFeedback.Level.HARD),
+            customMove = timedMove
+        )
+        try {
+            assertEquals("giây", checkIn.plan.unit)
+            assertEquals(3, checkIn.plan.maximumSets)
+
+            val hardIndex = WorkoutEffortFeedback.Level.HARD.ordinal
+            checkIn.dialog.listView.performItemClick(
+                checkIn.dialog.listView.getChildAt(hardIndex),
+                hardIndex,
+                checkIn.dialog.listView.getItemIdAtPosition(hardIndex)
+            )
+
+            val restChoice = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
+            assertTrue(restChoice.isShowing)
+            restChoice.getButton(AlertDialog.BUTTON_NEUTRAL).performClick()
+
+            val options = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
+            assertTrue(options.isShowing)
+            val durationOption = (0 until options.listView.count).first { index ->
+                options.listView.getItemAtPosition(index).toString()
+                    .contains("Giảm tối đa 5 giây mỗi hiệp còn lại")
+            }
+            options.listView.performItemClick(
+                options.listView.getChildAt(durationOption),
+                durationOption,
+                options.listView.getItemIdAtPosition(durationOption)
+            )
+
+            val preview = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
+            assertTrue(preview.isShowing)
+            val previewText = preview.findViewById<android.widget.TextView>(android.R.id.message)
+                ?.text?.toString().orEmpty()
+            assertTrue(previewText.contains("25 giây"))
+            assertTrue(previewText.contains("Các hiệp đã xác nhận không bị sửa"))
+
+            @Suppress("UNCHECKED_CAST")
+            val repTargets = GuidedWorkoutActivity::class.java.getDeclaredField("repTargets")
+                .apply { isAccessible = true }
+                .get(checkIn.activity) as MutableMap<Int, Int>
+            assertFalse("A preview must not apply the duration cap before confirmation",
+                repTargets.containsKey(checkIn.moveIndex))
+
+            preview.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+
+            assertEquals(25, repTargets[checkIn.moveIndex])
+            @Suppress("UNCHECKED_CAST")
+            val completedSets = GuidedWorkoutActivity::class.java
+                .getDeclaredField("completedSetsByMove")
+                .apply { isAccessible = true }
+                .get(checkIn.activity) as Map<Int, Int>
+            assertEquals("Confirmed sets remain immutable", 2, completedSets[checkIn.moveIndex])
+            assertEquals("Catalog dose remains unchanged", timedMove.dose,
+                (GuidedWorkoutActivity::class.java.getDeclaredField("moves")
+                    .apply { isAccessible = true }
+                    .get(checkIn.activity) as List<TrainingMove>)[checkIn.moveIndex].dose)
+        } finally {
+            checkIn.activity.finish()
         }
     }
 

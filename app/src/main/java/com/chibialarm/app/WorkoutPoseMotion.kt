@@ -185,6 +185,18 @@ object WorkoutPoseMotion {
             "Bước $safePosition trên $safeTotal: $safeStep"
     }
 
+    /**
+     * Visible caption for the selected walkthrough frame. A neutral setup/hold step
+     * never inherits an inhale/exhale phase from a neighboring movement step.
+     */
+    fun visualStepCaption(pose: WorkoutPoseGuide.Pose, selectedPhase: Boolean?): String {
+        val phase = selectedPhase?.let { "Pha minh họa: ${phaseCue(pose, it)}" }
+            ?: "Tư thế minh họa cho bước này"
+        val breathing = selectedPhase?.let { breathingCue(pose, it) }
+            ?: "Thở đều, không nín thở."
+        return "$phase · Nhịp thở: $breathing · Hình minh họa, không đánh giá tư thế."
+    }
+
     /** Short, explicit phase cues to accompany the two-frame drawing. */
     fun phaseCue(pose: WorkoutPoseGuide.Pose, lowered: Boolean): String = when (pose) {
         WorkoutPoseGuide.Pose.SQUAT -> if (lowered) "Hạ hông" else "Đứng lên"

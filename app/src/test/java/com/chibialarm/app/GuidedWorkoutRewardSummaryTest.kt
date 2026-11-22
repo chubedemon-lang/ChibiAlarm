@@ -33,6 +33,16 @@ class GuidedWorkoutRewardSummaryTest {
         }
     }
 
+    private fun findTagged(root: View, tag: String): View? {
+        if (root.tag == tag) return root
+        if (root is ViewGroup) {
+            for (index in 0 until root.childCount) {
+                findTagged(root.getChildAt(index), tag)?.let { return it }
+            }
+        }
+        return null
+    }
+
     @Test
     fun rewardDialogShowsConfirmedSelfReportedEffortWithAccuracyDisclaimer() {
         val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup().get()

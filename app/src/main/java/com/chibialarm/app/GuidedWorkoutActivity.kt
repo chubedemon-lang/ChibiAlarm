@@ -3252,10 +3252,7 @@ class GuidedWorkoutActivity:Activity() {
             stepProgress.progress = walkthrough.position
             val selectedPhase = WorkoutPoseMotion.guidePhaseForStep(pose, walkthrough.currentStep)
             illustration.showGuideFrame(selectedPhase ?: false)
-            val phaseText = selectedPhase?.let {
-                "Pha minh họa: ${WorkoutPoseMotion.phaseCue(pose, it)}"
-            } ?: "Tư thế minh họa cho bước này"
-            phaseCaption.text = "$phaseText · Hình minh họa, không đánh giá tư thế."
+            phaseCaption.text = WorkoutPoseMotion.visualStepCaption(pose, selectedPhase)
             phaseCaption.contentDescription = phaseCaption.text
             previousButton.isEnabled = walkthrough.canGoPrevious
             dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.apply {

@@ -200,6 +200,27 @@ class WorkoutPoseMotionTest {
         assertTrue(cue.length <= 340)
     }
 
+    @Test fun visualStepCaptionMatchesTheSelectedSquatPhaseAndBreathing() {
+        val lowering = WorkoutPoseMotion.visualStepCaption(WorkoutPoseGuide.Pose.SQUAT, true)
+        val effort = WorkoutPoseMotion.visualStepCaption(WorkoutPoseGuide.Pose.SQUAT, false)
+
+        assertTrue(lowering.contains("Pha minh họa: Hạ hông"))
+        assertTrue(lowering.contains("Nhịp thở: Hít vào khi hạ hoặc trở về."))
+        assertTrue(effort.contains("Pha minh họa: Đứng lên"))
+        assertTrue(effort.contains("Nhịp thở: Thở ra khi dùng lực."))
+        assertTrue(lowering.contains("không đánh giá tư thế"))
+    }
+
+    @Test fun setupAndStaticHoldCaptionsUseNeutralBreathingInsteadOfInventedPhases() {
+        val setup = WorkoutPoseMotion.visualStepCaption(WorkoutPoseGuide.Pose.SQUAT, null)
+        val hold = WorkoutPoseMotion.visualStepCaption(WorkoutPoseGuide.Pose.PLANK, false)
+
+        assertTrue(setup.contains("Tư thế minh họa cho bước này"))
+        assertTrue(setup.contains("Nhịp thở: Thở đều, không nín thở."))
+        assertTrue(hold.contains("Giữ thân thẳng"))
+        assertTrue(hold.contains("Nhịp thở: Thở đều, không nín thở."))
+    }
+
     @Test fun staticCuesDoNotDependOnAnimationPhase() {
         for (pose in listOf(
             WorkoutPoseGuide.Pose.PLANK,

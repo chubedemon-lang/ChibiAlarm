@@ -34,6 +34,19 @@ internal object WorkoutExerciseStepQuestion {
             listOf("buoc dau", "buoc cuoi", "first step", "last step").any(query::contains)
     }
 
+    /** True for a spoken question that asks for one explicit catalog step, not navigation. */
+    fun isQuestion(input: String): Boolean {
+        if (!hasExplicitStepReference(input)) return false
+        val query = normalize(input)
+        return listOf(
+            "la gi", "la sao", "the nao", "nhu the nao", "doc", "noi",
+            "giai thich", "huong dan", "what is", "which step", "explain", "read"
+        ).any { containsPhrase(query, it) }
+    }
+
+    private fun containsPhrase(text: String, phrase: String): Boolean =
+        Regex("(^|\\\\s)" + Regex.escape(phrase) + "(\\\\s|$)").containsMatchIn(text)
+
     fun answer(input: String, moveName: String, instructions: String): String? {
         if (!hasExplicitStepReference(input)) return null
 

@@ -22,7 +22,8 @@ object WorkoutStepVoiceCommand {
         // the unaccented navigation phrase "buoc dau tien" from looking like pain;
         // longer utterances that also mention pain still fail closed.
         val unaccentedFirstStepOnly = raw in setOf(
-            "buoc dau", "buoc dau tien", "ve buoc dau", "quay ve buoc dau",
+            "buoc dau", "buoc dau tien", "buoc dau la gi", "doc buoc dau",
+            "giai thich buoc dau", "ve buoc dau", "quay ve buoc dau",
             "tro ve buoc dau", "bat dau lai huong dan",
             "khong ve buoc dau", "dung ve buoc dau",
             "khong quay ve buoc dau", "dung quay ve buoc dau"
@@ -53,6 +54,9 @@ object WorkoutStepVoiceCommand {
                 "khong xem bai thay the", "dung xem bai thay the",
                 "khong mo phuong an thay the", "dung mo phuong an thay the",
                 "khong doc luu y", "dung doc luu y", "khong nhac luu y",
+                "khong doc buoc", "dung doc buoc", "khong noi buoc", "dung noi buoc",
+                "khong giai thich buoc", "dung giai thich buoc",
+                "khong huong dan buoc", "dung huong dan buoc",
                 "khong doc cham hon", "dung doc cham hon",
                 "khong noi cham lai", "dung noi cham lai",
                 "khong doc nhanh hon", "dung doc nhanh hon",
@@ -71,6 +75,7 @@ object WorkoutStepVoiceCommand {
                 "do not turn on auto speak", "don t turn on auto speak",
                 "do not turn off auto speak", "don t turn off auto speak"
             ).any { normalized.contains(it) }) return Command.UNKNOWN
+        if (WorkoutExerciseStepQuestion.isQuestion(utterance)) return Command.ASK_EXERCISE
         if (listOf(
                 "doi bai de hon", "doi sang bai nhe hon", "thay dong tac de hon",
                 "thay dong tac nay bang bai nhe hon", "xem bai thay the",

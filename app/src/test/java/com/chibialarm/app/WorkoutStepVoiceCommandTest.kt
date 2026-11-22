@@ -340,4 +340,43 @@ class WorkoutStepVoiceCommandTest {
         )
     }
 
+
+    @Test fun asksForAnExplicitInstructionStepByVoiceWithoutConfusingNavigation() {
+        for (phrase in listOf(
+            "Bước 2 là gì?",
+            "Bước thứ hai của bài này là gì?",
+            "Đọc bước 3",
+            "Bước cuối là gì?",
+            "Bước đầu là gì?",
+            "buoc thu hai la gi",
+            "buoc dau la gi"
+        )) {
+            assertEquals(
+                phrase,
+                WorkoutStepVoiceCommand.Command.ASK_EXERCISE,
+                WorkoutStepVoiceCommand.parse(phrase)
+            )
+        }
+
+        for (phrase in listOf(
+            "Bước 2",
+            "Bước tiếp",
+            "Không đọc bước 2",
+            "Đừng đọc bước 2",
+            "khong giai thich buoc thu hai"
+        )) {
+            val expected = if (phrase == "Bước tiếp") {
+                WorkoutStepVoiceCommand.Command.NEXT
+            } else {
+                WorkoutStepVoiceCommand.Command.UNKNOWN
+            }
+            assertEquals(phrase, expected, WorkoutStepVoiceCommand.parse(phrase))
+        }
+
+        assertEquals(
+            WorkoutStepVoiceCommand.Command.SAFETY,
+            WorkoutStepVoiceCommand.parse("Bước 2 là gì nhưng tôi đau cổ tay")
+        )
+    }
+
 }

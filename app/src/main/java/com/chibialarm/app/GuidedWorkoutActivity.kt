@@ -1053,7 +1053,7 @@ class GuidedWorkoutActivity:Activity() {
         val effortRequest = requestCode == effortVoiceRequest
         val previewRequest = requestCode == previewVoiceRequest
         val prompt = when {
-            guideRequest -> "Nói: bước tiếp, bước trước, đọc lại, bật tự đọc, tắt tự đọc, tạm dừng buổi tập, tiếp tục buổi tập hoặc đóng hướng dẫn. Nếu đau hay khó thở, hãy nói rõ."
+            guideRequest -> "Nói: bước tiếp, bước trước, hỏi bước 2 là gì, đọc lại, bật tự đọc, tắt tự đọc, tạm dừng buổi tập, tiếp tục buổi tập hoặc đóng hướng dẫn. Nếu đau hay khó thở, hãy nói rõ."
             effortRequest -> "Nói cảm nhận hiệp vừa rồi: nhẹ, vừa sức, khó cần nghỉ thêm hoặc quá sức. Nếu đau hay khó thở, hãy nói rõ."
             previewRequest -> "Nói rõ: xác nhận áp dụng, đồng ý áp dụng, hoặc giữ nguyên, hủy thay đổi. Nếu đau hoặc khó thở, hãy nói rõ."
             else -> "Ví dụ: tôi đã làm 10 lần, tôi giữ 20 giây, xong hiệp, bài này khó quá, nghỉ thêm, đổi bài, dừng lại"
@@ -1112,7 +1112,7 @@ class GuidedWorkoutActivity:Activity() {
     private fun requestGuideVoiceCommand(onResult:(String)->Unit) {
         guideVoiceResultHandler = onResult
         val disclosure = AlertDialog.Builder(this).setTitle("🎤 Điều khiển hướng dẫn bằng giọng nói")
-            .setMessage("Chỉ mở micro sau khi bạn nhấn Bắt đầu nghe. Android sẽ hỏi quyền micro nếu cần. Chibi yêu cầu ưu tiên nhận dạng ngoại tuyến và tối đa 5 phương án nếu dịch vụ hỗ trợ; đây chỉ là gợi ý, nhà cung cấp có thể bỏ qua và xử lý âm thanh trực tuyến. Chibi chỉ dùng câu nhận dạng để chuyển bước, đọc lại, yêu cầu nghỉ, tạm dừng hoặc tiếp tục buổi tập, hoặc đóng hướng dẫn; không ghi âm nền và không lưu bản ghi hay bản chép lời. Bạn có thể hủy và tiếp tục dùng nút trên màn hình.")
+            .setMessage("Chỉ mở micro sau khi bạn nhấn Bắt đầu nghe. Android sẽ hỏi quyền micro nếu cần. Chibi yêu cầu ưu tiên nhận dạng ngoại tuyến và tối đa 5 phương án nếu dịch vụ hỗ trợ; đây chỉ là gợi ý, nhà cung cấp có thể bỏ qua và xử lý âm thanh trực tuyến. Chibi chỉ dùng câu nhận dạng để chuyển bước, trả lời câu hỏi về một bước cụ thể từ thư viện offline, đọc lại, yêu cầu nghỉ, tạm dừng hoặc tiếp tục buổi tập, hoặc đóng hướng dẫn; không ghi âm nền và không lưu bản ghi hay bản chép lời. Bạn có thể hủy và tiếp tục dùng nút trên màn hình.")
             .setPositiveButton("Bắt đầu nghe"){_,_->
                 pause()
                 spoken?.stop()
@@ -3144,8 +3144,8 @@ class GuidedWorkoutActivity:Activity() {
         }
         val voiceButton = Button(this).apply {
             tag = "workout-step-voice-control"
-            text = "🎤 Nói: bước tiếp, bước trước, quay về bước đầu, hỏi cách tập, hỏi dụng cụ, hỏi nhóm cơ, nghỉ bao lâu, nghỉ thêm, đọc cách tập dễ hơn, lưu ý an toàn, đọc tiến độ buổi tập, đọc lại câu trả lời, bật tự đọc, tắt tự đọc, điều chỉnh giáo án"
-            contentDescription = "Mở nhận dạng giọng nói sau khi xác nhận quyền micro. Lệnh hỗ trợ: bước tiếp, bước trước, quay về bước đầu, hỏi cách tập, hỏi dụng cụ, hỏi nhóm cơ, nghỉ bao lâu, nghỉ thêm, đọc cách tập dễ hơn, đọc lưu ý an toàn, đọc tiến độ buổi tập, đọc lại câu trả lời, bật hoặc tắt tự đọc, yêu cầu đổi bài nhẹ hơn hoặc điều chỉnh phần còn lại của giáo án. Chibi sẽ xem trước và chờ xác nhận, không tự áp dụng. Nếu đau, khó thở hoặc chóng mặt, hãy nói rõ để dừng buổi tập."
+            text = "🎤 Nói: bước tiếp, bước trước, quay về bước đầu, hỏi bước 2 là gì, hỏi cách tập, hỏi dụng cụ, hỏi nhóm cơ, nghỉ bao lâu, nghỉ thêm, đọc cách tập dễ hơn, lưu ý an toàn, đọc tiến độ buổi tập, đọc lại câu trả lời, bật tự đọc, tắt tự đọc, điều chỉnh giáo án"
+            contentDescription = "Mở nhận dạng giọng nói sau khi xác nhận quyền micro. Lệnh hỗ trợ: bước tiếp, bước trước, quay về bước đầu, hỏi bước 2 là gì, hỏi cách tập, hỏi dụng cụ, hỏi nhóm cơ, nghỉ bao lâu, nghỉ thêm, đọc cách tập dễ hơn, đọc lưu ý an toàn, đọc tiến độ buổi tập, đọc lại câu trả lời, bật hoặc tắt tự đọc, yêu cầu đổi bài nhẹ hơn hoặc điều chỉnh phần còn lại của giáo án. Chibi sẽ xem trước và chờ xác nhận, không tự áp dụng. Nếu đau, khó thở hoặc chóng mặt, hãy nói rõ để dừng buổi tập."
         }
         container.addView(illustration, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
@@ -3370,7 +3370,11 @@ class GuidedWorkoutActivity:Activity() {
                         announceSpeechRate(answer)
                     }
                     WorkoutStepVoiceCommand.Command.ASK_EXERCISE -> {
-                        val answer = WorkoutExerciseConversation.answerForCurrentMove(
+                        val answer = WorkoutExerciseStepQuestion.answer(
+                            input = phrase,
+                            moveName = move.name,
+                            instructions = move.steps
+                        ) ?: WorkoutExerciseConversation.answerForCurrentMove(
                             input = phrase,
                             move = move,
                             currentDose = targetDose(index)

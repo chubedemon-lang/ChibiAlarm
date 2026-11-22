@@ -336,7 +336,7 @@ class GuidedWorkoutActivity:Activity() {
                 resting=checkpoint.getBoolean("resting",false)
                 restRemainingMs=checkpoint.getLong("restRemaining",0L).coerceIn(0L,600_000L)
                 restTenSecondCueGiven=checkpoint.getBoolean("restTenSecondCueGiven",false)
-                restVoiceCueEnabled=checkpoint.getBoolean("restVoiceCueEnabled",true)
+                restVoiceCueEnabled=checkpoint.getBoolean("restVoiceCueEnabled",restVoiceCueEnabled)
                 restDeadline=0L
                 setTimerExpired=checkpoint.getBoolean("setTimerExpired",remainingMs<=0L)
                 renderSetControls()
@@ -376,7 +376,7 @@ class GuidedWorkoutActivity:Activity() {
                 resting=false
                 restRemainingMs=0L
                 restTenSecondCueGiven=false
-                restVoiceCueEnabled=true
+                restVoiceCueEnabled=WorkoutRestVoiceCuePreference.load(this)
                 restDeadline=0L
                 setTimerExpired=false
                 pausedForSafety=keepSafetyLock
@@ -500,6 +500,8 @@ class GuidedWorkoutActivity:Activity() {
     }
     override fun onCreate(savedInstanceState:Bundle?) {
         super.onCreate(savedInstanceState)
+         // Guest-only preference; authenticated profiles must use account-scoped settings.
+         restVoiceCueEnabled = WorkoutRestVoiceCuePreference.load(this)
         val baseProgram = TrainingCatalog.byId(intent.getStringExtra("program") ?: "starter")
         workoutConstraints = WorkoutConstraintProfile(
             avoidWristLoad = intent.getBooleanExtra("avoid_wrist_load", false) ||
@@ -685,16 +687,22 @@ class GuidedWorkoutActivity:Activity() {
         restVoiceCueToggle = CheckBox(this).apply {
             tag = "workout-rest-auto-voice-cue"
             text = "🔊 Tự đọc nhắc khi còn 10 giây"
-            contentDescription = "Bật hoặc tắt lời nhắc nghỉ bằng giọng đọc; không sử dụng microphone."
+            contentDescription = "Bật hoặc tắt lời nhắc nghỉ bằng giọng đọc; lựa chọn khách được lưu trên thiết bị này; không sử dụng microphone."
             isChecked = restVoiceCueEnabled
             visibility = android.view.View.GONE
             setOnCheckedChangeListener { _, checked ->
                 if (updatingRestVoiceCueToggle) return@setOnCheckedChangeListener
                 restVoiceCueEnabled = checked
+                val savedPreference = WorkoutRestVoiceCuePreference.save(this@GuidedWorkoutActivity, checked)
+                if (!savedPreference) {
+                    Toast.makeText(this@GuidedWorkoutActivity,
+                        "Không lưu được tùy chọn trên thiết bị; lựa chọn vẫn áp dụng cho buổi này.",
+                        Toast.LENGTH_LONG).show()
+                }
                 contentDescription = if (checked) {
-                    "Đang bật lời nhắc nghỉ bằng giọng đọc khi còn 10 giây; không sử dụng microphone."
+                    "Đang bật lời nhắc nghỉ bằng giọng đọc khi còn 10 giây; lựa chọn khách được lưu trên thiết bị này; không sử dụng microphone."
                 } else {
-                    "Đã tắt lời nhắc nghỉ tự động bằng giọng đọc; có thể bật lại bất cứ lúc nào."
+                    "Đã tắt lời nhắc nghỉ tự động bằng giọng đọc; lựa chọn khách được lưu trên thiết bị này; có thể bật lại bất cứ lúc nào."
                 }
                 saveCheckpoint()
             }
@@ -967,7 +975,7 @@ class GuidedWorkoutActivity:Activity() {
             resting=savedInstanceState.getBoolean("workout_resting",false)
             restRemainingMs=savedInstanceState.getLong("workout_rest_remaining",0L).coerceIn(0L,600_000L)
             restTenSecondCueGiven=savedInstanceState.getBoolean("workout_rest_ten_second_cue",false)
-            restVoiceCueEnabled=savedInstanceState.getBoolean("workout_rest_voice_cue_enabled",true)
+            restVoiceCueEnabled=savedInstanceState.getBoolean("workout_rest_voice_cue_enabled",restVoiceCueEnabled)
             restDeadline=0L
             setTimerExpired=savedInstanceState.getBoolean("workout_set_timer_expired",remainingMs<=0L)
             shorterFromIndex=savedInstanceState.getInt("workout_shorter_from",Int.MAX_VALUE).coerceIn(0,moves.size)
@@ -3605,9 +3613,9 @@ class GuidedWorkoutActivity:Activity() {
             updatingRestVoiceCueToggle = false
         }
         restVoiceCueToggle.contentDescription = if (restVoiceCueEnabled) {
-            "Đang bật lời nhắc nghỉ bằng giọng đọc khi còn 10 giây; không sử dụng microphone."
+            "Đang bật lời nhắc nghỉ bằng giọng đọc khi còn 10 giây; lựa chọn khách được lưu trên thiết bị này; không sử dụng microphone."
         } else {
-            "Đã tắt lời nhắc nghỉ tự động bằng giọng đọc; có thể bật lại bất cứ lúc nào."
+            "Đã tắt lời nhắc nghỉ tự động bằng giọng đọc; lựa chọn khách được lưu trên thiết bị này; có thể bật lại bất cứ lúc nào."
         }
     }
 

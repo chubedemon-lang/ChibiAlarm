@@ -72,9 +72,12 @@ object WorkoutCoachQuestionRouter {
             effortRestAdviceAnswer != null -> effortRestAdviceAnswer
             effortStatusAnswer != null -> effortStatusAnswer
             setStatusAnswer != null -> setStatusAnswer
+            // Generic follow-ups must inherit the selected conversational move before
+            // the catalog's "unknown exercise" fallback is considered. Explicit unknown
+            // names are already rejected above, and named catalog questions bypass context.
+            contextualAnswer != null -> contextualAnswer
             catalogAnswer?.startsWith(UNKNOWN_EXERCISE_PREFIX) == true -> catalogAnswer
             catalogAnswer != null -> catalogAnswer
-            contextualAnswer != null -> contextualAnswer
             else -> null
         } ?: return null
 

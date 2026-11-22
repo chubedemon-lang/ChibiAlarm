@@ -156,7 +156,8 @@ class WorkoutProgressionPreviewTest {
         assertEquals(30, proposal.prescribedMaxReps)
         assertEquals(2, proposal.requiredSets)
         assertEquals(2, proposal.maximumSets)
-        assertEquals(30, proposal.restSeconds)
+        // The curated Plank entry prescribes 45 seconds of rest.
+        assertEquals(45, proposal.restSeconds)
     }
 
     @Test fun timedProgressionNeverExceedsTheCatalogMaximum() {

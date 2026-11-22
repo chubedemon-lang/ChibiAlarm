@@ -1662,7 +1662,9 @@ class GuidedWorkoutActivity:Activity() {
                         if (preview.currentMoveChanged) {
                             remainingMs = minOf(
                                 remainingMs,
-                                moves[index].seconds.coerceAtLeast(0) * 1_000L
+                                RemainingWorkoutDuration.seconds(
+                                    WorkoutDurationPlanner.activeSeconds(moves[index]), index, shorterFromIndex
+                                ) * 1_000L
                             )
                         }
                         heading.text = "${index + 1}/${moves.size} • ${moves[index].name}"
@@ -1908,7 +1910,8 @@ class GuidedWorkoutActivity:Activity() {
                         currentExerciseRemainingSeconds = secondsLeft(remainingMs),
                         resting = resting,
                         restSecondsRemaining = if (resting) secondsLeft(restRemainingMs) else 0,
-                        level = workoutLevel
+                        level = workoutLevel,
+                        shorterFromIndex = shorterFromIndex
                     )
             )
         )
@@ -2597,37 +2600,69 @@ class GuidedWorkoutActivity:Activity() {
     private fun shortenRemainingWorkout() {
         if (pausedForSafety || completed) return
         pause()
-        val before = remainingMs + moves.indices.drop(index + 1).sumOf { position ->
-            RemainingWorkoutDuration.seconds(moves[position].seconds, position, shorterFromIndex) * 1000L
-        }
-        // Bind the proposal to the exact paused workout snapshot. A stale dialog
-        // must not shorten a different step or overwrite a newer timer adjustment.
+
         val previewIndex = index
+        val previewSessionId = sessionId
         val previewRemainingMs = remainingMs
         val previewShorterFrom = shorterFromIndex
-        val proposedFrom = minOf(shorterFromIndex, index)
-        val afterCurrent = RemainingWorkoutDuration.shortenActiveMs(remainingMs)
-        val after = afterCurrent + moves.indices.drop(index + 1).sumOf { position ->
-            RemainingWorkoutDuration.seconds(moves[position].seconds, position, proposedFrom) * 1000L
-        }
-        fun format(ms: Long): String = "${(ms / 60000)} phút ${(ms / 1000) % 60} giây"
+        val previewResting = resting
+        val previewRestRemainingMs = restRemainingMs
+        val previewCompletedMoves = completedMoveIndices.toSet()
+        val previewCompletedSets = completedSetsByMove.toMap()
+        val previewMoves = moves.toList()
+
+        fun estimate(activeRemainingMs: Long, shorterFrom: Int): Int =
+            WorkoutSessionTimeEstimate.seconds(
+                moves = previewMoves,
+                currentIndex = previewIndex,
+                completedMoves = previewCompletedMoves,
+                completedSets = previewCompletedSets,
+                currentExerciseRemainingSeconds = secondsLeft(activeRemainingMs),
+                resting = previewResting,
+                restSecondsRemaining = if (previewResting) secondsLeft(previewRestRemainingMs) else 0,
+                level = workoutLevel,
+                shorterFromIndex = shorterFrom
+            )
+
+        val beforeSeconds = estimate(previewRemainingMs, previewShorterFrom)
+        val proposedFrom = minOf(previewShorterFrom, previewIndex)
+        val afterCurrent = RemainingWorkoutDuration.shortenActiveMs(previewRemainingMs)
+        val afterSeconds = estimate(afterCurrent, proposedFrom)
+
+        fun format(seconds: Int): String = "${seconds / 60} phút ${seconds % 60} giây"
         val stepPreview = RemainingWorkoutDuration.preview(
-            moves.map { it.name }, moves.map { it.seconds }, index,
-            (remainingMs / 1000L).toInt(), shorterFromIndex
+            previewMoves.map { it.name },
+            previewMoves.map { WorkoutDurationPlanner.activeSeconds(it) },
+            previewIndex,
+            secondsLeft(previewRemainingMs),
+            previewShorterFrom
         )
-        val details = stepPreview.take(4).joinToString("\n") { step ->
-            "• ${step.name}: ${step.beforeSeconds}s → ${step.afterSeconds}s"
-        } + if (stepPreview.size > 4) "\n… và ${stepPreview.size - 4} bước tiếp theo" else ""
+        val details = stepPreview.take(4).mapIndexed { offset, step ->
+            val move = previewMoves.getOrNull(previewIndex + offset)
+            val prescribedRest = move?.let { WorkoutDurationPlanner.prescribedRestSeconds(it) } ?: 0
+            val restLabel = if (prescribedRest > 0) " + nghỉ theo giáo án ${prescribedRest}s" else ""
+            "• ${step.name}: ${step.beforeSeconds}s → ${step.afterSeconds}s$restLabel"
+        }.joinToString("\n") + if (stepPreview.size > 4) {
+            "\n… và ${stepPreview.size - 4} bước tiếp theo"
+        } else ""
 
         AlertDialog.Builder(this).setTitle("Xem trước giáo án rút ngắn")
-            .setMessage("Thời gian còn lại dự kiến:\nTrước: ${format(before)}\nSau: ${format(after)}\n\n" +
-                "Giảm thời lượng động tác hiện tại và các động tác phía sau. " +
-                "Những bước đã hoàn thành được giữ nguyên. Đây là ước tính, không bao gồm nghỉ thêm.\n\n" + details)
+            .setMessage(
+                "Thời gian còn lại ước tính (gồm nghỉ theo giáo án và chuyển bước):\n" +
+                    "Trước: ${format(beforeSeconds)}\nSau: ${format(afterSeconds)}\n\n" +
+                    "Chỉ giảm thời lượng vận động của phần chưa hoàn thành; không rút ngắn số hiệp, số lần " +
+                    "hoặc thời gian nghỉ theo giáo án. Nghỉ thêm ngoài giáo án có thể làm thời gian thực tế dài hơn.\n\n" +
+                    details
+            )
             .setPositiveButton("Xác nhận thay đổi") { _, _ ->
                 if (pausedForSafety || completed || index != previewIndex ||
-                    index !in moves.indices || remainingMs != previewRemainingMs ||
-                    shorterFromIndex != previewShorterFrom) {
-                    Toast.makeText(this, "Giáo án đã thay đổi. Hãy xem trước lại.", Toast.LENGTH_LONG).show()
+                    sessionId != previewSessionId || index !in moves.indices ||
+                    remainingMs != previewRemainingMs || shorterFromIndex != previewShorterFrom ||
+                    resting != previewResting || restRemainingMs != previewRestRemainingMs ||
+                    moves != previewMoves || completedMoveIndices != previewCompletedMoves ||
+                    completedSetsByMove != previewCompletedSets
+                ) {
+                    Toast.makeText(this, "Buổi tập đã thay đổi. Hãy xem trước lại.", Toast.LENGTH_LONG).show()
                     return@setPositiveButton
                 }
                 shorterFromIndex = proposedFrom
@@ -2636,7 +2671,7 @@ class GuidedWorkoutActivity:Activity() {
                 counter.text = String.format(Locale.US, "%02d:%02d", seconds / 60, seconds % 60)
                 control.text = "▶ Tiếp tục giáo án ngắn hơn"
                 saveCheckpoint()
-                speak("Đã rút ngắn phần tập còn lại. Các bước đã hoàn thành không thay đổi.")
+                speak("Đã rút ngắn thời lượng vận động còn lại. Thời gian nghỉ và mục tiêu hiệp vẫn được giữ nguyên.")
             }
             .setNegativeButton("Giữ giáo án cũ", null).show()
     }
@@ -3365,7 +3400,9 @@ class GuidedWorkoutActivity:Activity() {
         setTimerExpired=false
         val move=moves[index]
         tenSecondCueGiven=false
-        remainingMs=RemainingWorkoutDuration.seconds(move.seconds,index,shorterFromIndex)*1000L
+        remainingMs=RemainingWorkoutDuration.seconds(
+            WorkoutDurationPlanner.activeSeconds(move), index, shorterFromIndex
+        )*1000L
         heading.text="${index+1}/${moves.size} • ${move.name}"
         poseView.pose=WorkoutPoseGuide.classify(move.name)
         renderDose()

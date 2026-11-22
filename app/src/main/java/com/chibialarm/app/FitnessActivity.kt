@@ -972,11 +972,7 @@ class FitnessActivity:Activity() {
                 if (selection == null) {
                     AlertDialog.Builder(this@FitnessActivity)
                         .setTitle("Chưa có giáo án phù hợp")
-                        .setMessage(
-                            "Không còn chương trình nào vừa đáp ứng dụng cụ và bộ lọc vận động, " +
-                                "vừa nằm trong ${targetMinutes} phút. Chibi chưa khởi chạy buổi tập. " +
-                                "Hãy xem lại lựa chọn hoặc tăng thời lượng nếu phù hợp."
-                        )
+                        .setMessage(WorkoutPlanCandidateSelector.noSelectionNotice(planPreferences))
                         .setPositiveButton("Đã hiểu", null)
                         .show()
                     return@setOnClickListener

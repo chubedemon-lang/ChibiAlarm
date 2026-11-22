@@ -1201,14 +1201,74 @@ class GuidedWorkoutActivity:Activity() {
     }
 
     private fun requestTypedCommand() {
-        val field=EditText(this).apply {
-            hint="Ví dụ: bài này tác động nhóm cơ nào?, còn mấy hiệp nữa?, tôi đã làm mấy hiệp?, hiệp vừa rồi tao làm bao nhiêu lần?, tổng tao đã làm bao nhiêu lần?, nghỉ bao lâu?, còn bao lâu nghỉ?, cách tập bài này?, xong hiệp, đổi bài, nghỉ thêm"
+        val field = EditText(this).apply {
+            hint = "Ví dụ: bài này tác động nhóm cơ nào?, còn mấy hiệp nữa?, tôi đã làm mấy hiệp?, nghỉ bao lâu?, cách tập bài này?"
+            minLines = 2
+            maxLines = 4
             setSingleLine(false)
+            contentDescription = "Câu hỏi hoặc yêu cầu điều chỉnh buổi tập cho Chibi"
         }
+        val activePlan = if (!resting && index in moves.indices) currentSetPlan() else null
+        val completedCurrentSets = completedSetsByMove[index] ?: 0
+        val hasOptionalCurrentSets = activePlan != null &&
+            activePlan.maximumSets > activePlan.requiredSets &&
+            completedCurrentSets < activePlan.maximumSets
+        val hasOptionalFutureExercises = moves.indices.any { position ->
+            position > index && moves[position].name in optionalExtensionNames
+        }
+        val quickPrompts = WorkoutCoachQuickPrompts.forSession(
+            resting = resting,
+            hasOptionalFutureExercises = hasOptionalFutureExercises,
+            hasOptionalCurrentSets = hasOptionalCurrentSets,
+            safetyStopped = pausedForSafety || completed
+        )
+
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(22, 10, 22, 8)
+        }
+        content.addView(TextView(this).apply {
+            text = "Chọn gợi ý để điền nhanh hoặc tự nhập. Chibi chỉ xem trước; mọi thay đổi vẫn cần mày xác nhận."
+            textSize = 13f
+            setTextColor(Color.rgb(90, 76, 105))
+            setPadding(0, 0, 0, 8)
+        })
+        if (quickPrompts.isNotEmpty()) {
+            val scroll = HorizontalScrollView(this).apply {
+                isHorizontalScrollBarEnabled = false
+                contentDescription = "Các gợi ý nhanh cho buổi tập hiện tại"
+            }
+            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            quickPrompts.forEachIndexed { promptIndex, prompt ->
+                val chip = Button(this).apply {
+                    text = prompt.label
+                    isAllCaps = false
+                    contentDescription = "Điền gợi ý ${prompt.label}; chưa gửi hoặc áp dụng"
+                    setOnClickListener {
+                        field.setText(prompt.utterance)
+                        field.setSelection(field.text.length)
+                        field.requestFocus()
+                    }
+                }
+                val params = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+                if (promptIndex > 0) {
+                    params.marginStart = (6 * resources.displayMetrics.density).toInt()
+                }
+                row.addView(chip, params)
+            }
+            scroll.addView(row)
+            content.addView(scroll)
+        }
+        content.addView(field)
+
         AlertDialog.Builder(this).setTitle("💬 Chibi Coach • hỏi & điều khiển")
-            .setMessage("Mày có thể hỏi động tác, nhóm cơ, dụng cụ, số hiệp còn lại hoặc đã ghi, và thời gian nghỉ thực tế; Chibi trả lời từ dữ liệu offline. Lệnh thay đổi buổi tập vẫn cần xem trước và xác nhận.")
-            .setView(field).setPositiveButton("Gửi"){_,_->handleCoachCommand(field.text.toString())}
-            .setNegativeButton("Hủy",null).show()
+            .setView(content)
+            .setPositiveButton("Gửi") { _, _ -> handleCoachCommand(field.text.toString()) }
+            .setNegativeButton("Hủy", null)
+            .show()
     }
     /** Spoken target edits preserve confirmed sets and apply only to the unfinished sets. */
     private fun confirmSpokenTarget(value: Int, spokenUnit: String = "lần", restSeconds: Int? = null) {

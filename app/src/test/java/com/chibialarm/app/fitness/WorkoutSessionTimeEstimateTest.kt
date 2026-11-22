@@ -118,6 +118,60 @@ class WorkoutSessionTimeEstimateTest {
         assertEquals(86_400, estimate)
     }
 
+
+    @Test fun shorteningScalesOnlyUnfinishedActiveTimeAndKeepsRestAndTransitions() {
+        val sessionMoves = listOf(
+            TrainingMove("Khởi động", "1 phút", "Bắt đầu chậm", "Đi chậm", "Dừng nếu chóng mặt", 60),
+            TrainingMove("Squat", "2 hiệp × 8 lần", "Đứng vững", "Giảm biên độ", "Dừng nếu đau", 90, 30),
+            // The dose's conservative lower bound (3 minutes) wins over the unrelated 120s timer hint.
+            TrainingMove("Thả lỏng", "3–5 phút", "Thở chậm", "Ngồi nghỉ", "Không kéo đến đau", 120)
+        )
+
+        val before = WorkoutSessionTimeEstimate.seconds(
+            moves = sessionMoves,
+            currentIndex = 0,
+            completedMoves = emptySet(),
+            completedSets = emptyMap(),
+            currentExerciseRemainingSeconds = 20,
+            resting = false,
+            restSecondsRemaining = 0,
+            level = 0
+        )
+        val after = WorkoutSessionTimeEstimate.seconds(
+            moves = sessionMoves,
+            currentIndex = 0,
+            completedMoves = emptySet(),
+            completedSets = emptyMap(),
+            currentExerciseRemainingSeconds = 20,
+            resting = false,
+            restSecondsRemaining = 0,
+            level = 0,
+            shorterFromIndex = 1
+        )
+
+        assertEquals(360, before)
+        // 20 current + 45 squat + 30 prescribed rest + 90 cooldown + 40 transitions.
+        assertEquals(225, after)
+    }
+
+    @Test fun shorteningTheCurrentSetMoveUsesTheSameCatalogDurationPolicy() {
+        val setMove = TrainingMove(
+            "Squat", "2 hiệp × 8 lần", "Đứng vững", "Giảm biên độ", "Dừng nếu đau", 90, 30
+        )
+        val estimate = WorkoutSessionTimeEstimate.seconds(
+            moves = listOf(setMove),
+            currentIndex = 0,
+            completedMoves = emptySet(),
+            completedSets = emptyMap(),
+            currentExerciseRemainingSeconds = 0,
+            resting = false,
+            restSecondsRemaining = 0,
+            level = 0,
+            shorterFromIndex = 0
+        )
+        assertEquals(45, estimate)
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun rejectsInvalidCurrentIndex() {
         WorkoutSessionTimeEstimate.seconds(

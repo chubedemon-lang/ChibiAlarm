@@ -167,8 +167,12 @@ class FitnessActivity:Activity() {
         }
     }
 
-    private fun sayFollowUp(message: String) {
-        coachSpeechMemory.remember(message)
+    private fun sayFollowUp(
+        message: String,
+        followUp: FitnessNaturalRequest.Result? = null
+    ) {
+        val spokenMessage = followUp?.let { FitnessCoachFollowUp.spokenPrompt(message, it) } ?: message
+        coachSpeechMemory.remember(spokenMessage)
         speechReplayButton?.isEnabled = coachSpeechMemory.hasReply()
         speechStopButton?.isEnabled = speechReady
         val speechText = coachSpeechMemory.replayText(
@@ -855,7 +859,7 @@ class FitnessActivity:Activity() {
                     parsed.avoidOverheadReach?.let { overheadReachCheckBox?.isChecked = it }
                     parsed.avoidKneeling?.let { kneelingCheckBox?.isChecked = it }
                     parsed.additionalEquipment?.let { setAdditionalEquipmentSelection(it) }
-                    sayFollowUp(coachMessage)
+                    sayFollowUp(coachMessage, parsed)
                     val planReady =
                         FitnessCoachFollowUp.nextQuestionType(parsed) == FitnessCoachFollowUp.Question.COMPLETE &&
                             parsed.impact != 2

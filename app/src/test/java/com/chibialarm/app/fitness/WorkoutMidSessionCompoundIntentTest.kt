@@ -41,6 +41,7 @@ class WorkoutMidSessionCompoundIntentTest {
         assertEquals(30, restRequest.restSeconds)
 
         assertTrue(WorkoutMidSessionRequest.parse("Còn 15 giây nữa?") is WorkoutMidSessionRequest.Result.Unsupported)
+        assertTrue(WorkoutMidSessionRequest.parse("Giảm còn 15 giây") is WorkoutMidSessionRequest.Result.Unsupported)
         assertTrue(WorkoutMidSessionRequest.parse("Đừng giảm còn 15 giây mỗi hiệp") is WorkoutMidSessionRequest.Result.Unsupported)
     }
 

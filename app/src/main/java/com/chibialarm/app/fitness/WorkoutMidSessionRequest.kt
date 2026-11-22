@@ -555,7 +555,7 @@ object WorkoutMidSessionRequest {
         // Timed-hold ceiling is separate from repetitions: "nghỉ 30 giây" must never
         // become a Plank target. Accept only explicit per-set duration wording.
         val durationLimitMatch = Regex(
-            """(?:giam(?: thoi luong)?(?: xuong)? con|rut(?: xuong)? con|chi giu|giu)\s+([0-9]{1,3}|mot|hai|ba|bon|tu|nam|sau|bay|tam|chin|muoi)\s+giay(?:\s+moi\s+hiep)?(?:\s+thoi)?\b|moi\s+hiep\s+([0-9]{1,3}|mot|hai|ba|bon|tu|nam|sau|bay|tam|chin|muoi)\s+giay(?:\s+thoi)?\b"""
+            """(?:giam(?: thoi luong)?(?: xuong)? con|rut(?: xuong)? con|chi giu|giu)\s+([0-9]{1,3}|mot|hai|ba|bon|tu|nam|sau|bay|tam|chin|muoi)\s+giay\s+moi\s+hiep(?:\s+thoi)?\b|giam\s+thoi\s+luong(?:\s+xuong)?\s+con\s+([0-9]{1,3}|mot|hai|ba|bon|tu|nam|sau|bay|tam|chin|muoi)\s+giay(?:\s+thoi)?\b|moi\s+hiep\s+([0-9]{1,3}|mot|hai|ba|bon|tu|nam|sau|bay|tam|chin|muoi)\s+giay(?:\s+thoi)?\b"""
         ).find(text)
         val durationLimitPrefix = durationLimitMatch?.let {
             text.substring(0, it.range.first).trimEnd()
@@ -565,7 +565,8 @@ object WorkoutMidSessionRequest {
         val currentDurationLimit = if (durationLimitMatch == null || negatedDurationLimit) {
             null
         } else {
-            val token = durationLimitMatch.groupValues[1].ifBlank { durationLimitMatch.groupValues[2] }
+            val token = durationLimitMatch.groupValues.drop(1).firstOrNull { it.isNotBlank() }
+                ?: return Result.Unsupported
             val count = token.toIntOrNull() ?: when (token) {
                 "mot" -> 1
                 "hai" -> 2

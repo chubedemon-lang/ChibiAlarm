@@ -39,7 +39,7 @@ class GuidedWorkoutRestVoicePreferenceTest {
     private fun field(name: String) =
         GuidedWorkoutActivity::class.java.getDeclaredField(name).apply { isAccessible = true }
 
-    @Test fun restVoiceCueIsVisibleOptOutAndPersistedOnlyInGuestSessionCheckpoint() {
+    @Test fun restVoiceCueIsVisibleOptOutAndPersistedInGuestPreferencesAndCheckpoint() {
         val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup().get()
         try {
             field("resting").setBoolean(activity, true)
@@ -65,6 +65,13 @@ class GuidedWorkoutRestVoicePreferenceTest {
                     pausedForSafety = false,
                     voiceCueEnabled = field("restVoiceCueEnabled").getBoolean(activity)
                 )
+            )
+
+            val guestPreference = RuntimeEnvironment.getApplication()
+                .getSharedPreferences(WorkoutRestVoiceCuePreference.PREFERENCES_NAME, Context.MODE_PRIVATE)
+            assertFalse(
+                "The opt-out must persist beyond the current workout checkpoint",
+                guestPreference.getBoolean(WorkoutRestVoiceCuePreference.KEY_ENABLED, true)
             )
 
             val checkpoint = RuntimeEnvironment.getApplication()

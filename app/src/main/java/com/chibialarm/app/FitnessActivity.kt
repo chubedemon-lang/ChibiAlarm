@@ -927,9 +927,11 @@ class FitnessActivity:Activity() {
                 val equipment=equipmentSpinner.selectedItemPosition
                 val impact=effectiveImpactRestriction()
                 persistNonSensitiveProfile()
-                val recommendation=FitnessPlanAdvisor.recommend(FitnessPlanAdvisor.Preferences(
-                    goal,energy,level.selectedItemPosition,mins[length.selectedItemPosition],equipment,impact,
-                    currentAdditionalEquipment()))
+                val planPreferences = FitnessPlanAdvisor.Preferences(
+                    goal, energy, level.selectedItemPosition, mins[length.selectedItemPosition], equipment, impact,
+                    currentAdditionalEquipment()
+                )
+                val recommendation = FitnessPlanAdvisor.recommend(planPreferences)
                 if (recommendation.requiresProfessionalReview) {
                     AlertDialog.Builder(this@FitnessActivity)
                         .setTitle("🐰 Tạm dừng kế hoạch tập")
@@ -942,7 +944,7 @@ class FitnessActivity:Activity() {
                 val constraintProfile = currentWorkoutConstraintProfile()
                 // Filter every candidate before history-based variety selection; a past
                 // workout must never reintroduce a move requiring unavailable equipment.
-                val additionalEquipment = currentAdditionalEquipment()
+                val additionalEquipment = planPreferences.additionalEquipment
                 val filteredPrograms = TrainingCatalog.programs.associate { candidate ->
                     val constrained = WorkoutConstraintFilter.apply(candidate, constraintProfile)
                     candidate.id to (constrained to WorkoutEquipmentFilter.apply(
@@ -950,26 +952,41 @@ class FitnessActivity:Activity() {
                     ))
                 }
                 val baseProgram = TrainingCatalog.byId(recommendation.programId)
-                val basePair = filteredPrograms[baseProgram.id]
-                    ?: error("Recommended program is missing from the catalog")
-                if (!basePair.second.canStart) {
-                    AlertDialog.Builder(this@FitnessActivity)
-                        .setTitle("Chưa có động tác phù hợp")
-                        .setMessage("Chương trình này không còn động tác chính phù hợp với dụng cụ và bộ lọc hiện tại. Hãy chọn dụng cụ khác hoặc xem chương trình khác.")
-                        .setPositiveButton("Đã hiểu", null).show()
-                    return@setOnClickListener
-                }
-                val eligibleAlternatives = TrainingCatalog.programs.filter { candidate ->
-                    candidate.id != baseProgram.id &&
-                        (candidate.id != "advanced" || level.selectedItemPosition >= 2) &&
+                val targetMinutes = planPreferences.minutes
+                val hasResistanceEquipment = equipment in setOf(2, 4, 5) ||
+                    additionalEquipment.any {
+                        it == TrainingEquipment.DUMBBELL || it == TrainingEquipment.RESISTANCE_BAND
+                    }
+                val eligibleCandidates = TrainingCatalog.programs.filter { candidate ->
+                    (candidate.id != "advanced" || level.selectedItemPosition >= 2) &&
                         (candidate.id != "weighted" ||
-                            ((equipment in setOf(2, 4, 5) || additionalEquipment.any {
-                                it == TrainingEquipment.DUMBBELL || it == TrainingEquipment.RESISTANCE_BAND
-                            }) && level.selectedItemPosition >= 1)) &&
+                            (hasResistanceEquipment && level.selectedItemPosition >= 1)) &&
                         filteredPrograms[candidate.id]?.second?.canStart == true
                 }.map { candidate -> filteredPrograms.getValue(candidate.id).second.program }
-                val targetMinutes = mins[length.selectedItemPosition]
-                val historySuggestion = if (targetMinutes <= 10) null else {
+                val selection = WorkoutPlanCandidateSelector.select(
+                    preferred = baseProgram,
+                    candidates = eligibleCandidates,
+                    preferences = planPreferences,
+                    constraints = constraintProfile
+                )
+                if (selection == null) {
+                    AlertDialog.Builder(this@FitnessActivity)
+                        .setTitle("Chưa có giáo án phù hợp")
+                        .setMessage(
+                            "Không còn chương trình nào vừa đáp ứng dụng cụ và bộ lọc vận động, " +
+                                "vừa nằm trong ${targetMinutes} phút. Chibi chưa khởi chạy buổi tập. " +
+                                "Hãy xem lại lựa chọn hoặc tăng thời lượng nếu phù hợp."
+                        )
+                        .setPositiveButton("Đã hiểu", null)
+                        .show()
+                    return@setOnClickListener
+                }
+                val basePair = filteredPrograms[selection.program.id]
+                    ?: error("Selected compatible program is missing from the catalog")
+                val eligibleAlternatives = eligibleCandidates.filter {
+                    it.id != basePair.second.program.id
+                }
+                val historySuggestion = if (selection.usedFallback || targetMinutes <= 10) null else {
                     WorkoutHistoryAdvisor.suggestVariety(
                         basePair.second.program,
                         WorkoutData.history(this@FitnessActivity),
@@ -1024,7 +1041,7 @@ class FitnessActivity:Activity() {
                     additionalEquipment = additionalEquipment,
                     impact = impact,
                     constraints = constraintProfile
-                )
+                ) + selection.notice.takeIf { it.isNotBlank() }?.let { "\n\n" + it }.orEmpty()
                 val muscleFocusSummary = WorkoutMusclePlanSummary.format(planned.moves)
                 val spokenMuscleFocusSummary = WorkoutMusclePlanSummary.spoken(planned.moves)
                 val recommendationMessage = profileSummary + "\n\n" + durationSummary +

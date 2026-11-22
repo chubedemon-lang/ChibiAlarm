@@ -4525,6 +4525,22 @@ class GuidedWorkoutActivity:Activity() {
             setTextColor(Color.rgb(75, 55, 95))
             gravity = Gravity.CENTER
         })
+        panel.addView(Button(this).apply {
+            text = "🔊 Nghe tổng kết EXP"
+            isAllCaps = false
+            tag = "workout-reward-speech-preview"
+            contentDescription = "Nghe tổng kết phần thưởng EXP; chỉ phát khi bạn nhấn, không đọc nhật ký tập hoặc cảm nhận sức khỏe"
+            setOnClickListener {
+                val spokenSummary = WorkoutRewardSpeechSummary.build(display)
+                if (!ready || !speak(spokenSummary)) {
+                    Toast.makeText(
+                        this@GuidedWorkoutActivity,
+                        "Giọng đọc chưa sẵn sàng. Bạn vẫn có thể xem tổng kết bằng chữ.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        })
         if (effortSummary.isNotBlank()) {
             val visibleSummary = effortSummary.take(600).let {
                 if (effortSummary.length > 600) "$it…" else it

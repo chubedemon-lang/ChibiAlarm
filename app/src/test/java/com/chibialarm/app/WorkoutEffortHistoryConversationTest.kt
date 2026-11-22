@@ -367,4 +367,39 @@ class WorkoutEffortHistoryConversationTest {
         assertFalse(answer.contains("• Squat — hiệp 1:"))
     }
 
+
+    @Test fun latestSummaryShowsOnlyTheNewestStructuredCheckInsAndNeverPrivateNotes() {
+        val older = guided(
+            today.minusDays(2),
+            "Squat: hiệp 1: Khó, cần nghỉ thêm",
+            "550e8400-e29b-41d4-a716-446655440061"
+        )
+        val latest = guided(
+            today,
+            "Squat: hiệp 1: Vừa sức; Plank: hiệp 1: Nhẹ, còn dư sức",
+            "550e8400-e29b-41d4-a716-446655440062",
+            "private latest health note"
+        )
+
+        val summary = WorkoutEffortHistoryConversation.latestSummary(listOf(older, latest), today)
+
+        assertNotNull(summary)
+        assertTrue(summary!!.contains("Check-in cảm nhận gần nhất"))
+        assertTrue(summary.contains("Vừa sức"))
+        assertTrue(summary.contains("Nhẹ, còn dư sức"))
+        assertFalse(summary.contains("Khó, cần nghỉ thêm"))
+        assertFalse(summary.contains("private"))
+    }
+
+    @Test fun latestSummaryIsAbsentWhenOnlyLegacyOrInvalidCheckInsExist() {
+        val legacy = Workout(today.toString(), "Buổi cũ", 20, "private legacy note")
+        val invalid = guided(
+            today,
+            "Squat: hiệp 1: Vừa sức",
+            "not-a-uuid"
+        )
+
+        assertNull(WorkoutEffortHistoryConversation.latestSummary(listOf(legacy, invalid), today))
+    }
+
 }

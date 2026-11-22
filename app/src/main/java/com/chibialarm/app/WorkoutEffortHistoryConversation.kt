@@ -16,6 +16,7 @@ object WorkoutEffortHistoryConversation {
     private const val MAX_LOG_CHARS = 1_200
     private const val MAX_MOVES = 100
     private const val MAX_SETS = 20
+    private const val NO_CHECK_IN_MESSAGE = "Chưa có check-in cảm nhận hợp lệ trong nhật ký trên máy."
     private val dateFormat = DateTimeFormatter.ofPattern("dd/MM/yyyy", Locale.ROOT)
     private val effortPattern = Regex(
         """hiệp\s+(\d{1,2})\s*:\s*(Nhẹ,\s*còn dư sức|Vừa sức|Khó,\s*cần nghỉ thêm|Quá sức,\s*tạm dừng)""",
@@ -37,6 +38,15 @@ object WorkoutEffortHistoryConversation {
         val moves: List<MoveEffort>
     )
     private data class MoveChoice(val name: String?, val ambiguous: List<String> = emptyList())
+
+    /** Read-only summary for the Fitness home; null means no valid self-reported check-in exists. */
+    fun latestSummary(
+        workouts: List<Workout>,
+        today: LocalDate = LocalDate.now()
+    ): String? {
+        val summary = answer("Mức độ gắng sức buổi gần nhất thế nào?", workouts, today)
+        return summary?.takeUnless { it.startsWith(NO_CHECK_IN_MESSAGE) }
+    }
 
     fun answer(
         input: String,
@@ -64,7 +74,7 @@ object WorkoutEffortHistoryConversation {
             .sortedWith(compareByDescending<Session> { it.date }.thenByDescending { it.originalIndex })
 
         if (sessions.isEmpty()) {
-            return "Chưa có check-in cảm nhận hợp lệ trong nhật ký trên máy. Hãy hoàn thành và lưu một buổi Guided Workout có chọn mức độ gắng sức trước nhé."
+            return "$NO_CHECK_IN_MESSAGE Hãy hoàn thành và lưu một buổi Guided Workout có chọn mức độ gắng sức trước nhé."
         }
 
         if (isHardestSetQuestion(query)) {

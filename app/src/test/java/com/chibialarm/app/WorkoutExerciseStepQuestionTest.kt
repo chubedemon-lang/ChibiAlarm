@@ -109,7 +109,7 @@ class WorkoutExerciseStepQuestionTest {
         val answer = WorkoutExerciseStepQuestion.answer(
             "Bước 2 và bước 3 là gì?",
             "Squat không tạ",
-            "Chuẩn bị tư thế.\\nHạ người chậm và có kiểm soát."
+            "Chuẩn bị tư thế.\nHạ người chậm và có kiểm soát."
         )
 
         assertNotNull(answer)

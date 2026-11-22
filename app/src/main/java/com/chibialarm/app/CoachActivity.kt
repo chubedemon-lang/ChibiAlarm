@@ -56,6 +56,7 @@ class CoachActivity:Activity() {
         } })
         root.addView(buttons)
         val voiceTools=LinearLayout(this).apply { orientation=0 }
+        voiceTools.addView(Button(this).apply { text="▶ Thử giọng";setOnClickListener { previewVoice() } },LinearLayout.LayoutParams(0,-2,1f))
         voiceTools.addView(Button(this).apply { text="🎤 Nói";setOnClickListener { explainMicrophoneThenListen() } },LinearLayout.LayoutParams(0,-2,1f))
         voiceTools.addView(Button(this).apply { text="🔊 Bật đọc";setOnClickListener {
             if (!speakerReady && !autoSpeak) {
@@ -173,6 +174,63 @@ class CoachActivity:Activity() {
         fitnessContext=FitnessCoachConversation.merge(fitnessContext,next)
         append("assistant",next.reply+"\n\n"+FitnessCoachFollowUp.nextQuestion(fitnessContext!!)+"\n(Chế độ Fitness ngoại tuyến)")
     }
+    /**
+     * Preview the already-selected Vietnamese system voice without enabling auto-read.
+     * Voices that require a network, or whose network behavior is unknown, need consent.
+     */
+    private fun previewVoice() {
+        val engine = speaker
+        if (engine == null) {
+            Toast.makeText(this, "Bộ đọc chưa sẵn sàng.", Toast.LENGTH_LONG).show()
+            return
+        }
+        val networkRequired = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            runCatching { engine.voice?.isNetworkConnectionRequired }.getOrNull()
+        } else {
+            null
+        }
+        when (CoachSpeechPreview.decision(speakerReady, networkRequired)) {
+            CoachSpeechPreview.Decision.UNAVAILABLE -> Toast.makeText(
+                this,
+                "Chưa có giọng tiếng Việt tương thích. Hãy cài dữ liệu Tiếng Việt trong cài đặt TTS.",
+                Toast.LENGTH_LONG
+            ).show()
+            CoachSpeechPreview.Decision.PLAY_WITHOUT_NETWORK_PROMPT -> speakVoicePreview(engine)
+            CoachSpeechPreview.Decision.REQUIRE_NETWORK_CONSENT -> {
+                AlertDialog.Builder(this)
+                    .setTitle("Giọng đọc cần mạng")
+                    .setMessage("Bộ TTS đang chọn báo cần kết nối mạng. Khi nghe thử, dịch vụ TTS bên ngoài có thể xử lý văn bản mẫu. Chỉ tiếp tục nếu bạn đồng ý.")
+                    .setPositiveButton("Đồng ý, nghe thử") { _, _ -> speakVoicePreview(engine) }
+                    .setNegativeButton("Hủy", null)
+                    .show()
+            }
+            CoachSpeechPreview.Decision.REQUIRE_UNKNOWN_NETWORK_CONSENT -> {
+                AlertDialog.Builder(this)
+                    .setTitle("Chưa xác định được chế độ ngoại tuyến")
+                    .setMessage("Android không cung cấp đủ thông tin để xác nhận giọng này hoạt động ngoại tuyến. Bản nghe thử có thể cần dịch vụ bên ngoài. Bạn có muốn tiếp tục?")
+                    .setPositiveButton("Đồng ý, nghe thử") { _, _ -> speakVoicePreview(engine) }
+                    .setNegativeButton("Hủy", null)
+                    .show()
+            }
+        }
+    }
+
+    private fun speakVoicePreview(engine: TextToSpeech) {
+        engine.stop()
+        val settings = getSharedPreferences("settings", 0)
+        engine.setSpeechRate(WorkoutSpeechRate.normalize(settings.getFloat("rate", 1f)))
+        engine.setPitch(settings.getFloat("pitch", 1f))
+        val result = engine.speak(
+            CoachSpeechPreview.SAMPLE_TEXT,
+            TextToSpeech.QUEUE_FLUSH,
+            null,
+            "coach-voice-preview"
+        )
+        if (result != TextToSpeech.SUCCESS) {
+            Toast.makeText(this, "Không thể phát bản nghe thử bằng giọng hiện tại.", Toast.LENGTH_LONG).show()
+        }
+    }
+
     /**
      * Android's speech recognizer may be provided by another app and may use
      * network processing. Require an explicit tap before each recording.

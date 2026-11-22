@@ -25,6 +25,15 @@ internal object WorkoutPlanCandidateSelector {
         "Giãn cơ và thở chậm"
     )
 
+    fun noSelectionNotice(preferences: FitnessPlanAdvisor.Preferences): String {
+        require(preferences.minutes in 5..120)
+        return if (preferences.impact == 2) {
+            "Bạn đã chọn dừng tập vì đau hoặc có dấu hiệu không an toàn. Chibi không tạo giáo án thay thế. Hãy nghỉ và không cố tập tiếp."
+        } else {
+            "Không có giáo án nào đáp ứng đồng thời trình độ, dụng cụ, mức tác động, hạn chế vận động và khung ${preferences.minutes} phút. Chibi chưa khởi chạy buổi tập. Hãy xem lại lựa chọn hoặc tăng thời lượng nếu phù hợp."
+        }
+    }
+
     fun select(
         preferred: TrainingProgram,
         candidates: List<TrainingProgram>,

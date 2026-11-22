@@ -379,4 +379,19 @@ class WorkoutStepVoiceCommandTest {
         )
     }
 
+
+    @Test fun adjacentStepPairQuestionsRouteToCoachWithoutAdvancingTheGuide() {
+        assertEquals(
+            WorkoutStepVoiceCommand.Command.ASK_EXERCISE,
+            WorkoutStepVoiceCommand.parse("Bước 2 và bước 3 là gì?")
+        )
+        assertEquals(
+            WorkoutStepVoiceCommand.Command.ASK_EXERCISE,
+            WorkoutStepVoiceCommand.parse("buoc thu hai va buoc thu ba cua bai nay")
+        )
+        assertEquals(
+            WorkoutStepVoiceCommand.Command.SAFETY,
+            WorkoutStepVoiceCommand.parse("Bước 2 và bước 3 là gì nhưng tôi đau cổ tay")
+        )
+    }
 }

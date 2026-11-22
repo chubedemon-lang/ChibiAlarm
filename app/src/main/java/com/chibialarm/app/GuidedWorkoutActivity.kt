@@ -663,6 +663,12 @@ class GuidedWorkoutActivity:Activity() {
             text="Hình minh họa tư thế đơn giản, không đánh giá kỹ thuật. Luôn đọc hướng dẫn từng bước."
             textSize=12f
         })
+        root.addView(Button(this).apply {
+            tag = "workout-breathing-guide"
+            text = "🌬️ Nhịp thở cho động tác"
+            contentDescription = "Xem gợi ý nhịp thở chung cho động tác hiện tại; không sử dụng microphone."
+            setOnClickListener { showBreathingGuide() }
+        })
         counter=TextView(this).apply {
             textSize=54f;gravity=Gravity.CENTER;setTextColor(Color.rgb(100,70,140))
         }
@@ -3008,6 +3014,65 @@ class GuidedWorkoutActivity:Activity() {
         try { startActivity(Intent(Intent.ACTION_VIEW,Uri.parse(url))) }
         catch(_:Exception) { Toast.makeText(this,"Không tìm thấy ứng dụng mở liên kết",Toast.LENGTH_LONG).show() }
     }
+    /**
+     * Shows a catalog-grounded breathing cue on demand. Reading is user-initiated,
+     * uses the existing local TTS engine, and never opens the microphone.
+     */
+    private fun showBreathingGuide() {
+        if (pausedForSafety) {
+            Toast.makeText(
+                this,
+                "Buổi tập đang dừng vì đau; hãy nghỉ, không phát hướng dẫn vận động.",
+                Toast.LENGTH_LONG
+            ).show()
+            return
+        }
+        val selectedIndex = index
+        val move = moves.getOrNull(selectedIndex) ?: return
+        val cue = WorkoutBreathingGuide.cue(move.name)
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("🌬️ Nhịp thở • \${move.name}")
+            .setMessage(
+                cue + "\n\nGợi ý chung, không đánh giá tư thế hoặc thay thế tư vấn y tế."
+            )
+            .setNegativeButton("Đóng", null)
+            .setPositiveButton("🔊 Nghe hướng dẫn", null)
+            .create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                when {
+                    pausedForSafety -> {
+                        dialog.dismiss()
+                        Toast.makeText(
+                            this@GuidedWorkoutActivity,
+                            "Buổi tập đang dừng vì đau; không phát hướng dẫn vận động.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                    pendingRecognitionRequestCode != null -> Toast.makeText(
+                        this@GuidedWorkoutActivity,
+                        "Đang nhận giọng nói; hãy đóng microphone trước khi nghe hướng dẫn.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    index != selectedIndex || moves.getOrNull(selectedIndex)?.name != move.name -> {
+                        dialog.dismiss()
+                        Toast.makeText(
+                            this@GuidedWorkoutActivity,
+                            "Động tác đã thay đổi. Hãy mở lại hướng dẫn cho bài hiện tại.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                    !speakCoachAnswer(cue) -> Toast.makeText(
+                        this@GuidedWorkoutActivity,
+                        "Giọng đọc chưa sẵn sàng; hướng dẫn vẫn hiển thị trên màn hình.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
+        dialog.show()
+    }
+
     private fun showStepByStepGuide() {
         if (pausedForSafety) {
             Toast.makeText(this, "Buổi tập đang dừng vì đau; hãy nghỉ, không mở hướng dẫn vận động.", Toast.LENGTH_LONG).show()

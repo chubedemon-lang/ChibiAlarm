@@ -47,4 +47,25 @@ object WorkoutEffortPlanChange {
         return WorkoutMidSessionRequest.Request(currentRepLimit = reducedCeiling)
     }
 
+
+    /**
+     * Offers a five-second lower ceiling only after two consecutive HARD self-reports
+     * for a timed exercise. The catalog minimum, completed sets and XP evidence stay
+     * unchanged; the caller must preview and obtain explicit approval.
+     */
+    fun durationReductionPreviewRequest(
+        level: WorkoutEffortFeedback.Level,
+        plan: com.chibialarm.app.WorkoutSetTracker.Plan,
+        completedSets: Int,
+        previousLevelsForSameMove: List<WorkoutEffortFeedback.Level?>
+    ): WorkoutMidSessionRequest.Request? {
+        if (level != WorkoutEffortFeedback.Level.HARD) return null
+        if (previousLevelsForSameMove.size > 20) return null
+        if (previousLevelsForSameMove.lastOrNull() != WorkoutEffortFeedback.Level.HARD) return null
+        if (plan.unit != "giây" || completedSets !in 1 until plan.maximumSets) return null
+        val reducedCeiling = plan.targetMax - 5
+        if (reducedCeiling < plan.targetMin) return null
+        return WorkoutMidSessionRequest.Request(currentDurationLimit = reducedCeiling)
+    }
+
 }

@@ -51,6 +51,7 @@ class WorkoutPlanCandidateSelectorTest {
         assertTrue(selection.usedFallback)
         assertTrue(selection.notice.contains("10 phút"))
         assertTrue(selection.notice.contains("không phải bài thay thế tương đương y khoa"))
+        assertTrue(selection.notice.contains("trình độ, dụng cụ, hạn chế vận động và thời gian"))
     }
 
     @Test fun lowEnergyPrefersRecoveryOverTheOriginalCardioGoalWhenPreferredIsUnavailable() {
@@ -91,13 +92,34 @@ class WorkoutPlanCandidateSelectorTest {
                 TrainingCatalog.byId("weighted"),
                 TrainingCatalog.byId("starter")
             ),
-            preferences = preferences(goal = 5, level = 0, minutes = 20),
+            preferences = preferences(goal = 5, level = 0, minutes = 20, equipment = 3),
             constraints = WorkoutConstraintProfile()
         )
 
         assertNotNull(selection)
         assertEquals("starter", selection!!.program.id)
         assertFalse(selection.program.id in setOf("advanced", "weighted"))
+        assertTrue(selection.program.moves.all { move ->
+            TrainingEquipmentAvailability.allows(
+                move,
+                TrainingEquipmentAvailability.fromPreference(3)
+            )
+        })
+    }
+
+    @Test fun beginnerFallbackDoesNotIgnoreRequiredChairWhenNoEquipmentWasSelected() {
+        val selection = WorkoutPlanCandidateSelector.select(
+            preferred = TrainingCatalog.byId("advanced"),
+            candidates = listOf(
+                TrainingCatalog.byId("advanced"),
+                TrainingCatalog.byId("weighted"),
+                TrainingCatalog.byId("starter")
+            ),
+            preferences = preferences(goal = 5, level = 0, minutes = 20, equipment = 0),
+            constraints = WorkoutConstraintProfile()
+        )
+
+        assertNull(selection)
     }
 
     @Test fun movementConstraintsAreRecheckedBeforeAPlanCanBeSelected() {

@@ -1,0 +1,42 @@
+package com.chibialarm.app.fitness
+
+/**
+ * Context-aware quick prompts for the live workout coach.
+ *
+ * Prompts only fill the input field; they never submit, change the plan, start a rest,
+ * or record a set. The existing preview/confirmation flow remains authoritative.
+ */
+internal object WorkoutCoachQuickPrompts {
+    data class Prompt(
+        val label: String,
+        val utterance: String
+    )
+
+    fun forSession(
+        resting: Boolean,
+        hasOptionalFutureExercises: Boolean,
+        hasOptionalCurrentSets: Boolean,
+        safetyStopped: Boolean = false
+    ): List<Prompt> {
+        if (safetyStopped) return emptyList()
+
+        if (resting) {
+            return listOf(
+                Prompt("Nghỉ thêm 30 giây", "Nghỉ thêm 30 giây"),
+                Prompt("Nghỉ thêm 1 phút", "Nghỉ thêm 1 phút")
+            )
+        }
+
+        val prompts = mutableListOf(
+            Prompt("Còn 5 phút", "Tôi chỉ còn 5 phút"),
+            Prompt("Hôm nay hơi mệt", "Hôm nay hơi mệt, đổi sang bài nhẹ hơn")
+        )
+        if (hasOptionalFutureExercises) {
+            prompts += Prompt("Bỏ bài bổ sung", "Bỏ bài bổ sung")
+        }
+        if (hasOptionalCurrentSets) {
+            prompts += Prompt("Chỉ hiệp bắt buộc", "Chỉ làm hiệp bắt buộc")
+        }
+        return prompts
+    }
+}

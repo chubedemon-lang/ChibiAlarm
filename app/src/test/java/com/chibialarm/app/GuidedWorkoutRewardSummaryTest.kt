@@ -73,9 +73,9 @@ class GuidedWorkoutRewardSummaryTest {
             val dialog = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
             val dialogRoot = dialog.window!!.decorView
             val button = findTagged(dialogRoot, "workout-reward-speech-preview") as? android.widget.Button
+                ?: throw AssertionError("Manual speech action is missing")
             assertTrue(dialog.isShowing)
-            assertTrue("A manual speech action is available", button != null)
-            assertTrue(button!!.text.toString().contains("Nghe tổng kết"))
+            assertTrue(button.text.toString().contains("Nghe tổng kết"))
             assertTrue(button.contentDescription.toString().contains("chỉ phát khi bạn nhấn"))
         } finally {
             activity.finish()

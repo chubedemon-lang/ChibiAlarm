@@ -137,10 +137,47 @@ class WorkoutProgressionPreviewTest {
         )
     }
 
-    @Test fun timeBasedExercisesNeverReceiveRepTargets() {
+    @Test fun timeBasedExercisesReceiveFiveSecondPreviewWhenEverySetIsManageable() {
         val workouts = history(
             exercise = "Plank khuỷu hoặc plank gối",
-            reps = listOf(15, 18),
+            reps = listOf(18, 18),
+            unit = "giây"
+        )
+        val suggestion = suggestion(workouts)
+        assertNotNull(suggestion)
+        val proposal = WorkoutProgressionPreview.propose(
+            suggestion!!, workouts, TrainingCatalog.byId("full").moves, today
+        )
+        assertNotNull(proposal)
+        assertEquals(18, proposal!!.previousValue)
+        assertEquals(23, proposal.targetValue)
+        assertEquals("giây", proposal.unit)
+        assertEquals(15, proposal.prescribedMinReps)
+        assertEquals(30, proposal.prescribedMaxReps)
+        assertEquals(2, proposal.requiredSets)
+        assertEquals(2, proposal.maximumSets)
+        assertEquals(30, proposal.restSeconds)
+    }
+
+    @Test fun timedProgressionNeverExceedsTheCatalogMaximum() {
+        val workouts = history(
+            exercise = "Plank khuỷu hoặc plank gối",
+            reps = listOf(30, 30),
+            unit = "giây"
+        )
+        val suggestion = suggestion(workouts)
+        assertNotNull(suggestion)
+        assertNull(
+            WorkoutProgressionPreview.propose(
+                suggestion!!, workouts, TrainingCatalog.byId("full").moves, today
+            )
+        )
+    }
+
+    @Test fun timedProgressionRequiresTheSameSelfReportedDurationForEverySet() {
+        val workouts = history(
+            exercise = "Plank khuỷu hoặc plank gối",
+            reps = listOf(18, 20),
             unit = "giây"
         )
         val suggestion = suggestion(workouts)

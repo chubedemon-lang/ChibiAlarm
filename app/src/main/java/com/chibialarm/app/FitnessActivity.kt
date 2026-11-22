@@ -750,7 +750,7 @@ class FitnessActivity:Activity() {
             text = "🌱 Xem bước tiến triển có kiểm soát"
             isAllCaps = false
             visibility = android.view.View.GONE
-            contentDescription = "Mở bản xem trước số lần cho buổi kế tiếp; không tự thay đổi giáo án"
+            contentDescription = "Mở bản xem trước mục tiêu mỗi hiệp cho buổi kế tiếp; không tự thay đổi giáo án"
             setOnClickListener { showSteadyProgressionPreview() }
         }
         historySteadyProgressAction = steadyProgressAction
@@ -1741,8 +1741,8 @@ class FitnessActivity:Activity() {
             AlertDialog.Builder(this)
                 .setTitle("Chưa đủ dữ liệu cho bản xem trước")
                 .setMessage(
-                    "Chibi đã thấy ba ngày check-in nhẹ hoặc vừa sức, nhưng chưa có đủ số lần tự khai báo " +
-                        "cho một bài trong giáo án hiện tại. Hãy hoàn thành Guided Workout và ghi số lần từng hiệp. " +
+                    "Chibi đã thấy ba ngày check-in nhẹ hoặc vừa sức, nhưng chưa có đủ số lần hoặc thời lượng tự khai báo " +
+                        "cho một bài trong giáo án hiện tại. Hãy hoàn thành Guided Workout và ghi giá trị từng hiệp. " +
                         "Chibi sẽ không tự đoán số lần hoặc tăng mục tiêu khi thiếu dữ liệu."
                 )
                 .setPositiveButton("Hỏi Chibi") { _, _ -> prefillSteadyProgressPrompt(suggestion) }
@@ -1757,7 +1757,7 @@ class FitnessActivity:Activity() {
         }
 
         val labels = candidates.map { candidate ->
-            "${candidate.program.name} • ${candidate.proposal.targetReps} lần/hiệp"
+            "${candidate.program.name} • ${candidate.proposal.targetValue} ${candidate.proposal.unit}/hiệp"
         }.toTypedArray()
         AlertDialog.Builder(this)
             .setTitle("Chọn chương trình cho buổi kế tiếp")
@@ -1801,8 +1801,8 @@ class FitnessActivity:Activity() {
             append(candidate.program.name)
             append("\n\n")
             append(proposal.exerciseName)
-            append("\nBuổi gần nhất: ${proposal.previousMinimumReps} lần/hiệp ở tất cả hiệp đã ghi.")
-            append("\nBuổi kế tiếp: ${proposal.targetReps} lần/hiệp (+1), trong dải ${proposal.prescribedMinReps}–${proposal.prescribedMaxReps}.")
+            append("\nBuổi gần nhất: ${proposal.previousValue} ${proposal.unit}/hiệp ở tất cả hiệp đã ghi.")
+            append("\nBuổi kế tiếp: ${proposal.targetValue} ${proposal.unit}/hiệp (+${proposal.targetValue - proposal.previousValue}), trong dải ${proposal.prescribedMinReps}–${proposal.prescribedMaxReps} ${proposal.unit}.")
             append("\nGiữ ${proposal.requiredSets} hiệp tối thiểu (tối đa ${proposal.maximumSets}), nghỉ ${proposal.restSeconds} giây.")
             append("\nKhông tăng tải, không thêm hiệp và không đổi dụng cụ.")
             append("\n\nĐây là mục tiêu thử từ số lần và cảm nhận tự khai báo, không đo kỹ thuật hoặc khả năng hồi phục. Nếu thấy khó chịu, hãy giảm hoặc dừng.")
@@ -1928,7 +1928,8 @@ class FitnessActivity:Activity() {
             .putExtra("extension_impact", effectiveImpactRestriction())
         if (progression != null) {
             launchIntent.putExtra("progression_exercise", progression.exerciseName)
-                .putExtra("progression_reps", progression.targetReps)
+                .putExtra("progression_reps", progression.targetValue)
+                .putExtra("progression_unit", progression.unit)
         }
         initialSubstitutions?.let { launchIntent.putExtra("initial_substitutions", it) }
         startActivity(launchIntent)

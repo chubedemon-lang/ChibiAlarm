@@ -114,7 +114,7 @@ class GuidedWorkoutActivity:Activity() {
     private val checkpoint by lazy { getSharedPreferences("chibi_workout_checkpoint_guest", MODE_PRIVATE) }
     // Index-scoped rep guidance: completed steps are never retroactively edited.
     private val repTargets=mutableMapOf<Int,Int>()
-    private var confirmedProgression: Pair<String,Int>? = null
+    private var confirmedProgression: Triple<String,Int,String>? = null
     // Timed moves use the timer; set-based moves require explicit user confirmation.
     private val completedMoveIndices=sortedSetOf<Int>()
     private val completedSetsByMove=mutableMapOf<Int,Int>()
@@ -155,15 +155,18 @@ class GuidedWorkoutActivity:Activity() {
             checkpointAge in 0L..604_800_000L
         ) return
         val exerciseName = intent.getStringExtra("progression_exercise")?.trim()?.take(90).orEmpty()
-        val reps = intent.getIntExtra("progression_reps", -1)
-        if (exerciseName.isBlank() || reps !in 1..100) return
+        val target = intent.getIntExtra("progression_reps", -1)
+        // Older intents remain valid as repetition-only previews.
+        val unit = intent.getStringExtra("progression_unit") ?: "lần"
+        if (exerciseName.isBlank() || target !in 1..100 || unit !in setOf("lần", "giây")) return
         val matches = moves.indices.filter { moves[it].name == exerciseName }
         if (matches.size != 1) return
         val position = matches.single()
         val plan = WorkoutSetTracker.parse(moves[position].dose, moves[position].restSeconds) ?: return
-        if (plan.unit != "lần" || reps !in (plan.targetMin + 1)..plan.targetMax) return
-        repTargets[position] = reps
-        confirmedProgression = exerciseName to reps
+        val increment = if (unit == "giây") 5 else 1
+        if (plan.unit != unit || target !in (plan.targetMin + increment)..plan.targetMax) return
+        repTargets[position] = target
+        confirmedProgression = Triple(exerciseName, target, unit)
     }
     private var completed=false
     // Do not overwrite a saved session before the user chooses Restore or Start over.
@@ -598,9 +601,9 @@ class GuidedWorkoutActivity:Activity() {
             setTextColor(Color.rgb(95,55,113))
         })
         root.addView(TextView(this).apply { text=program.name;textSize=16f })
-        confirmedProgression?.let { (exerciseName, reps) ->
+        confirmedProgression?.let { (exerciseName, target, unit) ->
             root.addView(TextView(this).apply {
-                text = "🌱 Mục tiêu tiến triển đã xác nhận: $exerciseName — $reps lần mỗi hiệp. Đây là mục tiêu thử; giảm hoặc dừng nếu thấy khó chịu."
+                text = "🌱 Mục tiêu tiến triển đã xác nhận: $exerciseName — $target $unit mỗi hiệp. Đây là mục tiêu thử; giảm hoặc dừng nếu thấy khó chịu."
                 textSize = 13f
                 setPadding(4, 6, 4, 10)
             })

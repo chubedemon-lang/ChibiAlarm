@@ -20,8 +20,13 @@ object WorkoutProgressionPreview {
         val requiredSets: Int,
         val maximumSets: Int,
         val restSeconds: Int,
-        val latestDate: LocalDate
-    )
+        val latestDate: LocalDate,
+        /** "lần" increments by one; timed "giây" increments by five. */
+        val unit: String = "lần"
+    ) {
+        val previousValue: Int get() = previousMinimumReps
+        val targetValue: Int get() = targetReps
+    }
 
     private data class SetValue(val index: Int, val value: Int, val unit: String)
     private data class MoveValues(val name: String, val sets: List<SetValue>)
@@ -67,7 +72,7 @@ object WorkoutProgressionPreview {
         if (matchingIndices.size != 1) return null
         val move = plannedMoves[matchingIndices.single()]
         val plan = WorkoutSetTracker.parse(move.dose, move.restSeconds) ?: return null
-        if (plan.unit != "lần" || plan.targetMax <= plan.targetMin || plan.targetMax > 100) return null
+        if (plan.unit !in setOf("lần", "giây") || plan.targetMax <= plan.targetMin || plan.targetMax > 100) return null
 
         // Use the latest session on the evidence date that contains a check-in for this move.
         // If that session has incomplete or inconsistent rep data, do not fall back to an older one.
@@ -90,31 +95,34 @@ object WorkoutProgressionPreview {
         val efforts = matchingEffortMoves.single().sets
         if (values.size !in plan.requiredSets..plan.maximumSets ||
             values.map { it.index }.sorted() != efforts.map { it.index }.sorted() ||
-            values.any { it.unit != "lần" || it.value !in plan.targetMin..plan.targetMax } ||
+            values.any { it.unit != plan.unit || it.value !in plan.targetMin..plan.targetMax } ||
             efforts.any {
                 it.level != WorkoutEffortFeedback.Level.EASY &&
                     it.level != WorkoutEffortFeedback.Level.MODERATE
             }
         ) return null
 
-        // The guided screen applies one exact rep target to every set. Only offer it
-        // when the latest self-reported sets used the same count; never lower a stronger set.
-        val distinctRepCounts = values.map { it.value }.distinct()
-        if (distinctRepCounts.size != 1) return null
-        val previousMinimum = distinctRepCounts.single()
-        val target = previousMinimum + 1
-        if (target <= previousMinimum || target > plan.targetMax) return null
+        // The guided screen applies one exact target to every set. Require the same
+        // self-reported value for all sets; never lower a stronger set. Timed holds
+        // advance by only five seconds, while repetition targets advance by one.
+        val distinctValues = values.map { it.value }.distinct()
+        if (distinctValues.size != 1) return null
+        val previousValue = distinctValues.single()
+        val increment = if (plan.unit == "giây") 5 else 1
+        val target = previousValue + increment
+        if (target <= previousValue || target > plan.targetMax) return null
 
         return Proposal(
             exerciseName = move.name,
-            previousMinimumReps = previousMinimum,
+            previousMinimumReps = previousValue,
             targetReps = target,
             prescribedMinReps = plan.targetMin,
             prescribedMaxReps = plan.targetMax,
             requiredSets = plan.requiredSets,
             maximumSets = plan.maximumSets,
             restSeconds = plan.defaultRestSeconds,
-            latestDate = suggestion.latestDate
+            latestDate = suggestion.latestDate,
+            unit = plan.unit
         )
     }
 

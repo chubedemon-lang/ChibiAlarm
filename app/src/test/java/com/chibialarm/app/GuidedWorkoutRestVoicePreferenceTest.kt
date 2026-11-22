@@ -17,9 +17,12 @@ import org.robolectric.RuntimeEnvironment
 @RunWith(RobolectricTestRunner::class)
 class GuidedWorkoutRestVoicePreferenceTest {
 
-    @Before fun clearGuestCheckpoint() {
+    @Before fun clearGuestCheckpointAndVoicePreference() {
         RuntimeEnvironment.getApplication()
             .getSharedPreferences("chibi_workout_checkpoint_guest", Context.MODE_PRIVATE)
+            .edit().clear().commit()
+        RuntimeEnvironment.getApplication()
+            .getSharedPreferences(WorkoutRestVoiceCuePreference.PREFERENCES_NAME, Context.MODE_PRIVATE)
             .edit().clear().commit()
     }
 
@@ -82,6 +85,53 @@ class GuidedWorkoutRestVoicePreferenceTest {
             assertTrue(field("restVoiceCueEnabled").getBoolean(activity))
         } finally {
             activity.finish()
+        }
+    }
+
+    @Test fun optOutSurvivesANewGuestWorkoutActivity() {
+        val first = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup().get()
+        try {
+            field("resting").setBoolean(first, true)
+            field("paused").setBoolean(first, true)
+            field("restRemainingMs").setLong(first, 5_000L)
+            GuidedWorkoutActivity::class.java.getDeclaredMethod("renderRestPreview")
+                .apply { isAccessible = true }
+                .invoke(first)
+
+            val firstToggle = findTagged(
+                first.findViewById<ViewGroup>(android.R.id.content),
+                "workout-rest-auto-voice-cue"
+            ) as CheckBox
+            assertTrue(firstToggle.isChecked)
+            firstToggle.performClick()
+            assertFalse(firstToggle.isChecked)
+        } finally {
+            first.finish()
+        }
+
+        // A fresh workout has no checkpoint, but the guest's explicit voice opt-out remains.
+        RuntimeEnvironment.getApplication()
+            .getSharedPreferences("chibi_workout_checkpoint_guest", Context.MODE_PRIVATE)
+            .edit().clear().commit()
+
+        val next = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup().get()
+        try {
+            assertFalse(field("restVoiceCueEnabled").getBoolean(next))
+            field("resting").setBoolean(next, true)
+            field("paused").setBoolean(next, true)
+            field("restRemainingMs").setLong(next, 5_000L)
+            GuidedWorkoutActivity::class.java.getDeclaredMethod("renderRestPreview")
+                .apply { isAccessible = true }
+                .invoke(next)
+
+            val nextToggle = findTagged(
+                next.findViewById<ViewGroup>(android.R.id.content),
+                "workout-rest-auto-voice-cue"
+            ) as CheckBox
+            assertFalse(nextToggle.isChecked)
+            assertTrue(nextToggle.contentDescription.toString().contains("lưu trên thiết bị này"))
+        } finally {
+            next.finish()
         }
     }
 

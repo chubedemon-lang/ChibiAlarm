@@ -22,13 +22,15 @@ object WorkoutSessionTimeEstimate {
         currentExerciseRemainingSeconds: Int,
         resting: Boolean,
         restSecondsRemaining: Int,
-        level: Int
+        level: Int,
+        shorterFromIndex: Int = Int.MAX_VALUE
     ): Int {
         require(moves.size in 1..500)
         require(currentIndex in moves.indices)
         require(currentExerciseRemainingSeconds in 0..600)
         require(restSecondsRemaining in 0..600)
         require(level in 0..2)
+        require(shorterFromIndex >= 0)
 
         // A set-based move may be marked complete at its minimum dose while the user
         // takes an optional rest. Keep that active rest visible even though the required
@@ -57,7 +59,9 @@ object WorkoutSessionTimeEstimate {
                     val activeRemaining = if (currentExerciseRemainingSeconds > 0) {
                         currentExerciseRemainingSeconds
                     } else if (setsLeft > 0) {
-                        val totalActive = WorkoutDurationPlanner.activeSeconds(move).toLong()
+                        val totalActive = RemainingWorkoutDuration.seconds(
+                            WorkoutDurationPlanner.activeSeconds(move), index, shorterFromIndex
+                        ).toLong()
                         ((totalActive * setsLeft + plan.requiredSets - 1) / plan.requiredSets)
                             .coerceAtMost(MAX_ESTIMATE_SECONDS.toLong()).toInt()
                     } else {
@@ -74,7 +78,9 @@ object WorkoutSessionTimeEstimate {
                     if (resting) total += restSecondsRemaining.toLong()
                 }
             } else {
-                total += WorkoutDurationPlanner.activeSeconds(move).toLong()
+                total += RemainingWorkoutDuration.seconds(
+                    WorkoutDurationPlanner.activeSeconds(move), index, shorterFromIndex
+                ).toLong()
                 total += WorkoutDurationPlanner.prescribedRestSeconds(move).toLong()
             }
             total = total.coerceAtMost(MAX_ESTIMATE_SECONDS.toLong())

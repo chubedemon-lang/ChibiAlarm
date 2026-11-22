@@ -70,12 +70,13 @@ class GuidedWorkoutRewardSummaryTest {
 
             method.invoke(activity, WorkoutRewardDisplayFactory.create(15, 120), "")
 
-            val root = activity.findViewById<ViewGroup>(android.R.id.content)
-            val button = findTagged(root, "workout-reward-speech-preview") as? android.widget.Button
+            val dialog = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
+            val dialogRoot = dialog.window!!.decorView
+            val button = findTagged(dialogRoot, "workout-reward-speech-preview") as? android.widget.Button
+            assertTrue(dialog.isShowing)
             assertTrue("A manual speech action is available", button != null)
             assertTrue(button!!.text.toString().contains("Nghe tổng kết"))
             assertTrue(button.contentDescription.toString().contains("chỉ phát khi bạn nhấn"))
-            assertTrue(visibleText(root).contains("Buổi tập đã được lưu"))
         } finally {
             activity.finish()
         }

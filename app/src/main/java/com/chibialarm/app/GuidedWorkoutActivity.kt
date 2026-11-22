@@ -3031,7 +3031,7 @@ class GuidedWorkoutActivity:Activity() {
         val move = moves.getOrNull(selectedIndex) ?: return
         val cue = WorkoutBreathingGuide.cue(move.name)
         val dialog = AlertDialog.Builder(this)
-            .setTitle("🌬️ Nhịp thở • \${move.name}")
+            .setTitle("🌬️ Nhịp thở • " + move.name)
             .setMessage(
                 cue + "\n\nGợi ý chung, không đánh giá tư thế hoặc thay thế tư vấn y tế."
             )

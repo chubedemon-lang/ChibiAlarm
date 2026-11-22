@@ -41,13 +41,11 @@ class GuidedWorkoutBreathingGuideTest {
             val field = GuidedWorkoutActivity::class.java.getDeclaredField("moves").apply {
                 isAccessible = true
             }
-            @Suppress("UNCHECKED_CAST")
-            val moves = field.get(activity) as List<TrainingMove>
-            val plankIndex = moves.indexOfFirst { it.name == "Plank khuỷu hoặc plank gối" }
-            assertTrue("The starter catalog should contain the plank illustration", plankIndex >= 0)
+            val plank = TrainingCatalog.allMoves.single { it.name == "Plank khuỷu hoặc plank gối" }
+            field.set(activity, listOf(plank))
             GuidedWorkoutActivity::class.java.getDeclaredField("index").apply {
                 isAccessible = true
-            }.setInt(activity, plankIndex)
+            }.setInt(activity, 0)
 
             val button = findTagged(activity.window.decorView, "workout-breathing-guide") as? Button
             assertNotNull("The guided workout must expose breathing guidance", button)

@@ -24,6 +24,7 @@ import com.chibialarm.app.fitness.WorkoutMidSessionRequest
 import com.chibialarm.app.fitness.WorkoutMidSessionPreviewFormatter
 import com.chibialarm.app.fitness.WorkoutEffortPlanChange
 import com.chibialarm.app.fitness.WorkoutRemainingRepTarget
+import com.chibialarm.app.fitness.WorkoutCoachQuickPrompts
 import com.chibialarm.app.TrainingEquipment
 import com.chibialarm.app.WorkoutExtensionPreferences
 import com.chibialarm.app.rpg.RpgDatabase

@@ -81,6 +81,28 @@ object FitnessCoachFollowUp {
             Question.SAFETY_STOP, Question.COMPLETE -> emptyList()
         }
 
+    /**
+     * Voice-first equivalent of the visible quick-reply chips.
+     * Options are read aloud but never selected or applied automatically.
+     * Safety-stop and completed profiles intentionally have no choices.
+     */
+    fun spokenPrompt(message: String, parsed: FitnessNaturalRequest.Result): String {
+        val base = message.trim().take(900)
+        val replies = quickReplies(parsed)
+        if (replies.isEmpty()) return base.take(MAX_SPOKEN_PROMPT_CHARS)
+
+        val choices = replies.mapIndexed { index, reply ->
+            "Lựa chọn ${index + 1}: ${reply.label}."
+        }
+        return buildString {
+            if (base.isNotBlank()) append(base).append(" ")
+            append(choices.joinToString(" "))
+            append(" Mày có thể nói nội dung lựa chọn hoặc trả lời tự nhiên; Chibi chưa thay đổi giáo án.")
+        }.take(MAX_SPOKEN_PROMPT_CHARS)
+    }
+
+    private const val MAX_SPOKEN_PROMPT_CHARS = 1_800
+
     fun nextQuestionType(parsed: FitnessNaturalRequest.Result): Question = when {
         parsed.impact == 2 -> Question.SAFETY_STOP
         parsed.goal == null -> Question.GOAL

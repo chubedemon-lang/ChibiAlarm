@@ -35,8 +35,9 @@ class WorkoutMidSessionCompoundIntentTest {
 
         val restOnly = WorkoutMidSessionRequest.parse("Nghỉ thêm 30 giây")
         assertTrue(restOnly is WorkoutMidSessionRequest.Result.Proposed)
-        assertNull((restOnly as WorkoutMidSessionRequest.Result.Proposed).request.currentDurationLimit)
-        assertEquals(30, restOnly.request.restSeconds)
+        val restRequest = (restOnly as WorkoutMidSessionRequest.Result.Proposed).request
+        assertNull(restRequest.currentDurationLimit)
+        assertEquals(30, restRequest.restSeconds)
 
         assertTrue(WorkoutMidSessionRequest.parse("Còn 15 giây nữa?") is WorkoutMidSessionRequest.Result.Unsupported)
         assertTrue(WorkoutMidSessionRequest.parse("Đừng giảm còn 15 giây mỗi hiệp") is WorkoutMidSessionRequest.Result.Unsupported)

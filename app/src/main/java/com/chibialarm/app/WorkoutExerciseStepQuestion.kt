@@ -40,7 +40,13 @@ internal object WorkoutExerciseStepQuestion {
         val query = normalize(input)
         return listOf(
             "la gi", "la sao", "the nao", "nhu the nao", "doc", "noi",
-            "giai thich", "huong dan", "what is", "which step", "explain", "read"
+            "giai thich", "huong dan", "what is", "which step", "explain", "read",
+            // A contextual reference is a request even without a question suffix:
+            // "Bước đầu tiên của bài này" / "Bước 2 trong động tác đang tập".
+            "cua bai nay", "cua dong tac nay", "cua bai do", "cua dong tac do",
+            "cua bai dang tap", "cua dong tac dang tap",
+            "trong bai nay", "trong dong tac nay",
+            "of this exercise", "of this move"
         ).any { containsPhrase(query, it) }
     }
 
@@ -48,7 +54,9 @@ internal object WorkoutExerciseStepQuestion {
         (" $text ").contains(" $phrase ")
 
     fun answer(input: String, moveName: String, instructions: String): String? {
-        if (!hasExplicitStepReference(input)) return null
+        // A bare "Bước 2" is not a question and must not trigger a spoken answer.
+        // Require either an actual question/request phrase or an explicit exercise context.
+        if (!isQuestion(input)) return null
 
         val query = normalize(input)
         val steps = WorkoutStepGuide.split(instructions).take(MAX_STEPS)

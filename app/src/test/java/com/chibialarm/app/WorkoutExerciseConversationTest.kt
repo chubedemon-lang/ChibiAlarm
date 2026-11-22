@@ -351,4 +351,22 @@ class WorkoutExerciseConversationTest {
         assertTrue(answer.contains("hạ xuống theo khả năng"))
         assertFalse(answer.contains("đứng lên"))
     }
+
+    @Test fun bareStepNumberIsNotAnsweredAsAQuestionForTheOpenExercise() {
+        val squat = TrainingCatalog.allMoves.single { it.name == "Squat không tạ" }
+
+        assertFalse(WorkoutExerciseStepQuestion.isQuestion("Bước 2"))
+        assertNull(WorkoutExerciseStepQuestion.answer("Bước 2", squat.name, squat.steps))
+        assertNull(WorkoutExerciseConversation.answerForCurrentMove("Bước 2", squat))
+    }
+
+    @Test fun contextualStepReferenceWithoutQuestionSuffixStillGetsAnswered() {
+        val squat = TrainingCatalog.allMoves.single { it.name == "Squat không tạ" }
+        val answer = WorkoutExerciseConversation.answerForCurrentMove("Bước 2 của bài này", squat)
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("Bước 2/5 của Squat không tạ"))
+        assertTrue(answer.contains("đẩy hông nhẹ về sau"))
+    }
+
 }

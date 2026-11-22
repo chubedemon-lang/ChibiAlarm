@@ -6,6 +6,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.TextView
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -54,12 +55,47 @@ class GuidedWorkoutBreathingGuideTest {
             shadowOf(android.os.Looper.getMainLooper()).idle()
 
             val dialog = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
-            assertTrue(dialog.title.toString().contains("Nhịp thở"))
             val message = dialog.findViewById<TextView>(android.R.id.message)
             assertNotNull(message)
-            assertTrue(message!!.text.toString().contains("Giữ nhịp hít vào và thở ra đều"))
+            assertTrue(message!!.text.toString().contains(plank.name))
+            assertTrue(message.text.toString().contains("Giữ nhịp hít vào và thở ra đều"))
             assertTrue(message.text.toString().contains("không đánh giá tư thế"))
             assertTrue(dialog.getButton(AlertDialog.BUTTON_POSITIVE).text.toString().contains("Nghe hướng dẫn"))
+        } finally {
+            activity.finish()
+        }
+    }
+
+
+    @Test fun spokenBreathingQuestionUsesTheActiveMoveAndOffersTtsReplay() {
+        val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup().get()
+        try {
+            val plank = TrainingCatalog.allMoves.single { it.name == "Plank khuỷu hoặc plank gối" }
+            GuidedWorkoutActivity::class.java.getDeclaredField("moves").apply {
+                isAccessible = true
+            }.set(activity, listOf(plank))
+            GuidedWorkoutActivity::class.java.getDeclaredField("index").apply {
+                isAccessible = true
+            }.setInt(activity, 0)
+
+            val transcript = "Thở thế nào?"
+            assertEquals(WorkoutVoiceCommands.Command.UNKNOWN, WorkoutVoiceCommands.parse(transcript))
+            GuidedWorkoutActivity::class.java.getDeclaredMethod(
+                "handleCoachCommand",
+                String::class.java
+            ).apply {
+                isAccessible = true
+            }.invoke(activity, transcript)
+            shadowOf(android.os.Looper.getMainLooper()).idle()
+
+            val dialog = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
+            val message = dialog.findViewById<TextView>(android.R.id.message)
+            assertNotNull(message)
+            assertTrue(message!!.text.toString().contains(plank.name))
+            assertTrue(message.text.toString().contains("Giữ nhịp hít vào và thở ra đều"))
+            val replay = dialog.getButton(AlertDialog.BUTTON_NEUTRAL)
+            assertNotNull(replay)
+            assertTrue(replay.text.toString().contains("Nghe lại"))
         } finally {
             activity.finish()
         }

@@ -281,7 +281,7 @@ object WorkoutExerciseConversation {
     ).any(query::contains)
 
     private fun isExerciseQuestion(text: String): Boolean {
-        if (WorkoutExerciseStepQuestion.hasExplicitStepReference(text)) return true
+        if (WorkoutExerciseStepQuestion.isQuestion(text)) return true
         if (questionPhrases.any(text::contains)) return true
         val namesAnExercise = text.contains("bai ") || text.contains("dong tac ")
         return namesAnExercise && (

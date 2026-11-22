@@ -169,6 +169,57 @@ class FitnessCoachFollowUpTest {
         assertTrue(FitnessCoachFollowUp.quickReplies(injured).isEmpty())
     }
 
+    @Test fun spokenPromptReadsTheSameGoalChoicesShownAsQuickReplyChips() {
+        val parsed = FitnessNaturalRequest.parse("xin chào")
+        val spoken = FitnessCoachFollowUp.spokenPrompt(
+            "Chibi hỏi tiếp: Mày muốn tập gì hôm nay?",
+            parsed
+        )
+
+        assertTrue(spoken.contains("Lựa chọn 1: Sức mạnh."))
+        assertTrue(spoken.contains("Lựa chọn 2: Tim mạch."))
+        assertTrue(spoken.contains("Lựa chọn 3: Giãn cơ."))
+        assertTrue(spoken.contains("trả lời tự nhiên"))
+        assertTrue(spoken.contains("chưa thay đổi giáo án"))
+    }
+
+    @Test fun spokenEquipmentPromptReadsEveryExplicitToolCombination() {
+        val parsed = FitnessNaturalRequest.parse("giãn cơ 15 phút, đang tập đều")
+        val spoken = FitnessCoachFollowUp.spokenPrompt(
+            FitnessCoachFollowUp.nextQuestion(parsed),
+            parsed
+        )
+
+        listOf(
+            "Không dụng cụ", "Thảm tập", "Tạ đơn", "Dây kháng lực",
+            "Ghế vững", "Thảm + ghế", "Tạ + dây + thảm"
+        ).forEach { label -> assertTrue("Missing spoken option: $label", spoken.contains(label)) }
+        assertTrue(spoken.length <= 1_800)
+    }
+
+    @Test fun safetyStopAndCompletedProfilesDoNotAppendChoicePrompts() {
+        val safety = FitnessNaturalRequest.parse("đau ngực, giãn cơ 15 phút")
+        val safetyMessage = FitnessCoachFollowUp.nextQuestion(safety)
+        assertEquals(safetyMessage, FitnessCoachFollowUp.spokenPrompt(safetyMessage, safety))
+        assertFalse(FitnessCoachFollowUp.spokenPrompt(safetyMessage, safety).contains("Lựa chọn"))
+
+        val complete = FitnessNaturalRequest.parse(
+            "giãn cơ 20 phút, đang tập đều, không dụng cụ, không, không, không, không, khỏe"
+        )
+        if (FitnessCoachFollowUp.nextQuestionType(complete) == FitnessCoachFollowUp.Question.COMPLETE) {
+            val message = FitnessCoachFollowUp.nextQuestion(complete)
+            assertEquals(message, FitnessCoachFollowUp.spokenPrompt(message, complete))
+        }
+    }
+
+    @Test fun spokenPromptBoundsLongCoachCopyWithoutDroppingItsChoiceList() {
+        val parsed = FitnessNaturalRequest.parse("xin chào")
+        val spoken = FitnessCoachFollowUp.spokenPrompt("x".repeat(2_000), parsed)
+        assertTrue(spoken.length <= 1_800)
+        assertTrue(spoken.contains("Lựa chọn 1: Sức mạnh."))
+        assertTrue(spoken.contains("Lựa chọn 3: Giãn cơ."))
+    }
+
     @Test fun quickReplyDurationIsParsedOnlyForTheDurationQuestion() {
         val previous = FitnessNaturalRequest.parse("giãn cơ, đang tập đều")
         val reply = FitnessCoachFollowUp.quickReplies(previous).single { it.utterance == "15 phút" }

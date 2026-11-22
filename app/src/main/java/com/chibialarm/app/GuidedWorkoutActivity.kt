@@ -2634,7 +2634,7 @@ class GuidedWorkoutActivity:Activity() {
             previewMoves.map { it.name },
             previewMoves.map { WorkoutDurationPlanner.activeSeconds(it) },
             previewIndex,
-            RemainingWorkoutDuration.ceilSeconds(previewRemainingMs),
+            previewRemainingMs,
             previewShorterFrom
         )
         val details = stepPreview.take(4).mapIndexed { offset, step ->

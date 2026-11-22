@@ -25,27 +25,27 @@ object RemainingWorkoutDuration {
 
     /**
      * Read-only comparison for the active and upcoming steps.
-     * The active step uses its actual remaining seconds, not its original duration.
+     * The current step is supplied in milliseconds so the preview uses the exact
+     * same shortening rule as the live timer, including the five-second floor.
      */
     fun preview(
         names: List<String>,
         durations: List<Int>,
         currentIndex: Int,
-        remainingSeconds: Int,
+        remainingMilliseconds: Long,
         existingShorterFrom: Int
     ): List<PreviewStep> {
         require(names.size == durations.size)
         require(currentIndex in names.indices)
-        require(remainingSeconds >= 0)
+        require(remainingMilliseconds >= 0L)
         require(durations.all { it >= 0 })
+        val currentBeforeSeconds = ceilSeconds(remainingMilliseconds)
+        val currentAfterSeconds = ceilSeconds(shortenActiveMs(remainingMilliseconds))
         val proposedFrom = minOf(existingShorterFrom, currentIndex)
         return names.indices.drop(currentIndex).map { i ->
-            val before = if (i == currentIndex) remainingSeconds
+            val before = if (i == currentIndex) currentBeforeSeconds
                 else seconds(durations[i], i, existingShorterFrom)
-            // Match shortenActiveMs(): odd seconds round up because the live timer
-            // keeps the remaining half-second instead of silently dropping it.
-            val halfRoundedUp = remainingSeconds / 2 + remainingSeconds % 2
-            val after = if (i == currentIndex) minOf(remainingSeconds, halfRoundedUp.coerceAtLeast(5))
+            val after = if (i == currentIndex) currentAfterSeconds
                 else seconds(durations[i], i, proposedFrom)
             PreviewStep(names[i], before, after)
         }

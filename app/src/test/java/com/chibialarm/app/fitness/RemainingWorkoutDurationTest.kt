@@ -43,7 +43,7 @@ class RemainingWorkoutDurationTest {
     @Test fun previewUsesActualRemainingTimeAndLeavesCompletedStepsOut() {
         val steps = RemainingWorkoutDuration.preview(
             listOf("warmup", "squat", "stretch"), listOf(40, 60, 30),
-            1, 25, Int.MAX_VALUE
+            1, 25_000L, Int.MAX_VALUE
         )
         assertEquals(listOf("squat", "stretch"), steps.map { it.name })
         assertEquals(listOf(25, 30), steps.map { it.beforeSeconds })
@@ -52,7 +52,7 @@ class RemainingWorkoutDurationTest {
 
     @Test fun previewRespectsPreviouslyShortenedUpcomingSteps() {
         val steps = RemainingWorkoutDuration.preview(
-            listOf("a", "b", "c"), listOf(60, 60, 60), 1, 20, 2
+            listOf("a", "b", "c"), listOf(60, 60, 60), 1, 20_000L, 2
         )
         assertEquals(listOf(20, 30), steps.map { it.beforeSeconds })
         assertEquals(listOf(10, 30), steps.map { it.afterSeconds })
@@ -62,10 +62,15 @@ class RemainingWorkoutDurationTest {
         for (remaining in 0..5) {
             val steps = RemainingWorkoutDuration.preview(
                 listOf("current", "next"), listOf(30, 40),
-                0, remaining, Int.MAX_VALUE
+                0, remaining * 1_000L, Int.MAX_VALUE
             )
             assertEquals(remaining, steps.first().beforeSeconds)
-            assertEquals(remaining.coerceAtMost((remaining / 2).coerceAtLeast(5)), steps.first().afterSeconds)
+            assertEquals(
+                RemainingWorkoutDuration.ceilSeconds(
+                    RemainingWorkoutDuration.shortenActiveMs(remaining * 1_000L)
+                ),
+                steps.first().afterSeconds
+            )
             assertEquals(20, steps.last().afterSeconds)
         }
     }
@@ -80,12 +85,12 @@ class RemainingWorkoutDurationTest {
     }
 
     @Test fun shortenedCurrentStepPreviewMatchesTheActualMillisecondTimer() {
-        for (remainingMs in listOf(1L, 1_001L, 8_000L, 11_000L, 11_001L, 23_999L, 25_000L)) {
+        for (remainingMs in listOf(1L, 1_001L, 8_000L, 10_001L, 11_000L, 11_001L, 23_999L, 25_000L)) {
             val preview = RemainingWorkoutDuration.preview(
                 names = listOf("current"),
                 durations = listOf(60),
                 currentIndex = 0,
-                remainingSeconds = RemainingWorkoutDuration.ceilSeconds(remainingMs),
+                remainingMilliseconds = remainingMs,
                 existingShorterFrom = Int.MAX_VALUE
             ).single()
             val actualAfterMs = RemainingWorkoutDuration.shortenActiveMs(remainingMs)
@@ -99,6 +104,6 @@ class RemainingWorkoutDurationTest {
 
     @Test(expected = IllegalArgumentException::class)
     fun previewRejectsMismatchedInputs() {
-        RemainingWorkoutDuration.preview(listOf("a"), emptyList(), 0, 10, 0)
+        RemainingWorkoutDuration.preview(listOf("a"), emptyList(), 0, 10_000L, 0)
     }
 }

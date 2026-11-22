@@ -169,7 +169,8 @@ class WorkoutSessionTimeEstimateTest {
             level = 0,
             shorterFromIndex = 0
         )
-        assertEquals(45, estimate)
+        // 45 seconds of shortened active work + 30 seconds of required between-set rest.
+        assertEquals(75, estimate)
     }
 
     @Test(expected = IllegalArgumentException::class)

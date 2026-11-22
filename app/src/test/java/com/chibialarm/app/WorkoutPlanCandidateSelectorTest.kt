@@ -122,6 +122,29 @@ class WorkoutPlanCandidateSelectorTest {
         assertNull(selection)
     }
 
+    @Test fun noSelectionNoticeExplainsAllProfileConstraintsAndKeepsWorkoutUnstarted() {
+        val notice = WorkoutPlanCandidateSelector.noSelectionNotice(
+            preferences(goal = 1, level = 0, minutes = 12, equipment = 0, impact = 1)
+        )
+
+        assertTrue(notice.contains("trình độ"))
+        assertTrue(notice.contains("dụng cụ"))
+        assertTrue(notice.contains("mức tác động"))
+        assertTrue(notice.contains("hạn chế vận động"))
+        assertTrue(notice.contains("12 phút"))
+        assertTrue(notice.contains("chưa khởi chạy"))
+    }
+
+    @Test fun painStopNoticeDoesNotOfferAnotherWorkout() {
+        val notice = WorkoutPlanCandidateSelector.noSelectionNotice(
+            preferences(impact = 2)
+        )
+
+        assertTrue(notice.contains("dừng tập"))
+        assertTrue(notice.contains("không tạo giáo án thay thế"))
+        assertTrue(notice.contains("không cố tập tiếp"))
+    }
+
     @Test fun movementConstraintsAreRecheckedBeforeAPlanCanBeSelected() {
         val constraints = WorkoutConstraintProfile(avoidFloorPositions = true)
         val selection = WorkoutPlanCandidateSelector.select(

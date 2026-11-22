@@ -13,6 +13,8 @@ internal object WorkoutExerciseStepQuestion {
     private const val MAX_INPUT_CHARS = 160
     private const val MAX_STEPS = 100
     private const val MAX_STEP_CHARS = 180
+    private const val MAX_ANSWER_STEPS = 2
+    private const val MAX_ANSWER_CHARS = 640
 
     private val numericStep = Regex(
         """(?:^|\s)(?:buoc|step)\s*(?:(?:thu|so)\s*)?(\d{1,2})(?:\s|$)"""
@@ -72,21 +74,41 @@ internal object WorkoutExerciseStepQuestion {
         }.distinct()
 
         val safeName = safe(moveName, 80).ifBlank { "Động tác này" }
-        if (requested.size != 1) {
+        if (requested.size == 1) {
+            val position = requested.single()
+            if (position !in 1..steps.size) {
+                return safeName + " có " + steps.size +
+                    " bước hướng dẫn được hỗ trợ; không có bước " + position +
+                    ". Chibi không tự đổi sang bước khác."
+            }
+
+            val step = safe(steps[position - 1], MAX_STEP_CHARS)
+            return "Bước " + position + "/" + steps.size + " của " + safeName + ": " + step +
+                ". Đây là hướng dẫn chữ từ thư viện; hình minh họa không đánh giá tư thế thực tế."
+        }
+
+        // A short consecutive pair is useful during a live workout, but a long or
+        // non-consecutive list is too easy to mishear. Never return a partial pair.
+        val positions = requested.sorted()
+        if (positions.size != MAX_ANSWER_STEPS ||
+            positions[1] != positions[0] + 1
+        ) {
             return "Chibi thấy nhiều bước được nhắc tới cho " + safeName +
-                ". Hãy hỏi một bước cụ thể, ví dụ “bước 2”."
+                ". Hãy hỏi tối đa hai bước liền nhau, ví dụ “bước 2 và bước 3”."
         }
-
-        val position = requested.single()
-        if (position !in 1..steps.size) {
+        val invalidPositions = positions.filterNot { it in 1..steps.size }
+        if (invalidPositions.isNotEmpty()) {
             return safeName + " có " + steps.size +
-                " bước hướng dẫn được hỗ trợ; không có bước " + position +
-                ". Chibi không tự đổi sang bước khác."
+                " bước hướng dẫn được hỗ trợ; không thể đọc đủ bước " +
+                positions.joinToString(" và ") + ". Chibi không tự bỏ qua bước ngoài phạm vi."
         }
 
-        val step = safe(steps[position - 1], MAX_STEP_CHARS)
-        return "Bước " + position + "/" + steps.size + " của " + safeName + ": " + step +
-            ". Đây là hướng dẫn chữ từ thư viện; hình minh họa không đánh giá tư thế thực tế."
+        val requestedSteps = positions.joinToString(" ") { position ->
+            val step = safe(steps[position - 1], MAX_STEP_CHARS)
+            "Bước " + position + "/" + steps.size + " của " + safeName + ": " + step + "."
+        }
+        return safe(requestedSteps, MAX_ANSWER_CHARS) +
+            " Đây là hướng dẫn chữ từ thư viện; hình minh họa không đánh giá tư thế thực tế."
     }
 
     private fun safe(value: String, limit: Int): String = value

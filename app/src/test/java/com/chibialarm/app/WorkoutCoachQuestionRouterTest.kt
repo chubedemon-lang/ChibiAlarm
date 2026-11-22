@@ -225,4 +225,14 @@ class WorkoutCoachQuestionRouterTest {
         assertFalse(answer.contains("Bước 2/5"))
     }
 
+
+    @Test fun bareStepNumberDoesNotBecomeAContextualCoachQuestion() {
+        assertNull(
+            WorkoutCoachQuestionRouter.answer(
+                input = "Bước 2",
+                currentMove = squat
+            )
+        )
+    }
+
 }

@@ -45,7 +45,7 @@ internal object WorkoutExerciseStepQuestion {
     }
 
     private fun containsPhrase(text: String, phrase: String): Boolean =
-        Regex("(^|\\\\s)" + Regex.escape(phrase) + "(\\\\s|$)").containsMatchIn(text)
+        (" $text ").contains(" $phrase ")
 
     fun answer(input: String, moveName: String, instructions: String): String? {
         if (!hasExplicitStepReference(input)) return null

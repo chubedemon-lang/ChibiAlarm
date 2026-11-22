@@ -59,6 +59,29 @@ class GuidedWorkoutRewardSummaryTest {
     }
 
     @Test
+    fun rewardDialogOffersManualSpeechWithoutAutoReading() {
+        val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup().get()
+        try {
+            val method = GuidedWorkoutActivity::class.java.getDeclaredMethod(
+                "showWorkoutReward",
+                WorkoutRewardDisplay::class.java,
+                String::class.java
+            ).apply { isAccessible = true }
+
+            method.invoke(activity, WorkoutRewardDisplayFactory.create(15, 120), "")
+
+            val root = activity.findViewById<ViewGroup>(android.R.id.content)
+            val button = findTagged(root, "workout-reward-speech-preview") as? android.widget.Button
+            assertTrue("A manual speech action is available", button != null)
+            assertTrue(button!!.text.toString().contains("Nghe tổng kết"))
+            assertTrue(button.contentDescription.toString().contains("chỉ phát khi bạn nhấn"))
+            assertTrue(visibleText(root).contains("Buổi tập đã được lưu"))
+        } finally {
+            activity.finish()
+        }
+    }
+
+    @Test
     fun rewardDialogOmitsEffortSectionWhenNoCheckInsWereRecorded() {
         val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup().get()
         try {

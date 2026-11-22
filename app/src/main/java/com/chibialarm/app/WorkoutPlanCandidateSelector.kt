@@ -98,7 +98,7 @@ internal object WorkoutPlanCandidateSelector {
 
         val notice = buildString {
             append("Chương trình ưu tiên “").append(preferred.name)
-                .append("” không còn động tác chính phù hợp với dụng cụ và bộ lọc vận động hiện tại. ")
+                .append("” không còn phù hợp với bộ lựa chọn hiện tại (trình độ, dụng cụ, hạn chế vận động và thời gian). ")
             append("Chibi đề xuất “").append(selected.program.name)
                 .append("” vì phù hợp hơn với mục tiêu, trình độ và khung ")
                 .append(preferences.minutes).append(" phút. ")

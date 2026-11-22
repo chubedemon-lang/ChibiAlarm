@@ -1565,7 +1565,9 @@ class GuidedWorkoutActivity:Activity() {
                     if (request.lowEnergy) {
                         append("\nƯu tiên biến thể nhẹ hơn và nghỉ riêng.")
                     }
-                    if (!preview.changed && preview.restSeconds == 0) {
+                    if (!preview.changed && preview.restSeconds == 0 &&
+                        preview.currentSetLimit == null && preview.currentRepLimit == null &&
+                        preview.currentDurationLimit == null) {
                         append("\nKhông có bài tùy chọn nào cần bỏ; các hiệp bắt buộc được giữ nguyên.")
                     }
                     append("\n\n")
@@ -1576,7 +1578,7 @@ class GuidedWorkoutActivity:Activity() {
                     !pausedForSafety && !completed && !resting && index == beforeIndex &&
                         sessionId == beforeSessionId && moves == beforeMoves &&
                         currentPlanFingerprint() == beforeFingerprint &&
-                        (request.isRepTargetOnly || remainingMs == beforeRemaining) &&
+                        (request.isRepTargetOnly || request.isDurationTargetOnly || remainingMs == beforeRemaining) &&
                         (completedSetsByMove[index] ?: 0) == beforeCompletedSets
 
                 val previewActions = LinearLayout(this).apply {
@@ -1626,10 +1628,11 @@ class GuidedWorkoutActivity:Activity() {
                             it > index || (it == index && preview.currentMoveChanged)
                         }
 
-                        // The planner validates a non-null request limit before returning Proposed.
-                        // Keep the request value as a defensive fallback so the accepted voice
-                        // ceiling cannot disappear between preview construction and confirmation.
-                        val acceptedRepLimit = preview.currentRepLimit ?: request.currentRepLimit
+                        // The planner validates a non-null target ceiling before returning Proposed.
+                        // Keep the request value as a defensive fallback so a voice edit cannot
+                        // disappear between preview construction and confirmation.
+                        val acceptedTargetLimit = preview.currentRepLimit ?: preview.currentDurationLimit
+                            ?: request.currentRepLimit ?: request.currentDurationLimit
                         // If the user removed only optional sets and has already confirmed
                         // the required minimum, mark this move complete without inventing
                         // a set, changing its log, or awarding extra XP.
@@ -1666,7 +1669,7 @@ class GuidedWorkoutActivity:Activity() {
                         poseView.pose = WorkoutPoseGuide.classify(moves[index].name)
                         renderDose()
                         renderSetControls()
-                        acceptedRepLimit?.let { limit ->
+                        acceptedTargetLimit?.let { limit ->
                             // Bind the accepted cap to the exact move index captured by the preview,
                             // after plan replacement/removal has finished. This never rewrites catalog dose.
                             val activeIndex = preview.currentIndex
@@ -1706,6 +1709,9 @@ class GuidedWorkoutActivity:Activity() {
                             if (plan != null) {
                                 cueParts += "Đã giới hạn ${moves[index].name} tối đa còn $limit ${plan.unit} mỗi hiệp cho phần chưa thực hiện; các hiệp đã xác nhận giữ nguyên."
                             }
+                        }
+                        preview.currentDurationLimit?.let { limit ->
+                            cueParts += "Đã giới hạn thời lượng ${moves[index].name} còn tối đa $limit giây mỗi hiệp cho phần chưa thực hiện; các hiệp đã xác nhận giữ nguyên."
                         }
                         if (cueParts.isEmpty()) {
                             cueParts += "Đã cập nhật phần còn lại của giáo án. Các hiệp đã xác nhận được giữ nguyên."

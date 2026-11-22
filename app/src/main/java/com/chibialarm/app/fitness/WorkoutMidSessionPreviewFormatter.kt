@@ -28,6 +28,12 @@ object WorkoutMidSessionPreviewFormatter {
                 append("Giới hạn ${activeMove.name} tối đa còn $limit ${activePlan.unit} mỗi hiệp cho phần chưa thực hiện; các hiệp đã xác nhận giữ nguyên.\n")
             }
         }
+        preview.currentDurationLimit?.let { limit ->
+            val activeMove = preview.after.getOrNull(preview.currentIndex)
+            if (activeMove != null) {
+                append("Giới hạn thời lượng ${activeMove.name} tối đa còn $limit giây mỗi hiệp cho phần chưa thực hiện; các hiệp đã xác nhận giữ nguyên.\n")
+            }
+        }
         if (preview.addedMoves.isNotEmpty()) {
             append("Bổ sung động tác tùy chọn theo yêu cầu:\n")
             preview.addedMoves.forEach { added ->
@@ -187,7 +193,14 @@ object WorkoutMidSessionPreviewFormatter {
                 parts += "Giới hạn ${activeMove.name} còn tối đa $limit ${activePlan.unit} mỗi hiệp cho phần chưa thực hiện."
             }
         }
-        if (!preview.changed && preview.restSeconds == 0 && preview.currentSetLimit == null && preview.currentRepLimit == null) {
+        preview.currentDurationLimit?.let { limit ->
+            val activeMove = preview.after.getOrNull(preview.currentIndex)
+            if (activeMove != null) {
+                parts += "Giới hạn thời lượng ${activeMove.name} còn tối đa $limit giây mỗi hiệp cho phần chưa thực hiện."
+            }
+        }
+        if (!preview.changed && preview.restSeconds == 0 && preview.currentSetLimit == null &&
+            preview.currentRepLimit == null && preview.currentDurationLimit == null) {
             parts += "Không có thay đổi nào được đề xuất."
         }
         parts += "Thời gian còn lại ước tính " + durationLabel(preview.estimatedRemainingSeconds) + "."

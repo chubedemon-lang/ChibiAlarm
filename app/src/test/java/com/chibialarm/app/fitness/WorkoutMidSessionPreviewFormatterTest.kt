@@ -256,6 +256,29 @@ class WorkoutMidSessionPreviewFormatterTest {
     }
 
 
+    @Test fun timedHoldLimitPreviewExplainsOnlyUnstartedSecondsOnScreenAndInSpeech() {
+        val result = preview(
+            listOf(
+                move("Khởi động tại chỗ"),
+                move("Plank khuỷu hoặc plank gối"),
+                move("Thả lỏng")
+            ),
+            currentIndex = 1,
+            request = WorkoutMidSessionRequest.Request(currentDurationLimit = 20),
+            completedCurrentSets = 1
+        )
+
+        val text = WorkoutMidSessionPreviewFormatter.format(result)
+        val spoken = WorkoutMidSessionPreviewFormatter.spokenSummary(result)
+        assertTrue(text.contains("2 hiệp × 15–30 giây"))
+        assertTrue(text.contains("Giới hạn thời lượng Plank khuỷu hoặc plank gối tối đa còn 20 giây mỗi hiệp"))
+        assertTrue(text.contains("các hiệp đã xác nhận giữ nguyên"))
+        assertTrue(spoken.contains("20 giây mỗi hiệp"))
+        assertTrue(spoken.contains("Chưa áp dụng"))
+        assertTrue(spoken.length <= 350)
+        assertFalse(text.contains("Không có thay đổi nào được đề xuất"))
+    }
+
     @Test fun repLimitPreviewExplainsOnlyUnstartedRepsWithoutRewritingCatalogDose() {
         val result = preview(
             listOf(

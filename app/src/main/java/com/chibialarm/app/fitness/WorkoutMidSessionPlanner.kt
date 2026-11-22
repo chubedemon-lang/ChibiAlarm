@@ -44,7 +44,9 @@ object WorkoutMidSessionPlanner {
         // Non-null only when the active move's optional set ceiling was reduced.
         val currentSetLimit: Int? = null,
         // Non-null only when the active move's upper rep target was reduced.
-        val currentRepLimit: Int? = null
+        val currentRepLimit: Int? = null,
+        // Non-null only when the active timed-hold target was reduced.
+        val currentDurationLimit: Int? = null
     ) {
         val changed: Boolean get() = before != after
     }
@@ -384,8 +386,38 @@ object WorkoutMidSessionPlanner {
             }
             // Keep the catalog prescription in the plan snapshot. The accepted ceiling is
             // carried separately in Preview.currentRepLimit and stored in the Activity's
-            // index-scoped repTargets map only after the user confirms the preview.
+            // index-scoped target map only after the user confirms the preview.
             appliedCurrentRepLimit = requestedLimit
+        }
+
+        var appliedCurrentDurationLimit: Int? = null
+        request.currentDurationLimit?.let { requestedLimit ->
+            val activeMove = remaining.firstOrNull()
+                ?: return Result.Blocked("Không còn động tác hiện tại để giới hạn thời lượng.")
+            val plan = WorkoutSetTracker.parse(activeMove.dose, activeMove.restSeconds)
+                ?: return Result.Blocked("Động tác hiện tại không có giáo án hiệp/thời lượng để giới hạn.")
+
+            val confirmedSets = if (currentChanged) 0 else completedCurrentSets
+            if (confirmedSets >= plan.maximumSets) {
+                return Result.Blocked("Bạn đã xác nhận đủ ${plan.maximumSets} hiệp; không còn hiệp chưa thực hiện để đổi thời lượng.")
+            }
+            when {
+                plan.unit != "giây" -> return Result.Blocked(
+                    "Động tác này được tính theo số lần, không thể đổi thành thời lượng."
+                )
+                requestedLimit < plan.targetMin -> return Result.Blocked(
+                    "Thời lượng tối thiểu hiện tại là ${plan.targetMin} giây. Chibi không hạ chuẩn bắt buộc hoặc phần thưởng tương ứng."
+                )
+                requestedLimit > plan.targetMax -> return Result.Blocked(
+                    "Mục tiêu mới vượt quá giới hạn ${plan.targetMax} giây. Chibi chỉ chấp nhận giảm thời lượng."
+                )
+                requestedLimit == plan.targetMax -> return Result.Blocked(
+                    "Mục tiêu thời lượng tối đa đã là ${requestedLimit} giây; không có phần thời lượng tùy chọn để giảm."
+                )
+            }
+            // Preserve the catalog dose; the accepted duration ceiling is applied only
+            // to unstarted sets after the user confirms the preview.
+            appliedCurrentDurationLimit = requestedLimit
         }
 
         val after = prefix + remaining
@@ -409,7 +441,8 @@ object WorkoutMidSessionPlanner {
                 availableEquipment = effectiveAvailableEquipment,
                 completedCurrentSets = completedCurrentSets,
                 currentSetLimit = appliedCurrentSetLimit,
-                currentRepLimit = appliedCurrentRepLimit
+                currentRepLimit = appliedCurrentRepLimit,
+                currentDurationLimit = appliedCurrentDurationLimit
             )
         )
     }

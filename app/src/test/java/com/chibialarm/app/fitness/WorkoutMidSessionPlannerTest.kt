@@ -1626,6 +1626,52 @@ class WorkoutMidSessionPlannerTest {
     }
 
 
+    @Test fun timedHoldDurationLimitIsAcceptedOnlyForUnfinishedSetsAndPreservesCatalogDose() {
+        val plank = move("Plank khuỷu hoặc plank gối")
+        val result = WorkoutMidSessionPlanner.preview(
+            currentMoves = listOf(plank, move("Thả lỏng")),
+            currentIndex = 0,
+            completedCurrentSets = 1,
+            currentStepLocked = true,
+            constraints = WorkoutConstraintProfile(),
+            request = WorkoutMidSessionRequest.Request(currentDurationLimit = 20),
+            remainingCurrentSeconds = 30,
+            extensionMoveNames = emptySet(),
+            level = 0
+        )
+
+        assertTrue(result is WorkoutMidSessionPlanner.Result.Proposed)
+        val preview = (result as WorkoutMidSessionPlanner.Result.Proposed).preview
+        assertEquals(20, preview.currentDurationLimit)
+        assertNull(preview.currentRepLimit)
+        assertEquals(1, preview.completedCurrentSets)
+        assertEquals("The catalog dose remains unchanged", plank.dose, preview.after.first().dose)
+        val catalogPlan = WorkoutSetTracker.parse(preview.after.first().dose)!!
+        assertEquals("giây", catalogPlan.unit)
+        assertEquals(15, catalogPlan.targetMin)
+        assertEquals(30, catalogPlan.targetMax)
+    }
+
+    @Test fun timedHoldDurationLimitRejectsWrongUnitBoundsAndCompletedSets() {
+        fun preview(moveName: String, limit: Int, completed: Int = 0) =
+            WorkoutMidSessionPlanner.preview(
+                currentMoves = listOf(move(moveName), move("Thả lỏng")),
+                currentIndex = 0,
+                completedCurrentSets = completed,
+                currentStepLocked = completed > 0,
+                constraints = WorkoutConstraintProfile(),
+                request = WorkoutMidSessionRequest.Request(currentDurationLimit = limit),
+                remainingCurrentSeconds = 30,
+                extensionMoveNames = emptySet(),
+                level = 0
+            )
+
+        assertTrue(preview("Squat không tạ", 10) is WorkoutMidSessionPlanner.Result.Blocked)
+        assertTrue(preview("Plank khuỷu hoặc plank gối", 14) is WorkoutMidSessionPlanner.Result.Blocked)
+        assertTrue(preview("Plank khuỷu hoặc plank gối", 30) is WorkoutMidSessionPlanner.Result.Blocked)
+        assertTrue(preview("Plank khuỷu hoặc plank gối", 20, completed = 2) is WorkoutMidSessionPlanner.Result.Blocked)
+    }
+
     @Test fun requestRejectsConflictingSetAndRepLimitEdits() {
         assertThrows(IllegalArgumentException::class.java) {
             WorkoutMidSessionRequest.Request(currentSetLimit = 2, currentRepLimit = 10)

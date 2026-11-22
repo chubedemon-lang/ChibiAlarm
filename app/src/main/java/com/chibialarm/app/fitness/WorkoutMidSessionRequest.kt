@@ -46,7 +46,9 @@ object WorkoutMidSessionRequest {
         val avoidKneeling: Boolean = false,
         val allowKneeling: Boolean = false,
         // Remove only the active move's optional sets, keeping its required minimum.
-        val removeOptionalSets: Boolean = false
+        val removeOptionalSets: Boolean = false,
+        // Lower only the duration target for unstarted timed-hold sets; confirmed sets stay immutable.
+        val currentDurationLimit: Int? = null
     ) {
         init {
             require(remainingMinutes == null || remainingMinutes in 5..120)
@@ -59,10 +61,12 @@ object WorkoutMidSessionRequest {
             require(replaceCurrentWith == null || replaceCurrentWith.length in 1..90)
             require(currentSetLimit == null || currentSetLimit in 1..20)
             require(currentRepLimit == null || currentRepLimit in 1..200)
-            require(currentSetLimit == null || currentRepLimit == null)
+            require(currentDurationLimit == null || currentDurationLimit in 1..200)
+            require(currentSetLimit == null || (currentRepLimit == null && currentDurationLimit == null))
+            require(!(currentRepLimit != null && currentDurationLimit != null))
             require(!(removeOptionalSets && currentSetLimit != null))
-            require(!addOptionalExercise || (currentSetLimit == null && currentRepLimit == null && !removeOptionalSets))
-            require(replaceCurrentWith == null || currentRepLimit == null)
+            require(!addOptionalExercise || (currentSetLimit == null && currentRepLimit == null && currentDurationLimit == null && !removeOptionalSets))
+            require(replaceCurrentWith == null || (currentRepLimit == null && currentDurationLimit == null))
         }
 
         /**
@@ -72,6 +76,37 @@ object WorkoutMidSessionRequest {
          */
         val isRepTargetOnly: Boolean
             get() = currentRepLimit != null &&
+                remainingMinutes == null &&
+                !lowEnergy &&
+                !avoidWristLoad &&
+                !avoidFloorPositions &&
+                !preferEasier &&
+                restSeconds == null &&
+                !avoidExternalLoad &&
+                !allowWristLoad &&
+                !allowFloorPositions &&
+                !avoidOverheadReach &&
+                !allowOverheadReach &&
+                !avoidJumping &&
+                !allowJumping &&
+                !avoidKneeling &&
+                !allowKneeling &&
+                !addOptionalExercise &&
+                !removeOptionalExercises &&
+                !removeOptionalSets &&
+                currentSetLimit == null &&
+                currentDurationLimit == null &&
+                availableEquipment.isEmpty() &&
+                unavailableEquipment.isEmpty() &&
+                replaceCurrentWith == null
+
+        /**
+         * True only for a standalone timed-hold target edit. Like a rep-only edit,
+         * it tolerates natural timer drift while the confirmation preview is open.
+         */
+        val isDurationTargetOnly: Boolean
+            get() = currentDurationLimit != null &&
+                currentRepLimit == null &&
                 remainingMinutes == null &&
                 !lowEnergy &&
                 !avoidWristLoad &&
@@ -117,6 +152,7 @@ object WorkoutMidSessionRequest {
                 !removeOptionalSets &&
                 currentSetLimit == null &&
                 currentRepLimit == null &&
+                currentDurationLimit == null &&
                 availableEquipment.isEmpty() &&
                 unavailableEquipment.isEmpty() &&
                 replaceCurrentWith == null
@@ -516,10 +552,40 @@ object WorkoutMidSessionRequest {
             }
             count?.takeIf { it in 1..200 } ?: return Result.Unsupported
         }
-        if ((currentSetLimit != null && currentRepLimit != null) ||
-            (addOptionalExercise && (currentSetLimit != null || currentRepLimit != null || removeOptionalSets)) ||
+        // Timed-hold ceiling is separate from repetitions: "nghỉ 30 giây" must never
+        // become a Plank target. Accept only explicit per-set duration wording.
+        val durationLimitMatch = Regex(
+            """(?:giam(?: thoi luong)?(?: xuong)? con|rut(?: xuong)? con|chi giu|giu)\s+([0-9]{1,3}|mot|hai|ba|bon|tu|nam|sau|bay|tam|chin|muoi)\s+giay(?:\s+moi\s+hiep)?(?:\s+thoi)?\b|moi\s+hiep\s+([0-9]{1,3}|mot|hai|ba|bon|tu|nam|sau|bay|tam|chin|muoi)\s+giay(?:\s+thoi)?\b"""
+        ).find(text)
+        val durationLimitPrefix = durationLimitMatch?.let {
+            text.substring(0, it.range.first).trimEnd()
+        }.orEmpty()
+        val negatedDurationLimit = listOf("khong", "dung", "khong can", "khong muon", "chua")
+            .any { durationLimitPrefix == it || durationLimitPrefix.endsWith(" $it") }
+        val currentDurationLimit = if (durationLimitMatch == null || negatedDurationLimit) {
+            null
+        } else {
+            val token = durationLimitMatch.groupValues[1].ifBlank { durationLimitMatch.groupValues[2] }
+            val count = token.toIntOrNull() ?: when (token) {
+                "mot" -> 1
+                "hai" -> 2
+                "ba" -> 3
+                "bon", "tu" -> 4
+                "nam" -> 5
+                "sau" -> 6
+                "bay" -> 7
+                "tam" -> 8
+                "chin" -> 9
+                "muoi" -> 10
+                else -> null
+            }
+            count?.takeIf { it in 1..200 } ?: return Result.Unsupported
+        }
+        if ((currentSetLimit != null && (currentRepLimit != null || currentDurationLimit != null)) ||
+            (currentRepLimit != null && currentDurationLimit != null) ||
+            (addOptionalExercise && (currentSetLimit != null || currentRepLimit != null || currentDurationLimit != null || removeOptionalSets)) ||
             (removeOptionalSets && currentSetLimit != null) ||
-            (replacementExercise != null && currentRepLimit != null)
+            (replacementExercise != null && (currentRepLimit != null || currentDurationLimit != null))
         ) return Result.Unsupported
 
         val hasRestRequest = Regex("""\b(nghi|rest)\b""").containsMatchIn(text)
@@ -535,7 +601,7 @@ object WorkoutMidSessionRequest {
             !addOptionalExercise && availableEquipment.isEmpty() &&
             unavailableEquipment.isEmpty() && replacementExercise == null &&
             !removeOptionalExercises && !removeOptionalSets &&
-            currentSetLimit == null && currentRepLimit == null
+            currentSetLimit == null && currentRepLimit == null && currentDurationLimit == null
         ) return Result.Unsupported
 
         return Result.Proposed(
@@ -562,7 +628,8 @@ object WorkoutMidSessionRequest {
                 removeOptionalExercises = removeOptionalExercises,
                 currentSetLimit = currentSetLimit,
                 currentRepLimit = currentRepLimit,
-                removeOptionalSets = removeOptionalSets
+                removeOptionalSets = removeOptionalSets,
+                currentDurationLimit = currentDurationLimit
             )
         )
     }

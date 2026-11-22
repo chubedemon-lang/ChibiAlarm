@@ -7,6 +7,42 @@ import org.junit.Test
 
 class WorkoutMidSessionCompoundIntentTest {
     @Test
+    fun explicitTimedHoldLimitIsDistinctFromRestAndProgressQuestions() {
+        val reduced = WorkoutMidSessionRequest.parse("Giảm còn 15 giây mỗi hiệp")
+        assertTrue(reduced is WorkoutMidSessionRequest.Result.Proposed)
+        val reducedRequest = (reduced as WorkoutMidSessionRequest.Result.Proposed).request
+        assertEquals(15, reducedRequest.currentDurationLimit)
+        assertNull(reducedRequest.currentRepLimit)
+        assertTrue(reducedRequest.isDurationTargetOnly)
+        assertFalse(reducedRequest.isRepTargetOnly)
+
+        val colloquial = WorkoutMidSessionRequest.parse("Mỗi hiệp 20 giây thôi")
+        assertTrue(colloquial is WorkoutMidSessionRequest.Result.Proposed)
+        assertEquals(
+            20,
+            (colloquial as WorkoutMidSessionRequest.Result.Proposed).request.currentDurationLimit
+        )
+
+        val combined = WorkoutMidSessionRequest.parse(
+            "Giảm còn 15 giây mỗi hiệp và nghỉ thêm 30 giây"
+        )
+        assertTrue(combined is WorkoutMidSessionRequest.Result.Proposed)
+        val combinedRequest = (combined as WorkoutMidSessionRequest.Result.Proposed).request
+        assertEquals(15, combinedRequest.currentDurationLimit)
+        assertEquals(30, combinedRequest.restSeconds)
+        assertFalse(combinedRequest.isDurationTargetOnly)
+        assertFalse(combinedRequest.isRestOnly)
+
+        val restOnly = WorkoutMidSessionRequest.parse("Nghỉ thêm 30 giây")
+        assertTrue(restOnly is WorkoutMidSessionRequest.Result.Proposed)
+        assertNull((restOnly as WorkoutMidSessionRequest.Result.Proposed).request.currentDurationLimit)
+        assertEquals(30, restOnly.request.restSeconds)
+
+        assertTrue(WorkoutMidSessionRequest.parse("Còn 15 giây nữa?") is WorkoutMidSessionRequest.Result.Unsupported)
+        assertTrue(WorkoutMidSessionRequest.parse("Đừng giảm còn 15 giây mỗi hiệp") is WorkoutMidSessionRequest.Result.Unsupported)
+    }
+
+    @Test
     fun isRepTargetOnlyAllowsCountdownDriftButNotCompoundChanges() {
         val repOnly = WorkoutMidSessionRequest.parse("Giảm còn 10 lần mỗi hiệp")
         assertTrue(repOnly is WorkoutMidSessionRequest.Result.Proposed)

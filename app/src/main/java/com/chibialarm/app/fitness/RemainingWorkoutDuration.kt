@@ -12,6 +12,15 @@ object RemainingWorkoutDuration {
         return minOf(remainingMs, (remainingMs / 2).coerceAtLeast(5_000L))
     }
 
+    /**
+     * Convert a live timer value to the estimator's bounded, round-up seconds.
+     * A partial second must remain visible in a time estimate, not disappear.
+     */
+    fun ceilSeconds(milliseconds: Long): Int {
+        val bounded = milliseconds.coerceIn(0L, 600_000L)
+        return ((bounded + 999L) / 1_000L).toInt()
+    }
+
     data class PreviewStep(val name: String, val beforeSeconds: Int, val afterSeconds: Int)
 
     /**
@@ -33,7 +42,10 @@ object RemainingWorkoutDuration {
         return names.indices.drop(currentIndex).map { i ->
             val before = if (i == currentIndex) remainingSeconds
                 else seconds(durations[i], i, existingShorterFrom)
-            val after = if (i == currentIndex) minOf(remainingSeconds, (remainingSeconds / 2).coerceAtLeast(5))
+            // Match shortenActiveMs(): odd seconds round up because the live timer
+            // keeps the remaining half-second instead of silently dropping it.
+            val halfRoundedUp = remainingSeconds / 2 + remainingSeconds % 2
+            val after = if (i == currentIndex) minOf(remainingSeconds, halfRoundedUp.coerceAtLeast(5))
                 else seconds(durations[i], i, proposedFrom)
             PreviewStep(names[i], before, after)
         }

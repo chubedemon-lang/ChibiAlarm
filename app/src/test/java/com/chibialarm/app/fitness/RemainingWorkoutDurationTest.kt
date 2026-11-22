@@ -47,7 +47,7 @@ class RemainingWorkoutDurationTest {
         )
         assertEquals(listOf("squat", "stretch"), steps.map { it.name })
         assertEquals(listOf(25, 30), steps.map { it.beforeSeconds })
-        assertEquals(listOf(12, 15), steps.map { it.afterSeconds })
+        assertEquals(listOf(13, 15), steps.map { it.afterSeconds })
     }
 
     @Test fun previewRespectsPreviouslyShortenedUpcomingSteps() {
@@ -67,6 +67,33 @@ class RemainingWorkoutDurationTest {
             assertEquals(remaining, steps.first().beforeSeconds)
             assertEquals(remaining.coerceAtMost((remaining / 2).coerceAtLeast(5)), steps.first().afterSeconds)
             assertEquals(20, steps.last().afterSeconds)
+        }
+    }
+
+    @Test fun timerMillisecondsRoundUpForEstimatesAndStayBounded() {
+        assertEquals(0, RemainingWorkoutDuration.ceilSeconds(-1L))
+        assertEquals(1, RemainingWorkoutDuration.ceilSeconds(1L))
+        assertEquals(1, RemainingWorkoutDuration.ceilSeconds(1_000L))
+        assertEquals(2, RemainingWorkoutDuration.ceilSeconds(1_001L))
+        assertEquals(600, RemainingWorkoutDuration.ceilSeconds(600_000L))
+        assertEquals(600, RemainingWorkoutDuration.ceilSeconds(Long.MAX_VALUE))
+    }
+
+    @Test fun shortenedCurrentStepPreviewMatchesTheActualMillisecondTimer() {
+        for (remainingMs in listOf(1L, 1_001L, 8_000L, 11_000L, 11_001L, 23_999L, 25_000L)) {
+            val preview = RemainingWorkoutDuration.preview(
+                names = listOf("current"),
+                durations = listOf(60),
+                currentIndex = 0,
+                remainingSeconds = RemainingWorkoutDuration.ceilSeconds(remainingMs),
+                existingShorterFrom = Int.MAX_VALUE
+            ).single()
+            val actualAfterMs = RemainingWorkoutDuration.shortenActiveMs(remainingMs)
+            assertEquals(
+                "preview must match the rounded live timer for $remainingMs ms",
+                RemainingWorkoutDuration.ceilSeconds(actualAfterMs),
+                preview.afterSeconds
+            )
         }
     }
 

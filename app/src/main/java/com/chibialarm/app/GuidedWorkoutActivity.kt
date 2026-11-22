@@ -2617,9 +2617,9 @@ class GuidedWorkoutActivity:Activity() {
                 currentIndex = previewIndex,
                 completedMoves = previewCompletedMoves,
                 completedSets = previewCompletedSets,
-                currentExerciseRemainingSeconds = secondsLeft(activeRemainingMs),
+                currentExerciseRemainingSeconds = RemainingWorkoutDuration.ceilSeconds(activeRemainingMs),
                 resting = previewResting,
-                restSecondsRemaining = if (previewResting) secondsLeft(previewRestRemainingMs) else 0,
+                restSecondsRemaining = if (previewResting) RemainingWorkoutDuration.ceilSeconds(previewRestRemainingMs) else 0,
                 level = workoutLevel,
                 shorterFromIndex = shorterFrom
             )
@@ -2634,7 +2634,7 @@ class GuidedWorkoutActivity:Activity() {
             previewMoves.map { it.name },
             previewMoves.map { WorkoutDurationPlanner.activeSeconds(it) },
             previewIndex,
-            secondsLeft(previewRemainingMs),
+            RemainingWorkoutDuration.ceilSeconds(previewRemainingMs),
             previewShorterFrom
         )
         val details = stepPreview.take(4).mapIndexed { offset, step ->

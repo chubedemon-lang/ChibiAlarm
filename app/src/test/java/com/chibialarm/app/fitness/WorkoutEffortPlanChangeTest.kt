@@ -98,4 +98,53 @@ class WorkoutEffortPlanChangeTest {
         ))
     }
 
+
+    @Test fun repeatedHardTimedCheckInsOfferAFiveSecondDurationPreview() {
+        val plan = WorkoutSetTracker.Plan(2, 3, 15, 30, "giây", 45)
+        val request = WorkoutEffortPlanChange.durationReductionPreviewRequest(
+            WorkoutEffortFeedback.Level.HARD,
+            plan,
+            completedSets = 2,
+            previousLevelsForSameMove = listOf(WorkoutEffortFeedback.Level.HARD)
+        )
+
+        assertEquals(WorkoutMidSessionRequest.Request(currentDurationLimit = 25), request)
+        assertEquals(25, request!!.currentDurationLimit)
+        assertNull(request.currentRepLimit)
+        assertFalse(request.addOptionalExercise)
+    }
+
+    @Test fun timedDurationReductionRequiresTwoHardReportsAndAnUnfinishedSet() {
+        val plan = WorkoutSetTracker.Plan(2, 3, 15, 30, "giây", 45)
+        assertNull(WorkoutEffortPlanChange.durationReductionPreviewRequest(
+            WorkoutEffortFeedback.Level.HARD, plan, 1, emptyList()
+        ))
+        assertNull(WorkoutEffortPlanChange.durationReductionPreviewRequest(
+            WorkoutEffortFeedback.Level.EASY, plan, 2, listOf(WorkoutEffortFeedback.Level.HARD)
+        ))
+        assertNull(WorkoutEffortPlanChange.durationReductionPreviewRequest(
+            WorkoutEffortFeedback.Level.VERY_HARD, plan, 2, listOf(WorkoutEffortFeedback.Level.HARD)
+        ))
+        assertNull(WorkoutEffortPlanChange.durationReductionPreviewRequest(
+            WorkoutEffortFeedback.Level.HARD, plan, 3, listOf(WorkoutEffortFeedback.Level.HARD)
+        ))
+    }
+
+    @Test fun timedDurationReductionNeverCrossesTheCatalogMinimumOrChangesRepPlans() {
+        val fixedDuration = WorkoutSetTracker.Plan(2, 3, 15, 15, "giây", 45)
+        val tooNarrow = WorkoutSetTracker.Plan(2, 3, 16, 20, "giây", 45)
+        val repetitions = WorkoutSetTracker.Plan(2, 3, 8, 12, "lần", 60)
+        val previousHard = listOf(WorkoutEffortFeedback.Level.HARD)
+
+        assertNull(WorkoutEffortPlanChange.durationReductionPreviewRequest(
+            WorkoutEffortFeedback.Level.HARD, fixedDuration, 2, previousHard
+        ))
+        assertNull(WorkoutEffortPlanChange.durationReductionPreviewRequest(
+            WorkoutEffortFeedback.Level.HARD, tooNarrow, 2, previousHard
+        ))
+        assertNull(WorkoutEffortPlanChange.durationReductionPreviewRequest(
+            WorkoutEffortFeedback.Level.HARD, repetitions, 2, previousHard
+        ))
+    }
+
 }

@@ -5,6 +5,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
+import android.widget.TextView
 import java.time.LocalDate
 import java.util.UUID
 import org.junit.Assert.assertEquals
@@ -74,4 +75,68 @@ class FitnessActivityEffortSuggestionTest {
         assertTrue(input.text.toString().contains("không tự tăng số hiệp"))
         controller.pause().stop().destroy()
     }
+
+    @Test fun latestEffortCheckInIsVisibleAndOpensReadOnlyCoachQuestion() {
+        val today = LocalDate.now()
+        val app = RuntimeEnvironment.getApplication()
+        WorkoutData.save(app, listOf(
+            Workout(
+                date = today.toString(),
+                name = "Guided Workout",
+                minutes = 20,
+                note = "private health note",
+                sessionId = UUID.randomUUID().toString(),
+                completedMoves = 2,
+                selfReportedSets = 2,
+                effortLog = "Squat: hiệp 1: Vừa sức; Plank: hiệp 1: Nhẹ, còn dư sức"
+            )
+        ))
+
+        val controller = Robolectric.buildActivity(FitnessActivity::class.java).setup()
+        val activity = controller.get()
+        val content = activity.findViewById<ViewGroup>(android.R.id.content)
+        val allViews = views(content)
+        val insight = allViews.filterIsInstance<TextView>().first {
+            it.text.toString().contains("Check-in cảm nhận gần nhất")
+        }
+        assertEquals(View.VISIBLE, insight.visibility)
+        assertTrue(insight.text.toString().contains("Vừa sức"))
+        assertTrue(insight.text.toString().contains("Nhẹ, còn dư sức"))
+        assertTrue(!insight.text.toString().contains("private health note"))
+
+        val action = allViews.filterIsInstance<Button>().first {
+            it.text.toString() == "💬 Hỏi Chibi về check-in gần nhất"
+        }
+        assertEquals(View.VISIBLE, action.visibility)
+        action.performClick()
+
+        val input = allViews.filterIsInstance<EditText>().first {
+            it.contentDescription?.toString() == "Yêu cầu giáo án bằng tiếng Việt"
+        }
+        assertEquals("Mức độ gắng sức buổi gần nhất thế nào?", input.text.toString())
+        controller.pause().stop().destroy()
+    }
+
+    @Test fun latestEffortCardStaysHiddenWhenNoValidCheckInExists() {
+        val app = RuntimeEnvironment.getApplication()
+        WorkoutData.save(app, listOf(
+            Workout(
+                date = LocalDate.now().toString(),
+                name = "Legacy workout",
+                minutes = 20,
+                note = "private legacy note"
+            )
+        ))
+
+        val controller = Robolectric.buildActivity(FitnessActivity::class.java).setup()
+        val activity = controller.get()
+        val content = activity.findViewById<ViewGroup>(android.R.id.content)
+        val allViews = views(content)
+        val effortAction = allViews.filterIsInstance<Button>().first {
+            it.text.toString() == "💬 Hỏi Chibi về check-in gần nhất"
+        }
+        assertEquals(View.GONE, effortAction.visibility)
+        controller.pause().stop().destroy()
+    }
+
 }

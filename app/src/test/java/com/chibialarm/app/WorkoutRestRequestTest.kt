@@ -11,6 +11,8 @@ class WorkoutRestRequestTest {
         assertEquals(60, WorkoutRestRequest.seconds("Cho tôi nghỉ thêm 60 giây"))
         assertEquals(90, WorkoutRestRequest.seconds("nghỉ 90 giây"))
         assertEquals(120, WorkoutRestRequest.seconds("nghi them 2 phut"))
+        assertEquals(180, WorkoutRestRequest.seconds("nghi them 3 phut"))
+        assertEquals(600, WorkoutRestRequest.seconds("nghi 10 phut"))
         assertEquals(45, WorkoutRestRequest.seconds("rest 45 s"))
     }
 
@@ -28,7 +30,7 @@ class WorkoutRestRequestTest {
         assertEquals(75, WorkoutRestRequest.seconds("nghỉ 1 phút 15 giây"))
         assertEquals(90, WorkoutRestRequest.seconds("nghỉ một phút ba mươi giây"))
         assertEquals(30, WorkoutRestRequest.seconds("nghỉ 1 phút 90 giây"))
-        assertEquals(30, WorkoutRestRequest.seconds("nghỉ 2 phút 30 giây"))
+        assertEquals(150, WorkoutRestRequest.seconds("nghỉ 2 phút 30 giây"))
     }
 
     @Test fun understandsNaturalVietnameseNumberWordsForRestDurations() {
@@ -47,13 +49,15 @@ class WorkoutRestRequestTest {
             "nghỉ ba mươi lăm giây",
             "nghỉ bốn mươi lăm giây",
             "nghỉ năm mươi lăm giây",
+            "nghỉ ba phút",
+            "nghỉ 10 phút",
+            "nghỉ hai phút ba mươi giây",
             "nghỉ một phút hai mươi lăm giây",
         )) {
             assertTrue(phrase, WorkoutRestRequest.hasRecognizedDuration(phrase))
         }
         for (phrase in listOf(
             "bài 60 giây",
-            "nghỉ ba phút",
             "nghỉ 5 giây",
             "nghỉ thêm 60 lần",
             "mệt quá, cần nghỉ"
@@ -64,8 +68,9 @@ class WorkoutRestRequestTest {
 
     @Test fun rejectsSpokenDurationsOutsideTheSafeRange() {
         assertEquals(30, WorkoutRestRequest.seconds("nghỉ thêm một phút chín mươi giây"))
-        assertEquals(30, WorkoutRestRequest.seconds("nghỉ thêm ba phút"))
-        assertEquals(30, WorkoutRestRequest.seconds("nghỉ thêm hai phút ba mươi giây"))
+        assertEquals(180, WorkoutRestRequest.seconds("nghỉ thêm ba phút"))
+        assertEquals(150, WorkoutRestRequest.seconds("nghỉ thêm hai phút ba mươi giây"))
+        assertEquals(30, WorkoutRestRequest.seconds("nghỉ thêm mười một phút"))
     }
 
     @Test fun voicePreviewUsesTheRecognizedRestDuration() {
@@ -73,6 +78,8 @@ class WorkoutRestRequestTest {
             WorkoutVoiceCommands.describe(WorkoutVoiceCommands.Command.REST, "nghỉ 1 phút 30 giây"))
         assertEquals("Bắt đầu nghỉ riêng 85 giây",
             WorkoutVoiceCommands.describe(WorkoutVoiceCommands.Command.REST, "nghỉ một phút hai mươi lăm giây"))
+        assertEquals("Bắt đầu nghỉ riêng 180 giây",
+            WorkoutVoiceCommands.describe(WorkoutVoiceCommands.Command.REST, "nghỉ ba phút"))
         assertEquals("Bắt đầu nghỉ riêng 30 giây",
             WorkoutVoiceCommands.describe(WorkoutVoiceCommands.Command.REST))
         assertEquals("Hiển thị cách tập dễ hơn và thêm 60 giây nghỉ",
@@ -95,6 +102,8 @@ class WorkoutRestRequestTest {
         assertEquals(WorkoutVoiceCommands.Command.REST,
             WorkoutVoiceCommands.parse("nghỉ hai phút"))
         assertEquals(WorkoutVoiceCommands.Command.REST,
+            WorkoutVoiceCommands.parse("nghỉ ba phút"))
+        assertEquals(WorkoutVoiceCommands.Command.REST,
             WorkoutVoiceCommands.parse("nghỉ 90 giây"))
         assertEquals(WorkoutVoiceCommands.Command.REST,
             WorkoutVoiceCommands.parse("cho tôi nghỉ 2 phút"))
@@ -113,6 +122,8 @@ class WorkoutRestRequestTest {
         assertEquals(30, WorkoutRestRequest.contextualExtensionSeconds("Đúng, thêm 30 giây nữa", true))
         assertEquals(60, WorkoutRestRequest.contextualExtensionSeconds("Cộng thêm một phút", true))
         assertEquals(45, WorkoutRestRequest.contextualExtensionSeconds("Kéo dài thêm 45 giây", true))
+        assertEquals(180, WorkoutRestRequest.contextualExtensionSeconds("Thêm ba phút nữa", true))
+        assertEquals(600, WorkoutRestRequest.contextualExtensionSeconds("Thêm mười phút nữa", true))
         assertNull(WorkoutRestRequest.contextualExtensionSeconds("Thêm 30 giây nữa", false))
     }
 

@@ -6,6 +6,7 @@ package com.chibialarm.app
  */
 internal object FitnessPlanSpeechSummary {
     const val MAX_CHARACTERS = 350
+    const val MAX_WITH_EFFORT_REVIEW_CHARACTERS = 520
 
     fun fromProfile(
         profileSummary: String,
@@ -91,6 +92,40 @@ internal object FitnessPlanSpeechSummary {
         return selected.joinToString(" ").also {
             check(it.length <= MAX_CHARACTERS) {
                 "Required plan summary exceeded the speech limit"
+            }
+        }
+    }
+
+    /**
+     * Adds one concise, read-only spoken reminder when the proposed plan intersects
+     * prior self-reported effort warnings. Only known warning labels are interpreted;
+     * raw journal notes and the warning text itself are never copied into TTS.
+     */
+    fun withEffortReview(summary: String, warnings: List<String>): String {
+        require(summary.isNotBlank() && summary.length <= MAX_CHARACTERS)
+        require(warnings.size <= 3)
+        require(warnings.all { it.length <= 600 })
+
+        if (warnings.isEmpty() ||
+            summary.contains("không tạo hoặc bắt đầu giáo án", ignoreCase = true)
+        ) return summary
+
+        val reminder = when {
+            warnings.any { it.contains("Quá sức, tạm dừng", ignoreCase = true) } ->
+                "Lưu ý: bạn từng tự đánh dấu một động tác trong kế hoạch là quá sức. " +
+                    "Hãy xem biến thể nhẹ hơn hoặc bỏ qua nếu còn khó chịu."
+            warnings.any { it.contains("khó/quá sức ở", ignoreCase = true) } ->
+                "Lưu ý: bạn từng đánh dấu một động tác là khó hoặc quá sức ở nhiều buổi. " +
+                    "Hãy xem lại biến thể và thời gian nghỉ."
+            warnings.any { it.contains("Khó, cần nghỉ thêm", ignoreCase = true) } ->
+                "Lưu ý: check-in gần nhất có động tác được bạn đánh dấu khó. " +
+                    "Hãy xem lại hướng dẫn và thời gian nghỉ."
+            else ->
+                "Có lưu ý từ check-in cảm nhận trước đây. Hãy đọc phần nhắc trên màn hình trước khi bắt đầu."
+        }
+        return (summary + " " + reminder).also {
+            check(it.length <= MAX_WITH_EFFORT_REVIEW_CHARACTERS) {
+                "Spoken effort reminder exceeded its bounded length"
             }
         }
     }

@@ -479,4 +479,27 @@ class WorkoutEffortHistoryConversationTest {
         assertFalse(answer.contains("private"))
     }
 
+    @Test fun nextSessionAdviceAcceptsNaturalPronounAndTomorrowVariants() {
+        val latest = guided(
+            today,
+            "Squat: hiệp 1: Vừa sức",
+            "550e8400-e29b-41d4-a716-446655440097"
+        )
+        val questions = listOf(
+            "Buổi sau tao nên tập thế nào?",
+            "Mai mình nên tập gì?",
+            "Buổi tiếp theo tôi tập thế nào?"
+        )
+
+        questions.forEach { question ->
+            val answer = WorkoutEffortHistoryConversation.answer(
+                question,
+                listOf(latest),
+                today
+            )
+            assertNotNull("Question should reach next-session advice: $question", answer)
+            assertTrue(answer!!.contains("chưa đủ căn cứ để đề xuất tăng tải"))
+        }
+    }
+
 }

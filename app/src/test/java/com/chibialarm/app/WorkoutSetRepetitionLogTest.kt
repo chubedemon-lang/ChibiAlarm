@@ -82,4 +82,12 @@ class WorkoutSetRepetitionLogTest {
         )
     }
 
+    @Test fun journalSummarySanitizesCatalogLabelsBeforeDisplay() {
+        val unsafeMove = TrainingMove("Squat\nInjected\u0000 label", "1 × 8 lần", "steps", "easy", "avoid")
+        val summary = WorkoutSetRepetitionLog.summary(mapOf(0 to listOf(8)), listOf(unsafeMove))
+
+        assertEquals("Squat Injected label: hiệp 1: 8 lần", summary)
+        assertFalse(summary.contains("\n"))
+        assertFalse(summary.contains("\u0000"))
+    }
 }

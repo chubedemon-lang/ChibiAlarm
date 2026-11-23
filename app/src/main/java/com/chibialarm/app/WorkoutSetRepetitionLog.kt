@@ -82,7 +82,12 @@ object WorkoutSetRepetitionLog {
                 val sets = values.mapIndexedNotNull { setIndex, value ->
                     if (value == 0) null else "hiệp ${setIndex + 1}: $value ${plan.unit}"
                 }.joinToString(", ")
-                if (sets.isBlank()) null else "${moves[index].name}: $sets"
+                val safeName = moves[index].name
+                    .replace(Regex("[\\r\\n\\p{Cc}]+"), " ")
+                    .replace(Regex("\\s+"), " ")
+                    .trim()
+                    .take(60)
+                if (sets.isBlank() || safeName.isBlank()) null else "$safeName: $sets"
             }
             .take(MAX_MOVES)
             .joinToString("; ")

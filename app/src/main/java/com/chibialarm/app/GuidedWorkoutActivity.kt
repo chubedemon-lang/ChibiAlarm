@@ -4611,15 +4611,15 @@ class GuidedWorkoutActivity:Activity() {
                     val totalXp = rpgDatabase.dao().character()?.totalXp ?: 0L
                     WorkoutRewardDisplayFactory.create(awardedXp, totalXp)
                 }
-                if (!isFinishing && !isDestroyed) showWorkoutReward(display, effortValueSummary)
+                if (!isFinishing && !isDestroyed) showWorkoutReward(display, setValueSummary, effortValueSummary)
             } catch (error: Exception) {
                 if (error is CancellationException) throw error
-                if (!isFinishing && !isDestroyed) showWorkoutRewardPending(effortValueSummary)
+                if (!isFinishing && !isDestroyed) showWorkoutRewardPending(setValueSummary, effortValueSummary)
             }
         }
     }
 
-    private fun showWorkoutReward(display: WorkoutRewardDisplay, effortSummary: String) {
+    private fun showWorkoutReward(display: WorkoutRewardDisplay, setValueSummary: String, effortSummary: String) {
         val panel = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(24, 14, 24, 8)
@@ -4661,6 +4661,21 @@ class GuidedWorkoutActivity:Activity() {
                 }
             }
         })
+        if (setValueSummary.isNotBlank()) {
+            val visibleSummary = setValueSummary.take(600).let {
+                if (setValueSummary.length > 600) "$it…" else it
+            }
+            panel.addView(TextView(this).apply {
+                tag = "workout-reward-set-summary"
+                text = "📊 Giá trị từng hiệp bạn tự khai báo\n$visibleSummary\n\nSố liệu do bạn tự ghi, không được cảm biến xác minh. Hiệp chưa có giá trị không được suy đoán."
+                textSize = 13f
+                setTextColor(Color.rgb(75, 70, 88))
+                setPadding(8, 12, 8, 8)
+                maxLines = 8
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                contentDescription = "Giá trị từng hiệp do bạn tự khai báo: $setValueSummary. Không được cảm biến xác minh."
+            })
+        }
         if (effortSummary.isNotBlank()) {
             val visibleSummary = effortSummary.take(600).let {
                 if (effortSummary.length > 600) "$it…" else it
@@ -4715,13 +4730,19 @@ class GuidedWorkoutActivity:Activity() {
             .show()
     }
 
-    private fun showWorkoutRewardPending(effortSummary: String) {
+    private fun showWorkoutRewardPending(setValueSummary: String, effortSummary: String) {
         AlertDialog.Builder(this)
             .setTitle("Đã lưu buổi tập")
             .setMessage(buildString {
                 append("Nhật ký đã được lưu an toàn trên máy. Chưa thể đồng bộ EXP ngay lúc này; ")
                 append("Chibi RPG sẽ thử lại từ cùng mã buổi tập khi bạn mở màn hình RPG. ")
                 append("Không cần tập lại và không mất nhật ký.")
+                if (setValueSummary.isNotBlank()) {
+                    append("\n\nGiá trị từng hiệp bạn tự khai báo:\n")
+                    append(setValueSummary.take(500))
+                    if (setValueSummary.length > 500) append("…")
+                    append("\nSố liệu không được cảm biến xác minh.")
+                }
                 if (effortSummary.isNotBlank()) {
                     append("\n\nCảm nhận các hiệp bạn đã tự ghi:\n")
                     append(effortSummary.take(500))

@@ -51,14 +51,19 @@ class GuidedWorkoutRewardSummaryTest {
             val method = GuidedWorkoutActivity::class.java.getDeclaredMethod(
                 "showWorkoutReward",
                 WorkoutRewardDisplay::class.java,
+                String::class.java,
                 String::class.java
             ).apply { isAccessible = true }
 
-            method.invoke(activity, WorkoutRewardDisplayFactory.create(15, 120), summary)
+            method.invoke(activity, WorkoutRewardDisplayFactory.create(15, 120),
+                "Squat: hiệp 1: 10 lần", summary)
 
             val dialog = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
             val text = visibleText(dialog.window!!.decorView)
             assertTrue(dialog.isShowing)
+            assertTrue(text.contains("Giá trị từng hiệp bạn tự khai báo"))
+            assertTrue(text.contains("Squat: hiệp 1: 10 lần"))
+            assertTrue(text.contains("không được cảm biến xác minh"))
             assertTrue(text.contains("Cảm nhận các hiệp bạn đã tự ghi"))
             assertTrue(text.contains("Squat: hiệp 1: Khó, cần nghỉ thêm"))
             assertTrue(text.contains("Plank: hiệp 1: Vừa sức"))
@@ -75,10 +80,11 @@ class GuidedWorkoutRewardSummaryTest {
             val method = GuidedWorkoutActivity::class.java.getDeclaredMethod(
                 "showWorkoutReward",
                 WorkoutRewardDisplay::class.java,
+                String::class.java,
                 String::class.java
             ).apply { isAccessible = true }
 
-            method.invoke(activity, WorkoutRewardDisplayFactory.create(15, 120), "")
+            method.invoke(activity, WorkoutRewardDisplayFactory.create(15, 120), "", "")
 
             val dialog = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
             val dialogRoot = dialog.window!!.decorView
@@ -99,15 +105,35 @@ class GuidedWorkoutRewardSummaryTest {
             val method = GuidedWorkoutActivity::class.java.getDeclaredMethod(
                 "showWorkoutReward",
                 WorkoutRewardDisplay::class.java,
+                String::class.java,
                 String::class.java
             ).apply { isAccessible = true }
 
-            method.invoke(activity, WorkoutRewardDisplayFactory.create(0, 0), "")
+            method.invoke(activity, WorkoutRewardDisplayFactory.create(0, 0), "", "")
 
             val dialog = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
             val text = visibleText(dialog.window!!.decorView)
             assertTrue(dialog.isShowing)
             assertFalse(text.contains("Cảm nhận các hiệp bạn đã tự ghi"))
+        } finally {
+            activity.finish()
+        }
+    }
+    @Test
+    fun pendingRewardDialogPreservesSelfReportedSetValuesAfterJournalSave() {
+        val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup().get()
+        try {
+            val method = GuidedWorkoutActivity::class.java.getDeclaredMethod(
+                "showWorkoutRewardPending", String::class.java, String::class.java
+            ).apply { isAccessible = true }
+            method.invoke(activity, "Squat: hiệp 1: 9 lần", "")
+
+            val dialog = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
+            val text = visibleText(dialog.window!!.decorView)
+            assertTrue(dialog.isShowing)
+            assertTrue(text.contains("Giá trị từng hiệp bạn tự khai báo:"))
+            assertTrue(text.contains("Squat: hiệp 1: 9 lần"))
+            assertTrue(text.contains("không được cảm biến xác minh"))
         } finally {
             activity.finish()
         }

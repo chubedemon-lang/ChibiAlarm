@@ -4,6 +4,7 @@ import android.app.*
 import android.content.*
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
+import android.os.Build
 import android.os.Bundle
 import android.speech.RecognizerIntent
 import android.speech.tts.TextToSpeech
@@ -167,6 +168,55 @@ class FitnessActivity:Activity() {
         }
     }
 
+    /**
+     * Reads the current catalog rationale only after an explicit tap.
+     * A network-backed or unknown TTS voice requires a per-use disclosure; this never opens the microphone.
+     */
+    private fun speakLibraryRationale(text: String) {
+        val engine = speechOutput
+        if (engine == null || !speechReady) {
+            Toast.makeText(this, "Bật giọng Chibi trước để nghe lý do chọn bài.", Toast.LENGTH_LONG).show()
+            return
+        }
+        val networkRequired = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            runCatching { engine.voice?.isNetworkConnectionRequired }.getOrNull()
+        } else {
+            null
+        }
+        val boundedText = text.trim().take(900)
+        if (boundedText.isBlank()) return
+        when (CoachSpeechPreview.decision(speechReady, networkRequired)) {
+            CoachSpeechPreview.Decision.UNAVAILABLE -> Toast.makeText(
+                this, "Chưa có giọng tiếng Việt sẵn sàng.", Toast.LENGTH_LONG
+            ).show()
+            CoachSpeechPreview.Decision.PLAY_WITHOUT_NETWORK_PROMPT ->
+                speakCoachReply(boundedText, "fitness-library-rationale")
+            CoachSpeechPreview.Decision.REQUIRE_NETWORK_CONSENT -> {
+                AlertDialog.Builder(this)
+                    .setTitle("Đọc lý do bằng giọng cần mạng?")
+                    .setMessage(
+                        "Giọng TTS đang chọn báo cần mạng. Nội dung giải thích của bài tập hiện tại " +
+                            "có thể được gửi tới dịch vụ TTS bên ngoài. Không gửi âm thanh microphone, " +
+                            "lịch sử chat hoặc nhật ký tập. Chỉ tiếp tục nếu bạn đồng ý."
+                    )
+                    .setPositiveButton("Đồng ý, đọc") { _, _ -> speakCoachReply(boundedText, "fitness-library-rationale") }
+                    .setNegativeButton("Để tôi đọc", null)
+                    .show()
+            }
+            CoachSpeechPreview.Decision.REQUIRE_UNKNOWN_NETWORK_CONSENT -> {
+                AlertDialog.Builder(this)
+                    .setTitle("Chưa xác định được chế độ ngoại tuyến")
+                    .setMessage(
+                        "Android không xác định được giọng TTS đang chọn có hoạt động ngoại tuyến hay không. " +
+                            "Nội dung giải thích của bài tập có thể được xử lý bởi dịch vụ bên ngoài. " +
+                            "Không gửi âm thanh microphone, lịch sử chat hoặc nhật ký tập. Bạn có muốn tiếp tục?"
+                    )
+                    .setPositiveButton("Đồng ý, đọc") { _, _ -> speakCoachReply(boundedText, "fitness-library-rationale") }
+                    .setNegativeButton("Để tôi đọc", null)
+                    .show()
+            }
+        }
+    }
     @JvmOverloads
     private fun sayFollowUp(
         message: String,
@@ -1240,6 +1290,13 @@ class FitnessActivity:Activity() {
             tag = "fitness-library-selection-rationale"
             contentDescription = "Giải thích dựa trên nhóm chương trình, dụng cụ, bộ lọc và nhãn thư viện; không phải đánh giá tư thế"
         }
+        val speakSelectionRationale = Button(this).apply {
+            tag = "fitness-library-selection-rationale-speak"
+            text = "🔊 Nghe lý do chọn bài"
+            isAllCaps = false
+            contentDescription = "Đọc lý do chọn bài bằng TTS; không mở microphone; giọng cần mạng sẽ yêu cầu đồng ý riêng"
+            setOnClickListener { speakLibraryRationale(selectionRationale.text.toString()) }
+        }
         val rest = txt("", 14f)
         val stepPosition = txt("", 13f)
         val stepInstruction = txt("", 16f)
@@ -1367,6 +1424,7 @@ class FitnessActivity:Activity() {
         content.addView(equipment)
         content.addView(muscleFocus)
         content.addView(selectionRationale)
+        content.addView(speakSelectionRationale)
         content.addView(rest)
         content.addView(stepPosition)
         content.addView(stepInstruction)

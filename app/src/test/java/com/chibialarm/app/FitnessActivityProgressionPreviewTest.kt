@@ -128,7 +128,12 @@ class FitnessActivityProgressionPreviewTest {
         val firstExplanation = rationale!!.text.toString()
         assertTrue(firstExplanation.contains("Vì sao bài này phù hợp"))
         assertTrue(firstExplanation.contains("Bài 1/"))
-        assertTrue(firstExplanation.contains("Nhóm cơ theo thư viện"))
+        assertTrue(firstExplanation.contains("Nhóm cơ chính theo thư viện"))
+        val rationaleSpeech = dialogViews.filterIsInstance<Button>()
+            .firstOrNull { it.tag == "fitness-library-selection-rationale-speak" }
+        assertNotNull("The current exercise rationale should be readable with the existing TTS engine", rationaleSpeech)
+        assertTrue(rationaleSpeech!!.contentDescription.contains("không mở microphone"))
+        assertTrue(rationaleSpeech.contentDescription.contains("đồng ý riêng"))
 
         val nextMove = dialogViews.filterIsInstance<Button>()
             .firstOrNull { it.text.toString() == "Bài tiếp →" }

@@ -4415,8 +4415,32 @@ class GuidedWorkoutActivity:Activity() {
     ): Boolean {
         if (!ready || message.isBlank()) return false
         val engine = spoken ?: return false
+        val sequence = WorkoutSpeechSequence.plan(
+            message,
+            flushFirst = queueMode == TextToSpeech.QUEUE_FLUSH
+        )
+        if (sequence.isEmpty()) return false
+
         engine.setSpeechRate(workoutSpeechRate)
-        return engine.speak(message.take(350), queueMode, null, "fitness-${index}") == TextToSpeech.SUCCESS
+        for (utterance in sequence) {
+            val mode = if (utterance.flushQueue) {
+                TextToSpeech.QUEUE_FLUSH
+            } else {
+                TextToSpeech.QUEUE_ADD
+            }
+            val result = engine.speak(
+                utterance.text,
+                mode,
+                null,
+                "fitness-${index}-${UUID.randomUUID()}"
+            )
+            if (result != TextToSpeech.SUCCESS) {
+                // Do not leave a partial instruction queued after a later chunk fails.
+                engine.stop()
+                return false
+            }
+        }
+        return true
     }
 
     /**
@@ -4443,29 +4467,8 @@ class GuidedWorkoutActivity:Activity() {
         }
     }
 
-    /** Speak the complete coach answer as bounded utterances instead of truncating it at 350 chars. */
-    private fun speakCoachAnswer(message: String): Boolean {
-        if (!ready || message.isBlank()) return false
-        val engine = spoken ?: return false
-        val chunks = WorkoutSpeechText.chunks(message)
-        if (chunks.isEmpty()) return false
-
-        engine.setSpeechRate(workoutSpeechRate)
-        for ((position, chunk) in chunks.withIndex()) {
-            val queueMode = if (position == 0) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
-            val result = engine.speak(
-                chunk,
-                queueMode,
-                null,
-                "fitness-coach-${UUID.randomUUID()}"
-            )
-            if (result != TextToSpeech.SUCCESS) {
-                engine.stop()
-                return false
-            }
-        }
-        return true
-    }
+    /** Coach answers and guided instructions share the same lossless, bounded TTS queue. */
+    private fun speakCoachAnswer(message: String): Boolean = speak(message)
     private fun resume() {
         if(pausedForSafety) {
             AlertDialog.Builder(this).setTitle("Xác nhận trước khi tập lại")

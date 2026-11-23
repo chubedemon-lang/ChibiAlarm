@@ -402,4 +402,81 @@ class WorkoutEffortHistoryConversationTest {
         assertNull(WorkoutEffortHistoryConversation.latestSummary(listOf(legacy, invalid), today))
     }
 
+    @Test fun nextSessionAdvicePrioritizesLatestVeryHardAndNeverReadsPrivateNotes() {
+        val older = guided(
+            today.minusDays(1),
+            "Squat: hiệp 1: Vừa sức",
+            "550e8400-e29b-41d4-a716-446655440091"
+        )
+        val latest = guided(
+            today,
+            "Plank: hiệp 1: Quá sức, tạm dừng; Squat: hiệp 1: Khó, cần nghỉ thêm",
+            "550e8400-e29b-41d4-a716-446655440092",
+            "private shoulder and breathing note"
+        )
+
+        val answer = WorkoutEffortHistoryConversation.answer(
+            "Buổi sau tao nên tập thế nào?",
+            listOf(older, latest),
+            today
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("bạn tự đánh dấu quá sức"))
+        assertTrue(answer.contains("Plank — hiệp 1"))
+        assertTrue(answer.contains("không nên tăng tải"))
+        assertTrue(answer.contains("không phải phép đo hồi phục"))
+        assertFalse(answer.contains("private"))
+        assertFalse(answer.contains("shoulder"))
+    }
+
+    @Test fun nextSessionAdviceFlagsRepeatedHardEffortAcrossDistinctSessions() {
+        val older = guided(
+            today.minusDays(2),
+            "Squat không tạ: hiệp 1: Khó, cần nghỉ thêm",
+            "550e8400-e29b-41d4-a716-446655440093"
+        )
+        val previous = guided(
+            today.minusDays(1),
+            "Squat không tạ: hiệp 1: Khó, cần nghỉ thêm",
+            "550e8400-e29b-41d4-a716-446655440094"
+        )
+        val latest = guided(
+            today,
+            "Squat không tạ: hiệp 1: Vừa sức",
+            "550e8400-e29b-41d4-a716-446655440095"
+        )
+
+        val answer = WorkoutEffortHistoryConversation.answer(
+            "Buổi sau nên tập thế nào?",
+            listOf(older, previous, latest),
+            today
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("Squat không tạ"))
+        assertTrue(answer.contains("2/3 buổi"))
+        assertTrue(answer.contains("giữ hoặc giảm tải"))
+        assertFalse(answer.contains("tự động tăng"))
+    }
+
+    @Test fun easyCheckInsDoNotBecomeAnAutomaticProgressionRecommendation() {
+        val latest = guided(
+            today,
+            "Squat: hiệp 1: Nhẹ, còn dư sức; Plank: hiệp 1: Vừa sức",
+            "550e8400-e29b-41d4-a716-446655440096"
+        )
+
+        val answer = WorkoutEffortHistoryConversation.answer(
+            "Lần sau nên tập thế nào?",
+            listOf(latest),
+            today
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("chưa đủ căn cứ để đề xuất tăng tải"))
+        assertTrue(answer.contains("không chứng minh"))
+        assertFalse(answer.contains("private"))
+    }
+
 }

@@ -8,6 +8,7 @@ package com.chibialarm.app
  */
 internal object WorkoutRestVoiceCue {
     const val WARNING_WINDOW_MS = 10_000L
+    const val MAX_WARNING_WINDOW_MS = 20_000L
 
     /** The caller must report false while TTS is already speaking, to avoid flushing it. */
     fun shouldAnnounce(
@@ -16,17 +17,27 @@ internal object WorkoutRestVoiceCue {
         pausedForSafety: Boolean,
         microphoneActive: Boolean = false,
         speechEngineReady: Boolean = true,
-        voiceCueEnabled: Boolean = true
-    ): Boolean = voiceCueEnabled &&
-        !alreadyAnnounced &&
-        !pausedForSafety &&
-        !microphoneActive &&
-        speechEngineReady &&
-        remainingMs in 1L..WARNING_WINDOW_MS
+        voiceCueEnabled: Boolean = true,
+        warningWindowMs: Long = WARNING_WINDOW_MS
+    ): Boolean {
+        val boundedWindow = warningWindowMs.coerceIn(1L, MAX_WARNING_WINDOW_MS)
+        return voiceCueEnabled &&
+            !alreadyAnnounced &&
+            !pausedForSafety &&
+            !microphoneActive &&
+            speechEngineReady &&
+            remainingMs in 1L..boundedWindow
+    }
 
-    fun message(remainingMs: Long, upcomingPreview: String? = null): String? {
-        if (remainingMs !in 1L..WARNING_WINDOW_MS) return null
-        val seconds = ((remainingMs + 999L) / 1_000L).coerceIn(1L, 10L)
+    fun message(
+        remainingMs: Long,
+        upcomingPreview: String? = null,
+        warningWindowMs: Long = WARNING_WINDOW_MS
+    ): String? {
+        val boundedWindow = warningWindowMs.coerceIn(1L, MAX_WARNING_WINDOW_MS)
+        if (remainingMs !in 1L..boundedWindow) return null
+        val maxSeconds = ((boundedWindow + 999L) / 1_000L).coerceIn(1L, 20L)
+        val seconds = ((remainingMs + 999L) / 1_000L).coerceIn(1L, maxSeconds)
         val upcoming = safeLabel(upcomingPreview, 180)
         return if (upcoming.isBlank()) {
             "Còn $seconds giây nghỉ. Chuẩn bị cho động tác tiếp theo."

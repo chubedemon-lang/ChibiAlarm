@@ -4,6 +4,8 @@ import android.content.Context
 import android.view.View
 import android.view.ViewGroup
 import android.widget.CheckBox
+import android.widget.SeekBar
+import android.widget.TextView
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -142,12 +144,80 @@ class GuidedWorkoutRestVoicePreferenceTest {
         }
     }
 
+    @Test fun leadTimeSliderOffersFiveSecondStepsAndPersistsAcrossFreshGuestWorkout() {
+        val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup().get()
+        try {
+            field("resting").setBoolean(activity, true)
+            field("paused").setBoolean(activity, true)
+            field("restRemainingMs").setLong(activity, 15_000L)
+            GuidedWorkoutActivity::class.java.getDeclaredMethod("renderRestPreview")
+                .apply { isAccessible = true }
+                .invoke(activity)
+
+            val root = activity.findViewById<ViewGroup>(android.R.id.content)
+            val slider = findTagged(root, "workout-rest-voice-lead-slider") as SeekBar
+            val label = findTagged(root, "workout-rest-voice-lead-label") as TextView
+            assertEquals(3, slider.max)
+            assertEquals(1, slider.progress)
+            assertEquals("Nhắc trước: 10 giây", label.text.toString())
+
+            slider.setProgress(2, true)
+            assertEquals(15, field("restVoiceCueLeadSeconds").getInt(activity))
+            assertEquals("Nhắc trước: 15 giây", label.text.toString())
+
+            val preferences = RuntimeEnvironment.getApplication().getSharedPreferences(
+                WorkoutRestVoiceCuePreference.PREFERENCES_NAME,
+                Context.MODE_PRIVATE
+            )
+            assertEquals(15, preferences.getInt(WorkoutRestVoiceCuePreference.KEY_LEAD_SECONDS, 10))
+            val checkpoint = RuntimeEnvironment.getApplication().getSharedPreferences(
+                "chibi_workout_checkpoint_guest",
+                Context.MODE_PRIVATE
+            )
+            assertEquals(15, checkpoint.getInt("restVoiceCueLeadSeconds", 10))
+
+            val bundle = android.os.Bundle()
+            GuidedWorkoutActivity::class.java
+                .getDeclaredMethod("onSaveInstanceState", android.os.Bundle::class.java)
+                .apply { isAccessible = true }
+                .invoke(activity, bundle)
+            assertEquals(15, bundle.getInt("workout_rest_voice_cue_lead_seconds", 0))
+        } finally {
+            activity.finish()
+        }
+
+        RuntimeEnvironment.getApplication()
+            .getSharedPreferences("chibi_workout_checkpoint_guest", Context.MODE_PRIVATE)
+            .edit().clear().commit()
+        val next = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup().get()
+        try {
+            assertEquals(15, field("restVoiceCueLeadSeconds").getInt(next))
+            field("resting").setBoolean(next, true)
+            field("paused").setBoolean(next, true)
+            field("restRemainingMs").setLong(next, 15_000L)
+            GuidedWorkoutActivity::class.java.getDeclaredMethod("renderRestPreview")
+                .apply { isAccessible = true }
+                .invoke(next)
+            val slider = findTagged(
+                next.findViewById<ViewGroup>(android.R.id.content),
+                "workout-rest-voice-lead-slider"
+            ) as SeekBar
+            assertEquals(2, slider.progress)
+        } finally {
+            next.finish()
+        }
+    }
+
     @Test fun restVoiceCueToggleStaysHiddenOutsideRestAndDuringSafetyPause() {
         val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup().get()
         try {
             val root = activity.findViewById<ViewGroup>(android.R.id.content)
             val toggle = findTagged(root, "workout-rest-auto-voice-cue") as CheckBox
+            val slider = findTagged(root, "workout-rest-voice-lead-slider") as SeekBar
+            val label = findTagged(root, "workout-rest-voice-lead-label") as TextView
             assertEquals(View.GONE, toggle.visibility)
+            assertEquals(View.GONE, slider.visibility)
+            assertEquals(View.GONE, label.visibility)
 
             field("resting").setBoolean(activity, true)
             field("pausedForSafety").setBoolean(activity, true)
@@ -155,6 +225,8 @@ class GuidedWorkoutRestVoicePreferenceTest {
                 .apply { isAccessible = true }
                 .invoke(activity)
             assertEquals("Safety pause must hide the automatic voice control", View.GONE, toggle.visibility)
+            assertEquals("Safety pause must hide the lead-time slider", View.GONE, slider.visibility)
+            assertEquals("Safety pause must hide the lead-time label", View.GONE, label.visibility)
         } finally {
             activity.finish()
         }

@@ -9,6 +9,7 @@ import android.widget.TextView
 import java.time.LocalDate
 import java.util.UUID
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test

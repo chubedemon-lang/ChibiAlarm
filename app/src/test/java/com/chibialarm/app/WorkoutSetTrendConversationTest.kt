@@ -166,7 +166,7 @@ class WorkoutSetTrendConversationTest {
 
         assertNotNull(answer)
         assertTrue(answer!!.contains("8 lần → 9 lần → 10 lần"))
-        assertTrue(answer.contains("đơn vị không nhất quán"))
+        assertTrue(answer.contains("đơn vị không khớp"))
         assertFalse(answer.contains("20 giây"))
         assertFalse(answer.contains("30 giây"))
         assertFalse(answer.contains("SECRET_"))

@@ -232,4 +232,44 @@ class WorkoutRestVoiceCueTest {
         )
         assertTrue(WorkoutRestVoiceCue.message(5_000L, "x".repeat(300))!!.length <= 202)
     }
+
+    @Test fun configurableLeadWindowControlsWhenTheReminderIsAnnounced() {
+        assertFalse(
+            WorkoutRestVoiceCue.shouldAnnounce(
+                remainingMs = 10_000L,
+                alreadyAnnounced = false,
+                pausedForSafety = false,
+                warningWindowMs = 5_000L
+            )
+        )
+        assertTrue(
+            WorkoutRestVoiceCue.shouldAnnounce(
+                remainingMs = 15_000L,
+                alreadyAnnounced = false,
+                pausedForSafety = false,
+                warningWindowMs = 15_000L
+            )
+        )
+        assertEquals(
+            "Còn 15 giây nghỉ. Chuẩn bị cho động tác tiếp theo.",
+            WorkoutRestVoiceCue.message(15_000L, warningWindowMs = 15_000L)
+        )
+        assertEquals(null, WorkoutRestVoiceCue.message(15_001L, warningWindowMs = 15_000L))
+        assertEquals(
+            "Còn 20 giây nghỉ. Chuẩn bị cho động tác tiếp theo.",
+            WorkoutRestVoiceCue.message(20_000L, warningWindowMs = 20_000L)
+        )
+    }
+
+    @Test fun leadTimePreferenceIsClampedAndSnappedToFiveSecondSteps() {
+        assertEquals(5, WorkoutRestVoiceCuePreference.normalizeLeadSeconds(-20))
+        assertEquals(5, WorkoutRestVoiceCuePreference.normalizeLeadSeconds(7))
+        assertEquals(10, WorkoutRestVoiceCuePreference.normalizeLeadSeconds(8))
+        assertEquals(15, WorkoutRestVoiceCuePreference.normalizeLeadSeconds(17))
+        assertEquals(20, WorkoutRestVoiceCuePreference.normalizeLeadSeconds(99))
+        assertEquals(0, WorkoutRestVoiceCuePreference.progressForLeadSeconds(5))
+        assertEquals(3, WorkoutRestVoiceCuePreference.progressForLeadSeconds(20))
+        assertEquals(5, WorkoutRestVoiceCuePreference.leadSecondsForProgress(-1))
+        assertEquals(20, WorkoutRestVoiceCuePreference.leadSecondsForProgress(99))
+    }
 }

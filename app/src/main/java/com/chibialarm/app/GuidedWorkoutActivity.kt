@@ -1053,6 +1053,45 @@ class GuidedWorkoutActivity:Activity() {
         }
     }
 
+
+    /** Offer a useful next step after Android denies microphone access; typed workout control remains available. */
+    private fun showMicrophonePermissionDenied(targetRequestCode: Int) {
+        val canAskAgain = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+            shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO)
+        val message = "Chibi chỉ mở micro sau khi bạn chủ động nhấn Bắt đầu nghe để điều khiển buổi tập. " +
+            "Ứng dụng không nghe nền và không lưu tệp ghi âm hay bản chép lời. " +
+            "Dịch vụ nhận dạng của Android có thể xử lý âm thanh trực tuyến dù Chibi yêu cầu ưu tiên ngoại tuyến. " +
+            "Chibi chỉ nhận văn bản; bạn luôn có thể tiếp tục bằng bàn phím."
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Chưa cấp quyền micro")
+            .setMessage(message)
+            .setNegativeButton("Tiếp tục bằng chữ", null)
+        when (WorkoutMicrophonePermissionPolicy.denialAction(canAskAgain)) {
+            WorkoutMicrophonePermissionPolicy.DenialAction.RETRY_PERMISSION -> {
+                dialog.setPositiveButton("Thử lại quyền micro") { _, _ ->
+                    requestRecognitionPermissionOrStart(targetRequestCode)
+                }
+            }
+            WorkoutMicrophonePermissionPolicy.DenialAction.OPEN_APP_SETTINGS -> {
+                dialog.setPositiveButton("Mở Cài đặt") { _, _ ->
+                    val settingsIntent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                        data = Uri.fromParts("package", packageName, null)
+                    }
+                    try {
+                        startActivity(settingsIntent)
+                    } catch (_: Exception) {
+                        Toast.makeText(
+                            this,
+                            "Không mở được Cài đặt ứng dụng. Hãy vào Cài đặt Android > Ứng dụng > Chibi Life > Quyền.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+            }
+        }
+        dialog.show()
+    }
+
     private fun launchSpeechRecognition(requestCode:Int) {
         // Track the external recognizer as an active microphone session, not only a pending permission request.
         // Rest TTS and step narration stay quiet until Android returns the recognition result.
@@ -1094,15 +1133,11 @@ class GuidedWorkoutActivity:Activity() {
         updateRestStepSpeakButton()
         if (target != null && grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) {
             launchSpeechRecognition(target)
-        } else {
+        } else if (target != null) {
             if (target == guideVoiceRequest) guideVoiceResultHandler = null
             if (target == effortVoiceRequest) effortVoiceResultHandler = null
             if (target == previewVoiceRequest) previewVoiceResultHandler = null
-            Toast.makeText(
-                this,
-                "Micro chưa được cấp quyền. Bạn vẫn có thể điều khiển buổi tập bằng chữ; có thể bật quyền trong Cài đặt ứng dụng.",
-                Toast.LENGTH_LONG
-            ).show()
+            showMicrophonePermissionDenied(target)
             handler.post { drainPendingRestCompletionSpeech() }
         }
     }

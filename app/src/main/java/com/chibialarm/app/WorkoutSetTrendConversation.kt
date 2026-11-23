@@ -113,10 +113,11 @@ internal object WorkoutSetTrendConversation {
                 indexes.sumOf { index -> sets.getValue(index).value }
             }
             val trend = describeTrend(totals)
-            val values = matching.mapIndexed { index, (session, _) ->
-                "${session.date.format(dateFormat)}: ${totals[index]} ${unit}"
+            val values = totals.joinToString(" → ") { "${it} ${unit}" }
+            val dates = matching.joinToString(" → ") { (session, _) ->
+                session.date.format(dateFormat)
             }
-            "• ${unit}: " + values.joinToString(" → ") + " (${trend}; so sánh hiệp ${indexes.joinToString(", ")})"
+            "• ${unit}: " + values + " (${trend}; ${dates}; so sánh hiệp ${indexes.joinToString(", ")})"
         }
 
         return buildString {

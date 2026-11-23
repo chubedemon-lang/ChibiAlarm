@@ -202,11 +202,12 @@ object WorkoutEffortHistoryConversation {
             "hiệp " + it.index + ": " + it.level.label
         }
 
-    private fun isNextSessionQuestion(text: String): Boolean = listOf(
-        "buoi sau nen tap the nao", "buoi sau tap the nao",
-        "lan sau nen tap the nao", "lan toi nen tap the nao",
-        "buoi tiep theo nen tap the nao", "buoi sau nen tap gi"
-    ).any(text::contains)
+    private val nextSessionQuestionPattern = Regex(
+        """(?:buoi\s+(?:sau|tiep theo)|lan\s+(?:sau|toi)|ngay mai|mai)\s+(?:(?:tao|minh|toi)\s+)?(?:nen\s+)?tap\s+(?:the nao|gi)"""
+    )
+
+    private fun isNextSessionQuestion(text: String): Boolean =
+        nextSessionQuestionPattern.containsMatchIn(text)
 
     /**
      * Offers a conservative, read-only next-session suggestion from the latest three
@@ -223,9 +224,9 @@ object WorkoutEffortHistoryConversation {
             val lines = latestVeryHard.map { (move, set) ->
                 "• ${move.name} — hiệp ${set.index}: ${set.level.label}"
             }
-            return "Trong buổi gần nhất (${latest.date.format(dateFormat)}), bạn tự đánh dấu quá sức ở:\\n" +
-                lines.joinToString("\\n") +
-                "\\nBuổi sau không nên tăng tải cho các động tác này. Hãy nghỉ, cân nhắc giữ hoặc chọn biến thể nhẹ hơn, và chỉ tập tiếp khi cảm thấy thoải mái. Nếu còn đau, chóng mặt, đau ngực hoặc khó thở bất thường, hãy dừng tập và tìm hỗ trợ phù hợp. " +
+            return "Trong buổi gần nhất (${latest.date.format(dateFormat)}), bạn tự đánh dấu quá sức ở:\n" +
+                lines.joinToString("\n") +
+                "\nBuổi sau không nên tăng tải cho các động tác này. Hãy nghỉ, cân nhắc giữ hoặc chọn biến thể nhẹ hơn, và chỉ tập tiếp khi cảm thấy thoải mái. Nếu còn đau, chóng mặt, đau ngực hoặc khó thở bất thường, hãy dừng tập và tìm hỗ trợ phù hợp. " +
                 "Đây là cảm nhận tự khai báo, không phải phép đo hồi phục hay chẩn đoán."
         }
 
@@ -257,9 +258,9 @@ object WorkoutEffortHistoryConversation {
             val lines = repeated.map { (name, sessionCount, setCount) ->
                 "• $name: bạn tự đánh dấu khó/quá sức ở $sessionCount/${recent.size} buổi, $setCount hiệp"
             }
-            return "Trong ${recent.size} buổi gần nhất có check-in hợp lệ, các động tác được bạn đánh dấu khó lặp lại là:\\n" +
-                lines.joinToString("\\n") +
-                "\\nBuổi sau nên giữ hoặc giảm tải và nghỉ thêm; không tăng số lần, số hiệp hay tạ chỉ dựa trên các nhãn cảm nhận này. " +
+            return "Trong ${recent.size} buổi gần nhất có check-in hợp lệ, các động tác được bạn đánh dấu khó lặp lại là:\n" +
+                lines.joinToString("\n") +
+                "\nBuổi sau nên giữ hoặc giảm tải và nghỉ thêm; không tăng số lần, số hiệp hay tạ chỉ dựa trên các nhãn cảm nhận này. " +
                 "Nếu một động tác vẫn khó chịu, hãy bỏ qua hoặc chọn biến thể nhẹ hơn đã được hướng dẫn. " +
                 "Nhật ký chỉ ghi lại lựa chọn của bạn, không đo thể lực hay khả năng hồi phục."
         }
@@ -272,9 +273,9 @@ object WorkoutEffortHistoryConversation {
             val lines = latestHard.map { (move, set) ->
                 "• ${move.name} — hiệp ${set.index}: ${set.level.label}"
             }
-            return "Trong buổi gần nhất (${latest.date.format(dateFormat)}), bạn tự đánh dấu các hiệp sau là khó:\\n" +
-                lines.joinToString("\\n") +
-                "\\nBuổi sau hãy giữ nguyên hoặc giảm nhẹ mục tiêu và nghỉ đủ; chưa nên tăng tải chỉ từ một lần check-in. " +
+            return "Trong buổi gần nhất (${latest.date.format(dateFormat)}), bạn tự đánh dấu các hiệp sau là khó:\n" +
+                lines.joinToString("\n") +
+                "\nBuổi sau hãy giữ nguyên hoặc giảm nhẹ mục tiêu và nghỉ đủ; chưa nên tăng tải chỉ từ một lần check-in. " +
                 "Nếu thấy đau hoặc triệu chứng bất thường, hãy dừng tập. Đây là cảm nhận tự khai báo, không phải phép đo hồi phục."
         }
 
@@ -497,11 +498,8 @@ object WorkoutEffortHistoryConversation {
         "kho hay de", "de hay kho", "bai nao met nhat", "bai nao kho nhat",
         "bai nao lam tao duoi nhat", "bai nao lam minh duoi nhat",
         "dong tac nao kho nhat", "bai tap nao kho nhat", "bai nao duoi nhat",
-        "dong tac nao met nhat", "buoi sau nen tap the nao",
-        "buoi sau tap the nao", "lan sau nen tap the nao",
-        "lan toi nen tap the nao", "buoi tiep theo nen tap the nao",
-        "buoi sau nen tap gi"
-    ).any { text.contains(it) }
+        "dong tac nao met nhat"
+    ).any { text.contains(it) } || isNextSessionQuestion(text)
 
     private fun isComparisonQuestion(text: String): Boolean =
         text.contains("so sanh") || text.contains("hai buoi") ||

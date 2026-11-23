@@ -1065,13 +1065,16 @@ class FitnessActivity:Activity() {
                     (historySuggestion?.let { "\n\n📚 " + it.reason } ?: "") +
                     effortReviewSummary +
                     "\n\nGợi ý offline theo quy tắc trên máy, không phải AI chẩn đoán hay tư vấn y khoa."
-                val spokenProfileSummary = FitnessPlanSpeechSummary.fromProfile(
-                    profileSummary = profileSummary,
-                    programName = p.name,
-                    estimatedMinutes = planned.estimatedMinutes,
-                    exceedsTarget = planned.exceedsTarget,
-                    prescribedRestSeconds = planned.prescribedRestSeconds,
-                    muscleFocusSummary = spokenMuscleFocusSummary
+                val spokenProfileSummary = FitnessPlanSpeechSummary.withEffortReview(
+                    summary = FitnessPlanSpeechSummary.fromProfile(
+                        profileSummary = profileSummary,
+                        programName = p.name,
+                        estimatedMinutes = planned.estimatedMinutes,
+                        exceedsTarget = planned.exceedsTarget,
+                        prescribedRestSeconds = planned.prescribedRestSeconds,
+                        muscleFocusSummary = spokenMuscleFocusSummary
+                    ),
+                    warnings = effortReviewWarnings
                 )
                 val dialogContent = LinearLayout(this@FitnessActivity).apply {
                     orientation = LinearLayout.VERTICAL
@@ -1085,8 +1088,11 @@ class FitnessActivity:Activity() {
                     addView(Button(this@FitnessActivity).apply {
                         text = "🔊 Nghe tóm tắt hồ sơ"
                         isAllCaps = false
-                        contentDescription =
+                        contentDescription = if (effortReviewWarnings.isEmpty()) {
                             "Đọc thành tiếng mục tiêu, trình độ, thời lượng, dụng cụ và bộ lọc vận động; không bắt đầu buổi tập"
+                        } else {
+                            "Đọc thành tiếng hồ sơ kế hoạch và lưu ý từ check-in trước đây; không bắt đầu buổi tập"
+                        }
                         setOnClickListener {
                             if (speechOutput == null || !speechReady) {
                                 Toast.makeText(

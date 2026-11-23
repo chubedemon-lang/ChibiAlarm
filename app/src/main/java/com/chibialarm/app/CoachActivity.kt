@@ -159,7 +159,7 @@ class CoachActivity:Activity() {
             append("user", question, persist = false)
             append(
                 "assistant",
-                profileReview + "\\n\\n(Chỉ hiển thị trong phiên; lựa chọn vận động không được lưu vào lịch sử chat.)",
+                profileReview + "\n\n(Chỉ hiển thị trong phiên; lựa chọn vận động không được lưu vào lịch sử chat.)",
                 persist = false
             )
             return

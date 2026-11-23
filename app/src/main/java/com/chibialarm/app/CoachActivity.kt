@@ -152,6 +152,19 @@ class CoachActivity:Activity() {
         if(question.isEmpty()) return
         prompt.setText("")
 
+        // Profile reviews contain session-only movement choices, so keep both turns ephemeral.
+        // The formatter reads structured fields only and never echoes the raw spoken request.
+        val profileReview = FitnessCoachProfileReview.answer(question, fitnessContext)
+        if (profileReview != null) {
+            append("user", question, persist = false)
+            append(
+                "assistant",
+                profileReview + "\\n\\n(Chỉ hiển thị trong phiên; lựa chọn vận động không được lưu vào lịch sử chat.)",
+                persist = false
+            )
+            return
+        }
+
         // Answer local journal questions before interpreting the message as a new plan reply.
         // The prompt and answer remain visible only for this Activity session and are not persisted.
         val journalReply = WorkoutHistoryConversation.answer(question, WorkoutData.history(this))

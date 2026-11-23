@@ -15,13 +15,12 @@ import java.util.UUID
  */
 internal object WorkoutSetTrendConversation {
     private const val MAX_RECORDS = 10_000
-    private const val MAX_SESSIONS = 40
     private const val MAX_LOG_CHARS = 1_200
     private const val MAX_MOVES = 100
     private const val MAX_SETS = 20
     private val dateFormat = DateTimeFormatter.ofPattern("dd/MM/yyyy", Locale.ROOT)
     private val setPattern = Regex(
-        """hiệp\\s+(\\d{1,2})\\s*:\\s*(\\d{1,3})\\s+(lần|nhịp|giây)""",
+        """hiệp\s+(\d{1,2})\s*:\s*(\d{1,3})\s+(lần|nhịp|giây)""",
         RegexOption.IGNORE_CASE
     )
     private val stopWords = setOf(
@@ -65,7 +64,6 @@ internal object WorkoutSetTrendConversation {
                 Session(date, index, moves)
             }
             .sortedWith(compareByDescending<Session> { it.date }.thenByDescending { it.originalIndex })
-            .take(MAX_SESSIONS)
 
         val knownNames = sessions.flatMap { it.moves }
             .map { it.name }
@@ -123,8 +121,8 @@ internal object WorkoutSetTrendConversation {
 
         return buildString {
             append("Xu hướng số liệu tự khai báo của ${selectedName} qua ba buổi có ghi bài này:")
-            append("\\n")
-            append(lines.joinToString("\\n"))
+            append("\n")
+            append(lines.joinToString("\n"))
             if (comparableIndexes.size < commonIndexes.size) {
                 append("\\nMột số hiệp trùng chỉ số bị bỏ qua vì đơn vị không khớp.")
             }

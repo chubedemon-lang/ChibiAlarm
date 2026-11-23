@@ -10,7 +10,16 @@ internal object WorkoutEffortCorrectionRequest {
         "sua cam nhan",
         "sua muc cam nhan",
         "doi cam nhan",
-        "cap nhat cam nhan"
+        "doi muc cam nhan",
+        "cap nhat cam nhan",
+        "chon nham cam nhan",
+        "chon nham muc cam nhan",
+        "sua danh gia",
+        "doi danh gia",
+        "cap nhat danh gia",
+        "danh gia nham",
+        "sua muc gang suc",
+        "doi muc gang suc"
     )
     private val setCues = listOf("hiep vua roi", "hiep gan nhat", "hiep cuoi", "hiep")
 

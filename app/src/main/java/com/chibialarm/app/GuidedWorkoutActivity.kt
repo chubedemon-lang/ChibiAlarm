@@ -2103,6 +2103,12 @@ class GuidedWorkoutActivity:Activity() {
             }
             else -> Unit
         }
+        // A correction is a dedicated, explicit action. Route it before the broad
+        // mid-session planner so it cannot be mistaken for a plan edit.
+        if (WorkoutEffortCorrectionRequest.isRequest(utterance)) {
+            showLatestEffortCorrectionDialog()
+            return
+        }
         // Short follow-ups inherit the active rest context only. "Thêm 30 giây nữa"
         // must not start a rest when the workout is moving, and still requires an
         // explicit duration before the existing confirmation dialog can apply it.

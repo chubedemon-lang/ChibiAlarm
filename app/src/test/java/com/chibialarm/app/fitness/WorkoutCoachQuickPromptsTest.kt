@@ -227,7 +227,11 @@ class WorkoutCoachQuickPromptsTest {
     @Test fun correctionRequestRequiresBothAnExplicitEditAndASetReference() {
         assertTrue(WorkoutEffortCorrectionRequest.isRequest("Sửa cảm nhận hiệp vừa rồi"))
         assertTrue(WorkoutEffortCorrectionRequest.isRequest("Đổi mức cảm nhận hiệp gần nhất"))
+        assertTrue(WorkoutEffortCorrectionRequest.isRequest("Chọn nhầm mức cảm nhận hiệp vừa rồi"))
+        assertTrue(WorkoutEffortCorrectionRequest.isRequest("Sửa đánh giá hiệp cuối"))
+        assertTrue(WorkoutEffortCorrectionRequest.isRequest("Đổi mức gắng sức hiệp gần nhất"))
         assertFalse(WorkoutEffortCorrectionRequest.isRequest("Tổng kết cảm nhận các hiệp đã ghi"))
+        assertFalse(WorkoutEffortCorrectionRequest.isRequest("Tôi cảm thấy khó ở hiệp vừa rồi"))
         assertFalse(WorkoutEffortCorrectionRequest.isRequest("Nghỉ theo cảm nhận"))
         assertFalse(WorkoutEffortCorrectionRequest.isRequest("Sửa cảm nhận"))
     }

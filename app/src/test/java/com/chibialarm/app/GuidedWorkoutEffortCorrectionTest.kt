@@ -97,6 +97,26 @@ class GuidedWorkoutEffortCorrectionTest {
         }
     }
 
+    @Test fun coachCommandRoutesExplicitCorrectionRequestToConfirmedCorrectionFlow() {
+        val (activity, index) = openRatedWorkout()
+        try {
+            GuidedWorkoutActivity::class.java.getDeclaredMethod(
+                "handleCoachCommand",
+                String::class.java
+            ).apply { isAccessible = true }
+                .invoke(activity, "Sửa cảm nhận hiệp vừa rồi")
+
+            val chooser = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
+            assertTrue("Typed coach requests must open the correction chooser", chooser.isShowing)
+            @Suppress("UNCHECKED_CAST")
+            val efforts = field("effortLevelsByMove").get(activity) as Map<Int, List<WorkoutEffortFeedback.Level?>>
+            assertEquals("Opening the correction flow must not overwrite the stored rating",
+                WorkoutEffortFeedback.Level.HARD, efforts[index]?.last())
+        } finally {
+            activity.finish()
+        }
+    }
+
     @Test fun safetyStoppedSessionCannotCorrectAnEffortRating() {
         val (activity, index) = openRatedWorkout()
         try {

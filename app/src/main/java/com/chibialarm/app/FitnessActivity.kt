@@ -1236,6 +1236,10 @@ class FitnessActivity:Activity() {
         val dose = txt("", 16f)
         val equipment = txt("", 14f)
         val muscleFocus = txt("", 14f)
+        val selectionRationale = txt("", 14f).apply {
+            tag = "fitness-library-selection-rationale"
+            contentDescription = "Giải thích dựa trên nhóm chương trình, dụng cụ, bộ lọc và nhãn thư viện; không phải đánh giá tư thế"
+        }
         val rest = txt("", 14f)
         val stepPosition = txt("", 13f)
         val stepInstruction = txt("", 16f)
@@ -1362,6 +1366,7 @@ class FitnessActivity:Activity() {
         content.addView(dose)
         content.addView(equipment)
         content.addView(muscleFocus)
+        content.addView(selectionRationale)
         content.addView(rest)
         content.addView(stepPosition)
         content.addView(stepInstruction)
@@ -1428,6 +1433,17 @@ class FitnessActivity:Activity() {
             dose.text = "🎯 Mục tiêu: ${move.dose}"
             equipment.text = "🧰 ${WorkoutContextCoach.equipmentCue(move)}"
             muscleFocus.text = "💪 ${WorkoutContextCoach.muscleCue(move)}"
+            val rationaleEquipment = TrainingEquipmentAvailability.fromPreference(planDraft.equipmentSelection) +
+                planDraft.additionalEquipment
+            selectionRationale.text = WorkoutMoveSelectionExplanation.explain(
+                program = program,
+                move = move,
+                position = preview.position,
+                total = preview.size,
+                constraints = planDraft.constraints,
+                availableEquipment = rationaleEquipment
+            ) ?: "Chibi chưa thể xác nhận lý do phù hợp cho động tác này. Hãy tạo lại bản xem trước để kiểm tra dụng cụ và hạn chế vận động."
+            selectionRationale.contentDescription = selectionRationale.text.toString()
             rest.text = WorkoutSetTracker.restGuidance(move.dose, move.restSeconds)
                 ?: "⏱ Nghỉ thêm khi cần; động tác này không có cấu trúc hiệp lặp."
             easier.text = "🌿 Dễ hơn: ${move.easier}"

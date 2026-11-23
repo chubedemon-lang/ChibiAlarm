@@ -108,6 +108,41 @@ class FitnessActivityProgressionPreviewTest {
     }
 
 
+    @Test fun libraryPreviewExplainsTheCurrentMoveAndRefreshesTheReasonWhenNavigating() {
+        val controller = Robolectric.buildActivity(FitnessActivity::class.java).setup()
+        val activity = controller.get()
+        val libraryButton = views(activity.findViewById<ViewGroup>(android.R.id.content))
+            .filterIsInstance<Button>()
+            .firstOrNull { it.text.toString().startsWith("📖 Xem bài") }
+        assertNotNull("The exercise library should expose a preview action", libraryButton)
+
+        libraryButton!!.performClick()
+        val dialog = ShadowAlertDialog.getLatestAlertDialog()
+        assertNotNull(dialog)
+        val dialogRoot = dialog.findViewById<ViewGroup>(android.R.id.custom)
+        val dialogViews = dialogRoot?.let(::views).orEmpty()
+        val rationale = dialogViews.filterIsInstance<TextView>()
+            .firstOrNull { it.tag == "fitness-library-selection-rationale" }
+
+        assertNotNull("The preview should explain why the selected move is compatible", rationale)
+        val firstExplanation = rationale!!.text.toString()
+        assertTrue(firstExplanation.contains("Vì sao bài này phù hợp"))
+        assertTrue(firstExplanation.contains("Bài 1/"))
+        assertTrue(firstExplanation.contains("Nhóm cơ theo thư viện"))
+
+        val nextMove = dialogViews.filterIsInstance<Button>()
+            .firstOrNull { it.text.toString() == "Bài tiếp →" }
+        assertNotNull("The preview should allow moving to the next exercise", nextMove)
+        nextMove!!.performClick()
+
+        val secondExplanation = rationale.text.toString()
+        assertTrue(secondExplanation.contains("Bài 2/"))
+        assertNotEquals("The rationale must refresh for the newly selected move", firstExplanation, secondExplanation)
+
+        dialog.dismiss()
+        controller.pause().stop().destroy()
+    }
+
     @Test fun libraryVoiceNavigationRequiresExplicitPrivacyConfirmation() {
         val controller = Robolectric.buildActivity(FitnessActivity::class.java).setup()
         val activity = controller.get()

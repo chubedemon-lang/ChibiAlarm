@@ -98,7 +98,7 @@ class FitnessCoachProfileReviewTest {
         val answer = FitnessCoachProfileReview.answer("Tóm tắt hồ sơ", profile)!!
 
         assertTrue(answer.contains("không tạo hoặc khởi chạy giáo án"))
-        assertTrue(answer.contains("đã báo đau hoặc chấn thương"))
+        assertTrue(answer.contains("Đã báo đau hoặc chấn thương"))
         assertFalse(answer.contains("xác nhận trước khi bắt đầu"))
     }
 

@@ -108,4 +108,38 @@ class GuidedWorkoutQuickPromptTest {
             activity.finish()
         }
     }
+
+    @Test fun effortPromptsUseOnlyTheLatestConfirmedCheckInAndOnlyFillTheInput() {
+        val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup().get()
+        try {
+            field("index").setInt(activity, 0)
+            field("resting").setBoolean(activity, true)
+            field("pausedForSafety").setBoolean(activity, false)
+            field("completed").setBoolean(activity, false)
+
+            @Suppress("UNCHECKED_CAST")
+            val completedSets = field("completedSetsByMove").get(activity) as MutableMap<Int, Int>
+            completedSets[0] = 1
+
+            @Suppress("UNCHECKED_CAST")
+            val effortLevels = field("effortLevelsByMove").get(activity) as MutableMap<Int, List<WorkoutEffortFeedback.Level?>>
+            effortLevels[0] = listOf(WorkoutEffortFeedback.Level.HARD)
+
+            val dialog = openCoach(activity)
+            val root = dialog.window!!.decorView
+            val prompt = findButton(root, "Nghỉ theo cảm nhận")
+            val historyPrompt = findButton(root, "Xem cảm nhận")
+            val input = findInput(root)
+
+            assertNotNull("The latest confirmed effort check-in should expose a rest explanation", prompt)
+            assertNotNull("A completed set should expose its recorded effort history", historyPrompt)
+            assertNotNull(input)
+            prompt!!.performClick()
+            assertEquals("Chibi đề xuất nghỉ theo mức độ gắng sức", input!!.text.toString())
+            assertTrue("A quick prompt must not submit or start the rest timer", dialog.isShowing)
+        } finally {
+            activity.finish()
+        }
+    }
+
 }

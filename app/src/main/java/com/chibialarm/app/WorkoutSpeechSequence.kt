@@ -8,8 +8,12 @@ internal data class WorkoutSpeechUtterance(
 )
 
 internal object WorkoutSpeechSequence {
-    fun plan(text: String): List<WorkoutSpeechUtterance> =
+    /**
+     * Build a complete, bounded speech queue. When appending to an existing narration,
+     * callers can keep every chunk in QUEUE_ADD mode instead of flushing earlier speech.
+     */
+    fun plan(text: String, flushFirst: Boolean = true): List<WorkoutSpeechUtterance> =
         WorkoutSpeechText.chunks(text).mapIndexed { index, chunk ->
-            WorkoutSpeechUtterance(text = chunk, flushQueue = index == 0)
+            WorkoutSpeechUtterance(text = chunk, flushQueue = flushFirst && index == 0)
         }
 }

@@ -2,6 +2,7 @@ package com.chibialarm.app.fitness
 
 import com.chibialarm.app.TrainingCatalog
 import com.chibialarm.app.WorkoutCoachQuestionRouter
+import com.chibialarm.app.WorkoutEffortCorrectionRequest
 import com.chibialarm.app.WorkoutVoiceCommands
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -190,8 +191,45 @@ class WorkoutCoachQuickPromptsTest {
 
         assertTrue(answer.orEmpty().contains("60 giây"))
         assertTrue(answer.orEmpty().contains("đồng hồ không tự chạy"))
-        assertEquals(listOf("Nghỉ thêm 30 giây", "Nghỉ thêm 1 phút", "Xem cảm nhận", "Nghỉ theo cảm nhận"),
-            prompts.map { it.label })
+        assertEquals(
+            listOf("Nghỉ thêm 30 giây", "Nghỉ thêm 1 phút", "Xem cảm nhận", "Sửa cảm nhận", "Nghỉ theo cảm nhận"),
+            prompts.map { it.label }
+        )
+        val correction = prompts.single { it.label == "Sửa cảm nhận" }
+        assertEquals("Sửa cảm nhận hiệp vừa rồi", correction.utterance)
+        assertTrue(WorkoutEffortCorrectionRequest.isRequest(correction.utterance))
+        assertTrue(WorkoutVoiceCommands.describe(WorkoutVoiceCommands.Command.UNKNOWN, correction.utterance)
+            .contains("Sửa cảm nhận tự khai báo"))
+    }
+
+
+    @Test fun correctionPromptAppearsOnlyWhenTheLatestConfirmedSetHasARating() {
+        val withoutRating = WorkoutCoachQuickPrompts.forSession(
+            resting = false,
+            hasOptionalFutureExercises = false,
+            hasOptionalCurrentSets = false,
+            hasCompletedSets = true,
+            hasLatestEffortCheckIn = false
+        )
+        assertFalse(withoutRating.any { it.label == "Sửa cảm nhận" })
+
+        val withRating = WorkoutCoachQuickPrompts.forSession(
+            resting = true,
+            hasOptionalFutureExercises = false,
+            hasOptionalCurrentSets = false,
+            hasCompletedSets = true,
+            hasLatestEffortCheckIn = true
+        )
+        assertTrue(withRating.any { it.label == "Sửa cảm nhận" })
+        assertTrue(withRating.any { it.label == "Nghỉ theo cảm nhận" })
+    }
+
+    @Test fun correctionRequestRequiresBothAnExplicitEditAndASetReference() {
+        assertTrue(WorkoutEffortCorrectionRequest.isRequest("Sửa cảm nhận hiệp vừa rồi"))
+        assertTrue(WorkoutEffortCorrectionRequest.isRequest("Đổi mức cảm nhận hiệp gần nhất"))
+        assertFalse(WorkoutEffortCorrectionRequest.isRequest("Tổng kết cảm nhận các hiệp đã ghi"))
+        assertFalse(WorkoutEffortCorrectionRequest.isRequest("Nghỉ theo cảm nhận"))
+        assertFalse(WorkoutEffortCorrectionRequest.isRequest("Sửa cảm nhận"))
     }
 
     @Test fun safetyStopHidesEffortPromptsEvenWhenASetWasRated() {

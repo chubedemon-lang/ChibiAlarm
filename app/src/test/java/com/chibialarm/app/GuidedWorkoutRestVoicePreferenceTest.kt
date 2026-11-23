@@ -41,6 +41,18 @@ class GuidedWorkoutRestVoicePreferenceTest {
     private fun field(name: String) =
         GuidedWorkoutActivity::class.java.getDeclaredField(name).apply { isAccessible = true }
 
+    private fun simulateUserSeekBarChange(slider: SeekBar, progress: Int) {
+        val listenerField = generateSequence(slider.javaClass as Class<*>?) { it.superclass }
+            .flatMap { it.declaredFields.asSequence() }
+            .firstOrNull { SeekBar.OnSeekBarChangeListener::class.java.isAssignableFrom(it.type) }
+            ?: throw AssertionError("SeekBar listener was not installed")
+        listenerField.isAccessible = true
+        val listener = listenerField.get(slider) as SeekBar.OnSeekBarChangeListener
+        slider.progress = progress
+        // setProgress(progress, animate) reports fromUser=false; simulate the real callback.
+        listener.onProgressChanged(slider, progress, true)
+    }
+
     @Test fun restVoiceCueIsVisibleOptOutAndPersistedInGuestPreferencesAndCheckpoint() {
         val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup().get()
         try {
@@ -161,7 +173,7 @@ class GuidedWorkoutRestVoicePreferenceTest {
             assertEquals(1, slider.progress)
             assertEquals("Nhắc trước: 10 giây", label.text.toString())
 
-            slider.setProgress(2, true)
+            simulateUserSeekBarChange(slider, 2)
             assertEquals(15, field("restVoiceCueLeadSeconds").getInt(activity))
             assertEquals("Nhắc trước: 15 giây", label.text.toString())
 

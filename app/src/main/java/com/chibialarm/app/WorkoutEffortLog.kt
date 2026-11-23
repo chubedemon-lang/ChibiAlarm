@@ -37,6 +37,37 @@ object WorkoutEffortLog {
         }.toSortedMap()
     }
 
+    /**
+     * Explicitly corrects only the most recently confirmed set for one active exercise.
+     * Earlier check-ins and all workout measurements remain unchanged.
+     */
+    fun correctLatest(
+        current: Map<Int, List<WorkoutEffortFeedback.Level?>>,
+        moveIndex: Int,
+        moves: List<TrainingMove>,
+        confirmedSets: Map<Int, Int>,
+        replacement: WorkoutEffortFeedback.Level
+    ): Map<Int, List<WorkoutEffortFeedback.Level?>> {
+        require(moves.size <= MAX_MOVES)
+        require(moveIndex in moves.indices)
+        val plan = WorkoutSetTracker.parse(moves[moveIndex].dose)
+            ?: throw IllegalArgumentException("Effort correction requires a set-based exercise")
+        val confirmed = confirmedSets[moveIndex] ?: 0
+        require(confirmed in 1..plan.maximumSets)
+        val existing = current[moveIndex].orEmpty()
+        require(existing.size == confirmed)
+        val latestIndex = confirmed - 1
+        require(existing[latestIndex] != null) {
+            "The latest confirmed set has no effort rating to correct"
+        }
+        if (existing[latestIndex] == replacement) return current.toSortedMap()
+
+        val corrected = existing.toMutableList().also { it[latestIndex] = replacement }.toList()
+        return current.toSortedMap().toMutableMap().apply {
+            put(moveIndex, corrected)
+        }.toSortedMap()
+    }
+
     fun encode(
         progress: Map<Int, List<WorkoutEffortFeedback.Level?>>,
         moves: List<TrainingMove>,

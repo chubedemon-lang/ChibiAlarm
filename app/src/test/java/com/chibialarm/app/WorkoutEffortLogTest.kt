@@ -84,6 +84,48 @@ class WorkoutEffortLogTest {
         assertTrue(WorkoutEffortLog.summary(emptyMap(), moves, confirmed).isBlank())
     }
 
+
+    @Test fun explicitCorrectionChangesOnlyTheLatestConfirmedRatingAndDoesNotMutateTheSource() {
+        val confirmed = mapOf(0 to 2, 1 to 1)
+        val original = mapOf(
+            0 to listOf(WorkoutEffortFeedback.Level.HARD, WorkoutEffortFeedback.Level.MODERATE),
+            1 to listOf(WorkoutEffortFeedback.Level.EASY)
+        )
+        val corrected = WorkoutEffortLog.correctLatest(
+            original, 0, moves, confirmed, WorkoutEffortFeedback.Level.VERY_HARD
+        )
+
+        assertEquals(
+            listOf(WorkoutEffortFeedback.Level.HARD, WorkoutEffortFeedback.Level.VERY_HARD),
+            corrected[0]
+        )
+        assertEquals(listOf(WorkoutEffortFeedback.Level.EASY), corrected[1])
+        assertEquals(
+            listOf(WorkoutEffortFeedback.Level.HARD, WorkoutEffortFeedback.Level.MODERATE),
+            original[0]
+        )
+    }
+
+    @Test fun correctionRejectsMissingLatestRatingsTimedMovesAndUnconfirmedSets() {
+        assertThrows(IllegalArgumentException::class.java) {
+            WorkoutEffortLog.correctLatest(
+                emptyMap(), 0, moves, mapOf(0 to 1), WorkoutEffortFeedback.Level.EASY
+            )
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            WorkoutEffortLog.correctLatest(
+                mapOf(0 to listOf(WorkoutEffortFeedback.Level.HARD, null)),
+                0, moves, mapOf(0 to 2), WorkoutEffortFeedback.Level.EASY
+            )
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            WorkoutEffortLog.correctLatest(
+                mapOf(2 to listOf(WorkoutEffortFeedback.Level.HARD)),
+                2, moves, mapOf(2 to 1), WorkoutEffortFeedback.Level.EASY
+            )
+        }
+    }
+
     @Test fun rejectsTimedExercisesAndUnconfirmedSets() {
         assertThrows(IllegalArgumentException::class.java) {
             WorkoutEffortLog.append(

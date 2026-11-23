@@ -12,6 +12,9 @@ object WorkoutVoiceCommands {
 
     /** Human-readable action shown before applying fallible speech recognition. */
     fun describe(command: Command, utterance: String? = null): String {
+        if (utterance != null && WorkoutEffortCorrectionRequest.isRequest(utterance)) {
+            return "Sửa cảm nhận tự khai báo của hiệp gần nhất; không đổi giáo án, số liệu hoặc EXP"
+        }
         val restSeconds = utterance?.let { WorkoutRestRequest.seconds(it) } ?: 30
         return when (command) {
             Command.PAIN -> "Dừng tập vì cảnh báo an toàn"

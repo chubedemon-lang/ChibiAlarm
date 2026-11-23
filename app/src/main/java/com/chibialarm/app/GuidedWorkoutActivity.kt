@@ -4137,6 +4137,108 @@ class GuidedWorkoutActivity:Activity() {
         }
     }
 
+    /**
+     * Lets the user correct the latest self-reported effort label without rewriting
+     * confirmed reps, sets, rest time, the plan, or RPG rewards.
+     */
+    private fun showLatestEffortCorrectionDialog() {
+        if (pausedForSafety || completed || index !in moves.indices) {
+            Toast.makeText(this, "Không thể sửa cảm nhận khi buổi tập đã dừng an toàn hoặc kết thúc.", Toast.LENGTH_LONG).show()
+            return
+        }
+        val selectedIndex = index
+        val selectedSessionId = sessionId
+        val selectedMove = moves[selectedIndex]
+        val plan = currentSetPlan()
+        if (plan == null) {
+            Toast.makeText(this, "Động tác hiện tại không có hiệp để sửa cảm nhận.", Toast.LENGTH_LONG).show()
+            return
+        }
+        val confirmedSets = (completedSetsByMove[selectedIndex] ?: 0)
+            .coerceIn(0, plan.maximumSets)
+        if (confirmedSets !in 1..plan.maximumSets) {
+            Toast.makeText(this, "Chưa có hiệp nào được xác nhận để sửa cảm nhận.", Toast.LENGTH_LONG).show()
+            return
+        }
+        val previousLevel = effortLevelsByMove[selectedIndex]
+            ?.getOrNull(confirmedSets - 1)
+        if (previousLevel == null) {
+            Toast.makeText(this, "Hiệp gần nhất chưa có cảm nhận được lưu.", Toast.LENGTH_LONG).show()
+            return
+        }
+
+        // Freeze either countdown while the correction is reviewed. A correction is not consent
+        // to resume, add rest, or alter the active exercise.
+        if (!paused) pause()
+        val restWasActive = resting
+        val restSnapshot = restRemainingMs
+        val exerciseSnapshot = remainingMs
+        fun contextIsCurrent(): Boolean =
+            !pausedForSafety && !completed &&
+                index == selectedIndex &&
+                sessionId == selectedSessionId &&
+                moves.getOrNull(selectedIndex) == selectedMove &&
+                currentSetPlan() == plan &&
+                (completedSetsByMove[selectedIndex] ?: 0) == confirmedSets &&
+                resting == restWasActive &&
+                (if (restWasActive) restRemainingMs == restSnapshot else remainingMs == exerciseSnapshot) &&
+                effortLevelsByMove[selectedIndex]?.getOrNull(confirmedSets - 1) == previousLevel
+
+        val choices = WorkoutEffortFeedback.Level.values()
+        AlertDialog.Builder(this)
+            .setTitle("Sửa cảm nhận hiệp $confirmedSets")
+            .setMessage(
+                "Đang ghi nhận: ${previousLevel.label}. Chọn lại nếu lần chạm hoặc nhận dạng trước chưa đúng. " +
+                    "Đây vẫn là tự đánh giá của bạn, không phải phép đo thể lực."
+            )
+            .setItems(choices.map { it.label }.toTypedArray()) { _, choice ->
+                val replacement = choices.getOrNull(choice) ?: return@setItems
+                if (!contextIsCurrent()) {
+                    Toast.makeText(this, "Buổi tập đã thay đổi; cảm nhận cũ được giữ nguyên.", Toast.LENGTH_LONG).show()
+                    return@setItems
+                }
+                if (replacement == previousLevel) {
+                    speak("Cảm nhận hiệp $confirmedSets được giữ nguyên.")
+                    return@setItems
+                }
+                AlertDialog.Builder(this)
+                    .setTitle("Xác nhận sửa cảm nhận?")
+                    .setMessage(
+                        "Hiệp $confirmedSets: ${previousLevel.label} → ${replacement.label}.\n\n" +
+                            "Chỉ thay nhãn cảm nhận tự khai báo. Số hiệp, số lần/giây, thời gian nghỉ, " +
+                            "giáo án và EXP không thay đổi."
+                    )
+                    .setPositiveButton("Lưu sửa") { _, _ ->
+                        if (!contextIsCurrent()) {
+                            Toast.makeText(this, "Buổi tập đã thay đổi; chưa lưu cảm nhận mới.", Toast.LENGTH_LONG).show()
+                            return@setPositiveButton
+                        }
+                        val corrected = runCatching {
+                            WorkoutEffortLog.correctLatest(
+                                effortLevelsByMove,
+                                selectedIndex,
+                                moves,
+                                completedSetsByMove,
+                                replacement
+                            )
+                        }.getOrElse {
+                            Toast.makeText(this, "Không thể sửa cảm nhận; dữ liệu cũ được giữ nguyên.", Toast.LENGTH_LONG).show()
+                            return@setPositiveButton
+                        }
+                        effortLevelsByMove.clear()
+                        effortLevelsByMove.putAll(corrected)
+                        if (!saveCheckpoint()) {
+                            Toast.makeText(this, "Đã sửa trong buổi này nhưng checkpoint chưa lưu được.", Toast.LENGTH_LONG).show()
+                        }
+                        speak("Đã sửa cảm nhận hiệp $confirmedSets. Số liệu tập luyện và EXP được giữ nguyên.")
+                    }
+                    .setNegativeButton("Giữ cảm nhận cũ", null)
+                    .show()
+            }
+            .setNegativeButton("Đóng", null)
+            .show()
+    }
+
     private fun applyEffortCheckIn(
         selectedIndex: Int,
         selectedSessionId: String,

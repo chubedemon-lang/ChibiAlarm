@@ -63,6 +63,7 @@ internal object WorkoutCoachQuickPrompts {
             add(Prompt("Xem cảm nhận", "Tổng kết cảm nhận các hiệp đã ghi"))
         }
         if (hasLatestEffortCheckIn) {
+            add(Prompt("Sửa cảm nhận", "Sửa cảm nhận hiệp vừa rồi"))
             // The router explains the latest rating; it never starts or changes the rest timer.
             add(Prompt("Nghỉ theo cảm nhận", "Chibi đề xuất nghỉ theo mức độ gắng sức"))
         }

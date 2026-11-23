@@ -3,6 +3,7 @@ package com.chibialarm.app
 import android.app.*
 import android.webkit.URLUtil
 import android.content.*
+import android.net.Uri
 import android.speech.RecognizerIntent
 import android.Manifest
 import android.content.pm.PackageManager

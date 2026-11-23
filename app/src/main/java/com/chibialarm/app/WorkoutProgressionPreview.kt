@@ -21,7 +21,7 @@ object WorkoutProgressionPreview {
         val maximumSets: Int,
         val restSeconds: Int,
         val latestDate: LocalDate,
-        /** "lần" increments by one; timed "giây" increments by five. */
+        /** "lần"/"nhịp" increment by one; timed "giây" increments by five. */
         val unit: String = "lần"
     ) {
         val previousValue: Int get() = previousMinimumReps
@@ -72,7 +72,7 @@ object WorkoutProgressionPreview {
         if (matchingIndices.size != 1) return null
         val move = plannedMoves[matchingIndices.single()]
         val plan = WorkoutSetTracker.parse(move.dose, move.restSeconds) ?: return null
-        if (plan.unit !in setOf("lần", "giây") || plan.targetMax <= plan.targetMin || plan.targetMax > 100) return null
+        if (plan.unit !in setOf("lần", "nhịp", "giây") || plan.targetMax <= plan.targetMin || plan.targetMax > 100) return null
 
         // Use the latest session on the evidence date that contains a check-in for this move.
         // If that session has incomplete or inconsistent rep data, do not fall back to an older one.

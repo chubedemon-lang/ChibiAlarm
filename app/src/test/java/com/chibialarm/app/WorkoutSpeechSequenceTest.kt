@@ -21,6 +21,19 @@ class WorkoutSpeechSequenceTest {
         assertEquals(answer, planned.joinToString(" ") { it.text })
     }
 
+    @Test fun appendedLongNarrationKeepsEveryChunkInAddMode() {
+        val answer = (1..8).joinToString(" ") { index ->
+            "Bước $index: giữ nhịp thở đều và thực hiện chuyển động có kiểm soát."
+        }
+
+        val planned = WorkoutSpeechSequence.plan(answer, flushFirst = false)
+
+        assertTrue(planned.size > 1)
+        assertTrue(planned.all { !it.flushQueue })
+        assertEquals(WorkoutSpeechText.chunks(answer), planned.map { it.text })
+        assertEquals(answer, planned.joinToString(" ") { it.text })
+    }
+
     @Test fun blankCoachReplyDoesNotCreateAnEmptyTtsUtterance() {
         assertTrue(WorkoutSpeechSequence.plan("  \n  ").isEmpty())
     }

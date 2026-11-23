@@ -35,6 +35,11 @@ object WorkoutHistoryConversation {
         today: LocalDate = LocalDate.now()
     ): String? {
         val text = normalize(input.take(300))
+        // Explicit three-session trend questions must be resolved before the broader
+        // progression-eligibility route, which also recognizes phrases such as "tăng số lần".
+        val setTrendAnswer = WorkoutSetTrendConversation.answer(input, workouts, today)
+        if (setTrendAnswer != null) return setTrendAnswer
+
         // Eligibility questions are coaching requests, not historical rep totals. Route them
         // before the set-history parser so "đủ điều kiện tăng số lần chưa?" is not misread
         // as "tôi đã làm bao nhiêu lần?".

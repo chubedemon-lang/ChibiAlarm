@@ -408,7 +408,7 @@ class WorkoutMidSessionPlannerTest {
         assertFalse(request.lowEnergy)
     }
 
-    @Test fun midSessionFloorPreferenceRemovesUnstartedFloorMovesAndPreservesTheCurrentStep() {
+    @Test fun midSessionFloorPreferenceUsesCuratedStandingAlternativesAndPreservesTheCurrentStep() {
         val moves = listOf(
             move("Khởi động tại chỗ"),
             move("Bird-dog"),
@@ -431,9 +431,20 @@ class WorkoutMidSessionPlannerTest {
         val preview = (result as WorkoutMidSessionPlanner.Result.Proposed).preview
         assertEquals(moves.first(), preview.after.first())
         assertTrue(preview.after.any { it.name == "Squat không tạ" })
+        assertTrue(preview.after.any { it.name == "Đứng thăng bằng có hỗ trợ" })
+        assertTrue(preview.after.any { it.name == "Gồng cơ bụng đứng" })
         assertFalse(preview.after.any { it.name == "Bird-dog" })
         assertFalse(preview.after.any { it.name == "Plank khuỷu hoặc plank gối" })
-        assertTrue(preview.removedMoves.contains("Bird-dog"))
+        assertTrue(preview.replacements.any { it == "Bird-dog → Đứng thăng bằng có hỗ trợ" })
+        assertTrue(preview.replacements.any {
+            it == "Plank khuỷu hoặc plank gối → Gồng cơ bụng đứng"
+        })
+        assertTrue(preview.removedMoves.isEmpty())
+        assertTrue(preview.after.all {
+            com.chibialarm.app.WorkoutConstraintFilter.isAllowed(
+                it, WorkoutConstraintProfile(avoidFloorPositions = true)
+            )
+        })
     }
 
     @Test fun newFloorRestrictionCannotRewriteAnAlreadyStartedFloorExercise() {

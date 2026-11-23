@@ -38,11 +38,15 @@ class WorkoutProgressionPreviewTest {
     private fun history(
         exercise: String = "Squat không tạ",
         reps: List<Int> = listOf(8, 8),
-        unit: String = "lần"
+        unit: String = "lần",
+        levels: List<WorkoutEffortFeedback.Level> = listOf(
+            WorkoutEffortFeedback.Level.EASY,
+            WorkoutEffortFeedback.Level.MODERATE
+        )
     ) = listOf(
-        workout(today.minusDays(4), exercise, reps, unit),
-        workout(today.minusDays(2), exercise, reps, unit),
-        workout(today, exercise, reps, unit)
+        workout(today.minusDays(4), exercise, reps, unit, levels),
+        workout(today.minusDays(2), exercise, reps, unit, levels),
+        workout(today, exercise, reps, unit, levels)
     )
 
     private fun suggestion(workouts: List<Workout>) =
@@ -189,4 +193,47 @@ class WorkoutProgressionPreviewTest {
             )
         )
     }
+    @Test fun rhythmCountsReceiveOneStepProgressionInsideTheQuickMobilityCatalogRange() {
+        val workouts = history(
+            exercise = "Mở vai và ngực",
+            reps = listOf(7),
+            unit = "nhịp",
+            levels = listOf(WorkoutEffortFeedback.Level.EASY)
+        )
+        val suggestion = suggestion(workouts)
+        assertNotNull(suggestion)
+
+        val proposal = WorkoutProgressionPreview.propose(
+            suggestion!!, workouts, TrainingCatalog.byId("quickmobility").moves, today
+        )
+
+        assertNotNull(proposal)
+        assertEquals("Mở vai và ngực", proposal!!.exerciseName)
+        assertEquals("nhịp", proposal.unit)
+        assertEquals(7, proposal.previousValue)
+        assertEquals(8, proposal.targetValue)
+        assertEquals(6, proposal.prescribedMinReps)
+        assertEquals(8, proposal.prescribedMaxReps)
+        assertEquals(1, proposal.requiredSets)
+        assertEquals(1, proposal.maximumSets)
+        assertEquals(30, proposal.restSeconds)
+    }
+
+    @Test fun rhythmProgressionNeverExceedsTheCatalogMaximum() {
+        val workouts = history(
+            exercise = "Mở vai và ngực",
+            reps = listOf(8),
+            unit = "nhịp",
+            levels = listOf(WorkoutEffortFeedback.Level.MODERATE)
+        )
+        val suggestion = suggestion(workouts)
+        assertNotNull(suggestion)
+
+        assertNull(
+            WorkoutProgressionPreview.propose(
+                suggestion!!, workouts, TrainingCatalog.byId("quickmobility").moves, today
+            )
+        )
+    }
+
 }

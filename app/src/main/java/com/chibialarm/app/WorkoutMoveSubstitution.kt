@@ -24,9 +24,11 @@ object WorkoutMoveSubstitution {
         "Chống đẩy trên bề mặt cao" to listOf("Chống đẩy tường", "Ép ngực tường bằng cẳng tay"),
         "Mountain climber chậm" to listOf("Đi bộ nhanh tại chỗ"),
         "Bật nhảy dang tay chân" to listOf("Bước ngang nhẹ"),
-        "Bird-dog" to listOf("Dead bug cơ bụng"),
-        "Plank khuỷu hoặc plank gối" to listOf("Bird-dog", "Dead bug cơ bụng"),
-        "Side plank gối" to listOf("Bird-dog", "Dead bug cơ bụng"),
+        "Bird-dog" to listOf("Dead bug cơ bụng", "Đứng thăng bằng có hỗ trợ"),
+        "Dead bug cơ bụng" to listOf("Gồng cơ bụng đứng"),
+        "Plank khuỷu hoặc plank gối" to listOf("Bird-dog", "Dead bug cơ bụng", "Gồng cơ bụng đứng"),
+        "Side plank gối" to listOf("Bird-dog", "Dead bug cơ bụng", "Dang chân sang bên có điểm tựa"),
+        "Nâng hông trên sàn" to listOf("Gập hông không dụng cụ"),
         "Kéo tạ đơn hoặc dây kháng lực" to listOf("Siết bả vai đứng"),
         "Gập hông với tạ đơn hoặc dây" to listOf("Gập hông không dụng cụ", "Nâng hông trên sàn"),
         "Đẩy vai với tạ đơn hoặc dây" to listOf("Mở vai và ngực", "Ép ngực tường bằng cẳng tay")
@@ -68,18 +70,28 @@ object WorkoutMoveSubstitution {
             "Thay động tác bật và tiếp đất bằng bước ngang luân phiên, không cần rời cả hai chân khỏi sàn.",
         ("Bird-dog" to "Dead bug cơ bụng") to
             "Chuyển từ tư thế chống tay và gối sang nằm ngửa, phối hợp tay chân luân phiên.",
+        ("Bird-dog" to "Đứng thăng bằng có hỗ trợ") to
+            "Bỏ tư thế sàn và chuyển sang giữ thăng bằng đứng có điểm tựa; yêu cầu phối hợp thay đổi, không tương đương hoàn toàn.",
+        ("Dead bug cơ bụng" to "Gồng cơ bụng đứng") to
+            "Chuyển từ phối hợp tay chân khi nằm ngửa sang gồng nhẹ cơ trung tâm ở tư thế đứng; không tương đương hoàn toàn.",
         ("Plank khuỷu hoặc plank gối" to "Bird-dog") to
             "Thay việc giữ tư thế plank liên tục bằng các nhịp nâng tay/chân có kiểm soát; vẫn cần tư thế sàn.",
         ("Plank khuỷu hoặc plank gối" to "Dead bug cơ bụng") to
             "Chuyển từ giữ thân người trong plank sang phối hợp tay chân khi nằm ngửa.",
+        ("Plank khuỷu hoặc plank gối" to "Gồng cơ bụng đứng") to
+            "Bỏ tư thế giữ thân trên sàn và chuyển sang gồng nhẹ cơ trung tâm đứng trong thời gian ngắn; không tương đương hoàn toàn.",
         ("Side plank gối" to "Bird-dog") to
             "Bỏ tư thế giữ nghiêng và chuyển sang các nhịp nâng tay/chân luân phiên trên sàn.",
         ("Side plank gối" to "Dead bug cơ bụng") to
             "Bỏ tư thế giữ nghiêng, chuyển sang phối hợp tay chân khi nằm ngửa.",
+        ("Side plank gối" to "Dang chân sang bên có điểm tựa") to
+            "Bỏ tư thế nghiêng sàn và chuyển sang dang chân đứng có điểm tựa; nhấn mạnh hông ngoài hơn, không tương đương hoàn toàn.",
         ("Kéo tạ đơn hoặc dây kháng lực" to "Siết bả vai đứng") to
             "Bỏ tạ và dây kháng lực; tập trung vào việc siết rồi thả bả vai ở tư thế đứng.",
         ("Gập hông với tạ đơn hoặc dây" to "Gập hông không dụng cụ") to
             "Bỏ tải ngoài và tập mẫu gập hông bằng trọng lượng cơ thể.",
+        ("Nâng hông trên sàn" to "Gập hông không dụng cụ") to
+            "Chuyển từ nâng hông nằm sàn sang gập hông đứng không tải; mẫu vận động khác, không tương đương hoàn toàn.",
         ("Gập hông với tạ đơn hoặc dây" to "Nâng hông trên sàn") to
             "Chuyển từ gập hông đứng có tải sang nâng hông khi nằm trên sàn; cần chỗ nằm vững.",
         ("Đẩy vai với tạ đơn hoặc dây" to "Mở vai và ngực") to

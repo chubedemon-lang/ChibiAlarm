@@ -11,7 +11,7 @@ object WorkoutPoseGuide {
         WARM_UP, MARCH, JUMPING_JACKS, MOUNTAIN_CLIMBER, SUPPORTED_MARCH, HIP_ABDUCTION, SEATED_HAMSTRING_STRETCH,
         COOL_DOWN,
         SCAPULAR_SQUEEZE, FOREARM_WALL_PRESS, SIDE_STEP, SEATED_KNEE_RAISE,
-        STRETCH, SIDE_PLANK, CALF_RAISE, BALANCE, STANDING, REST
+        STRETCH, SIDE_PLANK, CALF_RAISE, BALANCE, STANDING_CORE_BRACE, STANDING, REST
     }
 
     fun classify(name: String): Pose {
@@ -42,6 +42,7 @@ object WorkoutPoseGuide {
             listOf("mở vai", "giãn cơ", "stretch").any { it in text } -> Pose.STRETCH
             listOf("nhón gót", "calf raise").any { it in text } -> Pose.CALF_RAISE
             listOf("thăng bằng", "balance").any { it in text } -> Pose.BALANCE
+            listOf("gồng cơ bụng đứng", "standing core brace").any { it in text } -> Pose.STANDING_CORE_BRACE
             listOf("squat", "ngồi xổm", "đứng lên – ngồi xuống", "đứng lên - ngồi xuống").any { it in text } -> Pose.SQUAT
             // Distinguish easier variants before the generic floor push-up matcher.
             listOf("chống đẩy gối", "knee push-up", "knee push up").any { it in text } -> Pose.KNEE_PUSH_UP
@@ -86,6 +87,7 @@ object WorkoutPoseGuide {
         Pose.SIDE_PLANK -> "Minh họa: plank nghiêng có điểm tựa"
         Pose.CALF_RAISE -> "Minh họa: nhón và hạ gót chân"
         Pose.BALANCE -> "Minh họa: giữ thăng bằng cạnh điểm tựa"
+        Pose.STANDING_CORE_BRACE -> "Minh họa: đứng thẳng, siết nhẹ cơ trung tâm và vẫn thở đều"
         Pose.COOL_DOWN -> "Minh họa thả lỏng: đi chậm, thả vai và thở bình thường"
         Pose.REST -> "Minh họa: nghỉ và thở đều"
         Pose.STANDING -> "Minh họa chung: đứng thẳng"

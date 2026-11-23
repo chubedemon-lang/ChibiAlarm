@@ -412,6 +412,14 @@ class WorkoutPoseView(context: Context) : View(context) {
                 line(120f, 71f, 120f, 108f)
                 line(120f, 71f, 151f, 84f); line(151f, 84f, 143f, 101f)
             }
+            WorkoutPoseGuide.Pose.STANDING_CORE_BRACE -> {
+                // A static standing brace cue: hands rest lightly over the abdomen; no breath-hold is implied.
+                head(120f, 20f); line(120f, 31f, 120f, 71f)
+                line(120f, 43f, 94f, 64f); line(120f, 43f, 146f, 64f)
+                line(120f, 71f, 100f, 108f); line(120f, 71f, 140f, 108f)
+                line(94f, 64f, 108f, 58f); line(108f, 58f, 120f, 63f)
+                line(146f, 64f, 132f, 58f); line(132f, 58f, 120f, 63f)
+            }
             WorkoutPoseGuide.Pose.STANDING, WorkoutPoseGuide.Pose.REST -> {
                 head(120f, 20f); line(120f, 31f, 120f, 71f)
                 line(120f, 43f, 94f, 64f); line(120f, 43f, 146f, 64f)

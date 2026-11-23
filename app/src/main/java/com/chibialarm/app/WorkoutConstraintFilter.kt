@@ -73,27 +73,6 @@ object WorkoutConstraintFilter {
             }
     }
 
-    private val alternatives = mapOf(
-        "Chống đẩy tường" to "Ép ngực tường bằng cẳng tay",
-        "Chống đẩy sàn" to "Ép ngực tường bằng cẳng tay",
-        "Chống đẩy gối" to "Ép ngực tường bằng cẳng tay",
-        "Chống đẩy trên bề mặt cao" to "Ép ngực tường bằng cẳng tay",
-        "Bird-dog" to "Dead bug cơ bụng",
-        "Cat-cow nhẹ" to "Mở vai và ngực",
-        "Mountain climber chậm" to "Đi bộ nhanh tại chỗ",
-        "Kéo tạ đơn hoặc dây kháng lực" to "Siết bả vai đứng",
-        "Gập hông với tạ đơn hoặc dây" to "Gập hông không dụng cụ",
-        "Đẩy vai với tạ đơn hoặc dây" to "Mở vai và ngực"
-    )
-    private val jumpingAlternatives = mapOf(
-        "Bật nhảy dang tay chân" to "Bước ngang nhẹ"
-    )
-    private val kneelingAlternatives = mapOf(
-        "Bird-dog" to "Dead bug cơ bụng",
-        "Cat-cow nhẹ" to "Mở vai và ngực",
-        "Chống đẩy gối" to "Chống đẩy tường"
-    )
-
     private val wristLoadHints = listOf(
         "chống đẩy", "bird-dog", "cat-cow", "mountain climber",
         "tạ đơn hoặc dây", "dây kháng lực"
@@ -153,27 +132,29 @@ object WorkoutConstraintFilter {
             return Result(program, emptyList(), emptyList())
         }
 
-        val catalog = TrainingCatalog.allMoves.associateBy { it.name }
         val substitutions = mutableListOf<Substitution>()
         val removed = mutableListOf<String>()
+        val reservedOriginalNames = program.moves
+            .filter { isAllowed(it, profile) }
+            .mapTo(mutableSetOf()) { it.name }
+        val usedNames = mutableSetOf<String>()
         val filteredMoves = program.moves.mapNotNull { move ->
-            val replacementName = alternatives[move.name].takeIf { profile.avoidWristLoad }
-                ?: kneelingAlternatives[move.name].takeIf { profile.avoidKneeling && move.requiresKneeling }
-                ?: if (profile.avoidJumping && move.requiresJumping) jumpingAlternatives[move.name] else null
-            if (replacementName != null) {
-                val replacement = catalog[replacementName]
-                if (replacement != null && isAllowed(replacement, profile)) {
+            if (isAllowed(move, profile)) {
+                if (usedNames.add(move.name)) move else {
+                    removed += move.name
+                    null
+                }
+            } else {
+                val replacement = WorkoutMoveSubstitution.alternativesFor(move, profile)
+                    .firstOrNull { it.name !in usedNames && it.name !in reservedOriginalNames }
+                if (replacement != null) {
+                    usedNames += replacement.name
                     substitutions += Substitution(move.name, replacement.name)
                     replacement
                 } else {
                     removed += move.name
                     null
                 }
-            } else if (isAllowed(move, profile)) {
-                move
-            } else {
-                removed += move.name
-                null
             }
         }
         return Result(program.copy(moves = filteredMoves), substitutions, removed)

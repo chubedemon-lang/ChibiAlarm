@@ -1,5 +1,7 @@
 package com.chibialarm.app
 
+import com.chibialarm.app.fitness.WorkoutMidSessionPlanner
+import com.chibialarm.app.fitness.WorkoutMidSessionRequest
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -96,13 +98,16 @@ class WorkoutConstraintFilterTest {
 
 
 
-    @Test fun overheadReachPreferenceRemovesOnlyTheReviewedOverheadPress() {
+    @Test fun overheadReachPreferenceUsesTheReviewedNonOverheadShoulderAlternative() {
         val profile = WorkoutConstraintProfile(avoidOverheadReach = true)
         val original = TrainingCatalog.byId("weighted")
         val result = WorkoutConstraintFilter.apply(original, profile)
 
         assertTrue(result.canStart)
-        assertEquals(listOf("Đẩy vai với tạ đơn hoặc dây"), result.removedMoves)
+        assertTrue(result.removedMoves.isEmpty())
+        assertTrue(result.substitutions.any {
+            it.originalName == "Đẩy vai với tạ đơn hoặc dây" && it.replacementName == "Mở vai và ngực"
+        })
         assertTrue(result.program.moves.none { it.requiresOverheadReach })
         assertTrue(result.program.moves.any { it.name == "Kéo tạ đơn hoặc dây kháng lực" })
         assertTrue(result.program.moves.any { it.name == "Gập hông với tạ đơn hoặc dây" })
@@ -120,24 +125,87 @@ class WorkoutConstraintFilterTest {
         )
     }
 
-    @Test fun floorPositionPreferenceRemovesReviewedFloorBasedMoves() {
+    @Test fun floorPositionPreferenceUsesReviewedStandingAlternativesAndKeepsTheSourceImmutable() {
         val profile = WorkoutConstraintProfile(avoidFloorPositions = true)
         val original = TrainingCatalog.byId("full")
         val result = WorkoutConstraintFilter.apply(original, profile)
 
         assertTrue(result.canStart)
-        assertTrue(result.removedMoves.contains("Nâng hông trên sàn"))
-        assertTrue(result.removedMoves.contains("Bird-dog"))
-        assertTrue(result.removedMoves.contains("Plank khuỷu hoặc plank gối"))
+        assertTrue(result.substitutions.any {
+            it.originalName == "Nâng hông trên sàn" && it.replacementName == "Gập hông không dụng cụ"
+        })
+        assertTrue(result.substitutions.any {
+            it.originalName == "Bird-dog" && it.replacementName == "Đứng thăng bằng có hỗ trợ"
+        })
+        assertTrue(result.substitutions.any {
+            it.originalName == "Plank khuỷu hoặc plank gối" && it.replacementName == "Gồng cơ bụng đứng"
+        })
+        assertTrue(result.removedMoves.isEmpty())
         assertTrue(result.program.moves.all { WorkoutConstraintFilter.isAllowed(it, profile) })
+        assertEquals(result.program.moves.size, result.program.moves.map { it.name }.distinct().size)
         assertTrue(original.moves.any { it.name == "Bird-dog" })
     }
 
-    @Test fun allFloorBasedCorePlanFailsClosedInsteadOfInventingStandingReplacements() {
+    @Test fun floorBasedCorePlanOffersDistinctReviewedStandingOptions() {
         val profile = WorkoutConstraintProfile(avoidFloorPositions = true)
-        val result = WorkoutConstraintFilter.apply(TrainingCatalog.byId("core"), profile)
-        assertFalse(result.canStart)
-        assertTrue(result.removedMoves.isNotEmpty())
+        val original = TrainingCatalog.byId("core")
+        val result = WorkoutConstraintFilter.apply(original, profile)
+
+        assertTrue(result.canStart)
+        assertTrue(result.program.moves.any { it.name == "Đứng thăng bằng có hỗ trợ" })
+        assertTrue(result.program.moves.any { it.name == "Gồng cơ bụng đứng" })
+        assertTrue(result.program.moves.any { it.name == "Dang chân sang bên có điểm tựa" })
+        assertTrue(result.program.moves.all { WorkoutConstraintFilter.isAllowed(it, profile) })
+        assertEquals(result.program.moves.size, result.program.moves.map { it.name }.distinct().size)
+        assertTrue(result.removedMoves.contains("Plank khuỷu hoặc plank gối"))
+        assertEquals(original.moves, TrainingCatalog.byId("core").moves)
+        assertTrue(result.notice.contains("không tương đương hoàn toàn"))
+    }
+
+    @Test fun floorPreferenceMidSessionReplacesOnlyUnstartedMovesAndPreservesCompletedPrefix() {
+        val move = { name: String -> TrainingCatalog.allMoves.single { it.name == name } }
+        val warmup = move("Khởi động tại chỗ")
+        val moves = listOf(
+            warmup, move("Bird-dog"), move("Dead bug cơ bụng"),
+            move("Plank khuỷu hoặc plank gối"), move("Side plank gối"), move("Thả lỏng")
+        )
+        val result = WorkoutMidSessionPlanner.preview(
+            currentMoves = moves,
+            currentIndex = 1,
+            completedCurrentSets = 0,
+            currentStepLocked = false,
+            constraints = WorkoutConstraintProfile(),
+            request = WorkoutMidSessionRequest.Request(avoidFloorPositions = true),
+            remainingCurrentSeconds = 90,
+            extensionMoveNames = emptySet(),
+            level = 0
+        )
+        assertTrue(result is WorkoutMidSessionPlanner.Result.Proposed)
+        val preview = (result as WorkoutMidSessionPlanner.Result.Proposed).preview
+        assertEquals(warmup, preview.after.first())
+        assertEquals(
+            listOf("Khởi động tại chỗ", "Đứng thăng bằng có hỗ trợ", "Gồng cơ bụng đứng",
+                "Dang chân sang bên có điểm tựa", "Thả lỏng"),
+            preview.after.map { it.name }
+        )
+        assertTrue(preview.after.all {
+            WorkoutConstraintFilter.isAllowed(it, WorkoutConstraintProfile(avoidFloorPositions = true))
+        })
+    }
+
+    @Test fun standingCoreBraceHasCuratedCatalogAndIllustrationMetadata() {
+        val move = TrainingCatalog.allMoves.single { it.name == "Gồng cơ bụng đứng" }
+        assertTrue(move.dose.contains("hiệp"))
+        assertTrue(move.steps.contains("vẫn thở bình thường"))
+        assertTrue(move.easier.isNotBlank())
+        assertTrue(move.avoid.contains("Không nín thở"))
+        assertTrue(move.equipmentOptions.isEmpty())
+        assertEquals(listOf(TrainingMuscleGroup.CORE), move.muscleFocus.primary)
+        val pose = WorkoutPoseGuide.classify(move.name)
+        assertEquals(WorkoutPoseGuide.Pose.STANDING_CORE_BRACE, pose)
+        assertFalse(WorkoutPoseMotion.hasMotion(pose))
+        assertTrue(WorkoutPoseGuide.label(pose).contains("vẫn thở đều"))
+        assertTrue(WorkoutPoseMotion.spokenWalkthrough(pose).contains("vẫn thở bình thường"))
     }
 
     @Test fun fingerprintChangesWhenTheSameMovesHaveDifferentActiveConstraints() {
@@ -246,6 +314,21 @@ class WorkoutConstraintFilterTest {
                 moves, WorkoutConstraintProfile(avoidKneeling = true)
             )
         )
+    }
+
+    @Test fun floorAvoidanceAlternativesHavePlainLanguageExplanationsAndRespectTheConstraint() {
+        val profile = WorkoutConstraintProfile(avoidFloorPositions = true)
+        val names = listOf("Bird-dog", "Dead bug cơ bụng", "Plank khuỷu hoặc plank gối",
+            "Side plank gối", "Nâng hông trên sàn", "Cat-cow nhẹ")
+        names.forEach { name ->
+            val source = TrainingCatalog.allMoves.single { it.name == name }
+            val alternatives = WorkoutMoveSubstitution.alternativesFor(source, profile)
+            assertTrue(name + " should have a curated standing alternative", alternatives.isNotEmpty())
+            alternatives.forEach { alternative ->
+                assertTrue(WorkoutConstraintFilter.isAllowed(alternative, profile))
+                assertNotNull(WorkoutMoveSubstitution.explanationFor(source, alternative))
+            }
+        }
     }
 
 }

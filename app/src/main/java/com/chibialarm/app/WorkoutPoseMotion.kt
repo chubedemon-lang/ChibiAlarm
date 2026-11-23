@@ -36,6 +36,7 @@ object WorkoutPoseMotion {
         WorkoutPoseGuide.Pose.SEATED_HAMSTRING_STRETCH,
         WorkoutPoseGuide.Pose.SIDE_PLANK,
         WorkoutPoseGuide.Pose.BALANCE,
+        WorkoutPoseGuide.Pose.STANDING_CORE_BRACE,
         WorkoutPoseGuide.Pose.REST,
         WorkoutPoseGuide.Pose.STANDING -> false
     }
@@ -76,6 +77,7 @@ object WorkoutPoseMotion {
         WorkoutPoseGuide.Pose.SIDE_PLANK -> "Minh họa plank nghiêng. Chống khuỷu chắc chắn, nâng hông trong mức thoải mái; có thể co gối để dễ hơn."
         WorkoutPoseGuide.Pose.CALF_RAISE -> "Minh họa nhón gót. Vịn điểm tựa chắc chắn nếu cần, nâng gót chậm rồi hạ có kiểm soát."
         WorkoutPoseGuide.Pose.BALANCE -> "Minh họa thăng bằng. Đứng cạnh tường hoặc ghế chắc chắn và giữ điểm tựa trong tầm tay."
+        WorkoutPoseGuide.Pose.STANDING_CORE_BRACE -> "Đứng chân rộng bằng hông, gối thả lỏng. Siết nhẹ cơ bụng như chuẩn bị ho nhẹ; giữ thân thẳng 10–15 giây nhưng vẫn thở bình thường, rồi thả lỏng. Dừng nếu đau hoặc chóng mặt."
         WorkoutPoseGuide.Pose.COOL_DOWN -> "Đi bộ chậm để hạ nhịp; thả lỏng vai; giãn nhẹ nhóm cơ vừa tập và thở bình thường. Không ép đến đau."
         WorkoutPoseGuide.Pose.REST -> "Đang nghỉ. Hít thở bình thường, nghỉ thêm nếu cần."
         WorkoutPoseGuide.Pose.STANDING -> "Chưa có minh họa riêng cho động tác này. Hãy đọc hướng dẫn từng bước bên dưới trước khi tập."
@@ -231,6 +233,7 @@ object WorkoutPoseMotion {
         WorkoutPoseGuide.Pose.STRETCH -> "Giãn nhẹ"
         WorkoutPoseGuide.Pose.SIDE_PLANK -> "Giữ hông nâng"
         WorkoutPoseGuide.Pose.BALANCE -> "Giữ thăng bằng"
+        WorkoutPoseGuide.Pose.STANDING_CORE_BRACE -> "Giữ cơ trung tâm nhẹ, vẫn thở đều"
         WorkoutPoseGuide.Pose.REST -> "Nghỉ và thở đều"
         WorkoutPoseGuide.Pose.STANDING -> "Xem hướng dẫn"
     }

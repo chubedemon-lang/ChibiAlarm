@@ -103,6 +103,8 @@ object TrainingMuscleCatalog {
             supporting = listOf(TrainingMuscleGroup.SHOULDERS, TrainingMuscleGroup.CORE)),
         "Dead bug cơ bụng" to focus(TrainingMuscleGroup.CORE,
             supporting = listOf(TrainingMuscleGroup.HIP_FLEXORS)),
+        "Gồng cơ bụng đứng" to focus(TrainingMuscleGroup.CORE,
+            supporting = listOf(TrainingMuscleGroup.GLUTES)),
         "Cat-cow nhẹ" to focus(TrainingMuscleGroup.BACK, TrainingMuscleGroup.CORE,
             supporting = listOf(TrainingMuscleGroup.SHOULDERS)),
         "Mở vai và ngực" to focus(TrainingMuscleGroup.SHOULDERS,
@@ -253,6 +255,10 @@ object TrainingCatalog {
     private val balance=exercise("Đứng thăng bằng có hỗ trợ","3 × 15 giây mỗi bên",
         "Đứng cạnh tường hoặc ghế vững, nhấc nhẹ một gót, giữ thăng bằng có hỗ trợ.",
         "Giữ cả hai chân trên sàn và chuyển trọng tâm.","Không thử nếu chóng mặt; luôn có điểm tựa.",75)
+    private val standingCoreBrace=exercise("Gồng cơ bụng đứng","2 hiệp × 10–15 giây",
+        "Đứng hai chân rộng bằng hông, gối thả lỏng. Siết nhẹ cơ bụng như chuẩn bị ho nhẹ; giữ thân thẳng 10–15 giây nhưng vẫn thở bình thường, rồi thả lỏng.",
+        "Giữ 5–8 giây và đứng cạnh tường để có điểm tựa.",
+        "Không nín thở, hóp bụng quá mức hoặc ưỡn lưng; dừng nếu đau, chóng mặt hoặc khó thở bất thường.",45,30)
     private val tempoSquat=exercise("Squat chậm 3 giây","3 hiệp × 8–12 lần",
         "Đếm ba giây khi hạ xuống; giữ kỹ thuật; đứng lên bình thường.",
         "Giảm độ sâu hoặc dùng ghế.","Dừng khi gối đau, không quá sức.",95,60)
@@ -349,7 +355,7 @@ object TrainingCatalog {
      * even when they are not part of a default program's fixed sequence.
      */
     val substitutionOnlyMoves: List<TrainingMove> =
-        listOf(kneePush, forearmWallPress, scapularSqueeze, bodyweightHipHinge)
+        listOf(kneePush, forearmWallPress, scapularSqueeze, bodyweightHipHinge, standingCoreBrace)
 
     /** Additional moves used only by curated duration extensions. */
     val extensionMoves: List<TrainingMove> = listOf(

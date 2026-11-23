@@ -62,6 +62,76 @@ class WorkoutCoachConversationContextTest {
         assertTrue(ordinaryFollowUp.contains("60 giây"))
     }
 
+    @Test fun followUpAboutNextMoveUsesUpcomingExerciseAsTheNewConversationReference() {
+        val context = WorkoutCoachConversationContext()
+        context.answer("Cách tập ${chairSquat.name}?", activeMove = squat)
+
+        val nextMoveAnswer = context.answer(
+            input = "Bài tiếp theo cần dụng cụ gì?",
+            activeMove = squat,
+            nextMove = walk
+        )
+        assertNotNull(nextMoveAnswer)
+        assertTrue(nextMoveAnswer!!.contains(walk.name))
+        assertFalse(nextMoveAnswer.contains(chairSquat.name))
+
+        val followUp = context.answer(
+            input = "Bài đó thở thế nào?",
+            activeMove = squat,
+            nextMove = walk
+        )
+        assertNotNull(followUp)
+        assertTrue(followUp!!.contains(walk.name))
+        assertTrue(followUp.contains("Thở tự nhiên"))
+        assertFalse(followUp.contains(chairSquat.name))
+        assertFalse(followUp.contains(squat.name))
+    }
+
+    @Test fun missingNextMoveDoesNotReplaceTheLastValidConversationReference() {
+        val context = WorkoutCoachConversationContext()
+        context.answer("Cách tập ${walk.name}?", activeMove = squat)
+
+        val missing = context.answer(
+            input = "Bài tiếp theo cần dụng cụ gì?",
+            activeMove = squat,
+            nextMove = null
+        )
+        assertNotNull(missing)
+        assertTrue(missing!!.contains("không còn động tác tiếp theo"))
+
+        val followUp = context.answer(
+            input = "Bài đó thở thế nào?",
+            activeMove = squat,
+            nextMove = null
+        )
+        assertNotNull(followUp)
+        assertTrue(followUp!!.contains(walk.name))
+        assertFalse(followUp.contains(squat.name))
+    }
+
+    @Test fun nextMoveQuestionDuringSafetyPauseDoesNotReplaceConversationReference() {
+        val context = WorkoutCoachConversationContext()
+        context.answer("Cách tập ${chairSquat.name}?", activeMove = squat)
+
+        val stopped = context.answer(
+            input = "Bài tiếp theo cần dụng cụ gì?",
+            activeMove = squat,
+            nextMove = walk,
+            pausedForSafety = true
+        )
+        assertNotNull(stopped)
+        assertTrue(stopped!!.contains("đang dừng vì cảnh báo an toàn"))
+
+        val followUp = context.answer(
+            input = "Bài đó thở thế nào?",
+            activeMove = squat,
+            nextMove = walk
+        )
+        assertNotNull(followUp)
+        assertTrue(followUp!!.contains(chairSquat.name))
+        assertFalse(followUp.contains(walk.name))
+    }
+
     @Test fun ordinaryGenericFollowUpStillUsesTheCurrentlyOpenMove() {
         val context = WorkoutCoachConversationContext()
         context.answer("Cách tập Đi bộ nhanh tại chỗ?", activeMove = squat)
@@ -121,6 +191,7 @@ class WorkoutCoachConversationContextTest {
         assertTrue(answer!!.contains("đang dừng vì cảnh báo an toàn"))
         assertFalse(answer.contains("Bước 1:"))
     }
+
     @Test fun activeMoveActualRepValuesArePassedThroughConversationContext() {
         val context = WorkoutCoachConversationContext()
         val answer = context.answer(
@@ -164,7 +235,6 @@ class WorkoutCoachConversationContextTest {
         )
     }
 
-
     @Test fun numberedStepFollowUpUsesTheLastExplicitlyNamedExercise() {
         val context = WorkoutCoachConversationContext()
         context.answer("Cách tập ${walk.name}?", activeMove = squat)
@@ -181,5 +251,4 @@ class WorkoutCoachConversationContextTest {
         assertTrue(answer.contains(expectedStep.take(50)))
         assertFalse(answer.contains(squat.name))
     }
-
 }

@@ -26,4 +26,22 @@ internal object CoachSpeechPreview {
     /** Auto-read uses the same network-consent gate as a one-off voice preview. */
     fun autoReadDecision(languageSupported: Boolean, networkRequired: Boolean?): Decision =
         decision(languageSupported, networkRequired)
+
+    /**
+     * Resolve one playback attempt. The caller owns the consent flag in volatile session memory;
+     * this helper never stores consent or changes behavior for a later app session.
+     */
+    fun playbackDecision(
+        languageSupported: Boolean,
+        networkRequired: Boolean?,
+        networkConsentGranted: Boolean
+    ): Decision {
+        val initial = decision(languageSupported, networkRequired)
+        return when (initial) {
+            Decision.REQUIRE_NETWORK_CONSENT,
+            Decision.REQUIRE_UNKNOWN_NETWORK_CONSENT ->
+                if (networkConsentGranted) Decision.PLAY_WITHOUT_NETWORK_PROMPT else initial
+            else -> initial
+        }
+    }
 }

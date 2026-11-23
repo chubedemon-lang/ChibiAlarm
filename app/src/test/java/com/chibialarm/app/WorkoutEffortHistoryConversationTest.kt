@@ -502,4 +502,84 @@ class WorkoutEffortHistoryConversationTest {
         }
     }
 
+
+    @Test fun planReviewHighlightsLatestVeryHardForAnExactPlannedMoveAndExcludesPrivateNotes() {
+        val squat = TrainingCatalog.byId("quick").moves.first { it.name == "Squat không tạ" }
+        val workout = guided(
+            today,
+            "Squat không tạ: hiệp 1: Quá sức, tạm dừng",
+            "550e8400-e29b-41d4-a716-446655440098",
+            "private knee note"
+        )
+
+        val warnings = WorkoutEffortHistoryConversation.planReview(
+            listOf(squat),
+            listOf(workout),
+            today
+        )
+
+        assertEquals(1, warnings.size)
+        assertTrue(warnings.single().contains("Quá sức, tạm dừng"))
+        assertTrue(warnings.single().contains("Squat không tạ"))
+        assertFalse(warnings.single().contains("private"))
+        assertFalse(warnings.single().contains("knee note"))
+        assertTrue(warnings.single().contains("không tự thay đổi giáo án"))
+    }
+
+    @Test fun planReviewHighlightsRepeatedHardCheckInsAcrossDistinctSessions() {
+        val squat = TrainingCatalog.byId("quick").moves.first { it.name == "Squat không tạ" }
+        val older = guided(
+            today.minusDays(2),
+            "Squat không tạ: hiệp 1: Khó, cần nghỉ thêm",
+            "550e8400-e29b-41d4-a716-446655440099"
+        )
+        val latest = guided(
+            today,
+            "Squat không tạ: hiệp 1: Khó, cần nghỉ thêm",
+            "550e8400-e29b-41d4-a716-446655440100"
+        )
+
+        val warnings = WorkoutEffortHistoryConversation.planReview(
+            listOf(squat),
+            listOf(older, latest),
+            today
+        )
+
+        assertEquals(1, warnings.size)
+        assertTrue(warnings.single().contains("2 buổi khác nhau"))
+        assertTrue(warnings.single().contains("không tự tăng tải"))
+    }
+
+    @Test fun planReviewDeduplicatesSessionIdsAndIgnoresEasyOrUnrelatedCheckIns() {
+        val squat = TrainingCatalog.byId("quick").moves.first { it.name == "Squat không tạ" }
+        val duplicateId = "550e8400-e29b-41d4-a716-446655440101"
+        val duplicateOlder = guided(
+            today.minusDays(2),
+            "Squat không tạ: hiệp 1: Khó, cần nghỉ thêm",
+            duplicateId
+        )
+        val duplicateLatest = guided(
+            today,
+            "Squat không tạ: hiệp 1: Khó, cần nghỉ thêm",
+            duplicateId
+        )
+        val oneSession = WorkoutEffortHistoryConversation.planReview(
+            listOf(squat),
+            listOf(duplicateOlder, duplicateLatest),
+            today
+        )
+        assertEquals(1, oneSession.size)
+        assertFalse(oneSession.single().contains("2 buổi khác nhau"))
+
+        val easy = guided(
+            today,
+            "Squat không tạ: hiệp 1: Nhẹ, còn dư sức; hiệp 2: Vừa sức",
+            "550e8400-e29b-41d4-a716-446655440102"
+        )
+        val plank = TrainingCatalog.byId("core").moves.first { it.name.contains("Plank") }
+        assertTrue(
+            WorkoutEffortHistoryConversation.planReview(listOf(plank), listOf(easy), today).isEmpty()
+        )
+    }
+
 }

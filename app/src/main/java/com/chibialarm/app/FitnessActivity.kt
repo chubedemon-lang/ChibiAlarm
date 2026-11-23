@@ -991,10 +991,11 @@ class FitnessActivity:Activity() {
                 val eligibleAlternatives = eligibleCandidates.filter {
                     it.id != basePair.second.program.id
                 }
+                val workoutHistory = WorkoutData.history(this@FitnessActivity)
                 val historySuggestion = if (selection.usedFallback || targetMinutes <= 10) null else {
                     WorkoutHistoryAdvisor.suggestVariety(
                         basePair.second.program,
-                        WorkoutData.history(this@FitnessActivity),
+                        workoutHistory,
                         eligibleAlternatives
                     )
                 }
@@ -1049,10 +1050,20 @@ class FitnessActivity:Activity() {
                 ) + selection.notice.takeIf { it.isNotBlank() }?.let { "\n\n" + it }.orEmpty()
                 val muscleFocusSummary = WorkoutMusclePlanSummary.format(planned.moves)
                 val spokenMuscleFocusSummary = WorkoutMusclePlanSummary.spoken(planned.moves)
+                val effortReviewWarnings = WorkoutEffortHistoryConversation.planReview(
+                    planned.moves,
+                    workoutHistory
+                )
+                val effortReviewSummary = if (effortReviewWarnings.isEmpty()) "" else {
+                    "\n\n🧭 Check-in trước đây cần xem lại:\n" +
+                        effortReviewWarnings.joinToString("\n") +
+                        "\nCác nhãn là cảm nhận do bạn tự chọn; Chibi không tự xóa, đổi bài hay thay đổi liều lượng."
+                }
                 val recommendationMessage = profileSummary + "\n\n" + durationSummary +
                     (muscleFocusSummary?.let { "\n\n" + it } ?: "") + "\n\n" +
                     recommendation.explanation +
                     (historySuggestion?.let { "\n\n📚 " + it.reason } ?: "") +
+                    effortReviewSummary +
                     "\n\nGợi ý offline theo quy tắc trên máy, không phải AI chẩn đoán hay tư vấn y khoa."
                 val spokenProfileSummary = FitnessPlanSpeechSummary.fromProfile(
                     profileSummary = profileSummary,

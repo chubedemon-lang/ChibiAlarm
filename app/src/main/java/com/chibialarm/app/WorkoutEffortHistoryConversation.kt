@@ -48,6 +48,91 @@ object WorkoutEffortHistoryConversation {
         return summary?.takeUnless { it.startsWith(NO_CHECK_IN_MESSAGE) }
     }
 
+    /**
+     * Adds read-only, move-specific context to a proposed plan from the user's recent
+     * structured effort check-ins. Only effortLog is read; free-text notes are never accessed.
+     * Exact catalog-name matching avoids guessing that two similarly named moves are equivalent.
+     */
+    fun planReview(
+        plannedMoves: List<TrainingMove>,
+        workouts: List<Workout>,
+        today: LocalDate = LocalDate.now()
+    ): List<String> {
+        if (plannedMoves.isEmpty()) return emptyList()
+        require(plannedMoves.size <= MAX_MOVES) { "Planned move list is too large" }
+
+        data class ReviewSession(
+            val date: LocalDate,
+            val originalIndex: Int,
+            val sessionId: String,
+            val moves: List<MoveEffort>
+        )
+
+        val sessions = workouts.takeLast(MAX_RECORDS)
+            .mapIndexedNotNull { index, workout ->
+                val date = runCatching { LocalDate.parse(workout.date) }.getOrNull()
+                    ?: return@mapIndexedNotNull null
+                val validSessionId = runCatching {
+                    UUID.fromString(workout.sessionId).toString() == workout.sessionId
+                }.getOrDefault(false)
+                if (date.isAfter(today) || workout.minutes !in 1..600 || !validSessionId ||
+                    workout.effortLog.isBlank() || workout.effortLog.length > MAX_LOG_CHARS
+                ) return@mapIndexedNotNull null
+                val moves = parseLog(workout.effortLog)
+                if (moves.isEmpty()) null
+                else ReviewSession(date, index, workout.sessionId, moves)
+            }
+            .sortedWith(compareByDescending<ReviewSession> { it.date }
+                .thenByDescending { it.originalIndex })
+            // A duplicated journal row must never count as a second workout.
+            .distinctBy { it.sessionId }
+            .take(3)
+
+        if (sessions.isEmpty()) return emptyList()
+
+        val warnings = mutableListOf<Triple<Int, Int, String>>()
+        plannedMoves.distinctBy { normalize(it.name) }.forEachIndexed { planIndex, planned ->
+            if (planned.name.isBlank() || planned.name.length > 90) return@forEachIndexed
+            val observations = sessions.mapNotNull { session ->
+                session.moves.firstOrNull { normalize(it.name) == normalize(planned.name) }
+                    ?.let { session to it }
+            }
+            val latest = observations.firstOrNull() ?: return@forEachIndexed
+            val latestLevels = latest.second.sets.map { it.level }
+            val latestVeryHard = latestLevels.any { it == WorkoutEffortFeedback.Level.VERY_HARD }
+            val latestHard = latestLevels.any { it == WorkoutEffortFeedback.Level.HARD }
+            val demandingSessions = observations.count { (_, observed) ->
+                observed.sets.any {
+                    it.level == WorkoutEffortFeedback.Level.HARD ||
+                        it.level == WorkoutEffortFeedback.Level.VERY_HARD
+                }
+            }
+
+            val warning = when {
+                latestVeryHard -> 3 to (
+                    "⚠️ Check-in gần nhất cho ${planned.name} (${latest.first.date.format(dateFormat)}): " +
+                        "bạn đã tự đánh dấu “Quá sức, tạm dừng”. Hãy xem biến thể nhẹ hơn hoặc bỏ qua động tác nếu còn khó chịu; " +
+                        "nếu có triệu chứng bất thường, hãy dừng tập. Chibi không tự thay đổi giáo án."
+                    )
+                demandingSessions >= 2 -> 2 to (
+                    "⚠️ Bạn đã tự đánh dấu ${planned.name} là khó/quá sức ở $demandingSessions buổi khác nhau. " +
+                        "Hãy xem lại biến thể nhẹ hơn và thời gian nghỉ trước khi bắt đầu; Chibi không tự tăng tải hay xóa bài."
+                    )
+                latestHard -> 1 to (
+                    "ℹ️ Check-in gần nhất cho ${planned.name} (${latest.first.date.format(dateFormat)}) được bạn đánh dấu “Khó, cần nghỉ thêm”. " +
+                        "Hãy xem lại hướng dẫn và thời gian nghỉ trước khi bắt đầu."
+                    )
+                else -> null
+            } ?: return@forEachIndexed
+            warnings += Triple(warning.first, planIndex, warning.second)
+        }
+
+        return warnings
+            .sortedWith(compareByDescending<Triple<Int, Int, String>> { it.first }.thenBy { it.second })
+            .take(3)
+            .map { it.third }
+    }
+
     fun answer(
         input: String,
         workouts: List<Workout>,

@@ -16,6 +16,7 @@ import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
+import org.robolectric.shadows.ShadowAlertDialog
 
 @RunWith(RobolectricTestRunner::class)
 class FitnessActivityEffortSuggestionTest {
@@ -136,6 +137,52 @@ class FitnessActivityEffortSuggestionTest {
             it.text.toString() == "💬 Hỏi Chibi về check-in gần nhất"
         }
         assertEquals(View.GONE, effortAction.visibility)
+        controller.pause().stop().destroy()
+    }
+
+
+    @Test fun proposedPlanShowsMoveSpecificEffortReviewBeforeStarting() {
+        val app = RuntimeEnvironment.getApplication()
+        app.getSharedPreferences("chibi_fitness_offline", Context.MODE_PRIVATE).edit()
+            .putInt("recommendGoal", 0)
+            .putInt("recommendEnergy", 1)
+            .putInt("recommendEquipment", 0)
+            .putInt("fitLevel", 0)
+            .putInt("fitTimeMinutes", 10)
+            .commit()
+
+        val squat = TrainingCatalog.byId("quick").moves.first { it.name == "Squat không tạ" }
+        WorkoutData.save(app, listOf(
+            Workout(
+                date = LocalDate.now().toString(),
+                name = "Guided Workout",
+                minutes = 20,
+                note = "private health note",
+                sessionId = UUID.randomUUID().toString(),
+                completedMoves = 2,
+                selfReportedSets = 1,
+                effortLog = "${squat.name}: hiệp 1: Quá sức, tạm dừng"
+            )
+        ))
+
+        val controller = Robolectric.buildActivity(FitnessActivity::class.java).setup()
+        val activity = controller.get()
+        val recommendation = views(activity.findViewById<ViewGroup>(android.R.id.content))
+            .filterIsInstance<Button>()
+            .first { it.text.toString() == "🐰 Gợi ý chương trình phù hợp" }
+        recommendation.performClick()
+
+        val dialog = ShadowAlertDialog.getLatestAlertDialog()
+        assertNotNull("The personalized plan preview should open", dialog)
+        val dialogRoot = dialog.findViewById<ViewGroup>(android.R.id.custom)
+        val previewText = dialogRoot?.let(::views).orEmpty()
+            .filterIsInstance<TextView>()
+            .joinToString("\n") { it.text.toString() }
+        assertTrue(previewText.contains("Check-in trước đây cần xem lại"))
+        assertTrue(previewText.contains("Squat không tạ"))
+        assertTrue(previewText.contains("Quá sức, tạm dừng"))
+        assertTrue(previewText.contains("Chibi không tự xóa, đổi bài"))
+        assertTrue(!previewText.contains("private health note"))
         controller.pause().stop().destroy()
     }
 

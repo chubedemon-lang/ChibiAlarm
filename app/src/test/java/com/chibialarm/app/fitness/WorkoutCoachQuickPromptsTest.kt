@@ -133,6 +133,79 @@ class WorkoutCoachQuickPromptsTest {
         assertTrue(safetyStopped.isEmpty())
     }
 
+
+    @Test fun effortHistoryPromptAppearsOnlyAfterAConfirmedSetAndUsesTheExistingCoachRouter() {
+        val hidden = WorkoutCoachQuickPrompts.forSession(
+            resting = false,
+            hasOptionalFutureExercises = false,
+            hasOptionalCurrentSets = false
+        )
+        assertFalse(hidden.any { it.label == "Xem cảm nhận" })
+
+        val prompts = WorkoutCoachQuickPrompts.forSession(
+            resting = false,
+            hasOptionalFutureExercises = false,
+            hasOptionalCurrentSets = false,
+            hasCompletedSets = true
+        )
+        val historyPrompt = prompts.single { it.label == "Xem cảm nhận" }
+        assertEquals("Tổng kết cảm nhận các hiệp đã ghi", historyPrompt.utterance)
+        assertFalse(prompts.any { it.label == "Nghỉ theo cảm nhận" })
+
+        val active = TrainingCatalog.allMoves.single { it.name == "Squat không tạ" }
+        val answer = WorkoutCoachQuestionRouter.answer(
+            input = historyPrompt.utterance,
+            currentMove = active,
+            completedSets = 1,
+            completedEffortLevels = listOf(com.chibialarm.app.WorkoutEffortFeedback.Level.HARD)
+        )
+        assertTrue(answer.orEmpty().contains("hiệp 1: Khó, cần nghỉ thêm"))
+        assertTrue(answer.orEmpty().contains("tự đánh giá"))
+    }
+
+    @Test fun effortRestPromptRequiresTheLatestConfirmedRatingAndRemainsReadOnly() {
+        val noRating = WorkoutCoachQuickPrompts.forSession(
+            resting = true,
+            hasOptionalFutureExercises = false,
+            hasOptionalCurrentSets = false,
+            hasCompletedSets = true
+        )
+        assertFalse(noRating.any { it.label == "Nghỉ theo cảm nhận" })
+
+        val prompts = WorkoutCoachQuickPrompts.forSession(
+            resting = true,
+            hasOptionalFutureExercises = false,
+            hasOptionalCurrentSets = false,
+            hasCompletedSets = true,
+            hasLatestEffortCheckIn = true
+        )
+        val restPrompt = prompts.single { it.label == "Nghỉ theo cảm nhận" }
+        val active = TrainingCatalog.allMoves.single { it.name == "Squat không tạ" }.copy(restSeconds = 45)
+        val answer = WorkoutCoachQuestionRouter.answer(
+            input = restPrompt.utterance,
+            currentMove = active,
+            completedSets = 1,
+            completedEffortLevels = listOf(com.chibialarm.app.WorkoutEffortFeedback.Level.HARD)
+        )
+
+        assertTrue(answer.orEmpty().contains("60 giây"))
+        assertTrue(answer.orEmpty().contains("đồng hồ không tự chạy"))
+        assertEquals(listOf("Nghỉ thêm 30 giây", "Nghỉ thêm 1 phút", "Xem cảm nhận", "Nghỉ theo cảm nhận"),
+            prompts.map { it.label })
+    }
+
+    @Test fun safetyStopHidesEffortPromptsEvenWhenASetWasRated() {
+        val prompts = WorkoutCoachQuickPrompts.forSession(
+            resting = true,
+            hasOptionalFutureExercises = false,
+            hasOptionalCurrentSets = false,
+            safetyStopped = true,
+            hasCompletedSets = true,
+            hasLatestEffortCheckIn = true
+        )
+        assertTrue(prompts.isEmpty())
+    }
+
     @Test fun helperNeverSubmitsOrChangesSessionState() {
         val first = WorkoutCoachQuickPrompts.forSession(false, true, true)
         val second = WorkoutCoachQuickPrompts.forSession(false, true, true)

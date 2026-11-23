@@ -184,6 +184,12 @@ class FitnessActivityEffortSuggestionTest {
         assertTrue(previewText.contains("Quá sức, tạm dừng"))
         assertTrue(previewText.contains("Chibi không tự xóa, đổi bài"))
         assertTrue(!previewText.contains("private health note"))
+        val speakButton = dialogRoot?.let(::views).orEmpty()
+            .filterIsInstance<Button>()
+            .first { it.text.toString() == "🔊 Nghe tóm tắt hồ sơ" }
+        assertTrue(
+            speakButton.contentDescription.toString().contains("lưu ý từ check-in trước đây")
+        )
         controller.pause().stop().destroy()
     }
 

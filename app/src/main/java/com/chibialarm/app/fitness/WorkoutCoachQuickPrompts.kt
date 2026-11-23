@@ -16,7 +16,8 @@ internal object WorkoutCoachQuickPrompts {
         resting: Boolean,
         hasOptionalFutureExercises: Boolean,
         hasOptionalCurrentSets: Boolean,
-        safetyStopped: Boolean = false
+        safetyStopped: Boolean = false,
+        hasNextExercise: Boolean = false
     ): List<Prompt> {
         if (safetyStopped) return emptyList()
 
@@ -36,6 +37,10 @@ internal object WorkoutCoachQuickPrompts {
         }
         if (hasOptionalCurrentSets) {
             prompts += Prompt("Chỉ hiệp bắt buộc", "Chỉ làm hiệp bắt buộc")
+        }
+        if (hasNextExercise) {
+            // The router answers from the next catalog move, not the exercise currently open.
+            prompts += Prompt("Bài tiếp theo", "Bài tiếp theo tập thế nào?")
         }
         // Read-only coaching prompts are available beside plan controls. They only fill
         // the input; the existing coach answer and safety gates handle the actual request.

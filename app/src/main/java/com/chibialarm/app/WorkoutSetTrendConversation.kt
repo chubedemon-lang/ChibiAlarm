@@ -86,7 +86,7 @@ internal object WorkoutSetTrendConversation {
         val matching = sessions.mapNotNull { session ->
             val moves = session.moves.filter { normalize(it.name) == key }
             moves.singleOrNull()?.let { session to it }
-        }.take(3)
+        }.take(3).reversed()
 
         if (matching.size < 3) {
             return "Mới tìm thấy ${matching.size} buổi có chi tiết hiệp cho ${selectedName}; cần ba buổi riêng biệt để xem xu hướng. Chibi không lấy mục tiêu giáo án hoặc ghi chú riêng tư để bù số liệu."

@@ -1,5 +1,7 @@
 package com.chibialarm.app.fitness
 
+import com.chibialarm.app.TrainingCatalog
+import com.chibialarm.app.WorkoutCoachQuestionRouter
 import com.chibialarm.app.WorkoutVoiceCommands
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -81,6 +83,54 @@ class WorkoutCoachQuickPromptsTest {
                 safetyStopped = true
             ).isEmpty()
         )
+    }
+
+
+    @Test fun upcomingExercisePromptAppearsOnlyWhenAvailableAndAnswersFromThatMove() {
+        val prompt = WorkoutCoachQuickPrompts.forSession(
+            resting = false,
+            hasOptionalFutureExercises = false,
+            hasOptionalCurrentSets = false,
+            hasNextExercise = true
+        ).single { it.label == "Bài tiếp theo" }
+
+        assertEquals("Bài tiếp theo tập thế nào?", prompt.utterance)
+        val active = TrainingCatalog.allMoves.single { it.name == "Squat không tạ" }
+        val upcoming = TrainingCatalog.allMoves.single { it.name == "Đi bộ nhanh tại chỗ" }
+        val answer = WorkoutCoachQuestionRouter.answer(
+            input = prompt.utterance,
+            currentMove = active,
+            nextMove = upcoming
+        )
+
+        assertTrue(answer.orEmpty().contains("Hướng dẫn ${upcoming.name}"))
+        assertFalse(answer.orEmpty().contains(active.name))
+    }
+
+    @Test fun upcomingExercisePromptIsHiddenDuringRestWithoutANextMoveOrAfterSafetyStop() {
+        val noNext = WorkoutCoachQuickPrompts.forSession(
+            resting = false,
+            hasOptionalFutureExercises = false,
+            hasOptionalCurrentSets = false
+        )
+        assertFalse(noNext.any { it.label == "Bài tiếp theo" })
+
+        val duringRest = WorkoutCoachQuickPrompts.forSession(
+            resting = true,
+            hasOptionalFutureExercises = false,
+            hasOptionalCurrentSets = false,
+            hasNextExercise = true
+        )
+        assertFalse(duringRest.any { it.label == "Bài tiếp theo" })
+
+        val safetyStopped = WorkoutCoachQuickPrompts.forSession(
+            resting = false,
+            hasOptionalFutureExercises = false,
+            hasOptionalCurrentSets = false,
+            safetyStopped = true,
+            hasNextExercise = true
+        )
+        assertTrue(safetyStopped.isEmpty())
     }
 
     @Test fun helperNeverSubmitsOrChangesSessionState() {

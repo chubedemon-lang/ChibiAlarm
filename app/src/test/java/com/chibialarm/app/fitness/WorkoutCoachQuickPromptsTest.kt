@@ -1,5 +1,6 @@
 package com.chibialarm.app.fitness
 
+import com.chibialarm.app.WorkoutVoiceCommands
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -14,7 +15,7 @@ class WorkoutCoachQuickPromptsTest {
         )
 
         assertEquals(
-            listOf("Còn 5 phút", "Hôm nay hơi mệt", "Bỏ bài bổ sung", "Chỉ hiệp bắt buộc"),
+            listOf("Còn 5 phút", "Hôm nay hơi mệt", "Bỏ bài bổ sung", "Chỉ hiệp bắt buộc", "Thở thế nào?", "Hướng dẫn từng bước"),
             prompts.map { it.label }
         )
 
@@ -34,6 +35,11 @@ class WorkoutCoachQuickPromptsTest {
         val optionalSets = WorkoutMidSessionRequest.parse(prompts[3].utterance)
         assertTrue(optionalSets is WorkoutMidSessionRequest.Result.Proposed)
         assertTrue((optionalSets as WorkoutMidSessionRequest.Result.Proposed).request.removeOptionalSets)
+
+        assertTrue(WorkoutMidSessionRequest.parse(prompts[4].utterance) is WorkoutMidSessionRequest.Result.Unsupported)
+        assertTrue(WorkoutMidSessionRequest.parse(prompts[5].utterance) is WorkoutMidSessionRequest.Result.Unsupported)
+        assertEquals(WorkoutVoiceCommands.Command.UNKNOWN, WorkoutVoiceCommands.parse(prompts[4].utterance))
+        assertEquals(WorkoutVoiceCommands.Command.STEP_GUIDE, WorkoutVoiceCommands.parse(prompts[5].utterance))
     }
 
     @Test fun unavailableOptionalActionsAreNotSuggested() {
@@ -43,7 +49,7 @@ class WorkoutCoachQuickPromptsTest {
             hasOptionalCurrentSets = false
         )
 
-        assertEquals(listOf("Còn 5 phút", "Hôm nay hơi mệt"), prompts.map { it.label })
+        assertEquals(listOf("Còn 5 phút", "Hôm nay hơi mệt", "Thở thế nào?", "Hướng dẫn từng bước"), prompts.map { it.label })
     }
 
     @Test fun restPromptsAreOnlyAvailableDuringRestAndParseAsRestOnly() {

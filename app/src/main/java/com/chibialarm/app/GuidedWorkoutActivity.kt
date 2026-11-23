@@ -3,8 +3,6 @@ package com.chibialarm.app
 import android.app.*
 import android.webkit.URLUtil
 import android.content.*
-import android.net.Uri
-import android.provider.Settings
 import android.speech.RecognizerIntent
 import android.Manifest
 import android.content.pm.PackageManager
@@ -1074,11 +1072,8 @@ class GuidedWorkoutActivity:Activity() {
             }
             WorkoutMicrophonePermissionPolicy.DenialAction.OPEN_APP_SETTINGS -> {
                 dialog.setPositiveButton("Mở Cài đặt") { _, _ ->
-                    val settingsIntent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                        data = Uri.fromParts("package", packageName, null)
-                    }
                     try {
-                        startActivity(settingsIntent)
+                        startActivity(WorkoutMicrophonePermissionPolicy.appSettingsIntent(packageName))
                     } catch (_: Exception) {
                         Toast.makeText(
                             this,

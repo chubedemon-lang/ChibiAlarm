@@ -37,6 +37,10 @@ internal object WorkoutCoachQuickPrompts {
         if (hasOptionalCurrentSets) {
             prompts += Prompt("Chỉ hiệp bắt buộc", "Chỉ làm hiệp bắt buộc")
         }
+        // Read-only coaching prompts are available beside plan controls. They only fill
+        // the input; the existing coach answer and safety gates handle the actual request.
+        prompts += Prompt("Thở thế nào?", "Thở thế nào?")
+        prompts += Prompt("Hướng dẫn từng bước", "Hướng dẫn từng bước")
         return prompts
     }
 }

@@ -4777,6 +4777,23 @@ class GuidedWorkoutActivity:Activity() {
                 }
             }
         })
+        WorkoutSessionSpeechSummary.build(setValueSummary, effortSummary)?.let { spokenSessionSummary ->
+            panel.addView(Button(this).apply {
+                text = "🔊 Nghe kết quả buổi tập"
+                isAllCaps = false
+                tag = "workout-session-speech-preview"
+                contentDescription = "Đọc bằng giọng nói các giá trị từng hiệp và cảm nhận bạn đã tự ghi; chỉ phát khi bạn nhấn"
+                setOnClickListener {
+                    if (!ready || !speak(spokenSessionSummary, TextToSpeech.QUEUE_FLUSH)) {
+                        Toast.makeText(
+                            this@GuidedWorkoutActivity,
+                            "Giọng đọc chưa sẵn sàng. Kết quả vẫn có thể xem bằng chữ.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+            })
+        }
         if (setValueSummary.isNotBlank()) {
             val visibleSummary = setValueSummary.take(600).let {
                 if (setValueSummary.length > 600) "$it…" else it

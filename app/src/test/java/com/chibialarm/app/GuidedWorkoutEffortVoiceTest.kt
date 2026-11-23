@@ -782,8 +782,21 @@ class GuidedWorkoutEffortVoiceTest {
                 repTargets.containsKey(checkIn.moveIndex))
 
             preview.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+            // AlertDialog routes its positive-button callback through the main looper.
+            // Drain it before asserting the accepted target and persisted checkpoint.
+            shadowOf(Looper.getMainLooper()).idle()
 
             assertEquals(25, repTargets[checkIn.moveIndex])
+            val targetDose = GuidedWorkoutActivity::class.java.getDeclaredMethod(
+                "targetDose", Int::class.javaPrimitiveType
+            ).apply { isAccessible = true }
+            assertTrue(
+                (targetDose.invoke(checkIn.activity, checkIn.moveIndex) as String).contains("25 giây")
+            )
+            val savedTargets = RuntimeEnvironment.getApplication()
+                .getSharedPreferences("chibi_workout_checkpoint_guest", Context.MODE_PRIVATE)
+                .getString("repTargets", null)
+            assertEquals(checkIn.moveIndex.toString() + ":25", savedTargets)
             @Suppress("UNCHECKED_CAST")
             val completedSets = GuidedWorkoutActivity::class.java
                 .getDeclaredField("completedSetsByMove")

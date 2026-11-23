@@ -170,10 +170,6 @@ class CoachActivity:Activity() {
         fitnessContext=FitnessCoachConversation.merge(fitnessContext,next)
         append("assistant",next.reply+"\n\n"+FitnessCoachFollowUp.nextQuestion(fitnessContext!!)+"\n(Chế độ Fitness ngoại tuyến)")
     }
-    /**
-     * Preview the already-selected Vietnamese system voice without enabling auto-read.
-     * Voices that require a network, or whose network behavior is unknown, need consent.
-     */
     /** The user's choice applies only to this Activity session; no TTS consent is persisted. */
     private fun toggleAutoSpeak(button: Button) {
         if (autoSpeak) {
@@ -233,6 +229,10 @@ class CoachActivity:Activity() {
         if (!enabled) speaker?.stop()
     }
 
+    /**
+     * Preview the already-selected Vietnamese system voice without enabling auto-read.
+     * Voices that require a network, or whose network behavior is unknown, need consent.
+     */
     private fun previewVoice() {
         val engine = speaker
         if (engine == null) {

@@ -278,7 +278,7 @@ object WorkoutEffortHistoryConversation {
                 "Nếu thấy đau hoặc triệu chứng bất thường, hãy dừng tập. Đây là cảm nhận tự khai báo, không phải phép đo hồi phục."
         }
 
-        return "Trong buổi gần nhất (${latest.date.format(dateFormat}), chưa có hiệp nào được bạn tự đánh dấu khó hoặc quá sức. " +
+        return "Trong buổi gần nhất (${latest.date.format(dateFormat)}), chưa có hiệp nào được bạn tự đánh dấu khó hoặc quá sức. " +
             "Điều này không chứng minh bạn đã hồi phục hay buổi tập hoàn toàn an toàn. Chibi chưa đủ căn cứ để đề xuất tăng tải; " +
             "hãy giữ giáo án hiện tại nếu thấy thoải mái và chỉ thay đổi theo kế hoạch đã được xem trước, xác nhận."
     }

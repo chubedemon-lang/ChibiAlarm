@@ -37,4 +37,23 @@ class CoachSpeechPreviewTest {
         assertTrue(CoachSpeechPreview.SAMPLE_TEXT.length in 20..160)
         assertTrue(CoachSpeechPreview.SAMPLE_TEXT.contains("Chibi"))
     }
+    @Test fun autoReadUsesTheSameExplicitNetworkConsentGateAsVoicePreview() {
+        assertEquals(
+            CoachSpeechPreview.Decision.PLAY_WITHOUT_NETWORK_PROMPT,
+            CoachSpeechPreview.autoReadDecision(languageSupported = true, networkRequired = false)
+        )
+        assertEquals(
+            CoachSpeechPreview.Decision.REQUIRE_NETWORK_CONSENT,
+            CoachSpeechPreview.autoReadDecision(languageSupported = true, networkRequired = true)
+        )
+        assertEquals(
+            CoachSpeechPreview.Decision.REQUIRE_UNKNOWN_NETWORK_CONSENT,
+            CoachSpeechPreview.autoReadDecision(languageSupported = true, networkRequired = null)
+        )
+        assertEquals(
+            CoachSpeechPreview.Decision.UNAVAILABLE,
+            CoachSpeechPreview.autoReadDecision(languageSupported = false, networkRequired = false)
+        )
+    }
+
 }

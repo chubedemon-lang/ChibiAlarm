@@ -58,15 +58,11 @@ class CoachActivity:Activity() {
         val voiceTools=LinearLayout(this).apply { orientation=0 }
         voiceTools.addView(Button(this).apply { text="▶ Thử giọng";setOnClickListener { previewVoice() } },LinearLayout.LayoutParams(0,-2,1f))
         voiceTools.addView(Button(this).apply { text="🎤 Nói";setOnClickListener { explainMicrophoneThenListen() } },LinearLayout.LayoutParams(0,-2,1f))
-        voiceTools.addView(Button(this).apply { text="🔊 Bật đọc";setOnClickListener {
-            if (!speakerReady && !autoSpeak) {
-                Toast.makeText(this@CoachActivity,"Chưa có giọng tiếng Việt sẵn sàng. Chat chữ và nhập giọng nói vẫn dùng được.",Toast.LENGTH_LONG).show()
-                return@setOnClickListener
-            }
-            autoSpeak=!autoSpeak
-            text=if(autoSpeak)"🔇 Tắt đọc" else "🔊 Bật đọc"
-            if(!autoSpeak)speaker?.stop()
-        } },LinearLayout.LayoutParams(0,-2,1f))
+        voiceTools.addView(Button(this).apply {
+            text = "🔊 Bật đọc"
+            contentDescription = "Bật đọc câu trả lời của Chibi; giọng cần mạng sẽ hỏi đồng ý trước"
+            setOnClickListener { toggleAutoSpeak(this) }
+        }, LinearLayout.LayoutParams(0, -2, 1f))
         voiceTools.addView(Button(this).apply { text="■ Dừng";setOnClickListener { speaker?.stop() } },LinearLayout.LayoutParams(0,-2,1f))
         root.addView(voiceTools)
         speechStatus=text("Đang kiểm tra dữ liệu giọng đọc tiếng Việt…",12f)
@@ -178,6 +174,65 @@ class CoachActivity:Activity() {
      * Preview the already-selected Vietnamese system voice without enabling auto-read.
      * Voices that require a network, or whose network behavior is unknown, need consent.
      */
+    /** The user's choice applies only to this Activity session; no TTS consent is persisted. */
+    private fun toggleAutoSpeak(button: Button) {
+        if (autoSpeak) {
+            setAutoSpeakEnabled(false, button)
+            return
+        }
+
+        val networkRequired = selectedTtsNetworkRequirement()
+        when (CoachSpeechPreview.autoReadDecision(speakerReady, networkRequired)) {
+            CoachSpeechPreview.Decision.UNAVAILABLE -> Toast.makeText(
+                this,
+                "Chưa có giọng tiếng Việt sẵn sàng. Chat chữ và nhập giọng nói vẫn dùng được.",
+                Toast.LENGTH_LONG
+            ).show()
+            CoachSpeechPreview.Decision.PLAY_WITHOUT_NETWORK_PROMPT ->
+                setAutoSpeakEnabled(true, button)
+            CoachSpeechPreview.Decision.REQUIRE_NETWORK_CONSENT -> {
+                AlertDialog.Builder(this)
+                    .setTitle("Bật đọc bằng giọng cần mạng?")
+                    .setMessage(
+                        "Giọng TTS đang chọn báo cần kết nối mạng. Khi bật đọc tự động, " +
+                            "văn bản câu trả lời của Chibi có thể được gửi tới dịch vụ TTS bên ngoài " +
+                            "để tổng hợp giọng. Chỉ bật nếu bạn đồng ý."
+                    )
+                    .setPositiveButton("Đồng ý, bật đọc") { _, _ -> setAutoSpeakEnabled(true, button) }
+                    .setNegativeButton("Để tôi đọc thủ công", null)
+                    .show()
+            }
+            CoachSpeechPreview.Decision.REQUIRE_UNKNOWN_NETWORK_CONSENT -> {
+                AlertDialog.Builder(this)
+                    .setTitle("Chưa xác định được chế độ ngoại tuyến")
+                    .setMessage(
+                        "Android không cung cấp đủ thông tin để xác nhận giọng TTS đang chọn " +
+                            "hoạt động ngoại tuyến. Bật đọc tự động có thể khiến văn bản câu trả lời " +
+                            "được xử lý bởi dịch vụ bên ngoài. Bạn có muốn tiếp tục?"
+                    )
+                    .setPositiveButton("Đồng ý, bật đọc") { _, _ -> setAutoSpeakEnabled(true, button) }
+                    .setNegativeButton("Để tôi đọc thủ công", null)
+                    .show()
+            }
+        }
+    }
+
+    private fun selectedTtsNetworkRequirement(): Boolean? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) return null
+        return runCatching { speaker?.voice?.isNetworkConnectionRequired }.getOrNull()
+    }
+
+    private fun setAutoSpeakEnabled(enabled: Boolean, button: Button) {
+        autoSpeak = enabled
+        button.text = if (enabled) "🔇 Tắt đọc" else "🔊 Bật đọc"
+        button.contentDescription = if (enabled) {
+            "Tắt đọc tự động câu trả lời của Chibi"
+        } else {
+            "Bật đọc câu trả lời của Chibi; giọng cần mạng sẽ hỏi đồng ý trước"
+        }
+        if (!enabled) speaker?.stop()
+    }
+
     private fun previewVoice() {
         val engine = speaker
         if (engine == null) {

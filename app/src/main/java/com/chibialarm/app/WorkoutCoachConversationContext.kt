@@ -7,7 +7,8 @@ import java.util.Locale
  * Small, in-memory conversation memory for one Guided Workout Activity.
  *
  * The active move remains the default for ordinary follow-ups ("nghỉ bao lâu?").
- * A phrase such as "bài đó" refers to the last explicitly named catalog exercise.
+ * A phrase such as "bài đó" refers to the last explicitly named catalog exercise or
+ * the upcoming catalog exercise that the user just asked about.
  * This state is deliberately not persisted, exported, logged, or sent over the network.
  */
 class WorkoutCoachConversationContext {
@@ -36,6 +37,7 @@ class WorkoutCoachConversationContext {
             else -> targetMove.dose
         }
 
+        val nextMoveAnswer = WorkoutExerciseConversation.answerForNextMove(input, nextMove)
         val response = WorkoutCoachQuestionRouter.answer(
             input = input,
             currentMove = targetMove,
@@ -62,13 +64,20 @@ class WorkoutCoachConversationContext {
             nextMove = nextMove
         ) ?: return null
 
-        // Remember only a uniquely named catalog move after a successful, non-ambiguous answer.
-        // Never update the conversational target from an unknown exercise or during a safety pause.
+        // A successful question about the upcoming move changes the conversational
+        // referent. Otherwise "bài đó" after "bài tiếp theo cần gì?" would incorrectly
+        // point back to an older exercise mentioned earlier in the session.
+        // The router's safety response must never update memory.
         if (!pausedForSafety &&
             !response.startsWith(UNKNOWN_EXERCISE_PREFIX) &&
             !response.startsWith(AMBIGUOUS_EXERCISE_PREFIX)
         ) {
-            resolveExplicitMove(input)?.let { lastExplicitMove = it }
+            when {
+                nextMove != null && nextMoveAnswer != null && response == nextMoveAnswer ->
+                    lastExplicitMove = nextMove
+                else ->
+                    resolveExplicitMove(input)?.let { lastExplicitMove = it }
+            }
         }
         return response
     }

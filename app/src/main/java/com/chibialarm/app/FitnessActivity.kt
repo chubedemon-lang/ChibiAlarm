@@ -9,6 +9,7 @@ import android.os.Bundle
 import android.speech.RecognizerIntent
 import android.speech.tts.TextToSpeech
 import java.util.Locale
+import java.time.LocalDate
 import android.view.Gravity
 import android.widget.*
 
@@ -2071,12 +2072,11 @@ class FitnessActivity:Activity() {
         initialSubstitutions?.let { launchIntent.putExtra("initial_substitutions", it) }
         startActivity(launchIntent)
     }
+
     private fun addRoutine(p:TrainingProgram) {
-        if (!WorkoutEquipmentFilter.apply(
-                p,
-                recommendationEquipmentSpinner?.selectedItemPosition ?: 0,
-                currentAdditionalEquipment()
-            ).canStart) {
+        val equipmentSelection = recommendationEquipmentSpinner?.selectedItemPosition ?: 0
+        val additionalEquipment = currentAdditionalEquipment()
+        if (!WorkoutEquipmentFilter.apply(p, equipmentSelection, additionalEquipment).canStart) {
             Toast.makeText(this, "Chưa có động tác phù hợp với dụng cụ đã chọn; chưa tạo lịch tuần.", Toast.LENGTH_LONG).show()
             return
         }
@@ -2084,7 +2084,8 @@ class FitnessActivity:Activity() {
         if (sessionConstraints.avoidWristLoad ||
             sessionConstraints.avoidFloorPositions ||
             sessionConstraints.avoidOverheadReach ||
-            sessionConstraints.avoidJumping || sessionConstraints.avoidKneeling) {
+            sessionConstraints.avoidJumping || sessionConstraints.avoidKneeling
+        ) {
             Toast.makeText(this, "Các hạn chế vận động chỉ áp dụng cho buổi hiện tại; lịch tuần chưa lưu bộ lọc này.", Toast.LENGTH_LONG).show()
             return
         }
@@ -2097,17 +2098,80 @@ class FitnessActivity:Activity() {
                 .show()
             return
         }
-        val current=LifeData.routines(this)
-        val trainingDays=if(level.selectedItemPosition==0) ((1 shl 2) or (1 shl 5))
-            else ((1 shl 1) or (1 shl 4) or (1 shl 6))
-        val r=Routine(LifeData.nextId(),p.name,"🏃 Sức khỏe",18,0,
-            mins[length.selectedItemPosition],trainingDays)
-        AlertDialog.Builder(this).setTitle("📅 Thêm lịch định kỳ?")
-            .setMessage("18:00 • "+(if(level.selectedItemPosition==0) "T3 và T6" else "T2, T5 và T7")+
-                "\n${p.name}\nCó thể chỉnh giờ và ngày trong Lịch trình.")
-            .setPositiveButton("Thêm lịch"){_,_->
-                LifeData.save(this,current+r)
-                Toast.makeText(this,"Đã thêm lịch tập.",Toast.LENGTH_SHORT).show()
-            }.setNegativeButton("Hủy",null).show()
+
+        val defaultDays = if (level.selectedItemPosition == 0) 2 else 3
+        val dayOptions = arrayOf(
+            "1 ngày/tuần — lịch nhẹ",
+            "2 ngày/tuần — lịch khởi đầu",
+            "3 ngày/tuần — lịch cân bằng",
+            "4 ngày/tuần — lịch thường xuyên",
+            "5 ngày/tuần — lịch dày, vẫn giữ ngày nghỉ"
+        )
+        var selectedDays = defaultDays
+        AlertDialog.Builder(this)
+            .setTitle("📅 Chọn tần suất tập")
+            .setMessage(
+                "Chibi gợi ý mặc định \${defaultDays} ngày/tuần theo mức trình độ đang chọn. " +
+                    "Bạn có thể đổi từ 1 đến 5 ngày. Đây là lịch nhắc cho cùng một chương trình, " +
+                    "không phải yêu cầu bắt buộc phải tập đủ."
+            )
+            .setSingleChoiceItems(dayOptions, defaultDays - 1) { _, which ->
+                selectedDays = which + 1
+            }
+            .setPositiveButton("Xem trước lịch") { _, _ ->
+                val week = WorkoutWeekSchedulePreview.build(LocalDate.now(), selectedDays)
+                val trainingText = week.trainingDates.joinToString("\n") {
+                    "• \${WorkoutWeekSchedulePreview.format(it)}"
+                }
+                val restText = week.restDates.joinToString("\n") {
+                    "• \${WorkoutWeekSchedulePreview.format(it)}"
+                }
+                val duration = mins[length.selectedItemPosition]
+                val previewMessage = buildString {
+                    append("Chương trình: ").append(p.name).append('\n')
+                    append("Thời lượng mỗi buổi: ").append(duration).append(" phút\n")
+                    append("Giờ nhắc: 18:00\n\n")
+                    append("Ngày tập dự kiến:\n").append(trainingText).append("\n\n")
+                    append("Ngày nghỉ:\n").append(restText).append("\n\n")
+                    append("Lịch sẽ lặp vào đúng các thứ đã chọn trong những tuần sau. " +
+                        "Mỗi ngày nhắc cùng chương trình này; lịch không tự chia bài khác nhau theo ngày. " +
+                        "Bạn có thể sửa hoặc xóa lịch trong mục Lịch trình.")
+                }
+                AlertDialog.Builder(this)
+                    .setTitle("📆 Xem trước lịch tuần")
+                    .setMessage(previewMessage)
+                    .setPositiveButton("Thêm lịch") { _, _ ->
+                        val current = LifeData.routines(this)
+                        val duplicate = current.any {
+                            it.title == p.name && it.category == "🏃 Sức khỏe" &&
+                                it.hour == 18 && it.minute == 0 &&
+                                it.duration == duration && it.repeatMask == week.repeatMask
+                        }
+                        if (duplicate) {
+                            Toast.makeText(this, "Lịch này đã tồn tại; không tạo nhắc trùng.", Toast.LENGTH_LONG).show()
+                        } else {
+                            val existingIds = current.map { it.id }.toSet()
+                            var newId = LifeData.nextId()
+                            while (newId in existingIds) {
+                                newId = if (newId >= Int.MAX_VALUE) 1 else newId + 1
+                            }
+                            val routine = Routine(
+                                newId, p.name, "🏃 Sức khỏe", 18, 0,
+                                duration, week.repeatMask
+                            )
+                            try {
+                                LifeData.save(this, current + routine)
+                                Toast.makeText(this, "Đã thêm lịch tập cho \${selectedDays} ngày/tuần.", Toast.LENGTH_SHORT).show()
+                            } catch (_: Exception) {
+                                Toast.makeText(this, "Không lưu được lịch. Các nhắc cũ vẫn được giữ.", Toast.LENGTH_LONG).show()
+                            }
+                        }
+                    }
+                    .setNegativeButton("Đổi tần suất") { _, _ -> addRoutine(p) }
+                    .setNeutralButton("Hủy", null)
+                    .show()
+            }
+            .setNegativeButton("Hủy", null)
+            .show()
     }
 }

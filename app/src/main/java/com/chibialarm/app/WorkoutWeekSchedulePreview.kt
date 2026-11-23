@@ -9,7 +9,7 @@ import java.util.Locale
 /**
  * Builds a conservative, deterministic date preview for a proposed training frequency.
  *
- * The preview is derived from observed active days, not a fitness diagnosis.
+ * The preview uses a fixed spacing pattern, not a fitness diagnosis or a mandatory target.
  * It does not save calendar events, change a plan, or imply that every suggested day is mandatory.
  */
 internal object WorkoutWeekSchedulePreview {
@@ -33,6 +33,27 @@ internal object WorkoutWeekSchedulePreview {
         return offsetsByDayCount.getValue(trainingDays).map { offset ->
             nextMonday.plusDays(offset.toLong())
         }
+    }
+
+    data class Draft(
+        val trainingDates: List<LocalDate>,
+        val restDates: List<LocalDate>,
+        val repeatMask: Int
+    )
+
+    /** Builds a seven-day preview and a Calendar-compatible recurring reminder mask. */
+    fun build(today: LocalDate, trainingDays: Int): Draft {
+        val training = nextWeekDates(today, trainingDays)
+        val monday = today.with(TemporalAdjusters.next(DayOfWeek.MONDAY))
+        val allDays = (0L..6L).map(monday::plusDays)
+        val trainingSet = training.toSet()
+        val rest = allDays.filterNot(trainingSet::contains)
+        val mask = training.fold(0) { value, date ->
+            // java.util.Calendar uses Sunday=1; RoutineReminder stores Sunday at bit 0.
+            value or (1 shl (date.dayOfWeek.value % 7))
+        }
+        require(mask in 1..127)
+        return Draft(training, rest, mask)
     }
 
     fun format(date: LocalDate): String {

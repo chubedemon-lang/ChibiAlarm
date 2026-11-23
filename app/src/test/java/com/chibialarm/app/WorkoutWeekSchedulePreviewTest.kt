@@ -59,4 +59,28 @@ class WorkoutWeekSchedulePreviewTest {
             WorkoutWeekSchedulePreview.nextWeekDates(saturday, 6)
         }
     }
+
+    @Test fun draftSeparatesTrainingDaysAndRestDaysAcrossTheWholeWeek() {
+        for (count in 1..5) {
+            val draft = WorkoutWeekSchedulePreview.build(saturday, count)
+            assertEquals(count, draft.trainingDates.size)
+            assertEquals(7 - count, draft.restDates.size)
+            assertEquals(7, (draft.trainingDates + draft.restDates).distinct().size)
+            assertTrue(draft.trainingDates.intersect(draft.restDates.toSet()).isEmpty())
+            assertEquals(count, Integer.bitCount(draft.repeatMask))
+        }
+    }
+
+    @Test fun repeatMaskUsesSundayAsBitZeroLikeRoutineReminder() {
+        val oneDay = WorkoutWeekSchedulePreview.build(saturday, 1)
+        val twoDays = WorkoutWeekSchedulePreview.build(saturday, 2)
+        val fourDays = WorkoutWeekSchedulePreview.build(saturday, 4)
+
+        // One day is Wednesday; two days are Tuesday and Friday.
+        assertEquals(1 shl 3, oneDay.repeatMask)
+        assertEquals((1 shl 2) or (1 shl 5), twoDays.repeatMask)
+        // Four days include Sunday, which RoutineReminder stores in bit zero.
+        assertTrue(fourDays.repeatMask and 1 != 0)
+    }
+
 }

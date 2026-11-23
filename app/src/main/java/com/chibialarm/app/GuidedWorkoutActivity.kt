@@ -1304,7 +1304,10 @@ class GuidedWorkoutActivity:Activity() {
             contentDescription = "Câu hỏi hoặc yêu cầu điều chỉnh buổi tập cho Chibi"
         }
         val activePlan = if (!resting && index in moves.indices) currentSetPlan() else null
-        val completedCurrentSets = completedSetsByMove[index] ?: 0
+        val completedCurrentSets = (completedSetsByMove[index] ?: 0).coerceIn(0, 20)
+        val confirmedEffortLevels = effortLevelsByMove[index].orEmpty()
+        val hasLatestEffortCheckIn = completedCurrentSets > 0 &&
+            confirmedEffortLevels.getOrNull(completedCurrentSets - 1) != null
         val hasOptionalCurrentSets = activePlan != null &&
             activePlan.maximumSets > activePlan.requiredSets &&
             completedCurrentSets < activePlan.maximumSets
@@ -1316,7 +1319,9 @@ class GuidedWorkoutActivity:Activity() {
             hasOptionalFutureExercises = hasOptionalFutureExercises,
             hasOptionalCurrentSets = hasOptionalCurrentSets,
             safetyStopped = pausedForSafety || completed,
-            hasNextExercise = !resting && index in moves.indices && index < moves.lastIndex
+            hasNextExercise = !resting && index in moves.indices && index < moves.lastIndex,
+            hasCompletedSets = completedCurrentSets > 0,
+            hasLatestEffortCheckIn = hasLatestEffortCheckIn
         )
 
         val content = LinearLayout(this).apply {

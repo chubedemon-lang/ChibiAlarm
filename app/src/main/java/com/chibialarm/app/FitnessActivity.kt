@@ -1878,7 +1878,7 @@ class FitnessActivity:Activity() {
             AlertDialog.Builder(this)
                 .setTitle("Chưa đủ dữ liệu cho bản xem trước")
                 .setMessage(
-                    "Chibi đã thấy ba ngày check-in nhẹ hoặc vừa sức, nhưng chưa có đủ số lần hoặc thời lượng tự khai báo " +
+                    "Chibi đã thấy ba ngày check-in nhẹ hoặc vừa sức, nhưng chưa có đủ số lần, nhịp hoặc thời lượng tự khai báo " +
                         "cho một bài trong giáo án hiện tại. Hãy hoàn thành Guided Workout và ghi giá trị từng hiệp. " +
                         "Chibi sẽ không tự đoán số lần hoặc tăng mục tiêu khi thiếu dữ liệu."
                 )

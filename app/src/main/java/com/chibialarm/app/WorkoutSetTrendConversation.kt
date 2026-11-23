@@ -125,9 +125,9 @@ internal object WorkoutSetTrendConversation {
             append("\n")
             append(lines.joinToString("\n"))
             if (comparableIndexes.size < commonIndexes.size) {
-                append("\\nMột số hiệp trùng chỉ số bị bỏ qua vì đơn vị không khớp.")
+                append("\nMột số hiệp trùng chỉ số bị bỏ qua vì đơn vị không khớp.")
             }
-            append("\\nChỉ so sánh hiệp cùng chỉ số và cùng đơn vị; hiệp thiếu dữ liệu không được ước tính. ")
+            append("\nChỉ so sánh hiệp cùng chỉ số và cùng đơn vị; hiệp thiếu dữ liệu không được ước tính. ")
             append("Đây là nhật ký tự khai báo, không đánh giá kỹ thuật, tải tập hay khả năng hồi phục. ")
             append("Chibi không tự tăng mục tiêu hoặc thay đổi giáo án; mọi điều chỉnh cần bản xem trước và xác nhận.")
         }

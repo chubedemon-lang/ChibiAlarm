@@ -1315,7 +1315,8 @@ class GuidedWorkoutActivity:Activity() {
             resting = resting,
             hasOptionalFutureExercises = hasOptionalFutureExercises,
             hasOptionalCurrentSets = hasOptionalCurrentSets,
-            safetyStopped = pausedForSafety || completed
+            safetyStopped = pausedForSafety || completed,
+            hasNextExercise = !resting && index in moves.indices && index < moves.lastIndex
         )
 
         val content = LinearLayout(this).apply {

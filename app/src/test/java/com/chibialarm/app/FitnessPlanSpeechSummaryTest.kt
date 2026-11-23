@@ -1,5 +1,6 @@
 package com.chibialarm.app
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -111,6 +112,51 @@ class FitnessPlanSpeechSummaryTest {
 
         assertTrue(spoken.contains("Nhóm cơ chính: Đùi trước, Mông."))
         assertTrue(spoken.length <= FitnessPlanSpeechSummary.MAX_CHARACTERS)
+    }
+
+    @Test fun spokenSummaryAddsAConservativeReminderForLatestVeryHardCheckIn() {
+        val base = FitnessPlanSpeechSummary.fromProfile(profile(), "Toàn thân")
+        val spoken = FitnessPlanSpeechSummary.withEffortReview(
+            base,
+            listOf("Check-in gần nhất: bạn tự đánh dấu “Quá sức, tạm dừng”; private knee note")
+        )
+
+        assertTrue(spoken.contains("đánh dấu một động tác trong kế hoạch là quá sức"))
+        assertTrue(spoken.contains("biến thể nhẹ hơn"))
+        assertFalse(spoken.contains("private knee note"))
+        assertTrue(spoken.length <= FitnessPlanSpeechSummary.MAX_WITH_EFFORT_REVIEW_CHARACTERS)
+    }
+
+    @Test fun spokenSummaryExplainsRepeatedHardCheckInsWithoutReadingJournalText() {
+        val base = FitnessPlanSpeechSummary.fromProfile(profile(), "Toàn thân")
+        val spoken = FitnessPlanSpeechSummary.withEffortReview(
+            base,
+            listOf("đã tự đánh dấu Squat là khó/quá sức ở 2 buổi khác nhau")
+        )
+
+        assertTrue(spoken.contains("khó hoặc quá sức ở nhiều buổi"))
+        assertTrue(spoken.contains("thời gian nghỉ"))
+        assertFalse(spoken.contains("Squat"))
+    }
+
+    @Test fun noEffortWarningsLeaveTheExistingSpokenSummaryUnchanged() {
+        val base = FitnessPlanSpeechSummary.fromProfile(profile(), "Toàn thân")
+
+        assertEquals(base, FitnessPlanSpeechSummary.withEffortReview(base, emptyList()))
+    }
+
+    @Test fun painStopSummaryNeverAddsAPlanEffortOrStartPrompt() {
+        val base = FitnessPlanSpeechSummary.fromProfile(
+            profile(impact = 2, constraints = WorkoutConstraintProfile()),
+            "Giáo án"
+        )
+        val spoken = FitnessPlanSpeechSummary.withEffortReview(
+            base,
+            listOf("Quá sức, tạm dừng")
+        )
+
+        assertEquals(base, spoken)
+        assertTrue(spoken.contains("không tạo hoặc bắt đầu giáo án"))
     }
 
     @Test fun longUiLabelsRemainBoundedAndKeepAllSafetyFilters() {

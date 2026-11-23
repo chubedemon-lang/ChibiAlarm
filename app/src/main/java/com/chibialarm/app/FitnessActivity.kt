@@ -2111,7 +2111,7 @@ class FitnessActivity:Activity() {
         AlertDialog.Builder(this)
             .setTitle("📅 Chọn tần suất tập")
             .setMessage(
-                "Chibi gợi ý mặc định \${defaultDays} ngày/tuần theo mức trình độ đang chọn. " +
+                "Chibi gợi ý mặc định ${defaultDays} ngày/tuần theo mức trình độ đang chọn. " +
                     "Bạn có thể đổi từ 1 đến 5 ngày. Đây là lịch nhắc cho cùng một chương trình, " +
                     "không phải yêu cầu bắt buộc phải tập đủ."
             )
@@ -2121,10 +2121,10 @@ class FitnessActivity:Activity() {
             .setPositiveButton("Xem trước lịch") { _, _ ->
                 val week = WorkoutWeekSchedulePreview.build(LocalDate.now(), selectedDays)
                 val trainingText = week.trainingDates.joinToString("\n") {
-                    "• \${WorkoutWeekSchedulePreview.format(it)}"
+                    "• ${WorkoutWeekSchedulePreview.format(it)}"
                 }
                 val restText = week.restDates.joinToString("\n") {
-                    "• \${WorkoutWeekSchedulePreview.format(it)}"
+                    "• ${WorkoutWeekSchedulePreview.format(it)}"
                 }
                 val duration = mins[length.selectedItemPosition]
                 val previewMessage = buildString {
@@ -2161,7 +2161,7 @@ class FitnessActivity:Activity() {
                             )
                             try {
                                 LifeData.save(this, current + routine)
-                                Toast.makeText(this, "Đã thêm lịch tập cho \${selectedDays} ngày/tuần.", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(this, "Đã thêm lịch tập cho ${selectedDays} ngày/tuần.", Toast.LENGTH_SHORT).show()
                             } catch (_: Exception) {
                                 Toast.makeText(this, "Không lưu được lịch. Các nhắc cũ vẫn được giữ.", Toast.LENGTH_LONG).show()
                             }

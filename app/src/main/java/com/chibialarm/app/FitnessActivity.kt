@@ -24,6 +24,8 @@ class FitnessActivity:Activity() {
     private var speechInput: EditText? = null
     private var speechOutput: TextToSpeech? = null
     private var speechReady = false
+    // Consent is volatile and scoped to the selected TTS voice in this Activity session.
+    private var consentedNetworkTtsVoiceName: String? = null
     // The most recent coach reply stays in Activity memory only; it is never persisted.
     private val coachSpeechMemory = FitnessCoachSpeechMemory()
     private var speechReplayButton: Button? = null
@@ -146,6 +148,7 @@ class FitnessActivity:Activity() {
         speechOutput?.stop()
         speechOutput?.shutdown()
         speechOutput = null
+        consentedNetworkTtsVoiceName = null
         super.onDestroy()
     }
 
@@ -154,9 +157,9 @@ class FitnessActivity:Activity() {
         refreshWorkoutHistoryInsight()
     }
 
-    /** Queue every bounded chunk so the coach never silently drops the end of a long answer. */
-    private fun speakCoachReply(text: String, utterancePrefix: String) {
-        val engine = speechOutput ?: return
+    /** Queue every bounded chunk after the shared network-voice consent gate has passed. */
+    private fun queueCoachSpeech(engine: TextToSpeech, text: String, utterancePrefix: String) {
+        if (speechOutput !== engine || !speechReady) return
         val sequence = ++speechSequenceId
         WorkoutSpeechSequence.plan(text).forEachIndexed { index, utterance ->
             engine.speak(
@@ -169,54 +172,69 @@ class FitnessActivity:Activity() {
     }
 
     /**
-     * Reads the current catalog rationale only after an explicit tap.
-     * A network-backed or unknown TTS voice requires a per-use disclosure; this never opens the microphone.
+     * All Fitness speech paths pass through this gate: chat replies, replay, exercise guidance,
+     * library rationale and step auto-read. Network/unknown voices require a volatile,
+     * voice-specific consent; no consent is written to preferences or backups.
      */
-    private fun speakLibraryRationale(text: String) {
-        val engine = speechOutput
-        if (engine == null || !speechReady) {
-            Toast.makeText(this, "Bật giọng Chibi trước để nghe lý do chọn bài.", Toast.LENGTH_LONG).show()
+    private fun speakCoachReply(text: String, utterancePrefix: String) {
+        val engine = speechOutput ?: return
+        if (!speechReady) {
+            Toast.makeText(this, "Hãy bật và chờ giọng Chibi sẵn sàng.", Toast.LENGTH_LONG).show()
             return
         }
+        val boundedText = text.trim()
+        if (boundedText.isBlank()) return
         val networkRequired = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             runCatching { engine.voice?.isNetworkConnectionRequired }.getOrNull()
         } else {
             null
         }
-        val boundedText = text.trim().take(900)
-        if (boundedText.isBlank()) return
-        when (CoachSpeechPreview.decision(speechReady, networkRequired)) {
+        val voiceName = runCatching { engine.voice?.name }.getOrNull() ?: "<unknown>"
+        val consentGranted = consentedNetworkTtsVoiceName == voiceName
+        when (CoachSpeechPreview.playbackDecision(speechReady, networkRequired, consentGranted)) {
             CoachSpeechPreview.Decision.UNAVAILABLE -> Toast.makeText(
                 this, "Chưa có giọng tiếng Việt sẵn sàng.", Toast.LENGTH_LONG
             ).show()
             CoachSpeechPreview.Decision.PLAY_WITHOUT_NETWORK_PROMPT ->
-                speakCoachReply(boundedText, "fitness-library-rationale")
-            CoachSpeechPreview.Decision.REQUIRE_NETWORK_CONSENT -> {
-                AlertDialog.Builder(this)
-                    .setTitle("Đọc lý do bằng giọng cần mạng?")
-                    .setMessage(
-                        "Giọng TTS đang chọn báo cần mạng. Nội dung giải thích của bài tập hiện tại " +
-                            "có thể được gửi tới dịch vụ TTS bên ngoài. Không gửi âm thanh microphone, " +
-                            "lịch sử chat hoặc nhật ký tập. Chỉ tiếp tục nếu bạn đồng ý."
-                    )
-                    .setPositiveButton("Đồng ý, đọc") { _, _ -> speakCoachReply(boundedText, "fitness-library-rationale") }
-                    .setNegativeButton("Để tôi đọc", null)
-                    .show()
-            }
+                queueCoachSpeech(engine, boundedText, utterancePrefix)
+            CoachSpeechPreview.Decision.REQUIRE_NETWORK_CONSENT,
             CoachSpeechPreview.Decision.REQUIRE_UNKNOWN_NETWORK_CONSENT -> {
-                AlertDialog.Builder(this)
-                    .setTitle("Chưa xác định được chế độ ngoại tuyến")
-                    .setMessage(
-                        "Android không xác định được giọng TTS đang chọn có hoạt động ngoại tuyến hay không. " +
-                            "Nội dung giải thích của bài tập có thể được xử lý bởi dịch vụ bên ngoài. " +
-                            "Không gửi âm thanh microphone, lịch sử chat hoặc nhật ký tập. Bạn có muốn tiếp tục?"
+                val unknown = networkRequired == null
+                val dialog = AlertDialog.Builder(this)
+                    .setTitle(
+                        if (unknown) "Chưa xác định được chế độ ngoại tuyến"
+                        else "Cho phép giọng Chibi xử lý văn bản qua mạng?"
                     )
-                    .setPositiveButton("Đồng ý, đọc") { _, _ -> speakCoachReply(boundedText, "fitness-library-rationale") }
-                    .setNegativeButton("Để tôi đọc", null)
-                    .show()
+                    .setMessage(
+                        (if (unknown) {
+                            "Android không xác định được giọng TTS đang chọn có hoạt động ngoại tuyến hay không. "
+                        } else {
+                            "Giọng TTS đang chọn báo cần kết nối mạng. "
+                        }) +
+                            "Văn bản Chibi sắp đọc (có thể gồm câu trả lời hiện tại hoặc hướng dẫn bài tập) " +
+                            "có thể được gửi tới dịch vụ TTS bên ngoài. Chỉ đoạn được đọc được gửi; " +
+                            "không gửi âm thanh microphone, toàn bộ lịch sử chat hoặc nhật ký tập. " +
+                            "Đồng ý chỉ áp dụng cho giọng này trong phiên Fitness hiện tại và mất khi tắt giọng hoặc đóng màn hình."
+                    )
+                    .setPositiveButton("Đồng ý trong phiên này") { _, _ ->
+                        if (speechOutput === engine && speechReady) {
+                            consentedNetworkTtsVoiceName = voiceName
+                            queueCoachSpeech(engine, boundedText, utterancePrefix)
+                        }
+                    }
+                    .setNegativeButton("Không đọc", null)
+                    .create()
+                dialog.show()
             }
         }
     }
+
+    /** Library narration uses the same voice-specific consent gate as every other Fitness reply. */
+    private fun speakLibraryRationale(text: String) {
+        val boundedText = text.trim().take(900)
+        if (boundedText.isNotBlank()) speakCoachReply(boundedText, "fitness-library-rationale")
+    }
+
     @JvmOverloads
     private fun sayFollowUp(
         message: String,
@@ -559,6 +577,7 @@ class FitnessActivity:Activity() {
                 } else {
                     speechOutput?.stop(); speechOutput?.shutdown(); speechOutput = null
                     speechReady = false
+                    consentedNetworkTtsVoiceName = null
                     speechStopButton?.isEnabled = false
                     text = "🔊 Bật giọng Chibi đọc câu hỏi"
                 }

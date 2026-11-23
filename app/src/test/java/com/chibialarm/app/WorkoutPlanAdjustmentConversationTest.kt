@@ -192,7 +192,7 @@ class WorkoutPlanAdjustmentConversationTest {
         )
     }
 
-    @Test fun noCompatibleMainMovementFailsClosed() {
+    @Test fun floorOnlyProgramUsesCuratedStandingAlternativeWhenFloorIsAvoided() {
         val floorMove = TrainingCatalog.allMoves.first { it.name == "Bird-dog" }
         val onlyFloorProgram = TrainingProgram(
             id = "floor-only",
@@ -208,8 +208,10 @@ class WorkoutPlanAdjustmentConversationTest {
         )
 
         assertNotNull(answer)
-        assertTrue(answer!!.contains("chưa tìm thấy chương trình còn động tác chính phù hợp"))
+        assertTrue(answer!!.contains("Đứng thăng bằng có hỗ trợ"))
         assertFalse(answer.contains("Bird-dog"))
+        assertTrue(answer.contains("không tương đương hoàn toàn"))
+        assertTrue(answer.contains("giáo án và buổi đang tập chưa bị thay đổi"))
     }
 
     @Test fun effortHistoryFollowUpOffersOnlyCuratedAlternativeForTheNamedMove() {

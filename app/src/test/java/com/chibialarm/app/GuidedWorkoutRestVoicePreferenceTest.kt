@@ -3,6 +3,7 @@ package com.chibialarm.app
 import android.content.Context
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
 import android.widget.CheckBox
 import android.widget.SeekBar
 import android.widget.TextView
@@ -239,6 +240,44 @@ class GuidedWorkoutRestVoicePreferenceTest {
             assertEquals("Safety pause must hide the automatic voice control", View.GONE, toggle.visibility)
             assertEquals("Safety pause must hide the lead-time slider", View.GONE, slider.visibility)
             assertEquals("Safety pause must hide the lead-time label", View.GONE, label.visibility)
+        } finally {
+            activity.finish()
+        }
+    }
+
+
+    @Test fun manualRestVoicePreviewIsVisibleOnlyDuringSafeRestAndDoesNotChangeTimersOrOneShot() {
+        val activity = Robolectric.buildActivity(GuidedWorkoutActivity::class.java).setup().get()
+        try {
+            val root = activity.findViewById<ViewGroup>(android.R.id.content)
+            val preview = findTagged(root, "workout-rest-voice-cue-preview") as Button
+            assertEquals(View.GONE, preview.visibility)
+
+            field("resting").setBoolean(activity, true)
+            field("paused").setBoolean(activity, true)
+            field("restRemainingMs").setLong(activity, 15_000L)
+            field("restTenSecondCueGiven").setBoolean(activity, false)
+            field("ready").setBoolean(activity, false)
+            field("restVoiceCueEnabled").setBoolean(activity, false)
+            GuidedWorkoutActivity::class.java.getDeclaredMethod("renderRestPreview")
+                .apply { isAccessible = true }
+                .invoke(activity)
+
+            assertEquals(View.VISIBLE, preview.visibility)
+            assertTrue(preview.contentDescription.toString().contains("không dùng microphone"))
+            assertTrue(preview.contentDescription.toString().contains("không thay đổi bộ đếm"))
+            preview.performClick()
+
+            assertEquals(15_000L, field("restRemainingMs").getLong(activity))
+            assertFalse(field("restTenSecondCueGiven").getBoolean(activity))
+            assertTrue(field("resting").getBoolean(activity))
+            assertTrue(field("paused").getBoolean(activity))
+
+            field("pausedForSafety").setBoolean(activity, true)
+            GuidedWorkoutActivity::class.java.getDeclaredMethod("renderRestPreview")
+                .apply { isAccessible = true }
+                .invoke(activity)
+            assertEquals("Safety pause must hide manual voice preview", View.GONE, preview.visibility)
         } finally {
             activity.finish()
         }

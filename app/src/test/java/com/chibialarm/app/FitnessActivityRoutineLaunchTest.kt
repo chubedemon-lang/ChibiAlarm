@@ -73,7 +73,7 @@ class FitnessActivityRoutineLaunchTest {
             review.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
             val safety = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
             assertTrue(safety.isShowing)
-            assertTrue(message(safety).contains("đau hoặc có chấn thương"))
+            assertEquals("🐰 Tạm dừng buổi tập", safety.title.toString())
         } finally {
             activity.finish()
         }

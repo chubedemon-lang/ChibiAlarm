@@ -22,6 +22,34 @@ object WorkoutSetRepetitionLog {
         return progress.toSortedMap().toMutableMap().apply { put(moveIndex, existing) }.toSortedMap()
     }
 
+    /**
+     * Corrects only the latest already-confirmed self-reported value.
+     * The confirmed set count and every earlier value remain unchanged.
+     */
+    fun correctLatest(
+        progress: Map<Int, List<Int>>,
+        moveIndex: Int,
+        confirmedSets: Int,
+        replacement: Int,
+        plan: WorkoutSetTracker.Plan
+    ): Map<Int, List<Int>> {
+        require(moveIndex in 0 until MAX_MOVES)
+        require(confirmedSets in 1..plan.maximumSets)
+        require(replacement in 1..maximumValue(plan))
+        val existing = progress[moveIndex] ?: throw IllegalArgumentException("No reported set values")
+        require(existing.size == confirmedSets)
+        require(existing.all { it == 0 || it in 1..maximumValue(plan) })
+        require(existing.last() in 1..maximumValue(plan)) {
+            "The latest confirmed set has no self-reported value to correct"
+        }
+        val corrected = existing.toMutableList().apply {
+            this[confirmedSets - 1] = replacement
+        }
+        return progress.toSortedMap().toMutableMap().apply {
+            put(moveIndex, corrected)
+        }.toSortedMap()
+    }
+
     fun encode(progress: Map<Int, List<Int>>, moves: List<TrainingMove>): String {
         require(moves.size <= MAX_MOVES)
         val output = StringBuilder()

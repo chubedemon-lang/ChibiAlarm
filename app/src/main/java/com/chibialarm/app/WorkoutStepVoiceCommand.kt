@@ -166,4 +166,32 @@ object WorkoutStepVoiceCommand {
                 .any { normalized.contains(it) }) return Command.CLOSE
         return Command.UNKNOWN
     }
+
+    /**
+     * Returns a one-based destination only for an explicit navigation phrase.
+     * Questions such as "bước 2 là gì?" remain coach questions, not navigation.
+     * Safety language always takes priority, and out-of-range steps are rejected.
+     */
+    fun parseNavigationTarget(utterance: String?, totalSteps: Int): Int? {
+        if (utterance.isNullOrBlank() || utterance.length > 120 || totalSteps !in 1..100) return null
+        if (parse(utterance) == Command.SAFETY) return null
+
+        val raw = utterance.lowercase(Locale.ROOT)
+            .replace(Regex("[^\\p{L}\\p{N}]+"), " ")
+            .trim()
+            .replace(Regex("\\s+"), " ")
+        val normalized = Normalizer.normalize(raw, Normalizer.Form.NFD)
+            .replace(Regex("\\p{Mn}+"), "")
+            .replace('đ', 'd')
+            .replace(Regex("[^a-z0-9]+"), " ")
+            .trim()
+            .replace(Regex("\\s+"), " ")
+
+        val match = Regex(
+            """^(?:(?:chuyen|nhay|di|toi|den|mo|quay lai|quay ve|tro ve)\\s+(?:(?:toi|den|sang)\\s+)?|(?:dua toi den|dua tao den)\\s+)buoc(?:\\s+so)?\\s+([0-9]{1,2})$"""
+        ).matchEntire(normalized) ?: return null
+        val position = match.groupValues[1].toIntOrNull() ?: return null
+        return position.takeIf { it in 1..totalSteps }
+    }
+
 }

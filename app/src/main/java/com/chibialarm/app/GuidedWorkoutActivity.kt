@@ -1543,6 +1543,24 @@ class GuidedWorkoutActivity:Activity() {
      * Records a spoken actual-set value only after the user reviews and confirms it.
      * Speech recognition is a self-report; it is never treated as sensor verification.
      */
+    /**
+     * Handles a complete self-report before any plan-edit route. If speech omitted the
+     * unit, only the current catalog prescription may supply it.
+     */
+    private fun handleSpokenSetReport(utterance: String): Boolean {
+        val plan = if (index in moves.indices) currentSetPlan() else null
+        val report = WorkoutSetReportCommand.parseInContext(utterance, plan?.unit) ?: return false
+        when {
+            plan == null -> Toast.makeText(
+                this, "Động tác hiện tại không dùng bộ đếm hiệp; Chibi chưa ghi nhận số lần.", Toast.LENGTH_LONG
+            ).show()
+            plan.unit != report.unit -> Toast.makeText(
+                this, "Đơn vị bạn nói không khớp giáo án (${plan.unit}); Chibi chưa ghi nhận hiệp.", Toast.LENGTH_LONG
+            ).show()
+            else -> confirmSpokenSetValue(report.value)
+        }
+        return true
+    }
     private fun confirmSpokenSetValue(actualValue: Int) {
         if (pausedForSafety || completed || resting || index !in moves.indices) {
             Toast.makeText(this, "Buổi tập đang dừng; chưa thể ghi nhận hiệp.", Toast.LENGTH_LONG).show()
@@ -2126,9 +2144,9 @@ class GuidedWorkoutActivity:Activity() {
             is WorkoutMidSessionRequest.Result.Proposed -> {
                 // A combined "change reps + rest" utterance is one confirmed action.
                 // Do not route a self-reported completed set into the target editor.
+                if (handleSpokenSetReport(utterance)) return
                 val voiceIntent = WorkoutVoiceCommands.parse(utterance)
-                val spokenSetReport = WorkoutSetReportCommand.parse(utterance)
-                val spokenTarget = if (parsed.request.isRestOnly && spokenSetReport == null &&
+                val spokenTarget = if (parsed.request.isRestOnly &&
                     voiceIntent in setOf(WorkoutVoiceCommands.Command.REST, WorkoutVoiceCommands.Command.UNKNOWN)
                 ) contextualSpokenTarget(utterance) else null
                 if (spokenTarget != null) {
@@ -2142,20 +2160,7 @@ class GuidedWorkoutActivity:Activity() {
         }
         // An explicit report of completed work must be handled before target editing.
         // Otherwise "I did 10 reps" could be mistaken for "change the target to 10 reps".
-        val spokenSetReport = WorkoutSetReportCommand.parse(utterance)
-        if (spokenSetReport != null) {
-            val plan = if (index in moves.indices) currentSetPlan() else null
-            when {
-                plan == null -> Toast.makeText(
-                    this, "Động tác hiện tại không dùng bộ đếm hiệp; Chibi chưa ghi nhận số lần.", Toast.LENGTH_LONG
-                ).show()
-                plan.unit != spokenSetReport.unit -> Toast.makeText(
-                    this, "Đơn vị bạn nói không khớp giáo án (${plan.unit}); Chibi chưa ghi nhận hiệp.", Toast.LENGTH_LONG
-                ).show()
-                else -> confirmSpokenSetValue(spokenSetReport.value)
-            }
-            return
-        }
+        if (handleSpokenSetReport(utterance)) return
 
         // Safety words always take precedence over any numeric exercise request.
         val spokenTarget = contextualSpokenTarget(utterance)

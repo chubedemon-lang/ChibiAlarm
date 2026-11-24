@@ -113,7 +113,7 @@ object WorkoutEffortScorePlanAdvisor {
         val query = normalize(input)
         val asksForScore = query.contains("diem gang suc") ||
             query.contains("diem tu danh gia") ||
-            Regex("\\\\brpe\\\\b").containsMatchIn(query)
+            Regex("\\brpe\\b").containsMatchIn(query)
         val asksForLighterPlan = listOf(
             "buoi nhe hon", "buoi tap nhe hon", "tap nhe hon", "giam tai",
             "goi y buoi nhe", "de xuat buoi nhe"
@@ -125,7 +125,7 @@ object WorkoutEffortScorePlanAdvisor {
                 "riêng biệt gần nhất trong 7 ngày, mỗi buổi có ít nhất hai hiệp được tự chấm và điểm " +
                 "trung bình của cả hai buổi từ 7,5/10 trở lên. Chibi không đọc ghi chú riêng tư và không " +
                 "tự thay đổi giáo án."
-        return suggestion.message + "\\n\\nNếu muốn xem bản nháp, hãy nói: “${suggestion.prompt}”. " +
+        return suggestion.message + "\n\nNếu muốn xem bản nháp, hãy nói: “${suggestion.prompt}”. " +
             "Chibi chưa thay đổi giáo án; mọi thay đổi vẫn cần bạn xem trước và xác nhận."
     }
 
@@ -166,9 +166,9 @@ object WorkoutEffortScorePlanAdvisor {
             input.lowercase(Locale.ROOT).replace('đ', 'd'),
             Normalizer.Form.NFD
         )
-        return decomposed.replace(Regex("\\\\p{M}+"), "")
+        return decomposed.replace(Regex("\\p{M}+"), "")
             .replace(Regex("[^a-z0-9 ]"), " ")
-            .replace(Regex("\\\\s+"), " ")
+            .replace(Regex("\\s+"), " ").trim()
             .trim()
     }
 }

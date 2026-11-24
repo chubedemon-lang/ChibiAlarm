@@ -80,6 +80,56 @@ class WorkoutCoachQuickPromptsTest {
         )
     }
 
+    @Test fun remainingPlanShowsOnlyRelevantKneelingAndFloorConstraintShortcuts() {
+        val birdDog = TrainingCatalog.allMoves.single { it.name == "Bird-dog" }
+        val bridge = TrainingCatalog.allMoves.single { it.name == "Nâng hông trên sàn" }
+        val prompts = WorkoutCoachQuickPrompts.forSession(
+            resting = false,
+            hasOptionalFutureExercises = false,
+            hasOptionalCurrentSets = false,
+            remainingUnstartedMoves = listOf(birdDog, bridge)
+        )
+
+        val kneelingPrompt = prompts.single { it.label == "Không quỳ gối" }
+        val floorPrompt = prompts.single { it.label == "Không nằm sàn" }
+        assertEquals("Từ giờ không quỳ gối", kneelingPrompt.utterance)
+        assertEquals("Từ giờ không nằm sàn", floorPrompt.utterance)
+
+        val kneeling = WorkoutMidSessionRequest.parse(kneelingPrompt.utterance)
+        assertTrue(kneeling is WorkoutMidSessionRequest.Result.Proposed)
+        val kneelingRequest = (kneeling as WorkoutMidSessionRequest.Result.Proposed).request
+        assertTrue(kneelingRequest.avoidKneeling)
+        assertFalse(kneelingRequest.avoidFloorPositions)
+
+        val floor = WorkoutMidSessionRequest.parse(floorPrompt.utterance)
+        assertTrue(floor is WorkoutMidSessionRequest.Result.Proposed)
+        val floorRequest = (floor as WorkoutMidSessionRequest.Result.Proposed).request
+        assertTrue(floorRequest.avoidFloorPositions)
+        assertFalse(floorRequest.avoidKneeling)
+    }
+
+    @Test fun constraintShortcutsStayHiddenWhenNoRemainingMoveNeedsThemOrDuringRest() {
+        val squat = TrainingCatalog.allMoves.single { it.name == "Squat không tạ" }
+        val birdDog = TrainingCatalog.allMoves.single { it.name == "Bird-dog" }
+        val bridge = TrainingCatalog.allMoves.single { it.name == "Nâng hông trên sàn" }
+
+        val unaffected = WorkoutCoachQuickPrompts.forSession(
+            resting = false,
+            hasOptionalFutureExercises = false,
+            hasOptionalCurrentSets = false,
+            remainingUnstartedMoves = listOf(squat)
+        )
+        assertFalse(unaffected.any { it.label == "Không quỳ gối" || it.label == "Không nằm sàn" })
+
+        val duringRest = WorkoutCoachQuickPrompts.forSession(
+            resting = true,
+            hasOptionalFutureExercises = false,
+            hasOptionalCurrentSets = false,
+            remainingUnstartedMoves = listOf(birdDog, bridge)
+        )
+        assertFalse(duringRest.any { it.label == "Không quỳ gối" || it.label == "Không nằm sàn" })
+    }
+
     @Test fun restPromptsAreOnlyAvailableDuringRestAndParseAsRestOnly() {
         val prompts = WorkoutCoachQuickPrompts.forSession(
             resting = true,

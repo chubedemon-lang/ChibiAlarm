@@ -1639,10 +1639,14 @@ class GuidedWorkoutActivity:Activity() {
             Toast.makeText(this, "Động tác hiện tại không có hiệp để sửa số liệu.", Toast.LENGTH_LONG).show()
             return
         }
-        val confirmedSets = (completedSetsByMove[index] ?: 0).coerceIn(0, plan.maximumSets)
+        val confirmedSets = completedSetsByMove[index] ?: 0
+        if (confirmedSets !in 1..plan.maximumSets) {
+            Toast.makeText(this, "Tiến độ hiệp chưa hợp lệ để sửa; Chibi giữ nguyên dữ liệu.", Toast.LENGTH_LONG).show()
+            return
+        }
         val previous = actualSetValuesByMove[index]?.getOrNull(confirmedSets - 1)
         val maximum = if (plan.unit == "giây") 600 else 200
-        if (confirmedSets < 1 || previous == null || previous !in 1..maximum) {
+        if (previous == null || previous !in 1..maximum) {
             Toast.makeText(this, "Hiệp gần nhất chưa có số liệu tự khai báo để sửa. Số hiệp cũ được giữ nguyên.", Toast.LENGTH_LONG).show()
             return
         }

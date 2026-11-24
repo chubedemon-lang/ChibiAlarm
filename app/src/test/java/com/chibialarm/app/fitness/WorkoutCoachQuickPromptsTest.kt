@@ -18,15 +18,37 @@ class WorkoutCoachQuickPromptsTest {
         )
 
         assertEquals(
-            listOf("Còn 5 phút", "Hôm nay hơi mệt", "Bỏ bài bổ sung", "Chỉ hiệp bắt buộc", "Thở thế nào?", "Hướng dẫn từng bước"),
+            listOf("Còn 5 phút", "Còn 10 phút", "Bài này khó quá", "Hôm nay hơi mệt", "Bỏ bài bổ sung", "Chỉ hiệp bắt buộc", "Thở thế nào?", "Hướng dẫn từng bước"),
             prompts.map { it.label }
         )
 
-        val remaining = WorkoutMidSessionRequest.parse(prompts[0].utterance)
+        val remaining = WorkoutMidSessionRequest.parse(
+            prompts.single { it.label == "Còn 5 phút" }.utterance
+        )
         assertTrue(remaining is WorkoutMidSessionRequest.Result.Proposed)
         assertEquals(5, (remaining as WorkoutMidSessionRequest.Result.Proposed).request.remainingMinutes)
 
-        val easier = WorkoutMidSessionRequest.parse(prompts[1].utterance)
+        val tenMinuteTarget = WorkoutMidSessionRequest.parse(
+            prompts.single { it.label == "Còn 10 phút" }.utterance
+        )
+        assertTrue(tenMinuteTarget is WorkoutMidSessionRequest.Result.Proposed)
+        assertEquals(
+            10,
+            (tenMinuteTarget as WorkoutMidSessionRequest.Result.Proposed).request.remainingMinutes
+        )
+        assertFalse(tenMinuteTarget.request.lowEnergy)
+
+        val difficult = WorkoutMidSessionRequest.parse(
+            prompts.single { it.label == "Bài này khó quá" }.utterance
+        )
+        assertTrue(difficult is WorkoutMidSessionRequest.Result.Proposed)
+        assertTrue((difficult as WorkoutMidSessionRequest.Result.Proposed).request.preferEasier)
+        assertTrue(difficult.request.lowEnergy)
+        assertEquals(60, difficult.request.restSeconds)
+
+        val easier = WorkoutMidSessionRequest.parse(
+            prompts.single { it.label == "Hôm nay hơi mệt" }.utterance
+        )
         assertTrue(easier is WorkoutMidSessionRequest.Result.Proposed)
         assertTrue((easier as WorkoutMidSessionRequest.Result.Proposed).request.lowEnergy)
         assertTrue(easier.request.preferEasier)
@@ -52,7 +74,10 @@ class WorkoutCoachQuickPromptsTest {
             hasOptionalCurrentSets = false
         )
 
-        assertEquals(listOf("Còn 5 phút", "Hôm nay hơi mệt", "Thở thế nào?", "Hướng dẫn từng bước"), prompts.map { it.label })
+        assertEquals(
+            listOf("Còn 5 phút", "Còn 10 phút", "Bài này khó quá", "Hôm nay hơi mệt", "Thở thế nào?", "Hướng dẫn từng bước"),
+            prompts.map { it.label }
+        )
     }
 
     @Test fun restPromptsAreOnlyAvailableDuringRestAndParseAsRestOnly() {

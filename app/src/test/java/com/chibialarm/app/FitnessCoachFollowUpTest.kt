@@ -224,13 +224,23 @@ class FitnessCoachFollowUpTest {
         assertEquals(safetyMessage, FitnessCoachFollowUp.spokenPrompt(safetyMessage, safety))
         assertFalse(FitnessCoachFollowUp.spokenPrompt(safetyMessage, safety).contains("Lựa chọn"))
 
-        val complete = FitnessNaturalRequest.parse(
-            "giãn cơ 20 phút, đang tập đều, không dụng cụ, không, không, không, không, không, khỏe"
+        val complete = FitnessNaturalRequest.Result(
+            goal = 2,
+            level = 1,
+            energy = 1,
+            minutes = 20,
+            equipment = 0,
+            impact = 0,
+            reply = "complete",
+            avoidWristLoad = false,
+            avoidFloorPositions = false,
+            avoidOverheadReach = false,
+            additionalEquipment = emptySet(),
+            avoidKneeling = false
         )
-        if (FitnessCoachFollowUp.nextQuestionType(complete) == FitnessCoachFollowUp.Question.COMPLETE) {
-            val message = FitnessCoachFollowUp.nextQuestion(complete)
-            assertEquals(message, FitnessCoachFollowUp.spokenPrompt(message, complete))
-        }
+        assertEquals(FitnessCoachFollowUp.Question.COMPLETE, FitnessCoachFollowUp.nextQuestionType(complete))
+        val completeMessage = FitnessCoachFollowUp.nextQuestion(complete)
+        assertEquals(completeMessage, FitnessCoachFollowUp.spokenPrompt(completeMessage, complete))
     }
 
     @Test fun spokenPromptBoundsLongCoachCopyWithoutDroppingItsChoiceList() {

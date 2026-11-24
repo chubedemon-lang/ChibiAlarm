@@ -56,11 +56,6 @@ object WorkoutVoiceCommands {
         // A repetition/set unit is not a duration. Ask for clarification rather
         // than silently falling back to the default 30-second rest.
         val namesWorkCount = Regex("""\b(?:lan|hiep|rep|reps)\\b""").containsMatchIn(normalized)
-        if (namesWorkCount && !WorkoutRestRequest.hasRecognizedDuration(utterance)) {
-            return if (normalized.contains("nghi") || normalized.contains("rest")) {
-                Command.CLARIFY_REST_UNIT
-            } else Command.UNKNOWN
-        }
         // 'bắt đầu' contains the unaccented token 'dau'; it is not a pain report.
         // Remove only this phrase for safety-token detection, preserving any actual 'đau' later.
         val safetyWords = normalized.replace(Regex("\\bbat dau\\b"), " ").split(' ').toSet()
@@ -86,6 +81,8 @@ object WorkoutVoiceCommands {
             normalized.contains("tam dung") || normalized.contains("dung lai") ||
                 normalized.contains("dung tap") || normalized.contains("khong tap noi") ||
                 normalized.contains("het suc") || "pause" in words -> Command.PAUSE
+            namesWorkCount && !WorkoutRestRequest.hasRecognizedDuration(utterance) &&
+                (normalized.contains("nghi") || normalized.contains("rest")) -> Command.CLARIFY_REST_UNIT
             listOf(
                 "vi sao bai nay de hon", "tai sao bai nay de hon",
                 "vi sao lai doi bai", "tai sao lai doi bai",

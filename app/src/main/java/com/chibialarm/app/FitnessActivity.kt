@@ -502,15 +502,21 @@ class FitnessActivity:Activity() {
             text = "📊 Nhật ký 7 ngày: ${summary.sessions} buổi • ${summary.activeDays} ngày vận động • ${summary.totalMinutes} phút (ghi trên máy)."
         }
         val lighterMessage = WorkoutHistoryAdvisor.lighterSessionMessage(summary, effortSuggestion)
+        // Numeric RPE history is an independent reason to offer the same reviewed recovery
+        // catalog flow; do not require a categorical effort label as well.
+        val recoveryMessage = lighterMessage ?: numericScoreSuggestion?.message
         historySuggestionView?.apply {
-            visibility = if (lighterMessage != null) android.view.View.VISIBLE else android.view.View.GONE
-            text = lighterMessage.orEmpty()
+            visibility = if (recoveryMessage != null) android.view.View.VISIBLE else android.view.View.GONE
+            text = recoveryMessage.orEmpty()
         }
         historyRecoveryButton?.apply {
-            visibility = if (lighterMessage != null) android.view.View.VISIBLE else android.view.View.GONE
-            text = if (effortSuggestion != null) "🌿 Xem giáo án nhẹ hơn từ check-in"
-                else "🌿 Xem giáo án phục hồi nhẹ"
-            contentDescription = "Xem buổi vận động nhẹ theo nhật ký và các bộ lọc an toàn hiện tại"
+            visibility = if (recoveryMessage != null) android.view.View.VISIBLE else android.view.View.GONE
+            text = when {
+                numericScoreSuggestion != null -> "🌿 Xem bản xem trước buổi nhẹ hơn theo điểm tự chấm"
+                effortSuggestion != null -> "🌿 Xem giáo án nhẹ hơn từ check-in"
+                else -> "🌿 Xem giáo án phục hồi nhẹ"
+            }
+            contentDescription = "Mở bản xem trước thư viện bài tập nhẹ, áp dụng bộ lọc dụng cụ và hạn chế hiện tại; chưa bắt đầu buổi tập"
         }
     }
     private fun render() {
@@ -838,7 +844,7 @@ class FitnessActivity:Activity() {
             contentDescription = "Xem buổi vận động nhẹ dựa trên nhật ký 7 ngày; vẫn phải tuân thủ cảnh báo an toàn hiện tại"
             isAllCaps = false
             visibility = android.view.View.GONE
-            setOnClickListener { startProgram(TrainingCatalog.byId("recovery")) }
+            setOnClickListener { showRecoveryProgramPreview() }
         }
         historyRecoveryButton = historyRecovery
         root.addView(historyRecovery)
@@ -1997,6 +2003,60 @@ class FitnessActivity:Activity() {
             }
             .setNegativeButton("Giữ nguyên", null)
             .show()
+    }
+
+    /**
+     * Opens the same exercise-by-exercise review used by normal recommendations.
+     * A history insight must never launch a workout directly or bypass current filters.
+     */
+    private fun showRecoveryProgramPreview() {
+        if (effectiveImpactRestriction() == 2) {
+            AlertDialog.Builder(this)
+                .setTitle("🐰 Tạm dừng buổi tập")
+                .setMessage("Bạn đã báo đang đau hoặc có dấu hiệu không an toàn. Chibi không mở giáo án tập thay thế. Hãy nghỉ và không cố tập tiếp.")
+                .setPositiveButton("Đã hiểu", null)
+                .show()
+            return
+        }
+
+        val constraints = currentWorkoutConstraintProfile()
+        val equipmentSelection = recommendationEquipmentSpinner?.selectedItemPosition ?: 0
+        val additionalEquipment = currentAdditionalEquipment()
+        val constrained = WorkoutConstraintFilter.apply(
+            TrainingCatalog.byId("recovery"),
+            constraints
+        )
+        val equipped = WorkoutEquipmentFilter.apply(
+            constrained.program,
+            equipmentSelection,
+            additionalEquipment
+        )
+        if (!equipped.canStart) {
+            AlertDialog.Builder(this)
+                .setTitle("Chưa có giáo án phục hồi phù hợp")
+                .setMessage(equipped.notice.ifBlank {
+                    "Không còn động tác chính phù hợp với dụng cụ và hạn chế hiện tại. Chibi chưa bắt đầu buổi tập."
+                })
+                .setPositiveButton("Đã hiểu", null)
+                .show()
+            return
+        }
+
+        val targetMinutes = mins.getOrNull(length.selectedItemPosition) ?: return
+        val selectedLevel = level.selectedItemPosition.coerceIn(0, 2)
+        val planned = WorkoutDurationPlanner.build(
+            equipped.program,
+            selectedLevel,
+            targetMinutes,
+            currentExtensionPreferences(constraints)
+        )
+        showProgramPreview(
+            program = equipped.program,
+            planned = planned,
+            constraints = constraints,
+            equipmentSelection = equipmentSelection,
+            additionalEquipment = additionalEquipment
+        )
     }
 
     private fun startProgram(

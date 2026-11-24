@@ -62,6 +62,68 @@ internal object WorkoutMusclePlanSummary {
         }.take(180)
     }
 
+    data class GroupDelta(
+        val group: TrainingMuscleGroup,
+        val beforeCount: Int,
+        val afterCount: Int
+    )
+
+    data class Comparison(
+        val before: Summary,
+        val after: Summary,
+        val primary: List<GroupDelta>,
+        val supporting: List<GroupDelta>
+    ) {
+        val changed: Boolean
+            get() = primary.isNotEmpty() || supporting.isNotEmpty()
+    }
+
+    /**
+     * Compare only curated muscle labels from both plans. Unknown/custom moves are never
+     * inferred from their names; if either plan has no curated main move, comparison is unavailable.
+     */
+    fun compare(beforeMoves: List<TrainingMove>, afterMoves: List<TrainingMove>): Comparison? {
+        val before = summarize(beforeMoves) ?: return null
+        val after = summarize(afterMoves) ?: return null
+
+        fun deltas(
+            beforeCounts: List<GroupCount>,
+            afterCounts: List<GroupCount>
+        ): List<GroupDelta> = TrainingMuscleGroup.values().mapNotNull { group ->
+            val oldCount = beforeCounts.firstOrNull { it.group == group }?.exerciseCount ?: 0
+            val newCount = afterCounts.firstOrNull { it.group == group }?.exerciseCount ?: 0
+            if (oldCount == newCount) null else GroupDelta(group, oldCount, newCount)
+        }
+
+        return Comparison(
+            before = before,
+            after = after,
+            primary = deltas(before.primary, after.primary),
+            supporting = deltas(before.supporting, after.supporting)
+        )
+    }
+
+    /** A bounded, plain-language comparison for the user's mid-session preview. */
+    fun formatComparison(beforeMoves: List<TrainingMove>, afterMoves: List<TrainingMove>): String? {
+        val comparison = compare(beforeMoves, afterMoves) ?: return null
+        fun renderDeltas(values: List<GroupDelta>): String =
+            values.take(4).joinToString(" • ") {
+                "${it.group.label}: ${it.beforeCount} → ${it.afterCount}"
+            }.ifBlank { "không thay đổi theo nhãn đã duyệt" }
+
+        return buildString {
+            append("Thay đổi nhãn nhóm cơ theo thư viện (đếm động tác, không phải khối lượng tập):")
+            append("\n• Nhóm chính: ").append(renderDeltas(comparison.primary))
+            append("\n• Nhóm hỗ trợ: ").append(renderDeltas(comparison.supporting))
+            append("\n• Độ phủ nhãn: ")
+                .append(comparison.before.cataloguedMoveCount).append("/")
+                .append(comparison.before.eligibleMoveCount).append(" trước → ")
+                .append(comparison.after.cataloguedMoveCount).append("/")
+                .append(comparison.after.eligibleMoveCount).append(" sau.")
+            append("\nNhãn chỉ mô tả mức nhấn mạnh gần đúng; không chứng minh hai bài tương đương.")
+        }.take(700)
+    }
+
     private fun count(
         moves: List<TrainingMove>,
         groups: (TrainingMove) -> List<TrainingMuscleGroup>

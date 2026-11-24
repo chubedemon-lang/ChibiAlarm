@@ -3,6 +3,7 @@ package com.chibialarm.app.fitness
 import com.chibialarm.app.TrainingCatalog
 import com.chibialarm.app.TrainingMove
 import com.chibialarm.app.WorkoutMoveSubstitution
+import com.chibialarm.app.WorkoutMusclePlanSummary
 import com.chibialarm.app.WorkoutSetTracker
 
 /**
@@ -54,6 +55,13 @@ object WorkoutMidSessionPreviewFormatter {
                 append("• Bỏ khỏi phần còn lại: ").append(removed).append('\n')
             }
             append('\n')
+        }
+        if (preview.replacements.isNotEmpty() || preview.removedMoves.isNotEmpty() ||
+            preview.addedMoves.isNotEmpty()
+        ) {
+            WorkoutMusclePlanSummary.formatComparison(preview.before, preview.after)?.let {
+                append(it).append('\n')
+            }
         }
         val startIndex = if (preview.currentIndex >= MAX_VISIBLE_MOVES) preview.currentIndex else 0
         if (startIndex > 0) {

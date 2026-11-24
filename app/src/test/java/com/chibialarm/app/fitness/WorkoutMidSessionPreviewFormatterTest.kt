@@ -302,4 +302,23 @@ class WorkoutMidSessionPreviewFormatterTest {
         assertTrue(spoken.length <= 350)
     }
 
+
+    @Test fun previewExplainsCuratedMuscleEmphasisChangesForAnEasierReplacement() {
+        val result = preview(
+            listOf(
+                move("Khởi động tại chỗ"),
+                move("Bật nhảy dang tay chân"),
+                move("Thả lỏng")
+            ),
+            currentIndex = 1,
+            request = WorkoutMidSessionRequest.Request(preferEasier = true)
+        )
+
+        val text = WorkoutMidSessionPreviewFormatter.format(result)
+        assertTrue(text.contains("Bật nhảy dang tay chân → Bước ngang nhẹ"))
+        assertTrue(text.contains("Thay đổi nhãn nhóm cơ theo thư viện"))
+        assertTrue(text.contains("Toàn thân: 1 → 0"))
+        assertTrue(text.contains("Cơ dạng hông: 0 → 1"))
+        assertTrue(text.contains("không chứng minh hai bài tương đương"))
+    }
 }

@@ -9,7 +9,9 @@ import java.util.Locale
  * The active move remains the default for ordinary follow-ups ("nghỉ bao lâu?").
  * A phrase such as "bài đó" refers to the last explicitly named catalog exercise or
  * the upcoming catalog exercise that the user just asked about.
- * This state is deliberately not persisted, exported, logged, or sent over the network.
+ * Only the exact canonical exercise name may be copied into the guest-local workout checkpoint
+ * or Android saved state so a restored session can keep a useful follow-up reference. No raw
+ * transcript, free-form user text, effort answer, or health note is stored by this memory.
  */
 class WorkoutCoachConversationContext {
     private var lastExplicitMove: TrainingMove? = null
@@ -82,6 +84,26 @@ class WorkoutCoachConversationContext {
         return response
     }
 
+    /**
+     * Return only a canonical catalog name for the guest-local checkpoint/Bundle.
+     * The conversation transcript and all free-form input remain transient.
+     */
+    fun snapshotMoveName(): String? = lastExplicitMove?.name
+        ?.takeIf { canonicalMove(it) != null && it.length <= MAX_MOVE_NAME_CHARS }
+
+    /**
+     * Restore a reference only when it exactly matches one canonical catalog entry.
+     * Invalid, unknown, oversized, or ambiguous values clear the previous reference.
+     */
+    fun restoreMoveName(name: String?) {
+        lastExplicitMove = name
+            ?.takeIf { it.length in 1..MAX_MOVE_NAME_CHARS }
+            ?.let(::canonicalMove)
+    }
+
+    private fun canonicalMove(name: String): TrainingMove? =
+        TrainingCatalog.allMoves.singleOrNull { it.name == name }
+
     /** Clear references when a new guided session is started in the same Activity instance. */
     fun reset() {
         lastExplicitMove = null
@@ -126,6 +148,7 @@ class WorkoutCoachConversationContext {
 
     private companion object {
         const val MAX_INPUT_CHARS = 300
+        const val MAX_MOVE_NAME_CHARS = 100
         const val MIN_EXPLICIT_NAME_CHARS = 3
         const val UNKNOWN_EXERCISE_PREFIX = "Chibi chưa nhận ra tên động tác"
         const val AMBIGUOUS_EXERCISE_PREFIX = "Chibi tìm thấy vài động tác gần giống"

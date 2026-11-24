@@ -4553,7 +4553,7 @@ class GuidedWorkoutActivity:Activity() {
         // Use only earlier check-ins for this exact move; the current set was just appended.
         val previousEffortLevels = effortLevelsByMove[selectedIndex].orEmpty().take(completedSets - 1)
         val recommendation = WorkoutEffortFeedback.recommend(
-            level, plan.defaultRestSeconds, previousEffortLevels
+            level, plan.defaultRestSeconds, previousEffortLevels, score = score
         )
         when (level) {
             WorkoutEffortFeedback.Level.EASY,

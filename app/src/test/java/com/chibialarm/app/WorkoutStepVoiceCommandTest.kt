@@ -137,6 +137,45 @@ class WorkoutStepVoiceCommandTest {
         assertEquals(WorkoutStepVoiceCommand.Command.UNKNOWN, WorkoutStepVoiceCommand.parse("không nghỉ thêm"))
     }
 
+    @Test fun recognizesExplicitRestSkipWithoutTreatingNegationAsACommand() {
+        for (phrase in listOf(
+            "Bỏ qua nghỉ",
+            "Bỏ qua thời gian nghỉ",
+            "Kết thúc nghỉ sớm",
+            "Skip rest",
+            "Skip the rest timer",
+            "End rest early"
+        )) {
+            assertEquals(
+                phrase,
+                WorkoutStepVoiceCommand.Command.SKIP_REST,
+                WorkoutStepVoiceCommand.parse(phrase)
+            )
+        }
+
+        for (phrase in listOf(
+            "Không bỏ qua nghỉ",
+            "Đừng bỏ qua thời gian nghỉ",
+            "Không skip rest",
+            "Giữ thời gian nghỉ"
+        )) {
+            assertEquals(
+                phrase,
+                WorkoutStepVoiceCommand.Command.UNKNOWN,
+                WorkoutStepVoiceCommand.parse(phrase)
+            )
+        }
+
+        assertEquals(
+            WorkoutStepVoiceCommand.Command.REST,
+            WorkoutStepVoiceCommand.parse("Nghỉ thêm 30 giây")
+        )
+        assertEquals(
+            WorkoutStepVoiceCommand.Command.SAFETY,
+            WorkoutStepVoiceCommand.parse("Bỏ qua nghỉ nhưng tôi chóng mặt")
+        )
+    }
+
     @Test fun safetyOverridesRestExtension() {
         assertEquals(
             WorkoutStepVoiceCommand.Command.SAFETY,

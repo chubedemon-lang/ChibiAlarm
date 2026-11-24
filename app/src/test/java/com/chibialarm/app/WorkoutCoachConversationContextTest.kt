@@ -166,6 +166,47 @@ class WorkoutCoachConversationContextTest {
         assertFalse(followUp.contains(squat.name))
     }
 
+    @Test fun snapshotAndRestorePreserveOnlyTheCanonicalExerciseReference() {
+        val original = WorkoutCoachConversationContext()
+        original.answer("Cách tập ${walk.name}?", activeMove = squat)
+
+        val savedMoveName = original.snapshotMoveName()
+        assertEquals(walk.name, savedMoveName)
+
+        val restored = WorkoutCoachConversationContext()
+        restored.restoreMoveName(savedMoveName)
+        val followUp = restored.answer("Bài đó cần dụng cụ gì?", activeMove = squat)
+
+        assertNotNull(followUp)
+        assertTrue(followUp!!.contains(walk.name))
+        assertTrue(followUp.contains("không yêu cầu dụng cụ riêng"))
+        assertFalse(followUp.contains(squat.name))
+    }
+
+    @Test fun restoreRejectsUnknownOrFreeFormTextInsteadOfSavingAConversationTranscript() {
+        val context = WorkoutCoachConversationContext()
+        context.restoreMoveName("Tôi bị đau đầu gối và không thể tập hôm nay")
+
+        assertNull(context.snapshotMoveName())
+        val followUp = context.answer("Bài đó cần dụng cụ gì?", activeMove = squat)
+        assertNotNull(followUp)
+        assertTrue(followUp!!.contains("chưa nhận ra tên động tác"))
+        assertFalse(followUp.contains("đầu gối"))
+    }
+
+    @Test fun restoringNullOrOversizedReferenceClearsExistingMemory() {
+        val context = WorkoutCoachConversationContext()
+        context.restoreMoveName(walk.name)
+        assertEquals(walk.name, context.snapshotMoveName())
+
+        context.restoreMoveName("x".repeat(101))
+        assertNull(context.snapshotMoveName())
+
+        context.restoreMoveName(walk.name)
+        context.restoreMoveName(null)
+        assertNull(context.snapshotMoveName())
+    }
+
     @Test fun resetClearsPreviousExerciseReference() {
         val context = WorkoutCoachConversationContext()
         context.answer("Cách tập Đi bộ nhanh tại chỗ?", activeMove = squat)

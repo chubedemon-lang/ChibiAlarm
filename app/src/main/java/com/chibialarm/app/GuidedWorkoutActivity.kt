@@ -1327,7 +1327,12 @@ class GuidedWorkoutActivity:Activity() {
             safetyStopped = pausedForSafety || completed,
             hasNextExercise = !resting && index in moves.indices && index < moves.lastIndex,
             hasCompletedSets = completedCurrentSets > 0,
-            hasLatestEffortCheckIn = hasLatestEffortCheckIn
+            hasLatestEffortCheckIn = hasLatestEffortCheckIn,
+            remainingUnstartedMoves = if (!resting && index in moves.indices) {
+                moves.drop(index + 1)
+            } else {
+                emptyList()
+            }
         )
 
         val content = LinearLayout(this).apply {

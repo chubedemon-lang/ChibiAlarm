@@ -1540,10 +1540,6 @@ class GuidedWorkoutActivity:Activity() {
     }
 
     /**
-     * Records a spoken actual-set value only after the user reviews and confirms it.
-     * Speech recognition is a self-report; it is never treated as sensor verification.
-     */
-    /**
      * Handles a complete self-report before any plan-edit route. If speech omitted the
      * unit, only the current catalog prescription may supply it.
      */
@@ -1561,6 +1557,10 @@ class GuidedWorkoutActivity:Activity() {
         }
         return true
     }
+    /**
+     * Records a spoken actual-set value only after the user reviews and confirms it.
+     * Speech recognition is a self-report; it is never treated as sensor verification.
+     */
     private fun confirmSpokenSetValue(actualValue: Int) {
         if (pausedForSafety || completed || resting || index !in moves.indices) {
             Toast.makeText(this, "Buổi tập đang dừng; chưa thể ghi nhận hiệp.", Toast.LENGTH_LONG).show()

@@ -1627,6 +1627,135 @@ class GuidedWorkoutActivity:Activity() {
         dialog.show()
     }
 
+
+    /** Routes an explicit speech correction to the latest confirmed self-reported set. */
+    private fun handleSpokenSetCorrection(utterance: String) {
+        if (pausedForSafety || completed || index !in moves.indices) {
+            Toast.makeText(this, "Không thể sửa số liệu khi buổi tập đã dừng an toàn hoặc kết thúc.", Toast.LENGTH_LONG).show()
+            return
+        }
+        val plan = currentSetPlan()
+        if (plan == null) {
+            Toast.makeText(this, "Động tác hiện tại không có hiệp để sửa số liệu.", Toast.LENGTH_LONG).show()
+            return
+        }
+        val confirmedSets = (completedSetsByMove[index] ?: 0).coerceIn(0, plan.maximumSets)
+        val previous = actualSetValuesByMove[index]?.getOrNull(confirmedSets - 1)
+        val maximum = if (plan.unit == "giây") 600 else 200
+        if (confirmedSets < 1 || previous == null || previous !in 1..maximum) {
+            Toast.makeText(this, "Hiệp gần nhất chưa có số liệu tự khai báo để sửa. Số hiệp cũ được giữ nguyên.", Toast.LENGTH_LONG).show()
+            return
+        }
+        val correction = WorkoutSetReportCommand.parseCorrection(utterance, previous, plan.unit)
+        if (correction == null) {
+            Toast.makeText(
+                this,
+                "Chibi chưa hiểu số sửa. Hãy nói “Không phải, tám” hoặc “Không phải 6 mà 8”. Số cũ vẫn được giữ.",
+                Toast.LENGTH_LONG
+            ).show()
+            return
+        }
+        confirmSpokenSetCorrection(correction.value, correction.unit)
+    }
+
+    /**
+     * Applies a correction only after a second confirmation. It never changes completed
+     * set count, the prescription, rest duration, XP evidence or earlier set values.
+     */
+    private fun confirmSpokenSetCorrection(actualValue: Int, unit: String) {
+        if (pausedForSafety || completed || index !in moves.indices) return
+        val plan = currentSetPlan() ?: return
+        if (unit != plan.unit) {
+            Toast.makeText(this, "Đơn vị sửa không khớp giáo án; số liệu cũ được giữ nguyên.", Toast.LENGTH_LONG).show()
+            return
+        }
+        val selectedIndex = index
+        val selectedSessionId = sessionId
+        val selectedMove = moves[selectedIndex]
+        val confirmedSets = completedSetsByMove[selectedIndex] ?: 0
+        val previousValues = actualSetValuesByMove[selectedIndex]?.toList() ?: emptyList()
+        val previous = previousValues.getOrNull(confirmedSets - 1)
+        val maximum = if (plan.unit == "giây") 600 else 200
+        if (confirmedSets !in 1..plan.maximumSets || previous == null ||
+            previous !in 1..maximum || actualValue !in 1..maximum
+        ) {
+            Toast.makeText(this, "Không có số liệu hiệp hợp lệ để sửa; dữ liệu cũ được giữ nguyên.", Toast.LENGTH_LONG).show()
+            return
+        }
+        if (actualValue == previous) {
+            speak("Số liệu hiệp $confirmedSets đã là $previous ${plan.unit}. Chibi giữ nguyên.")
+            return
+        }
+
+        // Freeze the active/rest countdown while reviewing. A correction never resumes
+        // the workout automatically; the user chooses when to continue.
+        if (!paused) pause()
+        val restWasActive = resting
+        val restSnapshot = restRemainingMs
+        val exerciseSnapshot = remainingMs
+        val previousMap = actualSetValuesByMove.mapValues { it.value.toList() }
+        fun contextIsCurrent(): Boolean =
+            !pausedForSafety && !completed &&
+                index == selectedIndex &&
+                sessionId == selectedSessionId &&
+                moves.getOrNull(selectedIndex) == selectedMove &&
+                currentSetPlan() == plan &&
+                (completedSetsByMove[selectedIndex] ?: 0) == confirmedSets &&
+                actualSetValuesByMove[selectedIndex] == previousValues &&
+                resting == restWasActive &&
+                (if (restWasActive) restRemainingMs == restSnapshot else remainingMs == exerciseSnapshot)
+
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("🐰 Chibi nghe lại: $actualValue ${plan.unit}")
+            .setMessage(
+                "Sửa số liệu tự khai báo của hiệp $confirmedSets: " +
+                    "$previous ${plan.unit} → $actualValue ${plan.unit}?\n\n" +
+                    "Chỉ thay giá trị của hiệp gần nhất. Số hiệp đã xác nhận, các hiệp trước, " +
+                    "giáo án, thời gian nghỉ và EXP không thay đổi. Buổi tập vẫn tạm dừng sau khi sửa."
+            )
+            .setPositiveButton("Đúng, sửa số liệu", null)
+            .setNegativeButton("Giữ số cũ", null)
+            .create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                if (!contextIsCurrent()) {
+                    dialog.dismiss()
+                    Toast.makeText(this, "Buổi tập đã thay đổi; số liệu cũ được giữ nguyên.", Toast.LENGTH_LONG).show()
+                    return@setOnClickListener
+                }
+                val updated = runCatching {
+                    WorkoutSetRepetitionLog.correctLatest(
+                        actualSetValuesByMove,
+                        selectedIndex,
+                        confirmedSets,
+                        actualValue,
+                        plan
+                    )
+                }.getOrElse {
+                    dialog.dismiss()
+                    Toast.makeText(this, "Không thể sửa số liệu; giá trị cũ được giữ nguyên.", Toast.LENGTH_LONG).show()
+                    return@setOnClickListener
+                }
+                actualSetValuesByMove.clear()
+                actualSetValuesByMove.putAll(updated)
+                if (!saveCheckpoint()) {
+                    actualSetValuesByMove.clear()
+                    actualSetValuesByMove.putAll(previousMap)
+                    saveCheckpoint()
+                    dialog.dismiss()
+                    Toast.makeText(this, "Chưa lưu được thay đổi; số liệu cũ được khôi phục.", Toast.LENGTH_LONG).show()
+                    return@setOnClickListener
+                }
+                dialog.dismiss()
+                speak(
+                    "Đã sửa số liệu hiệp $confirmedSets thành $actualValue ${plan.unit}. " +
+                        "Số hiệp, giáo án, thời gian nghỉ và EXP được giữ nguyên."
+                )
+            }
+        }
+        dialog.show()
+    }
+
     private fun stopForSafety() {
         pause()
         pausedForSafety=true

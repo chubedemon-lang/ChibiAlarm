@@ -394,4 +394,43 @@ class WorkoutStepVoiceCommandTest {
             WorkoutStepVoiceCommand.parse("Bước 2 và bước 3 là gì nhưng tôi đau cổ tay")
         )
     }
+
+    @Test fun explicitNavigationCanJumpToANumberedGuideStep() {
+        assertEquals(2, WorkoutStepVoiceCommand.parseNavigationTarget("Chuyển tới bước 2", 4))
+        assertEquals(3, WorkoutStepVoiceCommand.parseNavigationTarget("đến bước số 3", 4))
+        assertEquals(1, WorkoutStepVoiceCommand.parseNavigationTarget("mở bước 1", 4))
+        assertEquals(2, WorkoutStepVoiceCommand.parseNavigationTarget("quay lại bước 2", 4))
+        assertEquals(2, WorkoutStepVoiceCommand.parseNavigationTarget("dua tao den buoc 2", 4))
+        assertEquals(2, WorkoutStepVoiceCommand.parseNavigationTarget("chuyen sang buoc 2", 4))
+    }
+
+    @Test fun numberedStepQuestionsRemainCoachQuestionsRatherThanNavigation() {
+        assertNull(WorkoutStepVoiceCommand.parseNavigationTarget("Bước 2 là gì?", 4))
+        assertEquals(
+            WorkoutStepVoiceCommand.Command.ASK_EXERCISE,
+            WorkoutStepVoiceCommand.parse("Bước 2 là gì?")
+        )
+        assertNull(WorkoutStepVoiceCommand.parseNavigationTarget("Bước 2 và bước 3 là gì?", 4))
+        assertEquals(
+            WorkoutStepVoiceCommand.Command.ASK_EXERCISE,
+            WorkoutStepVoiceCommand.parse("Bước 2 và bước 3 là gì?")
+        )
+    }
+
+    @Test fun numberedNavigationRejectsOutOfRangeAndMalformedDestinations() {
+        assertNull(WorkoutStepVoiceCommand.parseNavigationTarget("Đến bước 9", 3))
+        assertNull(WorkoutStepVoiceCommand.parseNavigationTarget("Đến bước 0", 3))
+        assertNull(WorkoutStepVoiceCommand.parseNavigationTarget("Đến bước 101", 3))
+        assertNull(WorkoutStepVoiceCommand.parseNavigationTarget("Đến bước 2", 0))
+        assertNull(WorkoutStepVoiceCommand.parseNavigationTarget("Đến bước 2", 101))
+        assertNull(WorkoutStepVoiceCommand.parseNavigationTarget("Nói bước 2", 3))
+        assertNull(WorkoutStepVoiceCommand.parseNavigationTarget("Bước tiếp", 3))
+    }
+
+    @Test fun safetyLanguageOverridesAnExplicitNumberedNavigationRequest() {
+        val phrase = "Chuyển tới bước 2 nhưng tôi đau cổ tay"
+        assertNull(WorkoutStepVoiceCommand.parseNavigationTarget(phrase, 4))
+        assertEquals(WorkoutStepVoiceCommand.Command.SAFETY, WorkoutStepVoiceCommand.parse(phrase))
+    }
+
 }

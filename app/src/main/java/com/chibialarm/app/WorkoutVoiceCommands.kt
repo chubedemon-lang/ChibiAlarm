@@ -7,7 +7,7 @@ import java.util.Locale
 object WorkoutVoiceCommands {
     enum class Command {
         PAIN, PAUSE, STATUS, STEP_GUIDE, EXPLAIN_CURRENT, RESUME, NEXT, PREVIOUS, REPEAT, REPEAT_STEP, EASIER, SWAP_EASIER,
-        EASIER_AND_REST, SHORTER, SHORTER_REMAINING, REST, SKIP_REST, COMPLETE_SET, NO_EQUIPMENT, UNKNOWN
+        EASIER_AND_REST, SHORTER, SHORTER_REMAINING, REST, SKIP_REST, COMPLETE_SET, NO_EQUIPMENT, CLARIFY_REST_UNIT, UNKNOWN
     }
 
     /** Human-readable action shown before applying fallible speech recognition. */
@@ -36,6 +36,7 @@ object WorkoutVoiceCommands {
             Command.REST -> "Bắt đầu nghỉ riêng $restSeconds giây"
             Command.SKIP_REST -> "Bỏ qua phần nghỉ còn lại sau khi xác nhận"
             Command.NO_EQUIPMENT -> "Đề xuất thay động tác cần tạ/dây ở phần chưa tập bằng biến thể không cần tải ngoài"
+            Command.CLARIFY_REST_UNIT -> "Mày muốn nghỉ bao nhiêu giây/phút, hay đang nói số lần tập? Chưa thay đổi đồng hồ"
             Command.UNKNOWN -> "Chưa hiểu yêu cầu; không tự thay đổi buổi tập"
         }
     }
@@ -52,18 +53,18 @@ object WorkoutVoiceCommands {
             .replace(Regex("\\p{M}+"), "").replace('đ', 'd')
             .replace(Regex("[^a-z0-9 ]"), " ").trim().replace(Regex("\\s+"), " ")
         if (normalized.isEmpty() || normalized.length > 160) return Command.UNKNOWN
-        // An explicit repetition/set unit is not a rest duration. Without a recognized
-        // time unit, do not turn "nghỉ thêm 10 lần/3 hiệp" into the default 30-second rest.
+        // A repetition/set unit is not a duration. Ask for clarification rather
+        // than silently falling back to the default 30-second rest.
         val namesWorkCount = Regex("""\\b(?:lan|hiep|rep|reps)\\b""").containsMatchIn(normalized)
         if (namesWorkCount && !WorkoutRestRequest.hasRecognizedDuration(utterance)) {
-            return Command.UNKNOWN
+            return if (normalized.contains("nghi") || normalized.contains("rest")) {
+                Command.CLARIFY_REST_UNIT
+            } else Command.UNKNOWN
         }
         // 'bắt đầu' contains the unaccented token 'dau'; it is not a pain report.
         // Remove only this phrase for safety-token detection, preserving any actual 'đau' later.
         val safetyWords = normalized.replace(Regex("\\bbat dau\\b"), " ").split(' ').toSet()
         val words = normalized.split(' ').toSet()
-        // Match common live-workout feedback shown in the microphone prompt.
-        // These phrases request a pause + easier cue; they never auto-replace a move.
         val asksForEasier = listOf(
             "kho qua", "qua kho", "khong theo kip", "theo khong kip",
             "khong theo noi", "khong theo duoc", "khong kip"
@@ -121,7 +122,7 @@ object WorkoutVoiceCommands {
             WorkoutRestRequest.hasRecognizedDuration(utterance) -> Command.REST
             normalized.contains("nghi them") || normalized.contains("nghi mot chut") || normalized.contains("met roi") ||
                 normalized.contains("hoi met") || normalized.contains("met qua") ||
-                normalized.contains("met lam") || Regex("""\bnghi(?: them)?\s+[0-9]{1,3}\s*(?:giay|gi|s|phut)\b""").containsMatchIn(normalized) ||
+                normalized.contains("met lam") || Regex("""\\bnghi(?: them)?\\s+[0-9]{1,3}\\s*(?:giay|gi|s|phut)\\b""").containsMatchIn(normalized) ||
                 normalized.contains("nghi mot phut") || normalized.contains("nghi hai phut") ||
                 normalized.contains("nghi chin muoi giay") || normalized.contains("nghi sau muoi giay") ||
                 normalized.contains("nghi ba muoi giay") || normalized.contains("can nghi") ||

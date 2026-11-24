@@ -323,12 +323,20 @@ class WorkoutVoiceCommandsTest {
             "Nghỉ thêm hai mươi lần",
             "Nghỉ thêm 4 reps"
         )) {
-            assertEquals(phrase, C.UNKNOWN, WorkoutVoiceCommands.parse(phrase))
+            assertEquals(phrase, C.CLARIFY_REST_UNIT, WorkoutVoiceCommands.parse(phrase))
+            assertEquals(
+                "Mày muốn nghỉ bao nhiêu giây/phút, hay đang nói số lần tập? Chưa thay đổi đồng hồ",
+                WorkoutVoiceCommands.describe(C.CLARIFY_REST_UNIT, phrase)
+            )
         }
+        assertEquals(C.UNKNOWN, WorkoutVoiceCommands.parse("10 lần"))
+        assertEquals(C.CLARIFY_REST_UNIT, WorkoutVoiceCommands.parse("nghỉ thêm 10 lần"))
         // An unspecified rest still uses the deliberate default, while a real time
         // duration remains actionable through the existing confirmation flow.
         assertEquals(C.REST, WorkoutVoiceCommands.parse("Nghỉ thêm"))
         assertEquals(C.REST, WorkoutVoiceCommands.parse("Nghỉ thêm 30 giây"))
+        assertEquals(C.PAIN, WorkoutVoiceCommands.parse("Đau gối, nghỉ thêm 10 lần"))
+        assertEquals(C.PAUSE, WorkoutVoiceCommands.parse("Tạm dừng, nghỉ 3 hiệp"))
     }
 
 }

@@ -47,6 +47,12 @@ object WorkoutSetReportCommand {
             "(lan|cai|reps?|nhip|giay|s)(?:\\s+(?:roi|xong))?$"
     )
 
+    // Contextual form is allowed only when the active catalog move supplies the unit.
+    // It still requires an explicit first-person/completion phrase; bare numbers and
+    // target-edit commands are never interpreted as completed work.
+    private val contextualReportPattern = Regex(
+        "^(?:${reportPrefixes.joinToString("|") { Regex.escape(it) }})\\s+($number)(?:\\s+(?:roi|xong))?$"
+    )
     private val smallNumbers = mapOf(
         "mot" to 1, "hai" to 2, "ba" to 3, "bon" to 4, "tu" to 4,
         "nam" to 5, "lam" to 5, "sau" to 6, "bay" to 7, "tam" to 8, "chin" to 9
@@ -118,5 +124,21 @@ object WorkoutSetReportCommand {
         val maximum = if (unit == "giây") 600 else 200
         if (value !in 1..maximum) return null
         return Report(value, unit)
+    }
+    /**
+     * Uses the active exercise known unit when speech recognition omits it.
+     * Explicitly spoken units keep their normal meaning and are checked by the caller.
+     */
+    fun parseInContext(utterance: String, expectedUnit: String?): Report? {
+        parse(utterance)?.let { return it }
+        if (utterance.length !in 1..160 || expectedUnit !in setOf("lần", "nhịp", "giây")) {
+            return null
+        }
+        val normalized = normalize(utterance)
+        val match = contextualReportPattern.matchEntire(normalized) ?: return null
+        val value = parseNumber(match.groupValues[1]) ?: return null
+        val maximum = if (expectedUnit == "giây") 600 else 200
+        if (value !in 1..maximum) return null
+        return Report(value, expectedUnit)
     }
 }

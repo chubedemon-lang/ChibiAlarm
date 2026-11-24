@@ -91,6 +91,39 @@ class WorkoutSetReportCommandTest {
         assertNull(WorkoutSetReportCommand.parse("Tôi đã làm 10 lần rồi chuyển bài"))
     }
 
+    @Test fun activeExerciseSuppliesAnOmittedUnitForExplicitSelfReports() {
+        assertNull(WorkoutSetReportCommand.parse("Tao vừa làm được 6"))
+        assertEquals(
+            WorkoutSetReportCommand.Report(6, "lần"),
+            WorkoutSetReportCommand.parseInContext("Tao vừa làm được 6", "lần")
+        )
+        assertEquals(
+            WorkoutSetReportCommand.Report(15, "lần"),
+            WorkoutSetReportCommand.parseInContext("Tao đã làm được mười lăm rồi", "lần")
+        )
+        assertEquals(
+            WorkoutSetReportCommand.Report(20, "giây"),
+            WorkoutSetReportCommand.parseInContext("Mình giữ được hai mươi", "giây")
+        )
+        assertEquals(
+            WorkoutSetReportCommand.Report(15, "nhịp"),
+            WorkoutSetReportCommand.parseInContext("Tôi đã thực hiện 15", "nhịp")
+        )
+        // An explicitly spoken unit remains authoritative; the Activity checks mismatches.
+        assertEquals(
+            WorkoutSetReportCommand.Report(6, "lần"),
+            WorkoutSetReportCommand.parseInContext("Tao vừa làm được 6 lần", "giây")
+        )
+    }
+
+    @Test fun contextualReportsRejectAmbiguousOrUnsafeSpeech() {
+        assertNull(WorkoutSetReportCommand.parseInContext("6", "lần"))
+        assertNull(WorkoutSetReportCommand.parseInContext("Giảm còn 6", "lần"))
+        assertNull(WorkoutSetReportCommand.parseInContext("Tao vừa làm được 6 nhưng đau gối", "lần"))
+        assertNull(WorkoutSetReportCommand.parseInContext("Tao vừa làm được 201", "lần"))
+        assertNull(WorkoutSetReportCommand.parseInContext("Tao vừa làm được 601", "giây"))
+        assertNull(WorkoutSetReportCommand.parseInContext("Tao vừa làm được 6", null))
+    }
     @Test fun unitAndValueBoundsAreStrict() {
         assertNull(WorkoutSetReportCommand.parse("Tôi đã làm 10 lần rồi nghỉ"))
         assertNull(WorkoutSetReportCommand.parse("Tôi đã làm 0 lần"))

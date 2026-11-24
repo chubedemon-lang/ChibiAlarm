@@ -131,7 +131,7 @@ object WorkoutEffortScoreTrendConversation {
         val mentionsScore = query.contains("diem gang suc") ||
             query.contains("diem tu danh gia") ||
             query.contains("diem rpe") ||
-            Regex("\\\\brpe\\\\b").containsMatchIn(query) ||
+            Regex("\\brpe\\b").containsMatchIn(query) ||
             query.contains("diem 1 10") || query.contains("thang diem 1 10")
         if (!mentionsScore) return false
         return listOf(
@@ -149,9 +149,9 @@ object WorkoutEffortScoreTrendConversation {
             input.lowercase(Locale.ROOT).replace('đ', 'd'),
             Normalizer.Form.NFD
         )
-        return decomposed.replace(Regex("\\\\p{M}+"), "")
+        return decomposed.replace(Regex("\\p{M}+"), "")
             .replace(Regex("[^a-z0-9 ]"), " ")
-            .replace(Regex("\\\\s+"), " ")
+            .replace(Regex("\\s+"), " ")
             .trim()
     }
 }

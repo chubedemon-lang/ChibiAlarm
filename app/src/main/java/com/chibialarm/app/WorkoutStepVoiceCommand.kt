@@ -5,7 +5,7 @@ import java.util.Locale
 
 /** Small offline command grammar for the step-by-step guide; no transcript is retained. */
 object WorkoutStepVoiceCommand {
-    enum class Command { FIRST, NEXT, PREVIOUS, PAUSE, RESUME, AUTO_SPEAK_ON, AUTO_SPEAK_OFF, REPEAT, REPEAT_ANSWER, SUMMARY, STATUS, EASIER, OPEN_EASIER_ALTERNATIVES, SAFETY_NOTE, SPEECH_SLOWER, SPEECH_FASTER, SPEECH_NORMAL, REST, ASK_EXERCISE, CLOSE, SAFETY, UNKNOWN }
+    enum class Command { FIRST, NEXT, PREVIOUS, PAUSE, RESUME, AUTO_SPEAK_ON, AUTO_SPEAK_OFF, REPEAT, REPEAT_ANSWER, SUMMARY, STATUS, EASIER, OPEN_EASIER_ALTERNATIVES, SAFETY_NOTE, SPEECH_SLOWER, SPEECH_FASTER, SPEECH_NORMAL, REST, SKIP_REST, ASK_EXERCISE, CLOSE, SAFETY, UNKNOWN }
 
     private fun containsPhrase(text: String, phrase: String): Boolean =
         Regex("(^|\\s)" + Regex.escape(phrase) + "(\\s|$)").containsMatchIn(text)
@@ -73,7 +73,10 @@ object WorkoutStepVoiceCommand {
                 "khong tu doc", "dung tu doc", "khong doc tu dong", "dung doc tu dong",
                 "khong bat tu doc", "dung bat tu doc", "khong tat tu doc", "dung tat tu doc",
                 "do not turn on auto speak", "don t turn on auto speak",
-                "do not turn off auto speak", "don t turn off auto speak"
+                "do not turn off auto speak", "don t turn off auto speak",
+                "khong bo qua nghi", "dung bo qua nghi",
+                "khong bo qua thoi gian nghi", "dung bo qua thoi gian nghi",
+                "khong skip rest", "do not skip rest", "don t skip rest"
             ).any { normalized.contains(it) }) return Command.UNKNOWN
         if (WorkoutExerciseStepQuestion.isQuestion(utterance)) return Command.ASK_EXERCISE
         if (listOf(
@@ -137,6 +140,10 @@ object WorkoutStepVoiceCommand {
             ).any { normalized.contains(it) }) return Command.SAFETY_NOTE
         if (listOf("khong nghi them", "dung nghi them", "khong them thoi gian nghi")
                 .any { normalized.contains(it) }) return Command.UNKNOWN
+        if (listOf(
+                "bo qua nghi", "bo qua thoi gian nghi", "ket thuc nghi som",
+                "ket thuc thoi gian nghi", "skip rest", "skip the rest", "skip rest timer", "end rest early"
+            ).any { normalized.contains(it) }) return Command.SKIP_REST
         if (listOf("nghi them", "them thoi gian nghi", "keo dai thoi gian nghi", "rest more", "extend rest")
                 .any { normalized.contains(it) }) return Command.REST
         if (listOf(

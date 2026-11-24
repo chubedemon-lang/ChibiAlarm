@@ -1,5 +1,9 @@
 package com.chibialarm.app.fitness
 
+import com.chibialarm.app.TrainingMove
+import com.chibialarm.app.WorkoutConstraintFilter
+import com.chibialarm.app.WorkoutConstraintProfile
+
 /**
  * Context-aware quick prompts for the live workout coach.
  *
@@ -19,7 +23,8 @@ internal object WorkoutCoachQuickPrompts {
         safetyStopped: Boolean = false,
         hasNextExercise: Boolean = false,
         hasCompletedSets: Boolean = false,
-        hasLatestEffortCheckIn: Boolean = false
+        hasLatestEffortCheckIn: Boolean = false,
+        remainingUnstartedMoves: List<TrainingMove> = emptyList()
     ): List<Prompt> {
         if (safetyStopped) return emptyList()
 
@@ -43,6 +48,16 @@ internal object WorkoutCoachQuickPrompts {
         }
         if (hasOptionalCurrentSets) {
             prompts += Prompt("Chỉ hiệp bắt buộc", "Chỉ làm hiệp bắt buộc")
+        }
+        // Offer constraint shortcuts only when the unstarted remainder actually contains
+        // affected catalog moves. These prompts still require the normal preview/confirmation.
+        val remaining = remainingUnstartedMoves.take(500)
+        if (remaining.any { it.requiresKneeling }) {
+            prompts += Prompt("Không quỳ gối", "Từ giờ không quỳ gối")
+        }
+        val avoidFloorProfile = WorkoutConstraintProfile(avoidFloorPositions = true)
+        if (remaining.any { !WorkoutConstraintFilter.isAllowed(it, avoidFloorProfile) }) {
+            prompts += Prompt("Không nằm sàn", "Từ giờ không nằm sàn")
         }
         if (hasNextExercise) {
             // The router answers from the next catalog move, not the exercise currently open.

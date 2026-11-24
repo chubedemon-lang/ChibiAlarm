@@ -631,4 +631,41 @@ class WorkoutHistoryConversationTest {
         assertFalse(answer.contains("private"))
     }
 
+
+    @Test fun numericEffortScoresCanRequestAnOptInLighterSessionDraft() {
+        val previous = Workout(
+            date = today.minusDays(1).toString(),
+            name = "Guided Workout",
+            minutes = 25,
+            note = "private previous note",
+            sessionId = "550e8400-e29b-41d4-a716-446655440123",
+            completedMoves = 2,
+            selfReportedSets = 2,
+            effortScoreLog = "0:7.8"
+        )
+        val latest = Workout(
+            date = today.toString(),
+            name = "Guided Workout",
+            minutes = 25,
+            note = "private latest note",
+            sessionId = "550e8400-e29b-41d4-a716-446655440124",
+            completedMoves = 2,
+            selfReportedSets = 2,
+            effortScoreLog = "0:8.9"
+        )
+
+        val answer = WorkoutHistoryConversation.answer(
+            "Dựa trên điểm gắng sức, gợi ý buổi tập nhẹ hơn",
+            listOf(previous, latest),
+            today
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("Hai buổi Guided Workout hợp lệ gần nhất"))
+        assertTrue(answer.contains("8,5/10"))
+        assertTrue(answer.contains("7,5/10"))
+        assertTrue(answer.contains("bản nháp"))
+        assertTrue(answer.contains("chưa thay đổi giáo án"))
+        assertFalse(answer.contains("private"))
+    }
 }

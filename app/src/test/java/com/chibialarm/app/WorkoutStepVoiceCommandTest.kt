@@ -157,6 +157,8 @@ class WorkoutStepVoiceCommandTest {
             "Không bỏ qua nghỉ",
             "Đừng bỏ qua thời gian nghỉ",
             "Không skip rest",
+            "Don't skip the rest timer",
+            "Skip the rest of the workout",
             "Giữ thời gian nghỉ"
         )) {
             assertEquals(

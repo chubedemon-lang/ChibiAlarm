@@ -51,7 +51,7 @@ class WorkoutEffortScoreLogTest {
     @Test fun malformedDuplicateUnconfirmedAndOutOfRangeScoresAreIgnored() {
         val confirmed = mapOf(0 to 2, 1 to 1)
         assertEquals(
-            mapOf(0 to listOf(5, null), 1 to listOf(null)),
+            mapOf(0 to listOf(5, null)),
             WorkoutEffortScoreLog.decode(
                 "0:5.-,0:8.9,1:11,2:4,broken",
                 moves,

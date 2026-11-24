@@ -26,6 +26,7 @@ class CoachFitnessHandoffTest {
         avoidWristLoad = true,
         avoidFloorPositions = false,
         avoidOverheadReach = true,
+        avoidKneeling = true,
         additionalEquipment = selectedTools
     )
 
@@ -45,6 +46,7 @@ class CoachFitnessHandoffTest {
         assertEquals(true, restored.avoidWristLoad)
         assertEquals(false, restored.avoidFloorPositions)
         assertEquals(true, restored.avoidOverheadReach)
+        assertEquals(true, restored.avoidKneeling)
         assertEquals(selectedTools, restored.additionalEquipment)
         assertFalse(bundle.containsKey("fitness_reply"))
         assertFalse(bundle.containsKey("fitness_transcript"))
@@ -68,6 +70,7 @@ class CoachFitnessHandoffTest {
         val restored = field.get(controller.get()) as FitnessNaturalRequest.Result
         assertEquals(selectedTools, restored.additionalEquipment)
         assertEquals(true, restored.avoidWristLoad)
+        assertEquals(true, restored.avoidKneeling)
         controller.pause().stop().destroy()
     }
 

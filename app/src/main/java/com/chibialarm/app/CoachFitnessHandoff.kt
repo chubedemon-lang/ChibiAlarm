@@ -23,6 +23,7 @@ object CoachFitnessHandoff {
         snapshot.avoidWristLoad?.let { bundle.putBoolean("fitness_avoid_wrist_load", it) }
         snapshot.avoidFloorPositions?.let { bundle.putBoolean("fitness_avoid_floor_positions", it) }
         snapshot.avoidOverheadReach?.let { bundle.putBoolean("fitness_avoid_overhead_reach", it) }
+        snapshot.avoidKneeling?.let { bundle.putBoolean("fitness_avoid_kneeling", it) }
         snapshot.additionalEquipment?.let { selected ->
             bundle.putStringArrayList(
                 "fitness_additional_equipment",
@@ -53,6 +54,7 @@ object CoachFitnessHandoff {
             avoidWristLoad = booleanValue("fitness_avoid_wrist_load"),
             avoidFloorPositions = booleanValue("fitness_avoid_floor_positions"),
             avoidOverheadReach = booleanValue("fitness_avoid_overhead_reach"),
+            avoidKneeling = booleanValue("fitness_avoid_kneeling"),
             additionalEquipment = additionalEquipment
         ).restore()
     }
@@ -68,6 +70,7 @@ object CoachFitnessHandoff {
         context.avoidWristLoad?.let { intent.putExtra(INTENT_PREFIX + "avoid_wrist_load", it) }
         context.avoidFloorPositions?.let { intent.putExtra(INTENT_PREFIX + "avoid_floor_positions", it) }
         context.avoidOverheadReach?.let { intent.putExtra(INTENT_PREFIX + "avoid_overhead_reach", it) }
+        context.avoidKneeling?.let { intent.putExtra(INTENT_PREFIX + "avoid_kneeling", it) }
         context.additionalEquipment?.let { selected ->
             intent.putStringArrayListExtra(
                 INTENT_PREFIX + "additional_equipment",

@@ -68,8 +68,13 @@ class GuidedWorkoutSetReportVoiceTest {
             assertEquals(0, completed[moveIndex] ?: 0)
 
             confirmation.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+            Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
 
-            assertEquals(1, completed[moveIndex])
+            assertEquals(
+                "completed=${completed[moveIndex]}, values=${(field("actualSetValuesByMove").get(activity) as Map<Int, List<Int>>)[moveIndex]}, index=${field("index").getInt(activity)}",
+                1,
+                completed[moveIndex] ?: 0
+            )
             @Suppress("UNCHECKED_CAST")
             val values = field("actualSetValuesByMove").get(activity) as Map<Int, List<Int>>
             assertEquals(listOf(6), values[moveIndex])
@@ -125,8 +130,13 @@ class GuidedWorkoutSetReportVoiceTest {
             assertEquals(1, completed[moveIndex])
 
             confirmation.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+            Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
 
-            assertEquals(listOf(8), values[moveIndex])
+            assertEquals(
+                "values=${values[moveIndex]}, completed=${completed[moveIndex]}, index=${field("index").getInt(activity)}",
+                listOf(8),
+                values[moveIndex]
+            )
             assertEquals(1, completed[moveIndex])
             assertEquals("lần", plan.unit)
         } finally {

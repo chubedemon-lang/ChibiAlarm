@@ -69,11 +69,20 @@ class FitnessActivityRoutineLaunchTest {
         try {
             val impact = field("impactRestrictionSpinner").get(activity) as Spinner
             impact.setSelection(2)
+            Shadows.shadowOf(Looper.getMainLooper()).idle()
+            assertEquals(2, impact.selectedItemPosition)
+            val effective = FitnessActivity::class.java.getDeclaredMethod("effectiveImpactRestriction")
+                .apply { isAccessible = true }
+                .invoke(activity) as Int
+            assertEquals(2, effective)
             val review = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
             review.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
             val safety = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
             assertTrue(safety.isShowing)
-            assertTrue(message(safety).contains("đang đau hoặc có chấn thương"))
+            assertTrue(
+                "Expected the injury stop dialog, received: ${message(safety)}",
+                message(safety).contains("đang đau hoặc có chấn thương")
+            )
         } finally {
             activity.finish()
         }

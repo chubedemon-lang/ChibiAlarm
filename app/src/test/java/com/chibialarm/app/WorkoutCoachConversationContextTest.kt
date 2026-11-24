@@ -251,4 +251,28 @@ class WorkoutCoachConversationContextTest {
         assertTrue(answer.contains(expectedStep.take(50)))
         assertFalse(answer.contains(squat.name))
     }
+
+    @Test fun followUpAboutRememberedExerciseAcceptsHoiNayAndTruocDoSpeech() {
+        val context = WorkoutCoachConversationContext()
+        context.answer("Cách tập ${walk.name}?", activeMove = squat)
+
+        val hoiNay = context.answer(
+            input = "Động tác hồi nãy cần dụng cụ gì?",
+            activeMove = squat
+        )
+        assertNotNull(hoiNay)
+        assertTrue(hoiNay!!.contains(walk.name))
+        assertTrue(hoiNay.contains("không yêu cầu dụng cụ riêng"))
+        assertFalse(hoiNay.contains(squat.name))
+
+        val truocDo = context.answer(
+            input = "Bài trước đó thở thế nào?",
+            activeMove = squat
+        )
+        assertNotNull(truocDo)
+        assertTrue(truocDo!!.contains(walk.name))
+        assertTrue(truocDo.contains("Thở tự nhiên"))
+        assertFalse(truocDo.contains(squat.name))
+    }
+
 }

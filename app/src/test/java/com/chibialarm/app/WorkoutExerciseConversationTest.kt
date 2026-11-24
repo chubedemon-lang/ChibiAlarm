@@ -369,4 +369,27 @@ class WorkoutExerciseConversationTest {
         assertTrue(answer.contains("đẩy hông nhẹ về sau"))
     }
 
+
+    @Test fun naturalPreviousExercisePhrasesAreContextualButUnknownExerciseNamesStillFailClosed() {
+        listOf(
+            "Bài hồi nãy cần dụng cụ gì?",
+            "Động tác khi nãy thở thế nào?",
+            "Bài trước đó nghỉ bao lâu?"
+        ).forEach { phrase ->
+            assertTrue(phrase, WorkoutExerciseConversation.isContextualQuestion(phrase))
+            assertFalse(phrase, WorkoutExerciseConversation.hasUnknownExplicitExerciseName(phrase))
+        }
+
+        assertTrue(
+            WorkoutExerciseConversation.hasUnknownExplicitExerciseName(
+                "Cách tập Burpee biến thể lạ?"
+            )
+        )
+        assertFalse(
+            WorkoutExerciseConversation.isContextualQuestion(
+                "Cách tập Burpee biến thể lạ?"
+            )
+        )
+    }
+
 }

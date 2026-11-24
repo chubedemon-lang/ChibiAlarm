@@ -78,7 +78,9 @@ object WorkoutExerciseConversation {
         val query = normalize(input)
         return listOf(
             "bai do", "dong tac do", "bai vua noi", "dong tac vua noi",
-            "bai vua nhac", "dong tac vua nhac", "bai luc nay", "dong tac luc nay"
+            "bai vua nhac", "dong tac vua nhac", "bai luc nay", "dong tac luc nay",
+            "bai hoi nay", "dong tac hoi nay", "bai khi nay", "dong tac khi nay",
+            "bai truoc do", "dong tac truoc do"
         ).any(query::contains)
     }
 
@@ -94,7 +96,9 @@ object WorkoutExerciseConversation {
         if (listOf(
                 "bai nay", "dong tac nay", "bai hien tai", "dong tac hien tai",
                 "bai dang tap", "dong tac dang tap", "bai do", "dong tac do",
-                "bai vua noi", "dong tac vua noi", "bai vua nhac", "dong tac vua nhac"
+                "bai vua noi", "dong tac vua noi", "bai vua nhac", "dong tac vua nhac",
+                "bai hoi nay", "dong tac hoi nay", "bai khi nay", "dong tac khi nay",
+                "bai truoc do", "dong tac truoc do"
             ).any(query::contains)
         ) return false
 

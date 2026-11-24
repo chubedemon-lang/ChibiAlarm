@@ -143,6 +143,7 @@ class FitnessActivity:Activity() {
         historyEffortInsightView = null
         historyEffortAction = null
         effortPlanSuggestion = null
+        effortScorePlanSuggestion = null
         historySteadyProgressView = null
         historySteadyProgressAction = null
         steadyProgressSuggestion = null
@@ -328,6 +329,7 @@ class FitnessActivity:Activity() {
     private var historyEffortAction: Button? = null
     private var coachRequestInput: EditText? = null
     private var effortPlanSuggestion: WorkoutEffortPlanAdvisor.Suggestion? = null
+    private var effortScorePlanSuggestion: WorkoutEffortScorePlanAdvisor.Suggestion? = null
     private var historySteadyProgressView: TextView? = null
     private var historySteadyProgressAction: Button? = null
     private var steadyProgressSuggestion: WorkoutSteadyProgressAdvisor.Suggestion? = null
@@ -467,10 +469,14 @@ class FitnessActivity:Activity() {
         // seven-day window before it can offer a lighter-session choice.
         val effortSuggestion = WorkoutEffortPlanAdvisor.suggest(workouts, lookbackDays = 7)
         effortPlanSuggestion = effortSuggestion
+        val numericScoreSuggestion = WorkoutEffortScorePlanAdvisor.suggest(workouts, lookbackDays = 7)
+        effortScorePlanSuggestion = numericScoreSuggestion
         val latestEffortSummary = WorkoutEffortHistoryConversation.latestSummary(workouts)
-        val effortInsightText = listOfNotNull(latestEffortSummary, effortSuggestion?.message)
-            .joinToString("\n\n")
-            .takeIf { it.isNotBlank() }
+        val effortInsightText = listOfNotNull(
+            latestEffortSummary,
+            effortSuggestion?.message,
+            numericScoreSuggestion?.message
+        ).joinToString("\n\n").takeIf { it.isNotBlank() }
         val steadySuggestion = WorkoutSteadyProgressAdvisor.suggest(workouts)
         steadyProgressSuggestion = steadySuggestion
         historySteadyProgressView?.apply {
@@ -485,8 +491,11 @@ class FitnessActivity:Activity() {
         }
         historyEffortAction?.apply {
             visibility = if (effortInsightText != null) android.view.View.VISIBLE else android.view.View.GONE
-            text = if (effortSuggestion != null) "💬 Hỏi Chibi về buổi nhẹ hơn"
-                else "💬 Hỏi Chibi về check-in gần nhất"
+            text = when {
+                numericScoreSuggestion != null -> "💬 Xem buổi nhẹ hơn theo điểm tự chấm"
+                effortSuggestion != null -> "💬 Hỏi Chibi về buổi nhẹ hơn"
+                else -> "💬 Hỏi Chibi về check-in gần nhất"
+            }
         }
         historySummaryView?.apply {
             visibility = if (summary.sessions > 0) android.view.View.VISIBLE else android.view.View.GONE
@@ -841,7 +850,8 @@ class FitnessActivity:Activity() {
             isAllCaps = false
             visibility = android.view.View.GONE
             setOnClickListener {
-                val prompt = effortPlanSuggestion?.prompt
+                val prompt = effortScorePlanSuggestion?.prompt
+                    ?: effortPlanSuggestion?.prompt
                     ?: "Mức độ gắng sức buổi gần nhất thế nào?"
                 val input = coachRequestInput ?: return@setOnClickListener
                 input.setText(prompt)

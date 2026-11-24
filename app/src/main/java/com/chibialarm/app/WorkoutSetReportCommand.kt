@@ -141,4 +141,53 @@ object WorkoutSetReportCommand {
         if (value !in 1..maximum) return null
         return Report(value, expectedUnit)
     }
+
+    private val correctionIntentPattern = Regex(
+        "^(?:khong phai|y (?:toi|minh|tao|em|tui) la|sua thanh|dinh chinh(?: la| thanh)?)(?:\\s|$)"
+    )
+    private val correctionWithPreviousPattern = Regex(
+        "^khong phai\\s+($number)\\s+ma\\s+($number)\\s*(lan|cai|reps?|nhip|giay|s)?$"
+    )
+    private val correctionSinglePattern = Regex(
+        "^(?:khong phai|y (?:toi|minh|tao|em|tui) la|sua thanh|dinh chinh(?: la| thanh)?)\\s+($number)\\s*(lan|cai|reps?|nhip|giay|s)?$"
+    )
+
+    /** True only for an explicit correction lead-in, never a bare number or target edit. */
+    fun isCorrectionIntent(utterance: String): Boolean =
+        utterance.length in 1..160 && correctionIntentPattern.containsMatchIn(normalize(utterance))
+
+    /**
+     * Parses a correction to the latest already-confirmed self-report.
+     * The optional old value in "không phải 6 mà 8" must match the saved value.
+     * The active exercise supplies an omitted unit; no plan, set count or reward is changed here.
+     */
+    fun parseCorrection(utterance: String, previousValue: Int, expectedUnit: String?): Report? {
+        if (utterance.length !in 1..160 || previousValue !in 1..600 ||
+            expectedUnit == null || expectedUnit !in setOf("lần", "nhịp", "giây")
+        ) return null
+
+        val normalized = normalize(utterance)
+        val withPrevious = correctionWithPreviousPattern.matchEntire(normalized)
+        val single = if (withPrevious == null) correctionSinglePattern.matchEntire(normalized) else null
+        if (withPrevious == null && single == null) return null
+
+        val oldRaw = withPrevious?.groupValues?.get(1)?.takeIf { it.isNotBlank() }
+        val newRaw = withPrevious?.groupValues?.get(2) ?: single?.groupValues?.get(1) ?: return null
+        if (oldRaw != null && parseNumber(oldRaw) != previousValue) return null
+
+        val unitRaw = withPrevious?.groupValues?.get(3) ?: single?.groupValues?.get(2).orEmpty()
+        val spokenUnit = when (unitRaw) {
+            "" -> expectedUnit
+            "lan", "cai", "rep", "reps" -> "lần"
+            "nhip" -> "nhịp"
+            "giay", "s" -> "giây"
+            else -> return null
+        }
+        if (spokenUnit != expectedUnit) return null
+
+        val value = parseNumber(newRaw) ?: return null
+        val maximum = if (expectedUnit == "giây") 600 else 200
+        if (value !in 1..maximum) return null
+        return Report(value, expectedUnit)
+    }
 }

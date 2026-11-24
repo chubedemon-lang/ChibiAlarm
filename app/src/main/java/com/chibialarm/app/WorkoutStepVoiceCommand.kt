@@ -188,7 +188,7 @@ object WorkoutStepVoiceCommand {
             .replace(Regex("\\s+"), " ")
 
         val match = Regex(
-            """^(?:(?:chuyen|nhay|di|toi|den|mo|quay lai|quay ve|tro ve)\\s+(?:(?:toi|den|sang)\\s+)?|(?:dua toi den|dua tao den)\\s+)buoc(?:\\s+so)?\\s+([0-9]{1,2})$"""
+            """^(?:(?:chuyen|nhay|di|toi|den|mo|quay lai|quay ve|tro ve)\s+(?:(?:toi|den|sang)\s+)?|(?:dua toi den|dua tao den)\s+)buoc(?:\s+so)?\s+([0-9]{1,2})$"""
         ).matchEntire(normalized) ?: return null
         val position = match.groupValues[1].toIntOrNull() ?: return null
         return position.takeIf { it in 1..totalSteps }

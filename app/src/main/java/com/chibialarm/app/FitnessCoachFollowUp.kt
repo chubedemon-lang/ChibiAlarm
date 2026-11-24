@@ -18,6 +18,7 @@ object FitnessCoachFollowUp {
         WRIST_LOAD,
         FLOOR_POSITIONS,
         OVERHEAD_REACH,
+        KNEELING,
         ENERGY,
         COMPLETE
     }
@@ -71,6 +72,10 @@ object FitnessCoachFollowUp {
                 QuickReply("Tránh đưa tay quá đầu", "có"),
                 QuickReply("Có thể đưa tay quá đầu", "không")
             )
+            Question.KNEELING -> listOf(
+                QuickReply("Tránh quỳ gối", "tránh quỳ gối"),
+                QuickReply("Có thể quỳ gối", "có thể quỳ gối")
+            )
             Question.ENERGY -> listOf(
                 QuickReply("Hơi mệt", "hơi mệt"),
                 QuickReply("Hơi đuối", "hơi đuối"),
@@ -113,6 +118,7 @@ object FitnessCoachFollowUp {
         parsed.avoidWristLoad == null -> Question.WRIST_LOAD
         parsed.avoidFloorPositions == null -> Question.FLOOR_POSITIONS
         parsed.avoidOverheadReach == null -> Question.OVERHEAD_REACH
+        parsed.avoidKneeling == null -> Question.KNEELING
         parsed.energy == null -> Question.ENERGY
         else -> Question.COMPLETE
     }
@@ -147,6 +153,8 @@ object FitnessCoachFollowUp {
                 "Mày có cần tránh các tư thế nằm hoặc quỳ sàn không? Trả lời có/không."
             Question.OVERHEAD_REACH ->
                 "Mày có cần tránh đưa tay hoặc tải lên quá đầu không? Trả lời có/không."
+            Question.KNEELING ->
+                "Mày có cần tránh các động tác phải quỳ trên gối không? Trả lời có/không."
             Question.ENERGY ->
                 "Hôm nay mày thấy mệt hay còn nhiều năng lượng?"
             Question.COMPLETE ->

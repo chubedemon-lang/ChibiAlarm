@@ -308,4 +308,51 @@ class WorkoutRestVoiceCueTest {
         assertEquals(5, WorkoutRestVoiceCuePreference.leadSecondsForProgress(-1))
         assertEquals(20, WorkoutRestVoiceCuePreference.leadSecondsForProgress(99))
     }
+
+    @Test fun warningWindowIsBoundedEvenForCorruptCheckpointValues() {
+        assertTrue(
+            WorkoutRestVoiceCue.shouldAnnounce(
+                remainingMs = 20_000L,
+                alreadyAnnounced = false,
+                pausedForSafety = false,
+                warningWindowMs = Long.MAX_VALUE
+            )
+        )
+        assertFalse(
+            WorkoutRestVoiceCue.shouldAnnounce(
+                remainingMs = 20_001L,
+                alreadyAnnounced = false,
+                pausedForSafety = false,
+                warningWindowMs = Long.MAX_VALUE
+            )
+        )
+        assertEquals(
+            "Còn 20 giây nghỉ. Chuẩn bị cho động tác tiếp theo.",
+            WorkoutRestVoiceCue.message(20_000L, warningWindowMs = Long.MAX_VALUE)
+        )
+        assertTrue(
+            WorkoutRestVoiceCue.shouldAnnounce(
+                remainingMs = 1L,
+                alreadyAnnounced = false,
+                pausedForSafety = false,
+                warningWindowMs = Long.MIN_VALUE
+            )
+        )
+        assertFalse(
+            WorkoutRestVoiceCue.shouldAnnounce(
+                remainingMs = 2L,
+                alreadyAnnounced = false,
+                pausedForSafety = false,
+                warningWindowMs = Long.MIN_VALUE
+            )
+        )
+    }
+
+    @Test fun invalidWarningWindowCannotRearmTheCueDuringTheBoundedWindow() {
+        assertFalse(WorkoutRestVoiceCue.shouldRearm(20_000L, Long.MAX_VALUE))
+        assertTrue(WorkoutRestVoiceCue.shouldRearm(20_001L, Long.MAX_VALUE))
+        assertFalse(WorkoutRestVoiceCue.shouldRearm(1L, Long.MIN_VALUE))
+        assertTrue(WorkoutRestVoiceCue.shouldRearm(2L, Long.MIN_VALUE))
+    }
+
 }

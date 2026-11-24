@@ -52,6 +52,12 @@ object WorkoutVoiceCommands {
             .replace(Regex("\\p{M}+"), "").replace('đ', 'd')
             .replace(Regex("[^a-z0-9 ]"), " ").trim().replace(Regex("\\s+"), " ")
         if (normalized.isEmpty() || normalized.length > 160) return Command.UNKNOWN
+        // An explicit repetition/set unit is not a rest duration. Without a recognized
+        // time unit, do not turn "nghỉ thêm 10 lần/3 hiệp" into the default 30-second rest.
+        val namesWorkCount = Regex("""\\b(?:lan|hiep|rep|reps)\\b""").containsMatchIn(normalized)
+        if (namesWorkCount && !WorkoutRestRequest.hasRecognizedDuration(utterance)) {
+            return Command.UNKNOWN
+        }
         // 'bắt đầu' contains the unaccented token 'dau'; it is not a pain report.
         // Remove only this phrase for safety-token detection, preserving any actual 'đau' later.
         val safetyWords = normalized.replace(Regex("\\bbat dau\\b"), " ").split(' ').toSet()

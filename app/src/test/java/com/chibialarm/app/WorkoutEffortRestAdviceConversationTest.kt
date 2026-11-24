@@ -135,4 +135,39 @@ class WorkoutEffortRestAdviceConversationTest {
         assertTrue(answer!!.contains("đang dừng vì cảnh báo an toàn"))
         assertFalse(answer.contains("75 giây"))
     }
+    @Test fun confirmedNumericScoreIsIncludedInTheRestExplanation() {
+        val answer = WorkoutEffortRestAdviceConversation.answer(
+            input = "Nghỉ thêm bao lâu?",
+            prescribedRestSeconds = 45,
+            completedSets = 1,
+            effortLevels = listOf(hard),
+            effortScores = listOf(8)
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("tự đánh giá 8/10"))
+        assertTrue(answer.contains("75 giây"))
+    }
+
+    @Test fun mismatchedOrOutOfRangeNumericScoreIsRejected() {
+        assertNull(
+            WorkoutEffortRestAdviceConversation.answer(
+                input = "Nghỉ thêm bao lâu?",
+                prescribedRestSeconds = 45,
+                completedSets = 1,
+                effortLevels = listOf(hard),
+                effortScores = listOf(9)
+            )
+        )
+        assertNull(
+            WorkoutEffortRestAdviceConversation.answer(
+                input = "Nghỉ thêm bao lâu?",
+                prescribedRestSeconds = 45,
+                completedSets = 1,
+                effortLevels = listOf(hard),
+                effortScores = listOf(11)
+            )
+        )
+    }
+
 }

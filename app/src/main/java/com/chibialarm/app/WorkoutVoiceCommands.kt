@@ -55,7 +55,7 @@ object WorkoutVoiceCommands {
         if (normalized.isEmpty() || normalized.length > 160) return Command.UNKNOWN
         // A repetition/set unit is not a duration. Ask for clarification rather
         // than silently falling back to the default 30-second rest.
-        val namesWorkCount = Regex("""\b(?:lan|hiep|rep|reps)\\b""").containsMatchIn(normalized)
+        val namesWorkCount = Regex("""\b(?:lan|hiep|rep|reps)\b""").containsMatchIn(normalized)
         // 'bắt đầu' contains the unaccented token 'dau'; it is not a pain report.
         // Remove only this phrase for safety-token detection, preserving any actual 'đau' later.
         val safetyWords = normalized.replace(Regex("\\bbat dau\\b"), " ").split(' ').toSet()
@@ -119,7 +119,7 @@ object WorkoutVoiceCommands {
             WorkoutRestRequest.hasRecognizedDuration(utterance) -> Command.REST
             normalized.contains("nghi them") || normalized.contains("nghi mot chut") || normalized.contains("met roi") ||
                 normalized.contains("hoi met") || normalized.contains("met qua") ||
-                normalized.contains("met lam") || Regex("""\bnghi(?: them)?\\s+[0-9]{1,3}\\s*(?:giay|gi|s|phut)\\b""").containsMatchIn(normalized) ||
+                normalized.contains("met lam") || Regex("""\bnghi(?: them)?\s+[0-9]{1,3}\s*(?:giay|gi|s|phut)\b""").containsMatchIn(normalized) ||
                 normalized.contains("nghi mot phut") || normalized.contains("nghi hai phut") ||
                 normalized.contains("nghi chin muoi giay") || normalized.contains("nghi sau muoi giay") ||
                 normalized.contains("nghi ba muoi giay") || normalized.contains("can nghi") ||

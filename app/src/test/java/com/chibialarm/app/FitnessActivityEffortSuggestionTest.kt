@@ -243,6 +243,37 @@ class FitnessActivityEffortSuggestionTest {
         assertTrue(input.text.toString().contains("dựa trên điểm gắng sức tự chấm"))
         assertTrue(input.text.toString().contains("giữ nguyên hiệp đã hoàn thành"))
         assertTrue(input.text.toString().contains("không tự tăng"))
+
+        // A numeric-score insight must also expose the curated recovery preview.
+        // Tapping it opens the full exercise library review; it must not start the workout.
+        val recoveryAction = allViews.filterIsInstance<Button>().first {
+            it.text.toString() == "🌿 Xem bản xem trước buổi nhẹ hơn theo điểm tự chấm"
+        }
+        assertEquals(View.VISIBLE, recoveryAction.visibility)
+        recoveryAction.performClick()
+
+        val previewDialog = ShadowAlertDialog.getLatestAlertDialog()
+        assertNotNull("The recovery CTA must open a reviewed exercise preview", previewDialog)
+        assertTrue(previewDialog.isShowing)
+        assertEquals(
+            "▶ Bắt đầu",
+            previewDialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).text.toString()
+        )
+        assertEquals(
+            "Đóng",
+            previewDialog.getButton(android.app.AlertDialog.BUTTON_NEGATIVE).text.toString()
+        )
+        val previewRoot = previewDialog.findViewById<ViewGroup>(android.R.id.custom)
+        val previewViews = previewRoot?.let(::views).orEmpty()
+        assertTrue(
+            "The preview should include the offline movement illustration",
+            previewViews.any { it is WorkoutPoseView }
+        )
+        assertTrue(
+            previewViews.filterIsInstance<TextView>().any {
+                it.text.toString().contains("Hình minh họa chuyển động")
+            }
+        )
         controller.pause().stop().destroy()
     }
 }

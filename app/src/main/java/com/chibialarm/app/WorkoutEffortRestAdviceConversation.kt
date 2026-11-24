@@ -29,7 +29,8 @@ internal object WorkoutEffortRestAdviceConversation {
         input: String,
         prescribedRestSeconds: Int?,
         completedSets: Int?,
-        effortLevels: List<WorkoutEffortFeedback.Level?>?
+        effortLevels: List<WorkoutEffortFeedback.Level?>?,
+        effortScores: List<Int?>? = null
     ): String? {
         if (input.isBlank() || input.length > MAX_INPUT_CHARS) return null
         val query = normalize(input)
@@ -39,10 +40,14 @@ internal object WorkoutEffortRestAdviceConversation {
         val confirmedCount = completedSets?.takeIf { it in 1..MAX_SETS } ?: return null
         val reports = effortLevels ?: emptyList()
         if (reports.size > MAX_SETS) return null
+        val scores = effortScores ?: emptyList()
+        if (scores.size > MAX_SETS || scores.any { it != null && it !in 1..10 }) return null
 
         // The latest confirmed set must have its own rating. Never borrow an earlier label.
         val confirmedReports = reports.take(confirmedCount)
         val latest = confirmedReports.getOrNull(confirmedCount - 1)
+        val latestScore = scores.getOrNull(confirmedCount - 1)
+        if (latestScore != null && latest != WorkoutEffortFeedback.levelForScore(latestScore)) return null
         if (latest == null) {
             return "Hiệp $confirmedCount chưa có check-in cảm nhận hợp lệ. " +
                 "Theo giáo án, thời gian nghỉ là $prescribed giây; nếu vẫn chưa sẵn sàng, " +
@@ -60,17 +65,20 @@ internal object WorkoutEffortRestAdviceConversation {
             WorkoutEffortFeedback.recommend(
                 level = latest,
                 prescribedRestSeconds = prescribed,
-                previousLevelsForSameMove = confirmedReports.dropLast(1)
+                previousLevelsForSameMove = confirmedReports.dropLast(1),
+                score = latestScore
             )
         }.getOrNull() ?: return null
 
         return if (latest == WorkoutEffortFeedback.Level.HARD) {
-            "Theo check-in hiệp $confirmedCount (“${latest.label}”), " +
+            val scoreLabel = latestScore?.let { " (tự đánh giá $it/10)" }.orEmpty()
+            "Theo check-in hiệp $confirmedCount (“${latest.label}" + scoreLabel + "), " +
                 "Chibi gợi ý nghỉ ${recommendation.restSeconds} giây " +
                 "(giáo án: $prescribed giây). Đây chỉ là gợi ý từ cảm nhận bạn tự khai báo; " +
                 "đồng hồ không tự chạy và Chibi không tăng số lần, số hiệp hay tải tập."
         } else {
-            "Theo check-in hiệp $confirmedCount (“${latest.label}”), " +
+            val scoreLabel = latestScore?.let { " (tự đánh giá $it/10)" }.orEmpty()
+            "Theo check-in hiệp $confirmedCount (“${latest.label}" + scoreLabel + "), " +
                 "Chibi chưa thấy lý do từ check-in để tăng thời gian nghỉ: " +
                 "giữ mức ${prescribed} giây theo giáo án. Nếu bạn vẫn chưa sẵn sàng, " +
                 "có thể nghỉ lâu hơn; không cần cố hoàn thành ngay."

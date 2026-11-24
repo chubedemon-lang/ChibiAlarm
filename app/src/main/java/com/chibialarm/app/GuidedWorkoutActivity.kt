@@ -4146,7 +4146,7 @@ class GuidedWorkoutActivity:Activity() {
                     append(it).append("\n\n")
                 }
                 append(optionalNotice)
-                append("Chọn cảm nhận của bạn. Đây là tự đánh giá để điều chỉnh nghỉ, không phải phép đo thể lực.")
+                append("Chọn cảm nhận của bạn hoặc nói mức gắng sức từ 1 đến 10 (1–3 nhẹ, 4–6 vừa sức, 7–8 khó, 9–10 quá sức). Đây là tự đánh giá, không phải phép đo thể lực.")
             })
             .setItems(levels.map { it.label }.toTypedArray()) { owner, choice ->
                 val level = levels.getOrNull(choice) ?: return@setItems
@@ -4184,9 +4184,9 @@ class GuidedWorkoutActivity:Activity() {
         dialog.setOnShowListener {
             val spokenFeedback = resultFeedback?.takeIf { it.isNotBlank() }
             val prompt = if (spokenFeedback == null) {
-                "Hiệp vừa rồi thế nào? Nói nhẹ, vừa sức, quá khó nhưng vẫn làm được, hoặc quá sức."
+                "Hiệp vừa rồi thế nào? Nói nhẹ, vừa sức, khó nhưng vẫn làm được, quá sức hoặc mức gắng sức từ 1 đến 10."
             } else {
-                "$spokenFeedback Hiệp vừa rồi thế nào? Chọn nhẹ, vừa sức, khó hoặc quá sức."
+                "$spokenFeedback Hiệp vừa rồi thế nào? Chọn nhẹ, vừa sức, khó, quá sức hoặc nói mức gắng sức từ 1 đến 10."
             }
             // One utterance prevents QUEUE_FLUSH from cutting off the result summary.
             speak(prompt)
@@ -4300,20 +4300,21 @@ class GuidedWorkoutActivity:Activity() {
                 }
                 pendingEffortLevel = parsed.level
                 checkInDialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = true
+                val recognizedEffort = parsed.score?.let { "Mức tự đánh giá ${it}/10 — " }.orEmpty()
                 checkInDialog.setMessage(
-                    "🐰 Chibi nghe được: ${parsed.level.label}.\n\n" +
+                    "🐰 Chibi nghe được: $recognizedEffort${parsed.level.label}.\n\n" +
                         "Đây là tự đánh giá của bạn, không phải phép đo thể lực. " +
                         "Chibi chưa lưu câu trả lời. Nếu đúng, nói “đúng rồi” hoặc nhấn xác nhận; " +
                         "nếu chưa đúng, nói “chưa đúng, chọn lại” hoặc chọn mức khác."
                 )
-                speak("Chibi nghe được ${parsed.level.label}. Hãy kiểm tra rồi xác nhận.")
+                speak(parsed.score?.let { "Chibi nghe được mức $it trên 10, ${parsed.level.label}. Hãy kiểm tra rồi xác nhận." } ?: "Chibi nghe được ${parsed.level.label}. Hãy kiểm tra rồi xác nhận.")
             }
             null -> {
                 pendingEffortLevel = null
                 checkInDialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = false
                 checkInDialog.setMessage(
-                    "Chibi chưa hiểu cảm nhận. Hãy nói “nhẹ”, “vừa sức”, “quá khó nhưng vẫn làm được”, " +
-                        "“khá vất vả nhưng vẫn kiểm soát được” hoặc “quá sức”, rồi thử lại; " +
+                    "Chibi chưa hiểu cảm nhận. Hãy nói “nhẹ”, “vừa sức”, “khó nhưng vẫn làm được”, " +
+                        "“quá sức” hoặc mức gắng sức từ 1 đến 10, rồi thử lại; " +
                         "hoặc chọn trực tiếp trong danh sách. " +
                         "Câu chưa rõ sẽ không được ghi nhận."
                 )

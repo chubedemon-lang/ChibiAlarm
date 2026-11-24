@@ -12,7 +12,7 @@ import java.util.Locale
  */
 object WorkoutEffortVoiceCommand {
     sealed class Result {
-        data class Report(val level: WorkoutEffortFeedback.Level) : Result()
+        data class Report(val level: WorkoutEffortFeedback.Level, val score: Int? = null) : Result()
         object Confirm : Result()
         object Revise : Result()
         object SafetyStop : Result()
@@ -134,6 +134,18 @@ object WorkoutEffortVoiceCommand {
         return variants
     }
 
+    private val numericScorePattern = Regex(
+        "^(?:(?:muc(?: do)?|muc gang suc|rpe)\\s*)?([0-9]{1,2})(?:\\s+(?:tren|out of)\\s+10|\\s+10)?$"
+    )
+
+    private fun levelForScore(score: Int): WorkoutEffortFeedback.Level? = when (score) {
+        in 1..3 -> WorkoutEffortFeedback.Level.EASY
+        in 4..6 -> WorkoutEffortFeedback.Level.MODERATE
+        in 7..8 -> WorkoutEffortFeedback.Level.HARD
+        in 9..10 -> WorkoutEffortFeedback.Level.VERY_HARD
+        else -> null
+    }
+
     fun parse(utterance: String): Result? {
         if (utterance.length !in 1..160) return null
         // The word "đầu" in "đầu gối" names a body part; do not mistake it for "đau".
@@ -150,6 +162,16 @@ object WorkoutEffortVoiceCommand {
         val variants = exactAnswerVariants(normalized)
         if (variants.any(confirmationPhrases::contains)) return Result.Confirm
         if (variants.any(correctionPhrases::contains)) return Result.Revise
+
+        // Numeric ratings are accepted only inside the explicit post-set effort prompt.
+        // A full-string match prevents "7 reps" or "increase to 10" becoming effort data.
+        val scoreMatch = numericScorePattern.matchEntire(normalized)
+        if (scoreMatch != null) {
+            val score = scoreMatch.groupValues[1].toIntOrNull() ?: return null
+            val level = levelForScore(score) ?: return null
+            return Result.Report(level, score)
+        }
+
         val matches = phrases.filter { (_, accepted) -> variants.any(accepted::contains) }
         if (matches.size != 1) return null
         return Result.Report(matches.single().first)

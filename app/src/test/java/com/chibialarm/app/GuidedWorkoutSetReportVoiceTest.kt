@@ -33,6 +33,7 @@ class GuidedWorkoutSetReportVoiceTest {
                 .putExtra("program", "full")
                 .putExtra("minutes", 30)
         ).setup().get()
+        Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
 
         fun field(name: String) =
             GuidedWorkoutActivity::class.java.getDeclaredField(name).apply { isAccessible = true }
@@ -56,6 +57,7 @@ class GuidedWorkoutSetReportVoiceTest {
                 String::class.java
             ).apply { isAccessible = true }
                 .invoke(activity, "Tao vừa làm được sáu")
+            Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
 
             val confirmation = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
             assertTrue(confirmation.isShowing)
@@ -120,6 +122,7 @@ class GuidedWorkoutSetReportVoiceTest {
                 String::class.java
             ).apply { isAccessible = true }
                 .invoke(activity, "Không phải, tám")
+            Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
 
             val confirmation = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
             assertTrue(confirmation.isShowing)

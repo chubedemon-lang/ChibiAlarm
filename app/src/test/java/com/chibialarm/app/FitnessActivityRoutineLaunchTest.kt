@@ -77,6 +77,7 @@ class FitnessActivityRoutineLaunchTest {
             assertEquals(2, effective)
             val review = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
             review.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+            Shadows.shadowOf(Looper.getMainLooper()).idle()
             val safety = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
             assertTrue(safety.isShowing)
             assertTrue(

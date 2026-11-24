@@ -161,6 +161,33 @@ class WorkoutEffortVoiceCommandTest {
         )
     }
 
+    @Test fun recognizesNumericPerceivedEffortOnlyInsideThePostSetCheckIn() {
+        val cases = listOf(
+            Triple("1", WorkoutEffortFeedback.Level.EASY, 1),
+            Triple("3/10", WorkoutEffortFeedback.Level.EASY, 3),
+            Triple("mức 4", WorkoutEffortFeedback.Level.MODERATE, 4),
+            Triple("6 trên 10", WorkoutEffortFeedback.Level.MODERATE, 6),
+            Triple("RPE 7", WorkoutEffortFeedback.Level.HARD, 7),
+            Triple("8/10", WorkoutEffortFeedback.Level.HARD, 8),
+            Triple("mức gắng sức 9", WorkoutEffortFeedback.Level.VERY_HARD, 9),
+            Triple("10 trên 10", WorkoutEffortFeedback.Level.VERY_HARD, 10)
+        )
+        cases.forEach { (phrase, level, score) ->
+            assertEquals(
+                phrase,
+                WorkoutEffortVoiceCommand.Result.Report(level, score),
+                WorkoutEffortVoiceCommand.parse(phrase)
+            )
+        }
+        for (phrase in listOf("0", "11", "7 lần", "tăng lên 10 lần", "7/20")) {
+            assertNull(phrase, WorkoutEffortVoiceCommand.parse(phrase))
+        }
+        assertEquals(
+            WorkoutEffortVoiceCommand.Result.SafetyStop,
+            WorkoutEffortVoiceCommand.parse("mức 10 nhưng tôi đau ngực")
+        )
+    }
+
     @Test fun acceptsAnExplicitSecondTurnConfirmationOnly() {
         for (phrase in listOf("Đúng rồi", "Chính xác", "Xác nhận", "Chuẩn rồi", "OK")) {
             assertEquals(

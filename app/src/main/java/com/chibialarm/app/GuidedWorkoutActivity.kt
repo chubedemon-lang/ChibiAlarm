@@ -1158,7 +1158,7 @@ class GuidedWorkoutActivity:Activity() {
         val effortRequest = requestCode == effortVoiceRequest
         val previewRequest = requestCode == previewVoiceRequest
         val prompt = when {
-            guideRequest -> "Nói: bước tiếp, bước trước, hỏi bước 2 là gì, đọc lại, bật tự đọc, tắt tự đọc, tạm dừng buổi tập, tiếp tục buổi tập hoặc đóng hướng dẫn. Nếu đau hay khó thở, hãy nói rõ."
+            guideRequest -> "Nói: bước tiếp, bước trước, chuyển tới bước 2 hoặc bước thứ hai, hỏi bước 2 là gì, đọc lại, bật tự đọc, tắt tự đọc, tạm dừng buổi tập, tiếp tục buổi tập hoặc đóng hướng dẫn. Nếu đau hay khó thở, hãy nói rõ."
             effortRequest -> "Nói cảm nhận hiệp vừa rồi: nhẹ, vừa sức, khó cần nghỉ thêm hoặc quá sức. Nếu đau hay khó thở, hãy nói rõ."
             previewRequest -> "Nói rõ: xác nhận áp dụng, đồng ý áp dụng, hoặc giữ nguyên, hủy thay đổi. Nếu đau hoặc khó thở, hãy nói rõ."
             else -> "Ví dụ: tôi đã làm 10 lần, tôi giữ 20 giây, xong hiệp, bài này khó quá, nghỉ thêm, đổi bài, dừng lại"
@@ -3466,8 +3466,8 @@ class GuidedWorkoutActivity:Activity() {
         }
         val voiceButton = Button(this).apply {
             tag = "workout-step-voice-control"
-            text = "🎤 Nói: bước tiếp, bước trước, quay về bước đầu, hỏi bước 2 là gì, hỏi cách tập, hỏi dụng cụ, hỏi nhóm cơ, nghỉ bao lâu, nghỉ thêm, đọc cách tập dễ hơn, lưu ý an toàn, đọc tiến độ buổi tập, đọc lại câu trả lời, bật tự đọc, tắt tự đọc, điều chỉnh giáo án"
-            contentDescription = "Mở nhận dạng giọng nói sau khi xác nhận quyền micro. Lệnh hỗ trợ: bước tiếp, bước trước, quay về bước đầu, hỏi bước 2 là gì, hỏi cách tập, hỏi dụng cụ, hỏi nhóm cơ, nghỉ bao lâu, nghỉ thêm, đọc cách tập dễ hơn, đọc lưu ý an toàn, đọc tiến độ buổi tập, đọc lại câu trả lời, bật hoặc tắt tự đọc, yêu cầu đổi bài nhẹ hơn hoặc điều chỉnh phần còn lại của giáo án. Chibi sẽ xem trước và chờ xác nhận, không tự áp dụng. Nếu đau, khó thở hoặc chóng mặt, hãy nói rõ để dừng buổi tập."
+            text = "🎤 Nói: bước tiếp, bước trước, chuyển tới bước 2 hoặc bước thứ hai, quay về bước đầu, hỏi bước 2 là gì, hỏi cách tập, hỏi dụng cụ, hỏi nhóm cơ, nghỉ bao lâu, nghỉ thêm, đọc cách tập dễ hơn, lưu ý an toàn, đọc tiến độ buổi tập, đọc lại câu trả lời, bật tự đọc, tắt tự đọc, điều chỉnh giáo án"
+            contentDescription = "Mở nhận dạng giọng nói sau khi xác nhận quyền micro. Lệnh hỗ trợ: bước tiếp, bước trước, chuyển tới bước 2 hoặc bước thứ hai, quay về bước đầu, hỏi bước 2 là gì, hỏi cách tập, hỏi dụng cụ, hỏi nhóm cơ, nghỉ bao lâu, nghỉ thêm, đọc cách tập dễ hơn, đọc lưu ý an toàn, đọc tiến độ buổi tập, đọc lại câu trả lời, bật hoặc tắt tự đọc, yêu cầu đổi bài nhẹ hơn hoặc điều chỉnh phần còn lại của giáo án. Chibi sẽ xem trước và chờ xác nhận, không tự áp dụng. Nếu đau, khó thở hoặc chóng mặt, hãy nói rõ để dừng buổi tập."
         }
         container.addView(illustration, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,

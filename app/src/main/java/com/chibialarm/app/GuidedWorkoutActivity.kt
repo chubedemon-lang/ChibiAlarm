@@ -123,9 +123,12 @@ class GuidedWorkoutActivity:Activity() {
     private val actualSetValuesByMove=mutableMapOf<Int,List<Int>>()
     // Optional subjective effort answers, keyed to the exact confirmed set; guest-local only.
     private val effortLevelsByMove=mutableMapOf<Int,List<WorkoutEffortFeedback.Level?>>()
+    // Exact numeric scores are optional and aligned to the same confirmed set indexes.
+    private val effortScoresByMove=mutableMapOf<Int,List<Int?>>()
     // One active check-in surface; a voice result remains pending until explicitly confirmed.
     private var activeEffortDialog: AlertDialog? = null
     private var pendingEffortLevel: WorkoutEffortFeedback.Level? = null
+    private var pendingEffortScore: Int? = null
     private lateinit var setProgress:TextView
     private lateinit var setProgressBar:ProgressBar
     private lateinit var completeSetButton:Button
@@ -202,6 +205,7 @@ class GuidedWorkoutActivity:Activity() {
             .putString("completedSets",WorkoutSetTracker.encode(completedSetsByMove,moves))
             .putString("setValues",WorkoutSetRepetitionLog.encode(actualSetValuesByMove,moves))
             .putString("effortLog",WorkoutEffortLog.encode(effortLevelsByMove,moves,completedSetsByMove))
+            .putString("effortScores",WorkoutEffortScoreLog.encode(effortScoresByMove,moves,completedSetsByMove))
             .putBoolean("resting",resting)
             .putLong("restRemaining",restRemainingMs.coerceIn(0L,600_000L))
             .putBoolean("restTenSecondCueGiven",restTenSecondCueGiven)
@@ -330,6 +334,10 @@ class GuidedWorkoutActivity:Activity() {
                 effortLevelsByMove.clear()
                 effortLevelsByMove.putAll(WorkoutEffortLog.decode(
                     checkpoint.getString("effortLog",null),moves,completedSetsByMove
+                ))
+                effortScoresByMove.clear()
+                effortScoresByMove.putAll(WorkoutEffortScoreLog.decode(
+                    checkpoint.getString("effortScores",null),moves,completedSetsByMove
                 ))
                 completedMoveIndices.removeAll { position ->
                     val plan=setPlan(position)
@@ -1015,6 +1023,12 @@ class GuidedWorkoutActivity:Activity() {
                     savedInstanceState.getString("workout_effort_log"), moves, completedSetsByMove
                 )
             )
+            effortScoresByMove.clear()
+            effortScoresByMove.putAll(
+                WorkoutEffortScoreLog.decode(
+                    savedInstanceState.getString("workout_effort_scores"), moves, completedSetsByMove
+                )
+            )
             completedMoveIndices.removeAll { position ->
                 val plan=setPlan(position)
                 plan!=null && !WorkoutSetTracker.isComplete(completedSetsByMove[position] ?: 0,plan)
@@ -1077,6 +1091,7 @@ class GuidedWorkoutActivity:Activity() {
         outState.putString("workout_completed_sets",WorkoutSetTracker.encode(completedSetsByMove,moves))
         outState.putString("workout_set_values",WorkoutSetRepetitionLog.encode(actualSetValuesByMove,moves))
         outState.putString("workout_effort_log",WorkoutEffortLog.encode(effortLevelsByMove,moves,completedSetsByMove))
+        outState.putString("workout_effort_scores",WorkoutEffortScoreLog.encode(effortScoresByMove,moves,completedSetsByMove))
         outState.putBoolean("workout_resting",resting)
         outState.putLong("workout_rest_remaining",restRemainingMs.coerceIn(0L,600_000L))
         outState.putBoolean("workout_rest_ten_second_cue",restTenSecondCueGiven)
@@ -4139,6 +4154,7 @@ class GuidedWorkoutActivity:Activity() {
         }
         val levels = WorkoutEffortFeedback.Level.values()
         pendingEffortLevel = null
+        pendingEffortScore = null
         val dialog = AlertDialog.Builder(this)
             .setTitle("💬 Hiệp vừa rồi thế nào?")
             .setMessage(buildString {
@@ -4155,6 +4171,7 @@ class GuidedWorkoutActivity:Activity() {
                 if (!isSameEffortContext(selectedIndex, selectedSessionId, completedSets, plan)) {
                     activeEffortDialog = null
                     pendingEffortLevel = null
+                    pendingEffortScore = null
                     active.dismiss()
                     Toast.makeText(this, "Buổi tập đã thay đổi; không áp dụng cảm nhận cũ.", Toast.LENGTH_LONG).show()
                     return@setItems
@@ -4163,6 +4180,7 @@ class GuidedWorkoutActivity:Activity() {
                 // positive confirmation button below and are never stored on recognition alone.
                 activeEffortDialog = null
                 pendingEffortLevel = null
+                pendingEffortScore = null
                 active.dismiss()
                 applyEffortCheckIn(
                     selectedIndex, selectedSessionId, completedSets, plan, hasNextSet, level
@@ -4179,6 +4197,7 @@ class GuidedWorkoutActivity:Activity() {
             if (activeEffortDialog === dialog) {
                 activeEffortDialog = null
                 pendingEffortLevel = null
+                pendingEffortScore = null
             }
         }
         dialog.setOnShowListener {
@@ -4198,10 +4217,12 @@ class GuidedWorkoutActivity:Activity() {
             contentDescription = "Xác nhận mức cảm nhận Chibi nhận dạng được bằng giọng nói"
             setOnClickListener {
                 val selected = pendingEffortLevel
+                val selectedScore = pendingEffortScore
                 if (activeEffortDialog !== dialog || selected == null) return@setOnClickListener
                 if (!isSameEffortContext(selectedIndex, selectedSessionId, completedSets, plan)) {
                     activeEffortDialog = null
                     pendingEffortLevel = null
+                    pendingEffortScore = null
                     dialog.dismiss()
                     Toast.makeText(this@GuidedWorkoutActivity,
                         "Buổi tập đã thay đổi; Chibi chưa lưu cảm nhận.", Toast.LENGTH_LONG).show()
@@ -4209,9 +4230,10 @@ class GuidedWorkoutActivity:Activity() {
                 }
                 activeEffortDialog = null
                 pendingEffortLevel = null
+                pendingEffortScore = null
                 dialog.dismiss()
                 applyEffortCheckIn(
-                    selectedIndex, selectedSessionId, completedSets, plan, hasNextSet, selected
+                    selectedIndex, selectedSessionId, completedSets, plan, hasNextSet, selected, selectedScore
                 )
             }
         }
@@ -4253,11 +4275,13 @@ class GuidedWorkoutActivity:Activity() {
             WorkoutEffortVoiceCommand.Result.SafetyStop -> {
                 activeEffortDialog = null
                 pendingEffortLevel = null
+                pendingEffortScore = null
                 checkInDialog.dismiss()
                 stopForSafety()
             }
             WorkoutEffortVoiceCommand.Result.Confirm -> {
                 val selected = pendingEffortLevel
+                val selectedScore = pendingEffortScore
                 if (selected == null) {
                     checkInDialog.setMessage(
                         "Chibi chưa có mức cảm nhận để xác nhận. Hãy nói nhẹ, vừa sức, khó hoặc quá sức trước."
@@ -4267,6 +4291,7 @@ class GuidedWorkoutActivity:Activity() {
                 }
                 if (!isSameEffortContext(selectedIndex, selectedSessionId, completedSets, plan)) {
                     pendingEffortLevel = null
+                    pendingEffortScore = null
                     checkInDialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = false
                     checkInDialog.setMessage(
                         "Buổi tập đã thay đổi. Chibi chưa lưu cảm nhận; hãy kiểm tra lại buổi tập."
@@ -4276,14 +4301,16 @@ class GuidedWorkoutActivity:Activity() {
                 }
                 activeEffortDialog = null
                 pendingEffortLevel = null
+                pendingEffortScore = null
                 checkInDialog.dismiss()
                 speak("Đã xác nhận ${selected.label}.")
                 applyEffortCheckIn(
-                    selectedIndex, selectedSessionId, completedSets, plan, hasNextSet, selected
+                    selectedIndex, selectedSessionId, completedSets, plan, hasNextSet, selected, selectedScore
                 )
             }
             WorkoutEffortVoiceCommand.Result.Revise -> {
                 pendingEffortLevel = null
+                pendingEffortScore = null
                 checkInDialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = false
                 checkInDialog.setMessage(
                     "Đã bỏ mức vừa nghe; Chibi chưa lưu cảm nhận. Hãy nói lại nhẹ, vừa sức, khó hoặc quá sức."
@@ -4293,12 +4320,14 @@ class GuidedWorkoutActivity:Activity() {
             is WorkoutEffortVoiceCommand.Result.Report -> {
                 if (!isSameEffortContext(selectedIndex, selectedSessionId, completedSets, plan)) {
                     pendingEffortLevel = null
+                    pendingEffortScore = null
                     checkInDialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = false
                     checkInDialog.setMessage("Buổi tập đã thay đổi. Chibi chưa lưu cảm nhận; hãy kiểm tra lại buổi tập.")
                     Toast.makeText(this, "Buổi tập đã thay đổi; không áp dụng cảm nhận cũ.", Toast.LENGTH_LONG).show()
                     return
                 }
                 pendingEffortLevel = parsed.level
+                pendingEffortScore = parsed.score
                 checkInDialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = true
                 val recognizedEffort = parsed.score?.let { "Mức tự đánh giá ${it}/10 — " }.orEmpty()
                 checkInDialog.setMessage(
@@ -4311,6 +4340,7 @@ class GuidedWorkoutActivity:Activity() {
             }
             null -> {
                 pendingEffortLevel = null
+                pendingEffortScore = null
                 checkInDialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = false
                 checkInDialog.setMessage(
                     "Chibi chưa hiểu cảm nhận. Hãy nói “nhẹ”, “vừa sức”, “khó nhưng vẫn làm được”, " +
@@ -4347,6 +4377,8 @@ class GuidedWorkoutActivity:Activity() {
         }
         val previousLevel = effortLevelsByMove[selectedIndex]
             ?.getOrNull(confirmedSets - 1)
+        val previousScore = effortScoresByMove[selectedIndex]
+            ?.getOrNull(confirmedSets - 1)
         if (previousLevel == null) {
             Toast.makeText(this, "Hiệp gần nhất chưa có cảm nhận được lưu.", Toast.LENGTH_LONG).show()
             return
@@ -4373,7 +4405,9 @@ class GuidedWorkoutActivity:Activity() {
         AlertDialog.Builder(this)
             .setTitle("Sửa cảm nhận hiệp $confirmedSets")
             .setMessage(
-                "Đang ghi nhận: ${previousLevel.label}. Chọn lại nếu lần chạm hoặc nhận dạng trước chưa đúng. " +
+                "Đang ghi nhận: ${previousLevel.label}" +
+                    (previousScore?.let { " (${it}/10)" } ?: "") +
+                    ". Chọn lại nếu lần chạm hoặc nhận dạng trước chưa đúng. " +
                     "Đây vẫn là tự đánh giá của bạn, không phải phép đo thể lực."
             )
             .setItems(choices.map { it.label }.toTypedArray()) { _, choice ->
@@ -4410,8 +4444,18 @@ class GuidedWorkoutActivity:Activity() {
                             Toast.makeText(this, "Không thể sửa cảm nhận; dữ liệu cũ được giữ nguyên.", Toast.LENGTH_LONG).show()
                             return@setPositiveButton
                         }
+                        val correctedScores = runCatching {
+                            WorkoutEffortScoreLog.correctLatest(
+                                effortScoresByMove, selectedIndex, moves, completedSetsByMove
+                            )
+                        }.getOrElse {
+                            Toast.makeText(this, "Không thể cập nhật điểm số cũ; dữ liệu trước đó được giữ nguyên.", Toast.LENGTH_LONG).show()
+                            return@setPositiveButton
+                        }
                         effortLevelsByMove.clear()
                         effortLevelsByMove.putAll(corrected)
+                        effortScoresByMove.clear()
+                        effortScoresByMove.putAll(correctedScores)
                         if (!saveCheckpoint()) {
                             Toast.makeText(this, "Đã sửa trong buổi này nhưng checkpoint chưa lưu được.", Toast.LENGTH_LONG).show()
                         }
@@ -4430,7 +4474,8 @@ class GuidedWorkoutActivity:Activity() {
         completedSets: Int,
         plan: WorkoutSetTracker.Plan,
         hasNextSet: Boolean,
-        level: WorkoutEffortFeedback.Level
+        level: WorkoutEffortFeedback.Level,
+        score: Int? = null
     ) {
         if (!isSameEffortContext(selectedIndex, selectedSessionId, completedSets, plan)) {
             Toast.makeText(this, "Buổi tập đã thay đổi; không áp dụng gợi ý cũ.", Toast.LENGTH_LONG).show()
@@ -4444,8 +4489,18 @@ class GuidedWorkoutActivity:Activity() {
             Toast.makeText(this, "Không thể lưu cảm nhận hiệp; tiến độ cũ được giữ nguyên.", Toast.LENGTH_LONG).show()
             return
         }
+        val updatedScores = runCatching {
+            WorkoutEffortScoreLog.append(
+                effortScoresByMove, selectedIndex, completedSets - 1, score, moves, completedSetsByMove
+            )
+        }.getOrElse {
+            Toast.makeText(this, "Không thể lưu điểm gắng sức; cảm nhận cũ được giữ nguyên.", Toast.LENGTH_LONG).show()
+            return
+        }
         effortLevelsByMove.clear()
         effortLevelsByMove.putAll(updated)
+        effortScoresByMove.clear()
+        effortScoresByMove.putAll(updatedScores)
         if (!saveCheckpoint()) {
             Toast.makeText(this, "Chưa lưu được cảm nhận này vào checkpoint; buổi tập vẫn có thể tiếp tục.", Toast.LENGTH_LONG).show()
         }
@@ -4870,6 +4925,7 @@ class GuidedWorkoutActivity:Activity() {
         }
         val setValueSummary=WorkoutSetRepetitionLog.summary(actualSetValuesByMove,moves)
         val effortValueSummary=WorkoutEffortLog.summary(effortLevelsByMove,moves,completedSetsByMove)
+        val effortScoreSummary=WorkoutEffortScoreLog.summary(effortScoresByMove,moves,completedSetsByMove)
         val workoutNote=buildString {
             append("Chibi Coach: $completedCount/${moves.size} động tác được ghi nhận; $setCompletedMoves động tác tự xác nhận hiệp ($selfReportedSets hiệp); $timerCompletedMoves động tác theo bộ đếm; $mins phút hoạt động. Số hiệp và giá trị từng hiệp là tự khai báo, không được cảm biến xác minh.")
             if(setValueSummary.isNotBlank()) append(" Giá trị từng hiệp: $setValueSummary.")
@@ -4878,7 +4934,8 @@ class GuidedWorkoutActivity:Activity() {
         val saved=WorkoutData.appendSession(this,Workout(
             LifeData.today(),program.name,mins,workoutNote,sessionId,completedCount,selfReportedSets,
             setLog = setValueSummary,
-            effortLog = effortValueSummary))
+            effortLog = effortValueSummary,
+            effortScoreLog = effortScoreSummary))
         if(!saved) {
             Toast.makeText(this,"Chưa lưu được buổi tập. Tiến độ vẫn được giữ để thử lại.",Toast.LENGTH_LONG).show()
             return

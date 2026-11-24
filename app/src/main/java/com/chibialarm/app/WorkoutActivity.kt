@@ -23,7 +23,9 @@ data class Workout(
     /** Bounded, self-reported per-set values; empty for legacy/manual entries. */
     val setLog:String = "",
     /** Optional per-set subjective effort labels; empty for legacy/manual entries. */
-    val effortLog:String = ""
+    val effortLog:String = "",
+    /** Optional exact 1–10 self-ratings; empty for legacy sessions and manual entries. */
+    val effortScoreLog:String = ""
 )
 
 object WorkoutData {
@@ -65,7 +67,8 @@ object WorkoutData {
                     o.optInt("completedMoves", 0),
                     o.optInt("selfReportedSets", 0),
                     o.optString("setLog", ""),
-                    o.optString("effortLog", "")
+                    o.optString("effortLog", ""),
+                    o.optString("effortScoreLog", "")
                 )
             }
         } catch (_: Exception) { null }
@@ -94,6 +97,7 @@ object WorkoutData {
                     .put("selfReportedSets", workout.selfReportedSets)
                 if (workout.setLog.isNotBlank()) item.put("setLog", workout.setLog.take(1_200))
                 if (workout.effortLog.isNotBlank()) item.put("effortLog", workout.effortLog.take(1_200))
+                if (workout.effortScoreLog.isNotBlank()) item.put("effortScoreLog", workout.effortScoreLog.take(1_200))
             }
             arr.put(item)
         }
@@ -128,7 +132,8 @@ object WorkoutData {
         val validId = runCatching { java.util.UUID.fromString(id).toString() == id }.getOrDefault(false)
         if (!validId || workout.minutes !in 1..600 ||
             workout.completedMoves !in 2..500 || workout.selfReportedSets !in 0..2_000 ||
-            workout.setLog.length > 1_200 || workout.effortLog.length > 1_200
+            workout.setLog.length > 1_200 || workout.effortLog.length > 1_200 ||
+            workout.effortScoreLog.length > 1_200
         ) return false
 
         synchronized(lock) {
@@ -188,10 +193,10 @@ class WorkoutActivity:Activity() {
             root.addView(line)
         }
         root.addView(Button(this).apply { text="📤 Chia sẻ báo cáo CSV";setOnClickListener {
-            val csv="date,exercise,minutes,note,completed_moves,self_reported_sets,set_log,effort_log\n"+all.joinToString("\n") {
+            val csv="date,exercise,minutes,note,completed_moves,self_reported_sets,set_log,effort_log,effort_score_log\n"+all.joinToString("\n") {
                 listOf(
                     it.date, it.name, it.minutes.toString(), it.note,
-                    it.completedMoves.toString(), it.selfReportedSets.toString(), it.setLog, it.effortLog
+                    it.completedMoves.toString(), it.selfReportedSets.toString(), it.setLog, it.effortLog, it.effortScoreLog
                 ).joinToString(",") { value ->
                     "\""+value.replace("\"","\"\"").replace("\r"," ").replace("\n"," ")+"\""
                 }
@@ -211,15 +216,19 @@ class WorkoutActivity:Activity() {
             }
             row.addView(text("${w.date}\n${w.name} • ${w.minutes} phút"+(if(w.note.isBlank())"" else "\n"+w.note),15f),
                 LinearLayout.LayoutParams(0,-2,1f))
-            if (w.setLog.isNotBlank() || w.effortLog.isNotBlank()) row.addView(Button(this).apply {
+            if (w.setLog.isNotBlank() || w.effortLog.isNotBlank() || w.effortScoreLog.isNotBlank()) row.addView(Button(this).apply {
                 text = "Chi tiết"
-                contentDescription = "Xem số hiệp và cảm nhận gắng sức tự khai báo của ${w.name}"
+                contentDescription = "Xem số hiệp, cảm nhận và điểm gắng sức tự khai báo của ${w.name}"
                 setOnClickListener {
                     val details = buildString {
                         if (w.setLog.isNotBlank()) append(w.setLog)
                         if (w.effortLog.isNotBlank()) {
                             if (isNotEmpty()) append("\n\n")
                             append("Cảm nhận từng hiệp: ").append(w.effortLog)
+                        }
+                        if (w.effortScoreLog.isNotBlank()) {
+                            if (isNotEmpty()) append("\n\n")
+                            append("Điểm gắng sức tự đánh giá: ").append(w.effortScoreLog)
                         }
                     }
                     AlertDialog.Builder(this@WorkoutActivity)

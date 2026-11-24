@@ -170,7 +170,13 @@ class WorkoutEffortVoiceCommandTest {
             Triple("RPE 7", WorkoutEffortFeedback.Level.HARD, 7),
             Triple("8/10", WorkoutEffortFeedback.Level.HARD, 8),
             Triple("mức gắng sức 9", WorkoutEffortFeedback.Level.VERY_HARD, 9),
-            Triple("10 trên 10", WorkoutEffortFeedback.Level.VERY_HARD, 10)
+            Triple("10 trên 10", WorkoutEffortFeedback.Level.VERY_HARD, 10),
+            Triple("một", WorkoutEffortFeedback.Level.EASY, 1),
+            Triple("hai trên mười", WorkoutEffortFeedback.Level.EASY, 2),
+            Triple("mức bảy", WorkoutEffortFeedback.Level.HARD, 7),
+            Triple("RPE tám", WorkoutEffortFeedback.Level.HARD, 8),
+            Triple("chín trên mười", WorkoutEffortFeedback.Level.VERY_HARD, 9),
+            Triple("mười", WorkoutEffortFeedback.Level.VERY_HARD, 10)
         )
         cases.forEach { (phrase, level, score) ->
             assertEquals(
@@ -179,7 +185,7 @@ class WorkoutEffortVoiceCommandTest {
                 WorkoutEffortVoiceCommand.parse(phrase)
             )
         }
-        for (phrase in listOf("0", "11", "7 lần", "tăng lên 10 lần", "7/20")) {
+        for (phrase in listOf("0", "11", "7 lần", "tăng lên 10 lần", "7/20", "bảy lần", "mười một", "bảy hiệp")) {
             assertNull(phrase, WorkoutEffortVoiceCommand.parse(phrase))
         }
         assertEquals(

@@ -61,7 +61,8 @@ class WorkoutDataSessionTest {
             completedMoves = 3,
             selfReportedSets = 4,
             setLog = "Squat: hiệp 1: 9 lần, hiệp 2: 10 lần",
-            effortLog = "Squat: hiệp 1: Khó, cần nghỉ thêm"
+            effortLog = "Squat: hiệp 1: Khó, cần nghỉ thêm",
+            effortScoreLog = "0:7.-.8"
         )
 
         assertTrue(WorkoutData.appendSession(context, guided))
@@ -73,8 +74,10 @@ class WorkoutDataSessionTest {
         assertEquals(guided, history[1])
         assertEquals("Squat: hiệp 1: 9 lần, hiệp 2: 10 lần", history[1].setLog)
         assertEquals("Squat: hiệp 1: Khó, cần nghỉ thêm", history[1].effortLog)
+        assertEquals("0:7.-.8", history[1].effortScoreLog)
         assertEquals("", history[0].setLog) // legacy entries decode without the additive field
         assertEquals("", history[0].effortLog) // legacy entries decode without the additive field
+        assertEquals("", history[0].effortScoreLog) // legacy entries decode without the additive field
     }
 
     @Test fun malformedLegacyJournalIsNeverSilentlyReplaced() {

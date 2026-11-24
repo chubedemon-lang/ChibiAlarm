@@ -135,8 +135,22 @@ object WorkoutEffortVoiceCommand {
     }
 
     private val numericScorePattern = Regex(
-        "^(?:(?:muc(?: do)?|muc gang suc|rpe)\\s*)?([0-9]{1,2})(?:\\s+(?:tren|out of)\\s+10|\\s+10)?$"
+        "^(?:(?:muc(?: do)?|muc gang suc|rpe)\\s*)?([0-9]{1,2}|mot|hai|ba|bon|tu|nam|sau|bay|tam|chin|muoi)(?:\\s+(?:tren|out of)\\s+(?:10|muoi)|\\s+10)?$"
     )
+
+    private fun scoreValue(token: String): Int? = token.toIntOrNull() ?: when (token) {
+        "mot" -> 1
+        "hai" -> 2
+        "ba" -> 3
+        "bon", "tu" -> 4
+        "nam" -> 5
+        "sau" -> 6
+        "bay" -> 7
+        "tam" -> 8
+        "chin" -> 9
+        "muoi" -> 10
+        else -> null
+    }
 
     private fun levelForScore(score: Int): WorkoutEffortFeedback.Level? = when (score) {
         in 1..3 -> WorkoutEffortFeedback.Level.EASY
@@ -167,7 +181,7 @@ object WorkoutEffortVoiceCommand {
         // A full-string match prevents "7 reps" or "increase to 10" becoming effort data.
         val scoreMatch = numericScorePattern.matchEntire(normalized)
         if (scoreMatch != null) {
-            val score = scoreMatch.groupValues[1].toIntOrNull() ?: return null
+            val score = scoreValue(scoreMatch.groupValues[1]) ?: return null
             val level = levelForScore(score) ?: return null
             return Result.Report(level, score)
         }

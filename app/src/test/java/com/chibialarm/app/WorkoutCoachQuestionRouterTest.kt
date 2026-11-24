@@ -235,4 +235,18 @@ class WorkoutCoachQuestionRouterTest {
         )
     }
 
+    @Test fun restAdviceUsesTheConfirmedNumericEffortScoreWhenProvided() {
+        val answer = WorkoutCoachQuestionRouter.answer(
+            input = "Nghỉ thêm bao lâu?",
+            currentMove = squat.copy(restSeconds = 45),
+            completedSets = 1,
+            completedEffortLevels = listOf(WorkoutEffortFeedback.Level.HARD),
+            completedEffortScores = listOf(8)
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("tự đánh giá 8/10"))
+        assertTrue(answer.contains("75 giây"))
+    }
+
 }

@@ -131,7 +131,7 @@ object WorkoutSetReportCommand {
      */
     fun parseInContext(utterance: String, expectedUnit: String?): Report? {
         parse(utterance)?.let { return it }
-        if (utterance.length !in 1..160 || expectedUnit !in setOf("lần", "nhịp", "giây")) {
+        if (utterance.length !in 1..160 || expectedUnit == null || expectedUnit !in setOf("lần", "nhịp", "giây")) {
             return null
         }
         val normalized = normalize(utterance)

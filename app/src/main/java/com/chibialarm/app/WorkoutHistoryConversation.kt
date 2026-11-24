@@ -9,7 +9,7 @@ import java.util.Locale
 /**
  * Answers simple workout-history questions from the on-device journal.
  *
- * Only structured date, activity name, duration, self-reported set values and effort labels are read.
+ * Only structured date, activity name, duration, set values, effort labels and exact numeric effort scores are read.
  * Free-text notes, safety preferences and health details are never inspected or returned.
  * This is a local journal summary, not a recovery or medical assessment.
  */
@@ -35,6 +35,12 @@ object WorkoutHistoryConversation {
         today: LocalDate = LocalDate.now()
     ): String? {
         val text = normalize(input.take(300))
+        // Numeric 1–10 self-ratings are a separate structured field; route their history
+        // questions before categorical effort labels so no score is inferred from a label.
+        val numericEffortScoreAnswer =
+            WorkoutEffortScoreTrendConversation.answer(input, workouts, today)
+        if (numericEffortScoreAnswer != null) return numericEffortScoreAnswer
+
         // Explicit three-session trend questions must be resolved before the broader
         // progression-eligibility route, which also recognizes phrases such as "tăng số lần".
         val setTrendAnswer = WorkoutSetTrendConversation.answer(input, workouts, today)

@@ -402,6 +402,8 @@ class WorkoutStepVoiceCommandTest {
         assertEquals(2, WorkoutStepVoiceCommand.parseNavigationTarget("quay lại bước 2", 4))
         assertEquals(2, WorkoutStepVoiceCommand.parseNavigationTarget("dua tao den buoc 2", 4))
         assertEquals(2, WorkoutStepVoiceCommand.parseNavigationTarget("chuyen sang buoc 2", 4))
+        assertEquals(2, WorkoutStepVoiceCommand.parseNavigationTarget("Chuyển tới bước hai", 4))
+        assertEquals(3, WorkoutStepVoiceCommand.parseNavigationTarget("đến bước thứ ba", 4))
     }
 
     @Test fun numberedStepQuestionsRemainCoachQuestionsRatherThanNavigation() {

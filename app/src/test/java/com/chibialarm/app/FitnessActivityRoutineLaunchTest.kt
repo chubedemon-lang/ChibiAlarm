@@ -43,6 +43,9 @@ class FitnessActivityRoutineLaunchTest {
     private fun message(dialog: AlertDialog): String =
         dialog.findViewById<TextView>(android.R.id.message)?.text?.toString().orEmpty()
 
+    private fun title(dialog: AlertDialog): String =
+        dialog.findViewById<TextView>(android.R.id.alertTitle)?.text?.toString().orEmpty()
+
     @Test fun routineHandoffShowsReviewAndRestoresScheduledDuration() {
         val program = TrainingCatalog.programs.first { candidate ->
             candidate.moves.isNotEmpty() && candidate.moves.all { it.equipmentOptions.isEmpty() }
@@ -73,7 +76,7 @@ class FitnessActivityRoutineLaunchTest {
             review.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
             val safety = ShadowAlertDialog.getLatestAlertDialog() as AlertDialog
             assertTrue(safety.isShowing)
-            assertEquals("🐰 Tạm dừng buổi tập", safety.title.toString())
+            assertEquals("🐰 Tạm dừng buổi tập", title(safety))
         } finally {
             activity.finish()
         }

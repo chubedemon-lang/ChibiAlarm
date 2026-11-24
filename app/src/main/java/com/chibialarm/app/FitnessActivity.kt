@@ -376,6 +376,37 @@ class FitnessActivity:Activity() {
             ?: restoreCoachHandoff(intent)
             ?: FitnessCoachRestorableProfile.fromBundle(savedInstanceState)?.restore()
         render()
+        offerRoutineProgramIntent()
+    }
+
+    /**
+     * A scheduled reminder opens the matching catalog program for review, never straight into
+     * a workout. The user must confirm current safety/equipment choices through startProgram().
+     */
+    private fun offerRoutineProgramIntent() {
+        val programId = intent.getStringExtra("routine_program_id")?.take(80) ?: return
+        val program = TrainingCatalog.programs.firstOrNull { it.id == programId } ?: return
+        val requestedMinutes = WorkoutDurationChoices.guidedMinutes(
+            intent.getIntExtra("routine_minutes", 30)
+        )
+        length.setSelection(WorkoutDurationChoices.indexForMinutes(requestedMinutes))
+        when (program.id) {
+            "advanced" -> level.setSelection(2)
+            "weighted" -> level.setSelection(maxOf(level.selectedItemPosition, 1))
+        }
+        root.post {
+            if (isFinishing || isDestroyed) return@post
+            AlertDialog.Builder(this)
+                .setTitle("🐰 Buổi tập đã đến giờ")
+                .setMessage(
+                    "Chibi đã mở ${program.name} từ lịch nhắc (${requestedMinutes} phút).\\n\\n" +
+                        "Trước khi bắt đầu, hãy kiểm tra lại trình độ, dụng cụ và hạn chế vận động hiện tại. " +
+                        "Nếu đang đau/chấn thương hoặc cần đổi bộ lọc, hãy chọn “Đổi bộ lọc” trước."
+                )
+                .setPositiveButton("Tôi đã kiểm tra — bắt đầu") { _, _ -> startProgram(program) }
+                .setNegativeButton("Đổi bộ lọc", null)
+                .show()
+        }
     }
 
     /**

@@ -4,8 +4,8 @@ package com.chibialarm.app
  * Resolves a weekly fitness reminder to an exact, locally curated workout.
  *
  * Routine JSON predates weekly program IDs, so the weekday prefix is intentionally parsed
- * only against known catalog names. Equipment context is not stored in legacy routines;
- * equipment-dependent programs therefore fall back to the routine list instead of guessing.
+ * only against known catalog names. The caller opens FitnessActivity for review; its existing
+ * startProgram path rechecks current equipment and movement restrictions before launching.
  */
 internal object RoutineWorkoutLaunch {
     private val weekdayPrefixes = setOf(
@@ -25,12 +25,7 @@ internal object RoutineWorkoutLaunch {
         } ?: return null
 
         if (program.moves.isEmpty()) return null
-        if (program.moves.any { it.equipmentOptions.isNotEmpty() }) return null
         if (program.moves.none { it.name !in nonWorkoutMoves }) return null
         return program
     }
-
-    /** The advanced catalog track is only offered after the caller's level filter. */
-    fun levelFor(program: TrainingProgram): Int =
-        if (program.id == "advanced") 2 else 0
 }

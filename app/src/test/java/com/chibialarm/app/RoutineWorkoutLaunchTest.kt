@@ -27,6 +27,11 @@ class RoutineWorkoutLaunchTest {
         assertEquals(bodyweightProgram.id, resolved?.id)
     }
 
+    @Test fun resolvesEquipmentDependentProgramsForExplicitReview() {
+        val weighted = TrainingCatalog.byId("weighted")
+        assertEquals(weighted.id, RoutineWorkoutLaunch.resolve(routine(weighted.name))?.id)
+    }
+
     @Test fun rejectsUnknownTitlesAndUnrecognizedWeekdayPrefixes() {
         assertNull(RoutineWorkoutLaunch.resolve(routine("Tập ${bodyweightProgram.name}")))
         assertNull(RoutineWorkoutLaunch.resolve(routine("Ngày tập · ${bodyweightProgram.name}")))
@@ -38,17 +43,5 @@ class RoutineWorkoutLaunchTest {
                 routine(bodyweightProgram.name, category = "📚 Học tập")
             )
         )
-    }
-
-    @Test fun doesNotGuessEquipmentForEquipmentDependentPrograms() {
-        val weighted = TrainingCatalog.programs.first { program ->
-            program.moves.any { it.equipmentOptions.isNotEmpty() }
-        }
-        assertNull(RoutineWorkoutLaunch.resolve(routine(weighted.name)))
-    }
-
-    @Test fun advancedProgramUsesTheAdvancedGuidanceLevel() {
-        assertEquals(2, RoutineWorkoutLaunch.levelFor(TrainingCatalog.byId("advanced")))
-        assertEquals(0, RoutineWorkoutLaunch.levelFor(bodyweightProgram))
     }
 }

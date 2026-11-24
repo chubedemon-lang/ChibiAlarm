@@ -12,6 +12,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
+import org.robolectric.Shadows
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
@@ -45,40 +46,34 @@ class RoutineReminderWorkoutActionTest {
     private fun postedNotification() = notifications().activeNotifications
         .firstOrNull { it.id == id }?.notification
 
-    @Test fun weeklyBodyweightFitnessReminderOffersAStartWorkoutAction() {
+    private fun assertReviewAction(program: TrainingProgram, routine: Routine) {
+        deliver(routine)
+        val notification = postedNotification()
+        assertNotNull(notification)
+        val action = notification!!.actions.single()
+        assertEquals("Xem giáo án", action.title.toString())
+        val reviewIntent = Shadows.shadowOf(action.actionIntent).savedIntent
+        assertEquals(FitnessActivity::class.java.name, reviewIntent.component?.className)
+        assertEquals(program.id, reviewIntent.getStringExtra("routine_program_id"))
+        assertEquals(routine.duration, reviewIntent.getIntExtra("routine_minutes", -1))
+    }
+
+    @Test fun weeklyBodyweightFitnessReminderOpensTheMatchingReview() {
         val program = TrainingCatalog.programs.first { candidate ->
             candidate.moves.isNotEmpty() && candidate.moves.all { it.equipmentOptions.isEmpty() }
         }
-        val routine = Routine(
-            id,
-            "Thứ Hai · ${program.name}",
-            "🏃 Sức khỏe",
-            23,
-            59,
-            30,
-            repeatMask = 1 shl 1
+        assertReviewAction(
+            program,
+            Routine(id, "Thứ Hai · ${program.name}", "🏃 Sức khỏe", 23, 59, 30, repeatMask = 1 shl 1)
         )
-
-        deliver(routine)
-
-        val notification = postedNotification()
-        assertNotNull(notification)
-        val actions = notification?.actions.orEmpty()
-        assertEquals(1, actions.size)
-        assertEquals("Bắt đầu buổi tập", actions.single().title.toString())
-        assertNotNull(actions.single().actionIntent)
     }
 
-    @Test fun equipmentDependentFitnessReminderDoesNotGuessMissingEquipment() {
-        val program = TrainingCatalog.programs.first { candidate ->
-            candidate.moves.any { it.equipmentOptions.isNotEmpty() }
-        }
-        deliver(
+    @Test fun equipmentDependentFitnessReminderStillOpensReviewForLiveRevalidation() {
+        val program = TrainingCatalog.byId("weighted")
+        assertReviewAction(
+            program,
             Routine(id, program.name, "🏃 Sức khỏe", 23, 59, 30, repeatMask = 1 shl 1)
         )
-
-        val actions = postedNotification()?.actions.orEmpty()
-        assertTrue(actions.isEmpty())
     }
 
     @Test fun nonFitnessRoutineDoesNotOfferAWorkoutAction() {

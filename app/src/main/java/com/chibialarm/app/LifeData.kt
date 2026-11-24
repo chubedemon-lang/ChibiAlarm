@@ -195,10 +195,36 @@ class RoutineReminderReceiver:BroadcastReceiver() {
         nm.createNotificationChannel(NotificationChannel(channel,"Lịch phát triển bản thân",NotificationManager.IMPORTANCE_HIGH))
         val open=PendingIntent.getActivity(ctx,id,Intent(ctx,RoutineActivity::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-        nm.notify(id,Notification.Builder(ctx,channel)
+        val notification = Notification.Builder(ctx,channel)
             .setSmallIcon(android.R.drawable.ic_popup_reminder)
             .setContentTitle("🐰 Đến giờ: "+r.title)
             .setContentText(r.category+" • "+r.duration+" phút • Chibi đang cổ vũ bạn!")
-            .setContentIntent(open).setAutoCancel(true).build())
+            .setContentIntent(open)
+            .setAutoCancel(true)
+
+        // Weekly fitness reminders encode an exact catalog title. Offer a direct start only
+        // when the complete program is equipment-free; equipment selections are not persisted
+        // in the legacy Routine JSON, so guessing them here could launch an unusable plan.
+        val workoutProgram = RoutineWorkoutLaunch.resolve(r)
+        if (workoutProgram != null) {
+            val workoutIntent = Intent(ctx, GuidedWorkoutActivity::class.java)
+                .putExtra("program", workoutProgram.id)
+                .putExtra("level", RoutineWorkoutLaunch.levelFor(workoutProgram))
+                .putExtra("minutes", WorkoutDurationChoices.guidedMinutes(r.duration))
+                .putExtra("extension_equipment", 0)
+                .putExtra("extension_impact", 0)
+            val startWorkout = PendingIntent.getActivity(
+                ctx,
+                id xor 0x4A1729,
+                workoutIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            notification.addAction(
+                android.R.drawable.ic_media_play,
+                "Bắt đầu buổi tập",
+                startWorkout
+            )
+        }
+        nm.notify(id, notification.build())
     }
 }

@@ -212,6 +212,9 @@ class RoutineReminderReceiver:BroadcastReceiver() {
                 .putExtra("level", RoutineWorkoutLaunch.levelFor(workoutProgram))
                 .putExtra("minutes", WorkoutDurationChoices.guidedMinutes(r.duration))
                 .putExtra("extension_equipment", 0)
+                // The routine stores the selected program but not the original goal/energy
+                // profile. Do not append unrelated extension moves when starting from a reminder.
+                .putExtra("extension_energy", 0)
                 .putExtra("extension_impact", 0)
             val startWorkout = PendingIntent.getActivity(
                 ctx,

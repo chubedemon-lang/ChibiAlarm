@@ -47,7 +47,16 @@ internal object WorkoutEffortRestAdviceConversation {
         val confirmedReports = reports.take(confirmedCount)
         val latest = confirmedReports.getOrNull(confirmedCount - 1)
         val latestScore = scores.getOrNull(confirmedCount - 1)
-        if (latestScore != null && latest != WorkoutEffortFeedback.levelForScore(latestScore)) return null
+        if (latestScore != null) {
+            val scoreLevel = when (latestScore) {
+                in 1..3 -> WorkoutEffortFeedback.Level.EASY
+                in 4..6 -> WorkoutEffortFeedback.Level.MODERATE
+                in 7..8 -> WorkoutEffortFeedback.Level.HARD
+                in 9..10 -> WorkoutEffortFeedback.Level.VERY_HARD
+                else -> return null
+            }
+            if (latest != scoreLevel) return null
+        }
         if (latest == null) {
             return "Hiệp $confirmedCount chưa có check-in cảm nhận hợp lệ. " +
                 "Theo giáo án, thời gian nghỉ là $prescribed giây; nếu vẫn chưa sẵn sàng, " +

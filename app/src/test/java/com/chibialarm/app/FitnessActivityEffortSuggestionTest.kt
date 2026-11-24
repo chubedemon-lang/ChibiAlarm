@@ -193,4 +193,56 @@ class FitnessActivityEffortSuggestionTest {
         controller.pause().stop().destroy()
     }
 
+
+    @Test fun repeatedNumericEffortScoresShowAnOptInLighterSessionAction() {
+        val today = LocalDate.now()
+        val app = RuntimeEnvironment.getApplication()
+        WorkoutData.save(app, listOf(
+            Workout(
+                date = today.minusDays(1).toString(),
+                name = "Guided Workout",
+                minutes = 20,
+                note = "private previous health note",
+                sessionId = "550e8400-e29b-41d4-a716-446655440125",
+                completedMoves = 2,
+                selfReportedSets = 2,
+                effortScoreLog = "0:7.8"
+            ),
+            Workout(
+                date = today.toString(),
+                name = "Guided Workout",
+                minutes = 20,
+                note = "private latest health note",
+                sessionId = "550e8400-e29b-41d4-a716-446655440126",
+                completedMoves = 2,
+                selfReportedSets = 2,
+                effortScoreLog = "0:8.9"
+            )
+        ))
+
+        val controller = Robolectric.buildActivity(FitnessActivity::class.java).setup()
+        val activity = controller.get()
+        val content = activity.findViewById<ViewGroup>(android.R.id.content)
+        val allViews = views(content)
+        val insight = allViews.filterIsInstance<TextView>().first {
+            it.text.toString().contains("Hai buổi Guided Workout hợp lệ gần nhất")
+        }
+        assertEquals(View.VISIBLE, insight.visibility)
+        assertTrue(insight.text.toString().contains("8,5/10"))
+        assertTrue(!insight.text.toString().contains("private"))
+
+        val action = allViews.filterIsInstance<Button>().first {
+            it.text.toString() == "💬 Xem buổi nhẹ hơn theo điểm tự chấm"
+        }
+        assertEquals(View.VISIBLE, action.visibility)
+        action.performClick()
+
+        val input = allViews.filterIsInstance<EditText>().first {
+            it.contentDescription?.toString() == "Yêu cầu giáo án bằng tiếng Việt"
+        }
+        assertTrue(input.text.toString().contains("dựa trên điểm gắng sức tự chấm"))
+        assertTrue(input.text.toString().contains("giữ nguyên hiệp đã hoàn thành"))
+        assertTrue(input.text.toString().contains("không tự tăng"))
+        controller.pause().stop().destroy()
+    }
 }

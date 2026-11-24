@@ -102,6 +102,49 @@ class WorkoutEffortFeedbackTest {
         assertTrue(advice.message.contains("tạm dừng"))
     }
 
+    @Test fun confirmedNumericEightAddsOneMoreRestIncrementThanSeven() {
+        val seven = WorkoutEffortFeedback.recommend(
+            WorkoutEffortFeedback.Level.HARD, 45, emptyList(), 7
+        )
+        val eight = WorkoutEffortFeedback.recommend(
+            WorkoutEffortFeedback.Level.HARD, 45, emptyList(), 8
+        )
+
+        assertEquals(60, seven.restSeconds)
+        assertEquals(75, eight.restSeconds)
+        assertTrue(eight.message.contains("8/10"))
+        assertFalse(eight.holdBeforeNextSet)
+    }
+
+    @Test fun numericEightRefinesTheExistingHardStreakWithoutChangingTheWorkPrescription() {
+        val previousHard = listOf(WorkoutEffortFeedback.Level.HARD)
+        val seven = WorkoutEffortFeedback.recommend(
+            WorkoutEffortFeedback.Level.HARD, 45, previousHard, 7
+        )
+        val eight = WorkoutEffortFeedback.recommend(
+            WorkoutEffortFeedback.Level.HARD, 45, previousHard, 8
+        )
+
+        assertEquals(75, seven.restSeconds)
+        assertEquals(90, eight.restSeconds)
+        assertFalse(eight.holdBeforeNextSet)
+        assertTrue(eight.message.contains("2 hiệp liên tiếp"))
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun rejectsNumericEffortOutsideTheOneToTenScale() {
+        WorkoutEffortFeedback.recommend(
+            WorkoutEffortFeedback.Level.HARD, 45, emptyList(), 11
+        )
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun rejectsNumericEffortThatContradictsTheSelectedCategory() {
+        WorkoutEffortFeedback.recommend(
+            WorkoutEffortFeedback.Level.HARD, 45, emptyList(), 9
+        )
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun rejectsRestBelowCatalogBounds() {
         WorkoutEffortFeedback.recommend(WorkoutEffortFeedback.Level.HARD, 14)

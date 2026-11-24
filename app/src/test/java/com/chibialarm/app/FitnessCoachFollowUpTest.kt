@@ -70,11 +70,18 @@ class FitnessCoachFollowUpTest {
             FitnessCoachConversation.parseReply(noFloorRestriction, "không")
         )
         assertEquals(false, noOverheadRestriction.avoidOverheadReach)
-        assertEquals(FitnessCoachFollowUp.Question.ENERGY, FitnessCoachFollowUp.nextQuestionType(noOverheadRestriction))
+        assertEquals(FitnessCoachFollowUp.Question.KNEELING, FitnessCoachFollowUp.nextQuestionType(noOverheadRestriction))
+
+        val noKneelingRestriction = FitnessCoachConversation.merge(
+            noOverheadRestriction,
+            FitnessCoachConversation.parseReply(noOverheadRestriction, "không")
+        )
+        assertEquals(false, noKneelingRestriction.avoidKneeling)
+        assertEquals(FitnessCoachFollowUp.Question.ENERGY, FitnessCoachFollowUp.nextQuestionType(noKneelingRestriction))
 
         val ready = FitnessCoachConversation.merge(
-            noOverheadRestriction,
-            FitnessCoachConversation.parseReply(noOverheadRestriction, "khỏe")
+            noKneelingRestriction,
+            FitnessCoachConversation.parseReply(noKneelingRestriction, "khỏe")
         )
         assertEquals(FitnessCoachFollowUp.Question.COMPLETE, FitnessCoachFollowUp.nextQuestionType(ready))
     }
@@ -115,7 +122,14 @@ class FitnessCoachFollowUpTest {
             FitnessCoachConversation.parseReply(floor, "có")
         )
         assertTrue(overhead.avoidOverheadReach == true)
-        assertEquals(FitnessCoachFollowUp.Question.ENERGY, FitnessCoachFollowUp.nextQuestionType(overhead))
+        assertEquals(FitnessCoachFollowUp.Question.KNEELING, FitnessCoachFollowUp.nextQuestionType(overhead))
+
+        val kneeling = FitnessCoachConversation.merge(
+            overhead,
+            FitnessCoachConversation.parseReply(overhead, "có")
+        )
+        assertTrue(kneeling.avoidKneeling == true)
+        assertEquals(FitnessCoachFollowUp.Question.ENERGY, FitnessCoachFollowUp.nextQuestionType(kneeling))
     }
 
     @Test fun explicitNoRestrictionPhrasesAreNotTurnedIntoRestrictions() {
@@ -140,7 +154,14 @@ class FitnessCoachFollowUpTest {
             FitnessCoachConversation.parseReply(noFloor, "không cần tránh đưa tay qua đầu")
         )
         assertFalse(noOverhead.avoidOverheadReach ?: true)
-        assertEquals(FitnessCoachFollowUp.Question.ENERGY, FitnessCoachFollowUp.nextQuestionType(noOverhead))
+        assertEquals(FitnessCoachFollowUp.Question.KNEELING, FitnessCoachFollowUp.nextQuestionType(noOverhead))
+
+        val noKneeling = FitnessCoachConversation.merge(
+            noOverhead,
+            FitnessCoachConversation.parseReply(noOverhead, "không cần tránh quỳ gối")
+        )
+        assertFalse(noKneeling.avoidKneeling ?: true)
+        assertEquals(FitnessCoachFollowUp.Question.ENERGY, FitnessCoachFollowUp.nextQuestionType(noKneeling))
     }
 
     @Test fun safetyPromptAlwaysWinsOverMissingProfileFields() {
@@ -204,7 +225,7 @@ class FitnessCoachFollowUpTest {
         assertFalse(FitnessCoachFollowUp.spokenPrompt(safetyMessage, safety).contains("Lựa chọn"))
 
         val complete = FitnessNaturalRequest.parse(
-            "giãn cơ 20 phút, đang tập đều, không dụng cụ, không, không, không, không, khỏe"
+            "giãn cơ 20 phút, đang tập đều, không dụng cụ, không, không, không, không, không, khỏe"
         )
         if (FitnessCoachFollowUp.nextQuestionType(complete) == FitnessCoachFollowUp.Question.COMPLETE) {
             val message = FitnessCoachFollowUp.nextQuestion(complete)
@@ -306,6 +327,47 @@ class FitnessCoachFollowUpTest {
     }
 
 
+
+    @Test fun kneelingRestrictionIsAskedSeparatelyAndSupportsTypedAndVoiceReplies() {
+        val profile = FitnessNaturalRequest.parse("giãn cơ 15 phút, đang tập đều, không dụng cụ")
+        val noJump = FitnessCoachConversation.merge(
+            profile, FitnessCoachConversation.parseReply(profile, "không")
+        )
+        val noWrist = FitnessCoachConversation.merge(
+            noJump, FitnessCoachConversation.parseReply(noJump, "không")
+        )
+        val noFloor = FitnessCoachConversation.merge(
+            noWrist, FitnessCoachConversation.parseReply(noWrist, "không")
+        )
+        val noOverhead = FitnessCoachConversation.merge(
+            noFloor, FitnessCoachConversation.parseReply(noFloor, "không")
+        )
+
+        assertEquals(FitnessCoachFollowUp.Question.KNEELING, FitnessCoachFollowUp.nextQuestionType(noOverhead))
+        val replies = FitnessCoachFollowUp.quickReplies(noOverhead)
+        assertEquals(listOf("Tránh quỳ gối", "Có thể quỳ gối"), replies.map { it.label })
+        val spoken = FitnessCoachFollowUp.spokenPrompt(
+            FitnessCoachFollowUp.nextQuestion(noOverhead), noOverhead
+        )
+        assertTrue(spoken.contains("Lựa chọn 1: Tránh quỳ gối."))
+        assertTrue(spoken.contains("Lựa chọn 2: Có thể quỳ gối."))
+
+        val avoid = FitnessCoachConversation.merge(
+            noOverhead, FitnessCoachConversation.parseReply(noOverhead, "có")
+        )
+        assertTrue(avoid.avoidKneeling == true)
+        assertEquals(FitnessCoachFollowUp.Question.ENERGY, FitnessCoachFollowUp.nextQuestionType(avoid))
+
+        val allow = FitnessCoachConversation.merge(
+            noOverhead, FitnessCoachConversation.parseReply(noOverhead, "có thể quỳ gối")
+        )
+        assertEquals(false, allow.avoidKneeling)
+        assertEquals(15, allow.minutes)
+        assertEquals(2, allow.goal)
+        assertEquals(1, allow.level)
+        assertEquals(0, allow.equipment)
+    }
+
     @Test fun energyQuickRepliesIncludeNaturalFatigueWordingButNeverAppearForSafetyStop() {
         val energyProfile = FitnessNaturalRequest.Result(
             goal = 2,
@@ -317,7 +379,8 @@ class FitnessCoachFollowUpTest {
             avoidWristLoad = false,
             avoidFloorPositions = false,
             avoidOverheadReach = false,
-            additionalEquipment = emptySet()
+            additionalEquipment = emptySet(),
+            avoidKneeling = false
         )
         val replies = FitnessCoachFollowUp.quickReplies(energyProfile)
         assertTrue(replies.any { it.label == "Hơi đuối" && it.utterance == "hơi đuối" })

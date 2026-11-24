@@ -43,12 +43,6 @@ object WorkoutHistoryConversation {
             WorkoutEffortScorePlanAdvisor.answer(input, workouts, today)
         if (numericEffortPlanAnswer != null) return numericEffortPlanAnswer
 
-        // Explicit numeric-score requests for a lighter draft are distinct from a history query.
-        // Keep this local and opt-in; it never applies a plan or reads free-text notes.
-        val numericEffortPlanAnswer =
-            WorkoutEffortScorePlanAdvisor.answer(input, workouts, today)
-        if (numericEffortPlanAnswer != null) return numericEffortPlanAnswer
-
         val numericEffortScoreAnswer =
             WorkoutEffortScoreTrendConversation.answer(input, workouts, today)
         if (numericEffortScoreAnswer != null) return numericEffortScoreAnswer

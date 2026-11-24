@@ -147,6 +147,7 @@ class GuidedWorkoutActivity:Activity() {
     private lateinit var restVoiceCueToggle: CheckBox
     private lateinit var restVoiceCueLeadLabel: TextView
     private lateinit var restVoiceCueLeadSlider: SeekBar
+    private lateinit var restVoiceCuePreviewButton: Button
     // A rest-completion cue survives a busy/unavailable TTS engine and process recreation.
     private val restCompletionSpeechQueue = WorkoutRestCompletionSpeechQueue()
     private var setTimerExpired=false
@@ -767,6 +768,14 @@ class GuidedWorkoutActivity:Activity() {
             })
         }
         root.addView(restVoiceCueLeadSlider)
+        restVoiceCuePreviewButton = Button(this).apply {
+            tag = "workout-rest-voice-cue-preview"
+            text = "🔊 Nghe thử lời nhắc"
+            contentDescription = "Nghe thử lời nhắc nghỉ; không dùng microphone và không thay đổi bộ đếm hoặc tiến độ buổi tập."
+            visibility = android.view.View.GONE
+            setOnClickListener { previewRestVoiceCue() }
+        }
+        root.addView(restVoiceCuePreviewButton)
         // A catalog-derived vector preview shows what follows the current rest.
         // It is a static cue during rest; the main pose animation resumes afterward.
         restPosePreview = WorkoutPoseView(this).apply {
@@ -3929,14 +3938,46 @@ class GuidedWorkoutActivity:Activity() {
         }
         restVoiceCueToggle.text = "🔊 Tự đọc nhắc khi còn ${restVoiceCueLeadSeconds} giây"
         restVoiceCueToggle.contentDescription = restVoiceCueDescription()
+        if (::restVoiceCuePreviewButton.isInitialized) {
+            restVoiceCuePreviewButton.visibility = restVoiceCueToggle.visibility
+            restVoiceCuePreviewButton.contentDescription =
+                "Nghe thử lời nhắc nghỉ trước ${restVoiceCueLeadSeconds} giây; không dùng microphone và không thay đổi bộ đếm hoặc tiến độ buổi tập."
+        }
         updateRestVoiceCueLeadControls()
+    }
+
+    /**
+     * Let the user hear the exact rest cue without waiting for the countdown.
+     * This is a manual TTS preview only: it never opens the microphone, consumes the
+     * automatic one-shot, writes a checkpoint, or changes either timer.
+     */
+    private fun previewRestVoiceCue() {
+        if (!resting || pausedForSafety || completed || !::restPreview.isInitialized) return
+        if (pendingRecognitionRequestCode != null) {
+            Toast.makeText(this, "Đang dùng microphone; hãy thử lại sau.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val engine = spoken
+        if (!ready || engine == null) {
+            Toast.makeText(this, "Giọng đọc chưa sẵn sàng trên thiết bị này.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (engine.isSpeaking || !restCompletionSpeechQueue.pendingMessage.isNullOrBlank()) {
+            Toast.makeText(this, "Chibi đang đọc lời nhắc khác; hãy thử lại sau.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val leadMs = restVoiceCueLeadSeconds * 1_000L
+        val cue = WorkoutRestVoiceCue.message(leadMs, restPreview.text.toString(), leadMs)
+        if (cue.isNullOrBlank() || !speak(cue, TextToSpeech.QUEUE_ADD)) {
+            Toast.makeText(this, "Không thể phát thử lời nhắc lúc này.", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun renderRestPreview() {
         if (!::restPreview.isInitialized || !::restPosePreview.isInitialized ||
             !::restStepPreview.isInitialized || !::restStepSpeakButton.isInitialized ||
             !::restVoiceCueToggle.isInitialized || !::restVoiceCueLeadSlider.isInitialized ||
-            !::restVoiceCueLeadLabel.isInitialized) return
+            !::restVoiceCueLeadLabel.isInitialized || !::restVoiceCuePreviewButton.isInitialized) return
         updateRestVoiceCueToggle()
         if (!resting || pausedForSafety || index !in moves.indices) {
             val pendingCompletion = restCompletionSpeechQueue.pendingMessage

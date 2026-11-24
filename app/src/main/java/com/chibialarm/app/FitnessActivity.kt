@@ -2073,7 +2073,7 @@ class FitnessActivity:Activity() {
         startActivity(launchIntent)
     }
 
-    private fun addRoutine(p:TrainingProgram) {
+    private fun addRoutine(p: TrainingProgram) {
         val equipmentSelection = recommendationEquipmentSpinner?.selectedItemPosition ?: 0
         val additionalEquipment = currentAdditionalEquipment()
         if (!WorkoutEquipmentFilter.apply(p, equipmentSelection, additionalEquipment).canStart) {
@@ -2112,56 +2112,134 @@ class FitnessActivity:Activity() {
             .setTitle("📅 Chọn tần suất tập")
             .setMessage(
                 "Chibi gợi ý mặc định ${defaultDays} ngày/tuần theo mức trình độ đang chọn. " +
-                    "Bạn có thể đổi từ 1 đến 5 ngày. Đây là lịch nhắc cho cùng một chương trình, " +
-                    "không phải yêu cầu bắt buộc phải tập đủ."
+                    "Bạn có thể đổi từ 1 đến 5 ngày. Chibi sẽ phân bổ các chương trình khác nhau theo mục tiêu, " +
+                    "dụng cụ và trình độ đã chọn; đây là lịch nhắc linh hoạt, không phải yêu cầu bắt buộc."
             )
             .setSingleChoiceItems(dayOptions, defaultDays - 1) { _, which ->
                 selectedDays = which + 1
             }
-            .setPositiveButton("Xem trước lịch") { _, _ ->
+            .setPositiveButton("Xem trước lịch") preview@{ _, _ ->
                 val week = WorkoutWeekSchedulePreview.build(LocalDate.now(), selectedDays)
-                val trainingText = week.trainingDates.joinToString("\n") {
-                    "• ${WorkoutWeekSchedulePreview.format(it)}"
+                val levelIndex = level.selectedItemPosition
+                val hasResistanceEquipment = equipmentSelection in setOf(2, 4, 5) ||
+                    additionalEquipment.any {
+                        it == TrainingEquipment.DUMBBELL || it == TrainingEquipment.RESISTANCE_BAND
+                    }
+                // Apply the same level, movement and equipment boundaries before rotating
+                // programs. A missing tool must never be silently assumed for another day.
+                val eligiblePrograms = TrainingCatalog.programs.mapNotNull { candidate ->
+                    if (candidate.id == "advanced" && levelIndex < 2) return@mapNotNull null
+                    if (candidate.id == "weighted" &&
+                        (!hasResistanceEquipment || levelIndex < 1)
+                    ) return@mapNotNull null
+                    val constrained = WorkoutConstraintFilter.apply(candidate, sessionConstraints)
+                    val equipped = WorkoutEquipmentFilter.apply(
+                        constrained.program, equipmentSelection, additionalEquipment
+                    )
+                    equipped.program.takeIf { equipped.canStart }
+                }
+                val preferred = eligiblePrograms.firstOrNull { it.id == p.id }
+                if (preferred == null) {
+                    Toast.makeText(
+                        this,
+                        "Chương trình đã chọn không còn phù hợp với trình độ hoặc dụng cụ hiện tại. Hãy chọn lại.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    return@preview
+                }
+                val goalIndex = recommendationGoalSpinner?.selectedItemPosition?.coerceIn(0, 5) ?: 0
+                val sessions = runCatching {
+                    WorkoutWeekProgramPlanner.plan(
+                        week.trainingDates, preferred, eligiblePrograms, goalIndex
+                    )
+                }.getOrElse {
+                    Toast.makeText(this, "Chưa tạo được lịch phù hợp. Hãy kiểm tra lựa chọn rồi thử lại.", Toast.LENGTH_LONG).show()
+                    return@preview
+                }
+                val trainingText = sessions.joinToString("\n") { session ->
+                    "• ${WorkoutWeekSchedulePreview.format(session.date)}\n  ${session.routineTitle}"
                 }
                 val restText = week.restDates.joinToString("\n") {
                     "• ${WorkoutWeekSchedulePreview.format(it)}"
                 }
-                val duration = mins[length.selectedItemPosition]
+                val duration = mins.getOrElse(length.selectedItemPosition) { 30 }
+                val distinctPrograms = sessions.map { it.program.id }.distinct().size
+                val varietyNotice = if (distinctPrograms < sessions.size) {
+                    "\n\nThư viện hiện có ${distinctPrograms} chương trình phù hợp; một số chương trình sẽ lặp lại sau khi đã dùng hết lựa chọn khác."
+                } else {
+                    ""
+                }
+                val selectedGoal = recommendationGoalSpinner?.selectedItem?.toString() ?: "Mục tiêu hiện tại"
                 val previewMessage = buildString {
-                    append("Chương trình: ").append(p.name).append('\n')
+                    append("Mục tiêu: ").append(selectedGoal).append('\n')
                     append("Thời lượng mỗi buổi: ").append(duration).append(" phút\n")
                     append("Giờ nhắc: 18:00\n\n")
-                    append("Ngày tập dự kiến:\n").append(trainingText).append("\n\n")
-                    append("Ngày nghỉ:\n").append(restText).append("\n\n")
-                    append("Lịch sẽ lặp vào đúng các thứ đã chọn trong những tuần sau. " +
-                        "Mỗi ngày nhắc cùng chương trình này; lịch không tự chia bài khác nhau theo ngày. " +
-                        "Bạn có thể sửa hoặc xóa lịch trong mục Lịch trình.")
+                    append("Ngày tập dự kiến — mỗi ngày một chương trình:\n").append(trainingText).append("\n\n")
+                    append("Ngày nghỉ:\n").append(restText)
+                    append(varietyNotice)
+                    append("\n\nCác chương trình đã được lọc theo trình độ và dụng cụ hiện tại. ")
+                    append("Mỗi buổi là một lời nhắc riêng lặp lại vào đúng thứ đó. ")
+                    append("Nếu đổi dụng cụ hoặc hạn chế vận động, hãy xem lại lựa chọn trước khi tập.")
                 }
                 AlertDialog.Builder(this)
-                    .setTitle("📆 Xem trước lịch tuần")
+                    .setTitle("📆 Xem trước giáo án tuần")
                     .setMessage(previewMessage)
-                    .setPositiveButton("Thêm lịch") { _, _ ->
+                    .setPositiveButton("Thêm lịch") save@{ _, _ ->
                         val current = LifeData.routines(this)
-                        val duplicate = current.any {
-                            it.title == p.name && it.category == "🏃 Sức khỏe" &&
-                                it.hour == 18 && it.minute == 0 &&
-                                it.duration == duration && it.repeatMask == week.repeatMask
-                        }
-                        if (duplicate) {
-                            Toast.makeText(this, "Lịch này đã tồn tại; không tạo nhắc trùng.", Toast.LENGTH_LONG).show()
-                        } else {
-                            val existingIds = current.map { it.id }.toSet()
-                            var newId = LifeData.nextId()
-                            while (newId in existingIds) {
-                                newId = if (newId >= Int.MAX_VALUE) 1 else newId + 1
+                        val usedIds = current.mapTo(mutableSetOf()) { it.id }
+                        var nextCandidateId = LifeData.nextId().coerceAtLeast(1)
+                        fun allocateRoutineId(): Int {
+                            var checked = 0
+                            while (nextCandidateId in usedIds) {
+                                nextCandidateId = if (nextCandidateId == Int.MAX_VALUE) 1 else nextCandidateId + 1
+                                checked++
+                                check(checked <= usedIds.size) { "No available routine ID" }
                             }
-                            val routine = Routine(
-                                newId, p.name, "🏃 Sức khỏe", 18, 0,
-                                duration, week.repeatMask
-                            )
+                            val allocated = nextCandidateId
+                            usedIds += allocated
+                            nextCandidateId = if (allocated == Int.MAX_VALUE) 1 else allocated + 1
+                            return allocated
+                        }
+
+                        var skippedDuplicates = 0
+                        val additions = sessions.mapNotNull { session ->
+                            val duplicate = current.any {
+                                (it.title == session.routineTitle || it.title == session.program.name) &&
+                                    it.category == "🏃 Sức khỏe" &&
+                                    it.hour == 18 && it.minute == 0 &&
+                                    it.duration == duration &&
+                                    (it.repeatMask and session.repeatMask) != 0
+                            }
+                            if (duplicate) {
+                                skippedDuplicates++
+                                null
+                            } else {
+                                Routine(
+                                    allocateRoutineId(),
+                                    session.routineTitle,
+                                    "🏃 Sức khỏe",
+                                    18,
+                                    0,
+                                    duration,
+                                    session.repeatMask
+                                )
+                            }
+                        }
+                        if (additions.isEmpty()) {
+                            Toast.makeText(this, "Các buổi phù hợp đã có lịch; Chibi không tạo nhắc trùng.", Toast.LENGTH_LONG).show()
+                        } else {
                             try {
-                                LifeData.save(this, current + routine)
-                                Toast.makeText(this, "Đã thêm lịch tập cho ${selectedDays} ngày/tuần.", Toast.LENGTH_SHORT).show()
+                                // One durable write preserves the existing JSON routine format;
+                                // each new reminder uses a single weekday bit, no schema migration.
+                                LifeData.save(this, current + additions)
+                                val skippedText = if (skippedDuplicates > 0) {
+                                    " Đã bỏ qua ${skippedDuplicates} buổi đã có lịch."
+                                } else ""
+                                Toast.makeText(
+                                    this,
+                                    "Đã thêm ${additions.size} buổi tập riêng theo mục tiêu.${skippedText}",
+                                    Toast.LENGTH_LONG
+                                ).show()
                             } catch (_: Exception) {
                                 Toast.makeText(this, "Không lưu được lịch. Các nhắc cũ vẫn được giữ.", Toast.LENGTH_LONG).show()
                             }

@@ -419,8 +419,15 @@ class FitnessCoachConversationTest {
         assertEquals(2, restricted.goal)
         assertEquals(15, restricted.minutes)
         assertEquals(0, restricted.equipment)
-        assertEquals(FitnessCoachFollowUp.Question.ENERGY,
+        assertEquals(FitnessCoachFollowUp.Question.KNEELING,
             FitnessCoachFollowUp.nextQuestionType(restricted))
+        val noKneeling = FitnessCoachConversation.merge(
+            restricted,
+            FitnessCoachConversation.parseReply(restricted, "không")
+        )
+        assertEquals(false, noKneeling.avoidKneeling)
+        assertEquals(FitnessCoachFollowUp.Question.ENERGY,
+            FitnessCoachFollowUp.nextQuestionType(noKneeling))
 
         val explicitPermission = FitnessCoachConversation.merge(
             restricted,
@@ -510,6 +517,7 @@ class FitnessCoachConversationTest {
             avoidWristLoad = false,
             avoidFloorPositions = false,
             avoidOverheadReach = false,
+            avoidKneeling = false,
             additionalEquipment = emptySet()
         )
         assertEquals(FitnessCoachFollowUp.Question.ENERGY, FitnessCoachFollowUp.nextQuestionType(previous))

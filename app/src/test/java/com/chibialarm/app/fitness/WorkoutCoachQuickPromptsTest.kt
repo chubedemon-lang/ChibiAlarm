@@ -53,18 +53,24 @@ class WorkoutCoachQuickPromptsTest {
         assertTrue((easier as WorkoutMidSessionRequest.Result.Proposed).request.lowEnergy)
         assertTrue(easier.request.preferEasier)
 
-        val optionalExercises = WorkoutMidSessionRequest.parse(prompts[2].utterance)
+        val optionalExercises = WorkoutMidSessionRequest.parse(
+            prompts.single { it.label == "Bỏ bài bổ sung" }.utterance
+        )
         assertTrue(optionalExercises is WorkoutMidSessionRequest.Result.Proposed)
         assertTrue((optionalExercises as WorkoutMidSessionRequest.Result.Proposed).request.removeOptionalExercises)
 
-        val optionalSets = WorkoutMidSessionRequest.parse(prompts[3].utterance)
+        val optionalSets = WorkoutMidSessionRequest.parse(
+            prompts.single { it.label == "Chỉ hiệp bắt buộc" }.utterance
+        )
         assertTrue(optionalSets is WorkoutMidSessionRequest.Result.Proposed)
         assertTrue((optionalSets as WorkoutMidSessionRequest.Result.Proposed).request.removeOptionalSets)
 
-        assertTrue(WorkoutMidSessionRequest.parse(prompts[4].utterance) is WorkoutMidSessionRequest.Result.Unsupported)
-        assertTrue(WorkoutMidSessionRequest.parse(prompts[5].utterance) is WorkoutMidSessionRequest.Result.Unsupported)
-        assertEquals(WorkoutVoiceCommands.Command.UNKNOWN, WorkoutVoiceCommands.parse(prompts[4].utterance))
-        assertEquals(WorkoutVoiceCommands.Command.STEP_GUIDE, WorkoutVoiceCommands.parse(prompts[5].utterance))
+        val breathingPrompt = prompts.single { it.label == "Thở thế nào?" }
+        val stepGuidePrompt = prompts.single { it.label == "Hướng dẫn từng bước" }
+        assertTrue(WorkoutMidSessionRequest.parse(breathingPrompt.utterance) is WorkoutMidSessionRequest.Result.Unsupported)
+        assertTrue(WorkoutMidSessionRequest.parse(stepGuidePrompt.utterance) is WorkoutMidSessionRequest.Result.Unsupported)
+        assertEquals(WorkoutVoiceCommands.Command.UNKNOWN, WorkoutVoiceCommands.parse(breathingPrompt.utterance))
+        assertEquals(WorkoutVoiceCommands.Command.STEP_GUIDE, WorkoutVoiceCommands.parse(stepGuidePrompt.utterance))
     }
 
     @Test fun unavailableOptionalActionsAreNotSuggested() {

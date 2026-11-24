@@ -28,6 +28,7 @@ class FitnessCoachPlanPreviewActionTest {
         avoidWristLoad = false,
         avoidFloorPositions = false,
         avoidOverheadReach = false,
+        avoidKneeling = false,
         additionalEquipment = emptySet()
     )
 

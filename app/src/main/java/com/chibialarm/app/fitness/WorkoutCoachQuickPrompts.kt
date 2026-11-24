@@ -34,6 +34,8 @@ internal object WorkoutCoachQuickPrompts {
 
         val prompts = mutableListOf(
             Prompt("Còn 5 phút", "Tôi chỉ còn 5 phút"),
+            Prompt("Còn 10 phút", "Tôi chỉ còn 10 phút"),
+            Prompt("Bài này khó quá", "Bài này khó quá"),
             Prompt("Hôm nay hơi mệt", "Hôm nay hơi mệt, đổi sang bài nhẹ hơn")
         )
         if (hasOptionalFutureExercises) {

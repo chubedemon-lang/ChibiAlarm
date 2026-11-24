@@ -3533,7 +3533,29 @@ class GuidedWorkoutActivity:Activity() {
         renderStep()
         voiceButton.setOnClickListener {
             requestGuideVoiceCommand { phrase ->
-                when (WorkoutStepVoiceCommand.parse(phrase)) {
+                val requestedPosition = WorkoutStepVoiceCommand.parseNavigationTarget(
+                    utterance = phrase,
+                    totalSteps = walkthrough.steps.size
+                )
+                if (requestedPosition != null) {
+                    if (requestedPosition == walkthrough.position) {
+                        Toast.makeText(
+                            this,
+                            "Đang ở bước $requestedPosition của hướng dẫn.",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    } else {
+                        spoken?.stop()
+                        walkthrough = WorkoutStepGuide.Walkthrough.start(move.steps)
+                        repeat(requestedPosition - 1) { walkthrough = walkthrough.next() }
+                        renderStep()
+                        Toast.makeText(
+                            this,
+                            "Đã chuyển đến bước $requestedPosition; tiến độ buổi tập được giữ nguyên.",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                } else when (WorkoutStepVoiceCommand.parse(phrase)) {
                     WorkoutStepVoiceCommand.Command.NEXT -> {
                         if (walkthrough.canGoNext) {
                             spoken?.stop()

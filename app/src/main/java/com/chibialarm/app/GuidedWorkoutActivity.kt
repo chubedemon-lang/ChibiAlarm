@@ -2250,6 +2250,12 @@ class GuidedWorkoutActivity:Activity() {
             }
             else -> Unit
         }
+        // A spoken number correction belongs to the latest confirmed set, not to the
+        // future target editor. Consume the explicit correction lead-in before planning.
+        if (WorkoutSetReportCommand.isCorrectionIntent(utterance)) {
+            handleSpokenSetCorrection(utterance)
+            return
+        }
         // A correction is a dedicated, explicit action. Route it before the broad
         // mid-session planner so it cannot be mistaken for a plan edit.
         if (WorkoutEffortCorrectionRequest.isRequest(utterance)) {

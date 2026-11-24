@@ -21,7 +21,8 @@ object WorkoutCoachQuestionRouter {
         completedSets: Int? = null,
         completedSetValues: List<Int>? = null,
         completedEffortLevels: List<WorkoutEffortFeedback.Level?>? = null,
-        nextMove: TrainingMove? = null
+        nextMove: TrainingMove? = null,
+        completedEffortScores: List<Int?>? = null
     ): String? {
         if (input.isBlank() || input.length > 300) return null
 
@@ -36,7 +37,8 @@ object WorkoutCoachQuestionRouter {
             input = input,
             prescribedRestSeconds = currentMove?.restSeconds,
             completedSets = completedSets,
-            effortLevels = completedEffortLevels
+            effortLevels = completedEffortLevels,
+            effortScores = completedEffortScores
         )
         val effortStatusAnswer = WorkoutEffortStatusConversation.answer(
             input = input,

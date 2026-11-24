@@ -7,6 +7,7 @@ class WorkoutEffortRestAdviceConversationTest {
     private val hard = WorkoutEffortFeedback.Level.HARD
     private val veryHard = WorkoutEffortFeedback.Level.VERY_HARD
     private val easy = WorkoutEffortFeedback.Level.EASY
+    private val moderate = WorkoutEffortFeedback.Level.MODERATE
 
     @Test fun repeatedHardCheckInsExplainTheBoundedRestSuggestion() {
         val answer = WorkoutEffortRestAdviceConversation.answer(
@@ -135,7 +136,8 @@ class WorkoutEffortRestAdviceConversationTest {
         assertTrue(answer!!.contains("đang dừng vì cảnh báo an toàn"))
         assertFalse(answer.contains("75 giây"))
     }
-    @Test fun confirmedNumericScoreIsIncludedInTheRestExplanation() {
+
+    @Test fun confirmedNumericScoreIsRenderedAsDataNotAsTemplateText() {
         val answer = WorkoutEffortRestAdviceConversation.answer(
             input = "Nghỉ thêm bao lâu?",
             prescribedRestSeconds = 45,
@@ -147,6 +149,23 @@ class WorkoutEffortRestAdviceConversationTest {
         assertNotNull(answer)
         assertTrue(answer!!.contains("tự đánh giá 8/10"))
         assertTrue(answer.contains("75 giây"))
+        assertFalse(answer.contains("scoreLabel"))
+        assertFalse(answer.contains(" + "))
+    }
+
+    @Test fun moderateNumericScoreIsRenderedInThePrescribedRestExplanation() {
+        val answer = WorkoutEffortRestAdviceConversation.answer(
+            input = "Nghỉ thêm bao lâu?",
+            prescribedRestSeconds = 45,
+            completedSets = 1,
+            effortLevels = listOf(moderate),
+            effortScores = listOf(6)
+        )
+
+        assertNotNull(answer)
+        assertTrue(answer!!.contains("tự đánh giá 6/10"))
+        assertTrue(answer.contains("45 giây theo giáo án"))
+        assertFalse(answer.contains("scoreLabel"))
     }
 
     @Test fun mismatchedOrOutOfRangeNumericScoreIsRejected() {
@@ -169,5 +188,4 @@ class WorkoutEffortRestAdviceConversationTest {
             )
         )
     }
-
 }

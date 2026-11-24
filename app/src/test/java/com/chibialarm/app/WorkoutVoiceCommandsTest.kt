@@ -316,4 +316,19 @@ class WorkoutVoiceCommandsTest {
             WorkoutVoiceCommands.describe(C.EXPLAIN_CURRENT)
         )
     }
+    @Test fun explicitRepetitionUnitsAreNotMistakenForRestDurations() {
+        for (phrase in listOf(
+            "Nghỉ thêm 10 lần",
+            "Nghỉ 3 hiệp",
+            "Nghỉ thêm hai mươi lần",
+            "Nghỉ thêm 4 reps"
+        )) {
+            assertEquals(phrase, C.UNKNOWN, WorkoutVoiceCommands.parse(phrase))
+        }
+        // An unspecified rest still uses the deliberate default, while a real time
+        // duration remains actionable through the existing confirmation flow.
+        assertEquals(C.REST, WorkoutVoiceCommands.parse("Nghỉ thêm"))
+        assertEquals(C.REST, WorkoutVoiceCommands.parse("Nghỉ thêm 30 giây"))
+    }
+
 }

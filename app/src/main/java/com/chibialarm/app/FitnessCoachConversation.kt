@@ -38,6 +38,12 @@ object FitnessCoachConversation {
         "không cần tránh nằm sàn", "khong can tranh nam san",
         "có thể nằm sàn", "co the nam san", "nằm sàn được", "nam san duoc"
     )
+    private val noKneelingRestrictionReplies = negativeReplies + setOf(
+        "không có hạn chế quỳ gối", "khong co han che quy goi",
+        "không cần tránh quỳ gối", "khong can tranh quy goi",
+        "có thể quỳ gối", "co the quy goi",
+        "quỳ gối được", "quy goi duoc"
+    )
 
     private fun normalizedEquipmentUtterance(input: String): String =
         java.text.Normalizer.normalize(
@@ -231,6 +237,16 @@ object FitnessCoachConversation {
                     avoidOverheadReach = true,
                     reply = "Đã ghi nhận cần tránh đưa tay hoặc tải lên quá đầu."
                 )
+            question == FitnessCoachFollowUp.Question.KNEELING && answer in noKneelingRestrictionReplies ->
+                parsed.copy(avoidKneeling = false, reply = "Đã ghi nhận có thể quỳ gối nếu thấy thoải mái.")
+            question == FitnessCoachFollowUp.Question.KNEELING && parsed.avoidKneeling != null ->
+                parsed.copy(reply = if (parsed.avoidKneeling) {
+                    "Đã ghi nhận cần tránh các động tác phải quỳ gối."
+                } else {
+                    "Đã ghi nhận có thể quỳ gối nếu thấy thoải mái."
+                })
+            question == FitnessCoachFollowUp.Question.KNEELING && answer in affirmativeReplies ->
+                parsed.copy(avoidKneeling = true, reply = "Đã ghi nhận cần tránh các động tác phải quỳ gối.")
             question == FitnessCoachFollowUp.Question.ENERGY &&
                 answer in setOf(
                     "mệt", "met", "hơi mệt", "hoi met", "ít năng lượng", "it nang luong",

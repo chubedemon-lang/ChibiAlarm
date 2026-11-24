@@ -40,7 +40,8 @@ import kotlinx.coroutines.withContext
 /** Entirely offline guided workout; spoken instructions depend on installed Vietnamese Android TTS. */
 class GuidedWorkoutActivity:Activity() {
     private val handler=Handler(Looper.getMainLooper())
-    // Short-lived conversational reference memory; never checkpointed or sent to a server.
+    // Only a canonical exercise name may survive in the guest-local checkpoint/Bundle.
+    // Raw chat, effort answers and health text remain transient and are never persisted.
     private val coachConversation = WorkoutCoachConversationContext()
     // Reward work is asynchronous; the durable journal remains the retry source if this Activity is recreated.
     private val rewardScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -190,6 +191,7 @@ class GuidedWorkoutActivity:Activity() {
             .putInt("extensionEquipment",extensionPreferences.equipment)
             .putString("additionalEquipment",extensionPreferences.additionalEquipment.sortedBy { it.ordinal }.joinToString(",") { it.name })
             .putString("sessionId",sessionId)
+            .putString("coachContextMove",coachConversation.snapshotMoveName())
             .putInt("index",index).putLong("remaining",remainingMs.coerceIn(0L,600_000L))
             .putBoolean("safety",pausedForSafety)
             .putBoolean("tenSecondCueGiven",tenSecondCueGiven)
@@ -315,6 +317,7 @@ class GuidedWorkoutActivity:Activity() {
                 substitutions.clear()
                 substitutions.putAll(WorkoutMoveSubstitution.decode(savedSubstitutions,originalMoves,workoutConstraints,availableWorkoutEquipment()))
                 moves=WorkoutMoveSubstitution.apply(originalMoves,savedSubstitutions,workoutConstraints,availableWorkoutEquipment())
+                coachConversation.restoreMoveName(checkpoint.getString("coachContextMove"))
                 shorterFromIndex=checkpoint.getInt("shorterFrom",Int.MAX_VALUE).coerceIn(0, moves.size)
                 repTargets.clear()
                 repTargets.putAll(WorkoutRepTargets.decode(checkpoint.getString("repTargets",null),moves.size,index))
@@ -370,6 +373,7 @@ class GuidedWorkoutActivity:Activity() {
                 workoutSpeechRateRestored = true
                 spoken?.setSpeechRate(workoutSpeechRate)
                 sessionId=UUID.randomUUID().toString()
+                coachConversation.reset()
                 completedMoveIndices.clear()
                 completedSetsByMove.clear()
                 repTargets.clear()
@@ -988,6 +992,7 @@ class GuidedWorkoutActivity:Activity() {
             substitutions.clear()
             substitutions.putAll(WorkoutMoveSubstitution.decode(savedSubstitutions,originalMoves,workoutConstraints,availableWorkoutEquipment()))
             moves=WorkoutMoveSubstitution.apply(originalMoves,savedSubstitutions,workoutConstraints,availableWorkoutEquipment())
+            coachConversation.restoreMoveName(savedInstanceState.getString("workout_coach_context_move"))
             index=savedInstanceState.getInt("workout_index",0).coerceIn(0,moves.lastIndex)
             repTargets.clear()
             repTargets.putAll(WorkoutRepTargets.decode(savedInstanceState.getString("workout_rep_targets"),moves.size,index))
@@ -1065,6 +1070,7 @@ class GuidedWorkoutActivity:Activity() {
         )
         outState.putString("workout_plan_fingerprint",currentPlanFingerprint())
         outState.putString("workout_session_id",sessionId)
+        outState.putString("workout_coach_context_move",coachConversation.snapshotMoveName())
         outState.putString("workout_rep_targets",repTargets.entries.joinToString(",") { "${it.key}:${it.value}" })
         outState.putString("workout_substitutions",WorkoutMoveSubstitution.encode(substitutions,originalMoves,workoutConstraints,availableWorkoutEquipment()))
         outState.putString("workout_completed_moves",WorkoutCompletionTracker.encode(completedMoveIndices,moves.size))

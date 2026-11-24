@@ -132,4 +132,35 @@ class WorkoutSetReportCommandTest {
         assertNull(WorkoutSetReportCommand.parse("Tôi đã làm 10 phút"))
         assertNull(WorkoutSetReportCommand.parse("Tôi đã làm 10 lần".repeat(20)))
     }
+    @Test fun explicitSpeechCorrectionsTargetOnlyTheLatestReportedValue() {
+        assertEquals(true, WorkoutSetReportCommand.isCorrectionIntent("Không phải, tám"))
+        assertEquals(
+            WorkoutSetReportCommand.Report(8, "lần"),
+            WorkoutSetReportCommand.parseCorrection("Không phải, tám", 6, "lần")
+        )
+        assertEquals(
+            WorkoutSetReportCommand.Report(8, "lần"),
+            WorkoutSetReportCommand.parseCorrection("Không phải 6 mà 8", 6, "lần")
+        )
+        assertEquals(
+            WorkoutSetReportCommand.Report(8, "lần"),
+            WorkoutSetReportCommand.parseCorrection("Ý tao là tám lần", 6, "lần")
+        )
+        assertEquals(
+            WorkoutSetReportCommand.Report(20, "giây"),
+            WorkoutSetReportCommand.parseCorrection("Sửa thành hai mươi", 15, "giây")
+        )
+    }
+
+    @Test fun correctionParserRejectsStaleValuesPlanEditsAndUnsafeSpeech() {
+        assertNull(WorkoutSetReportCommand.parseCorrection("Không phải 5 mà 8", 6, "lần"))
+        assertNull(WorkoutSetReportCommand.parseCorrection("Giảm còn 8", 6, "lần"))
+        assertNull(WorkoutSetReportCommand.parseCorrection("Không phải, tám giây", 6, "lần"))
+        assertNull(WorkoutSetReportCommand.parseCorrection("Không phải, hai trăm linh một", 6, "lần"))
+        assertNull(WorkoutSetReportCommand.parseCorrection("Không phải, tám nhưng đau gối", 6, "lần"))
+        assertNull(WorkoutSetReportCommand.parseCorrection("Không phải, tám", 6, null))
+        assertEquals(false, WorkoutSetReportCommand.isCorrectionIntent("Giảm còn 8 lần"))
+        assertEquals(false, WorkoutSetReportCommand.isCorrectionIntent("8 lần"))
+    }
+
 }

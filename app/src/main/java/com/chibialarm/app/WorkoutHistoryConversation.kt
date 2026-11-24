@@ -37,6 +37,12 @@ object WorkoutHistoryConversation {
         val text = normalize(input.take(300))
         // Numeric 1–10 self-ratings are a separate structured field; route their history
         // questions before categorical effort labels so no score is inferred from a label.
+        // A direct request for a lighter draft based on numeric self-ratings is distinct
+        // from asking for a historical trend; route it before the generic history summary.
+        val numericEffortPlanAnswer =
+            WorkoutEffortScorePlanAdvisor.answer(input, workouts, today)
+        if (numericEffortPlanAnswer != null) return numericEffortPlanAnswer
+
         val numericEffortScoreAnswer =
             WorkoutEffortScoreTrendConversation.answer(input, workouts, today)
         if (numericEffortScoreAnswer != null) return numericEffortScoreAnswer

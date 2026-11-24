@@ -76,7 +76,8 @@ object WorkoutStepVoiceCommand {
                 "do not turn off auto speak", "don t turn off auto speak",
                 "khong bo qua nghi", "dung bo qua nghi",
                 "khong bo qua thoi gian nghi", "dung bo qua thoi gian nghi",
-                "khong skip rest", "do not skip rest", "don t skip rest"
+                "khong skip rest", "do not skip rest", "don t skip rest",
+                "do not skip the rest", "don t skip the rest"
             ).any { normalized.contains(it) }) return Command.UNKNOWN
         if (WorkoutExerciseStepQuestion.isQuestion(utterance)) return Command.ASK_EXERCISE
         if (listOf(
@@ -142,7 +143,7 @@ object WorkoutStepVoiceCommand {
                 .any { normalized.contains(it) }) return Command.UNKNOWN
         if (listOf(
                 "bo qua nghi", "bo qua thoi gian nghi", "ket thuc nghi som",
-                "ket thuc thoi gian nghi", "skip rest", "skip the rest", "skip rest timer", "end rest early"
+                "ket thuc thoi gian nghi", "skip rest", "skip the rest timer", "skip rest timer", "end rest early"
             ).any { normalized.contains(it) }) return Command.SKIP_REST
         if (listOf("nghi them", "them thoi gian nghi", "keo dai thoi gian nghi", "rest more", "extend rest")
                 .any { normalized.contains(it) }) return Command.REST

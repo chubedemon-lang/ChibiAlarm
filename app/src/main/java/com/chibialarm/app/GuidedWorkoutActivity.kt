@@ -317,7 +317,7 @@ class GuidedWorkoutActivity:Activity() {
                 substitutions.clear()
                 substitutions.putAll(WorkoutMoveSubstitution.decode(savedSubstitutions,originalMoves,workoutConstraints,availableWorkoutEquipment()))
                 moves=WorkoutMoveSubstitution.apply(originalMoves,savedSubstitutions,workoutConstraints,availableWorkoutEquipment())
-                coachConversation.restoreMoveName(checkpoint.getString("coachContextMove"))
+                coachConversation.restoreMoveName(checkpoint.getString("coachContextMove", null))
                 shorterFromIndex=checkpoint.getInt("shorterFrom",Int.MAX_VALUE).coerceIn(0, moves.size)
                 repTargets.clear()
                 repTargets.putAll(WorkoutRepTargets.decode(checkpoint.getString("repTargets",null),moves.size,index))
@@ -1476,7 +1476,7 @@ class GuidedWorkoutActivity:Activity() {
                     if (wasResting) {
                         val extension = restPreview ?: return@setPositiveButton
                         restRemainingMs = extension.afterRemainingMs
-                        if (restRemainingMs > WorkoutRestVoiceCue.WARNING_WINDOW_MS) restTenSecondCueGiven = false
+                        if (WorkoutRestVoiceCue.shouldRearm(restRemainingMs, restVoiceCueLeadSeconds * 1_000L)) restTenSecondCueGiven = false
                         restDeadline = 0L
                         counter.text = restCounterText(restRemainingMs)
                         control.text = "▶ Tiếp tục nghỉ"
@@ -2598,7 +2598,7 @@ class GuidedWorkoutActivity:Activity() {
                     return@setPositiveButton
                 }
                 restRemainingMs = preview.afterRemainingMs
-                if (restRemainingMs > WorkoutRestVoiceCue.WARNING_WINDOW_MS) restTenSecondCueGiven = false
+                if (WorkoutRestVoiceCue.shouldRearm(restRemainingMs, restVoiceCueLeadSeconds * 1_000L)) restTenSecondCueGiven = false
                 restDeadline = 0L
                 counter.text = restCounterText(restRemainingMs)
                 control.text = "▶ Tiếp tục nghỉ"

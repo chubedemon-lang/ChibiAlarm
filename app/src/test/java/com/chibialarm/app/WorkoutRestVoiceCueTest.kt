@@ -233,6 +233,42 @@ class WorkoutRestVoiceCueTest {
         assertTrue(WorkoutRestVoiceCue.message(5_000L, "x".repeat(300))!!.length <= 202)
     }
 
+    @Test fun oneShotRearmsOnlyAboveTheConfiguredLeadWindowAndNeverRepeatsDuringCountdown() {
+        for (leadSeconds in listOf(5L, 10L, 15L, 20L)) {
+            val leadMs = leadSeconds * 1_000L
+            assertFalse(
+                "must stay armed at the exact lead boundary: $leadSeconds s",
+                WorkoutRestVoiceCue.shouldRearm(leadMs, leadMs)
+            )
+            assertFalse(
+                "must stay armed inside the lead window: $leadSeconds s",
+                WorkoutRestVoiceCue.shouldRearm(leadMs - 1L, leadMs)
+            )
+            assertTrue(
+                "must re-arm only after the rest is extended above the lead window: $leadSeconds s",
+                WorkoutRestVoiceCue.shouldRearm(leadMs + 1L, leadMs)
+            )
+
+            var alreadyAnnounced = false
+            var announcements = 0
+            for (remaining in leadMs downTo 1L step 250L) {
+                if (WorkoutRestVoiceCue.shouldRearm(remaining, leadMs)) {
+                    alreadyAnnounced = false
+                }
+                if (WorkoutRestVoiceCue.shouldAnnounce(
+                        remainingMs = remaining,
+                        alreadyAnnounced = alreadyAnnounced,
+                        pausedForSafety = false,
+                        warningWindowMs = leadMs
+                    )) {
+                    announcements++
+                    alreadyAnnounced = true
+                }
+            }
+            assertEquals("exactly one voice cue for $leadSeconds-second lead", 1, announcements)
+        }
+    }
+
     @Test fun configurableLeadWindowControlsWhenTheReminderIsAnnounced() {
         assertFalse(
             WorkoutRestVoiceCue.shouldAnnounce(

@@ -29,6 +29,19 @@ internal object WorkoutRestVoiceCue {
             remainingMs in 1L..boundedWindow
     }
 
+    /**
+     * Re-arm the one-shot only after the countdown moves back above the user's
+     * configured lead window (5/10/15/20 seconds). Using the fixed legacy 10s
+     * threshold here would repeatedly speak when a 15s or 20s lead is selected.
+     */
+    fun shouldRearm(
+        remainingMs: Long,
+        warningWindowMs: Long = WARNING_WINDOW_MS
+    ): Boolean {
+        val boundedWindow = warningWindowMs.coerceIn(1L, MAX_WARNING_WINDOW_MS)
+        return remainingMs > boundedWindow
+    }
+
     fun message(
         remainingMs: Long,
         upcomingPreview: String? = null,

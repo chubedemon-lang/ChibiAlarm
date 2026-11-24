@@ -90,4 +90,28 @@ class WorkoutSetRepetitionLogTest {
         assertFalse(summary.contains("\n"))
         assertFalse(summary.contains("\u0000"))
     }
+    @Test fun correctsOnlyTheLatestSelfReportedValueAndPreservesEarlierSets() {
+        val plan = WorkoutSetTracker.parse(moves[0].dose)!!
+        val original = mapOf(0 to listOf(6, 8), 1 to listOf(20))
+        val corrected = WorkoutSetRepetitionLog.correctLatest(original, 0, 2, 9, plan)
+
+        assertEquals(listOf(6, 8), original[0])
+        assertEquals(listOf(6, 9), corrected[0])
+        assertEquals(listOf(20), corrected[1])
+        assertEquals(2, corrected[0]!!.size)
+    }
+
+    @Test fun correctionRejectsMissingLatestValueWrongSetCountAndOutOfRangeValue() {
+        val plan = WorkoutSetTracker.parse(moves[0].dose)!!
+        assertThrows(IllegalArgumentException::class.java) {
+            WorkoutSetRepetitionLog.correctLatest(mapOf(0 to listOf(6, 0)), 0, 2, 8, plan)
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            WorkoutSetRepetitionLog.correctLatest(mapOf(0 to listOf(6)), 0, 2, 8, plan)
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            WorkoutSetRepetitionLog.correctLatest(mapOf(0 to listOf(6)), 0, 1, 201, plan)
+        }
+    }
+
 }

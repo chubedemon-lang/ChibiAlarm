@@ -2461,6 +2461,7 @@ class GuidedWorkoutActivity:Activity() {
             }
             WorkoutVoiceCommands.Command.SHORTER_REMAINING -> shortenRemainingWorkout()
             WorkoutVoiceCommands.Command.SHORTER -> confirmShortenCurrentMove()
+            WorkoutVoiceCommands.Command.CLARIFY_REST_UNIT -> showRestUnitClarification()
             WorkoutVoiceCommands.Command.REST -> {
                 if (pausedForSafety) {
                     Toast.makeText(this,"Buổi tập đang dừng vì báo đau; không thay đổi thời gian.",Toast.LENGTH_LONG).show()
@@ -2509,6 +2510,40 @@ class GuidedWorkoutActivity:Activity() {
             }
         }
     }
+    /** Ask the user to choose a real duration or explicitly edit repetitions; never guess. */
+    private fun showRestUnitClarification() {
+        if (pausedForSafety || completed || resting || index !in moves.indices) {
+            Toast.makeText(this, "Chibi chưa thể chỉnh nghỉ khi buổi tập đang dừng vì an toàn.", Toast.LENGTH_LONG).show()
+            return
+        }
+        pause()
+        val duration = EditText(this).apply {
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER
+            hint = "Số giây nghỉ (1–600)"
+        }
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("🐰 Mày muốn nói thời gian hay số lần?")
+            .setMessage("Câu vừa rồi có đơn vị lần/hiệp, không phải thời lượng. Chibi chưa thay đổi đồng hồ hoặc mục tiêu tập.")
+            .setView(duration)
+            .setPositiveButton("Xem trước thời gian nghỉ", null)
+            .setNeutralButton("Chỉnh số lần") { _, _ -> requestRepTarget() }
+            .setNegativeButton("Giữ nguyên", null)
+            .create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val seconds = duration.text.toString().trim().toIntOrNull()
+                if (seconds == null || seconds !in 1..600) {
+                    duration.error = "Nhập từ 1 đến 600 giây"
+                } else {
+                    dialog.dismiss()
+                    confirmExtraRest(seconds)
+                }
+            }
+        }
+        dialog.show()
+        speak("Mày đang nói số lần tập hay thời gian nghỉ? Chưa có gì thay đổi.")
+    }
+
     /**
      * Skip only the remaining rest interval after explicit confirmation.
      * The exercise timer is preserved and the workout remains paused afterwards.

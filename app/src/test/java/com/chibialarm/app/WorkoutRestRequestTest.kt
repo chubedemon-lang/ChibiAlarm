@@ -135,6 +135,17 @@ class WorkoutRestRequestTest {
         assertNull(WorkoutRestRequest.contextualExtensionSeconds("thêm nửa phút nữa", false))
     }
 
+    @Test fun contextualExtensionNeverOverridesAdditionalWarningSymptoms() {
+        for (phrase in listOf(
+            "Tê tay, thêm 30 giây nữa",
+            "Buồn nôn, thêm một phút",
+            "Đau ngực, thêm 30 giây",
+            "Choáng và kiệt sức, kéo dài thêm 45 giây"
+        )) {
+            assertNull(phrase, WorkoutRestRequest.contextualExtensionSeconds(phrase, true))
+        }
+    }
+
     @Test fun contextualExtensionRejectsAmbiguousNegativeAndUnrelatedPhrases() {
         assertNull(WorkoutRestRequest.contextualExtensionSeconds("Thêm chút nữa", true))
         assertNull(WorkoutRestRequest.contextualExtensionSeconds("Thêm 10 lần", true))

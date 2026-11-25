@@ -55,6 +55,10 @@ internal object WorkoutCoachQuickPrompts {
         if (remaining.any { it.requiresKneeling }) {
             prompts += Prompt("Không quỳ gối", "Từ giờ không quỳ gối")
         }
+        val avoidJumpingProfile = WorkoutConstraintProfile(avoidJumping = true)
+        if (remaining.any { !WorkoutConstraintFilter.isAllowed(it, avoidJumpingProfile) }) {
+            prompts += Prompt("Không bật nhảy", "Từ giờ không bật nhảy")
+        }
         val avoidFloorProfile = WorkoutConstraintProfile(avoidFloorPositions = true)
         if (remaining.any { !WorkoutConstraintFilter.isAllowed(it, avoidFloorProfile) }) {
             prompts += Prompt("Không nằm sàn", "Từ giờ không nằm sàn")

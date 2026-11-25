@@ -100,6 +100,7 @@ internal object WorkoutRestVoiceCue {
     }
 
     private fun safeLabel(value: String?, limit: Int): String = value.orEmpty()
+        .replace("\\\\", " ")
         .replace(Regex("[\\r\\n\\p{Cc}]+"), " ")
         .replace(Regex("\\s+"), " ")
         .trim()

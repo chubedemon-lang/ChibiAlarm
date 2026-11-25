@@ -78,7 +78,7 @@ object WorkoutRestRequest {
             .replace(Regex("[^a-z0-9 ]"), " ").replace(Regex("\\s+"), " ").trim()
         if (text.isEmpty()) return null
         // A negation or symptom in the same utterance must never become a rest extension.
-        if (Regex("""(?:^| )(?:khong|dontword|stopword|bo qua|huy|dau|nhuc|chan thuong|choang|chong mat|kho tho)(?: |$)""")
+        if (Regex("""(?:^| )(?:khong|dontword|stopword|bo qua|huy|dau|nhuc|dau nguc|te|buon non|chan thuong|choang|chong mat|kho tho|kiet suc)(?: |$)""")
                 .containsMatchIn(text)
         ) return null
         val explicitIncrease = Regex("""(?:^| )(?:them|keo dai)(?: |$)""").containsMatchIn(text)

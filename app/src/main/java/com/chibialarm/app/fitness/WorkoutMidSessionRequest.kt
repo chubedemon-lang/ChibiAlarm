@@ -287,7 +287,7 @@ object WorkoutMidSessionRequest {
         }
         val cannotJump = has("khong nhay duoc", "khong duoc nhay", "khong the nhay")
         val avoidJumping = cannotJump || listOf(
-            "khong nhay", "dung nhay", "it tac dong", "nhe nhang", "tranh nhay"
+            "khong nhay", "khong bat nhay", "dung nhay", "it tac dong", "nhe nhang", "tranh nhay"
         ).any(impactRestrictionText::contains)
         val saysJumpingIsOkay = impactRelaxations.any(text::contains) ||
             (has("nhay duoc") && !cannotJump)

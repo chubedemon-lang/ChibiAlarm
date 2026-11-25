@@ -355,4 +355,59 @@ class WorkoutRestVoiceCueTest {
         assertTrue(WorkoutRestVoiceCue.shouldRearm(2L, Long.MIN_VALUE))
     }
 
+
+
+    @Test fun restPreviewUsesTheConfirmedDoseForTheUpcomingMove() {
+        val preview = WorkoutRestVoiceCue.previewMessage(
+            moveName = "Squat không tạ",
+            completedSets = 3,
+            plan = WorkoutSetTracker.Plan(
+                requiredSets = 3,
+                maximumSets = 3,
+                targetMin = 8,
+                targetMax = 12,
+                unit = "lần"
+            ),
+            nextMoveName = "Đi bộ nhanh tại chỗ",
+            nextMoveDose = "10 lần (mục tiêu đã chỉnh)"
+        )
+        assertTrue(preview.contains("Đi bộ nhanh tại chỗ"))
+        assertTrue(preview.contains("10 lần (mục tiêu đã chỉnh)"))
+    }
+
+    @Test fun restPreviewDistinguishesRequiredAndOptionalSets() {
+        val plan = WorkoutSetTracker.Plan(
+            requiredSets = 2,
+            maximumSets = 3,
+            targetMin = 8,
+            targetMax = 12,
+            unit = "lần"
+        )
+        val required = WorkoutRestVoiceCue.previewMessage(
+            moveName = "Squat không tạ",
+            completedSets = 1,
+            plan = plan
+        )
+        val optional = WorkoutRestVoiceCue.previewMessage(
+            moveName = "Squat không tạ",
+            completedSets = 2,
+            plan = plan
+        )
+        assertTrue(required.contains("hiệp bắt buộc 2/2"))
+        assertTrue(optional.contains("hiệp tùy chọn 3/3"))
+    }
+
+    @Test fun restPreviewSanitizesUntrustedLabelsAndBoundsTheirLength() {
+        val preview = WorkoutRestVoiceCue.previewMessage(
+            moveName = "Squat\\n\u0001" + "x".repeat(200),
+            completedSets = 0,
+            plan = null,
+            nextMoveName = "Đi bộ\\nnhanh",
+            nextMoveDose = "12 lần"
+        )
+        assertFalse(preview.contains("\\n"))
+        assertFalse(preview.contains("\u0001"))
+        assertTrue(preview.length < 240)
+    }
+
 }

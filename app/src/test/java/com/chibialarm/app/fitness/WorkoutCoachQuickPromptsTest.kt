@@ -3,6 +3,8 @@ package com.chibialarm.app.fitness
 import com.chibialarm.app.TrainingCatalog
 import com.chibialarm.app.WorkoutCoachQuestionRouter
 import com.chibialarm.app.WorkoutEffortCorrectionRequest
+import com.chibialarm.app.WorkoutConstraintFilter
+import com.chibialarm.app.WorkoutConstraintProfile
 import com.chibialarm.app.WorkoutVoiceCommands
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

@@ -335,4 +335,40 @@ class WorkoutCoachQuickPromptsTest {
         assertEquals(first, second)
         assertFalse(first.any { it.utterance.isBlank() })
     }
+    @Test fun noJumpingShortcutAppearsOnlyWhenTheRemainingPlanContainsImpactExercise() {
+        val jumpingJacks = TrainingCatalog.allMoves.single { it.name == "Bật nhảy dang tay chân" }
+        val squat = TrainingCatalog.allMoves.single { it.name == "Squat không tạ" }
+
+        val relevant = WorkoutCoachQuickPrompts.forSession(
+            resting = false,
+            hasOptionalFutureExercises = false,
+            hasOptionalCurrentSets = false,
+            remainingUnstartedMoves = listOf(squat, jumpingJacks)
+        )
+        val shortcut = relevant.single { it.label == "Không bật nhảy" }
+        assertEquals("Từ giờ không bật nhảy", shortcut.utterance)
+        val parsed = WorkoutMidSessionRequest.parse(shortcut.utterance)
+        assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
+        val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+        assertTrue(request.avoidJumping)
+        assertFalse(request.avoidKneeling)
+        assertFalse(request.avoidFloorPositions)
+
+        val irrelevant = WorkoutCoachQuickPrompts.forSession(
+            resting = false,
+            hasOptionalFutureExercises = false,
+            hasOptionalCurrentSets = false,
+            remainingUnstartedMoves = listOf(squat)
+        )
+        assertFalse(irrelevant.any { it.label == "Không bật nhảy" })
+
+        val duringRest = WorkoutCoachQuickPrompts.forSession(
+            resting = true,
+            hasOptionalFutureExercises = false,
+            hasOptionalCurrentSets = false,
+            remainingUnstartedMoves = listOf(jumpingJacks)
+        )
+        assertFalse(duringRest.any { it.label == "Không bật nhảy" })
+    }
+
 }

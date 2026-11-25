@@ -4059,7 +4059,8 @@ class GuidedWorkoutActivity:Activity() {
             completedSets = completedSets,
             plan = plan,
             nextMoveName = nextMoveAfterRest?.name,
-            nextMoveDose = nextMoveAfterRest?.dose,
+            // Carry the user's confirmed remaining-set target into the rest preview/TTS.
+            nextMoveDose = if (nextMoveAfterRest != null && nextIndex != null) targetDose(nextIndex) else null,
             currentRemainingLabel = clockText(remainingMs)
         )
         restPreview.text = preview

@@ -371,4 +371,38 @@ class WorkoutCoachQuickPromptsTest {
         assertFalse(duringRest.any { it.label == "Không bật nhảy" })
     }
 
+    @Test fun overheadReachShortcutAppearsOnlyForRemainingMovesThatNeedIt() {
+        val overheadMove = TrainingCatalog.allMoves.single { it.requiresOverheadReach }
+        val squat = TrainingCatalog.allMoves.single { it.name == "Squat không tạ" }
+        val relevant = WorkoutCoachQuickPrompts.forSession(
+            resting = false,
+            hasOptionalFutureExercises = false,
+            hasOptionalCurrentSets = false,
+            remainingUnstartedMoves = listOf(squat, overheadMove)
+        )
+        val shortcut = relevant.single { it.label == "Không với tay quá đầu" }
+        assertEquals("Từ giờ không với tay quá đầu", shortcut.utterance)
+        val parsed = WorkoutMidSessionRequest.parse(shortcut.utterance)
+        assertTrue(parsed is WorkoutMidSessionRequest.Result.Proposed)
+        val request = (parsed as WorkoutMidSessionRequest.Result.Proposed).request
+        assertTrue(request.avoidOverheadReach)
+        assertFalse(request.allowOverheadReach)
+
+        val irrelevant = WorkoutCoachQuickPrompts.forSession(
+            resting = false,
+            hasOptionalFutureExercises = false,
+            hasOptionalCurrentSets = false,
+            remainingUnstartedMoves = listOf(squat)
+        )
+        assertFalse(irrelevant.any { it.label == "Không với tay quá đầu" })
+
+        val duringRest = WorkoutCoachQuickPrompts.forSession(
+            resting = true,
+            hasOptionalFutureExercises = false,
+            hasOptionalCurrentSets = false,
+            remainingUnstartedMoves = listOf(overheadMove)
+        )
+        assertFalse(duringRest.any { it.label == "Không với tay quá đầu" })
+    }
+
 }

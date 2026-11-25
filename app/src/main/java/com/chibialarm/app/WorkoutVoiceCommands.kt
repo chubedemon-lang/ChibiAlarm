@@ -81,16 +81,18 @@ object WorkoutVoiceCommands {
             normalized.contains("tam dung") || normalized.contains("dung lai") ||
                 normalized.contains("dung tap") || normalized.contains("khong tap noi") ||
                 normalized.contains("het suc") || "pause" in words -> Command.PAUSE
-            namesWorkCount && !WorkoutRestRequest.hasRecognizedDuration(utterance) &&
-                (normalized.contains("nghi") || normalized.contains("rest")) -> Command.CLARIFY_REST_UNIT
             listOf(
                 "vi sao bai nay de hon", "tai sao bai nay de hon",
                 "vi sao lai doi bai", "tai sao lai doi bai",
                 "giai thich bai thay the", "giai thich vi sao bai nay",
                 "ly do thay the", "ly do doi bai", "vi sao chibi goi y"
             ).any(normalized::contains) -> Command.EXPLAIN_CURRENT
+            // Explicitly skipping/ending rest wins over the generic rest-unit clarification,
+            // even when the same utterance also mentions a new repetition target.
             normalized.contains("bo qua nghi") || normalized.contains("bo qua thoi gian nghi") ||
                 normalized.contains("ket thuc nghi") || "skip rest" in normalized -> Command.SKIP_REST
+            namesWorkCount && !WorkoutRestRequest.hasRecognizedDuration(utterance) &&
+                (normalized.contains("nghi") || normalized.contains("rest")) -> Command.CLARIFY_REST_UNIT
             listOf(
                 "khong co dung cu", "khong dung cu", "khong can dung cu", "tay khong",
                 "khong dung ta", "khong co ta", "khong co ta don", "bo ta",

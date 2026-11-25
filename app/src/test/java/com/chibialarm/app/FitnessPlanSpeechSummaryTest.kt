@@ -114,6 +114,22 @@ class FitnessPlanSpeechSummaryTest {
         assertTrue(spoken.length <= FitnessPlanSpeechSummary.MAX_CHARACTERS)
     }
 
+    @Test fun lowEnergyProfileSpeaksAConcretePacingReminder() {
+        val lowEnergyProfile = profile().replace(
+            "Năng lượng tự đánh giá: Cảm thấy bình thường",
+            "Năng lượng tự đánh giá: Năng lượng thấp"
+        )
+        val spoken = FitnessPlanSpeechSummary.fromProfile(
+            lowEnergyProfile,
+            "Phục hồi nhẹ"
+        )
+
+        assertTrue(spoken.contains("Năng lượng thấp"))
+        assertTrue(spoken.contains("ưu tiên giảm cường độ"))
+        assertTrue(spoken.contains("không cố tập bù"))
+        assertTrue(spoken.length <= FitnessPlanSpeechSummary.MAX_CHARACTERS)
+    }
+
     @Test fun spokenSummaryAddsAConservativeReminderForLatestVeryHardCheckIn() {
         val base = FitnessPlanSpeechSummary.fromProfile(profile(), "Toàn thân")
         val spoken = FitnessPlanSpeechSummary.withEffortReview(

@@ -125,7 +125,9 @@ object WorkoutTargetCommand {
         WorkoutVoiceCommands.Command.COMPLETE_SET,
         // Equipment changes and rest skipping are plan/session actions, never rep edits.
         WorkoutVoiceCommands.Command.NO_EQUIPMENT,
-        WorkoutVoiceCommands.Command.SKIP_REST -> true
+        WorkoutVoiceCommands.Command.SKIP_REST,
+        // Ambiguous rest units must never be interpreted as a repetition edit.
+        WorkoutVoiceCommands.Command.CLARIFY_REST_UNIT -> true
         WorkoutVoiceCommands.Command.REST,
         WorkoutVoiceCommands.Command.UNKNOWN -> false
     }

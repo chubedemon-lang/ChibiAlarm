@@ -82,6 +82,12 @@ internal object FitnessPlanSpeechSummary {
                 if (compact.isNotBlank()) add(compact)
             }
             if (energy.isNotBlank()) add("Năng lượng ${clip(energy, 14)}.")
+            if (energy.contains("thấp", ignoreCase = true) ||
+                energy.contains("ít năng lượng", ignoreCase = true) ||
+                energy.contains("mệt", ignoreCase = true)
+            ) {
+                add("Hôm nay ưu tiên giảm cường độ và nghỉ thêm nếu cần; không cố tập bù.")
+            }
         }
 
         optional.forEach { sentence ->

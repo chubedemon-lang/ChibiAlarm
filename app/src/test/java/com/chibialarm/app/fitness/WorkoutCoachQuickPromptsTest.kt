@@ -405,4 +405,38 @@ class WorkoutCoachQuickPromptsTest {
         assertFalse(duringRest.any { it.label == "Không với tay quá đầu" })
     }
 
+
+    @Test fun wristLoadingShortcutAppearsOnlyWhenRemainingMoveNeedsWristSupportOrExternalLoad() {
+        val row = TrainingCatalog.allMoves.single { it.name == "Kéo tạ đơn hoặc dây kháng lực" }
+        val squat = TrainingCatalog.allMoves.single { it.name == "Squat không tạ" }
+
+        val relevant = WorkoutCoachQuickPrompts.forSession(
+            resting = false,
+            hasOptionalFutureExercises = false,
+            hasOptionalCurrentSets = false,
+            remainingUnstartedMoves = listOf(squat, row)
+        )
+        val shortcut = relevant.single { it.label == "Không chống tay chịu lực" }
+        assertEquals("Từ giờ tránh các bài phải chống tay chịu lực", shortcut.utterance)
+        val avoidWrist = WorkoutConstraintProfile(avoidWristLoad = true)
+        assertFalse(WorkoutConstraintFilter.isAllowed(row, avoidWrist))
+        assertTrue(WorkoutConstraintFilter.isAllowed(squat, avoidWrist))
+
+        val irrelevant = WorkoutCoachQuickPrompts.forSession(
+            resting = false,
+            hasOptionalFutureExercises = false,
+            hasOptionalCurrentSets = false,
+            remainingUnstartedMoves = listOf(squat)
+        )
+        assertFalse(irrelevant.any { it.label == "Không chống tay chịu lực" })
+
+        val duringRest = WorkoutCoachQuickPrompts.forSession(
+            resting = true,
+            hasOptionalFutureExercises = false,
+            hasOptionalCurrentSets = false,
+            remainingUnstartedMoves = listOf(row)
+        )
+        assertFalse(duringRest.any { it.label == "Không chống tay chịu lực" })
+    }
+
 }
